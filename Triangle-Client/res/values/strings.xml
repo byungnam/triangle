@@ -1,0 +1,44 @@
+<?ml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Triangle</string>
+    <string name="Str">근력</string>
+    <string name="Dex">민첩</string>
+    <string name="Vit">체력</string>
+    <string name="Int">지능</string>
+    <string name="pAtk">물리 공격력</string>
+    <string name="mAtk">마법 공격력</string>
+    <string name="pDef">물리 방어력</string>
+    <string name="mDef">마법 방어력</string>
+    <string name="Spd">신속함</string>
+    <string name="Hp">HP</string>
+    <string name="Mp">MP</string>
+    <string name="Exp">경험치</string>
+    <string name="Level">레벨</string>
+    <string name="Class">클래스</string>
+    <string name="Name">이름</string>
+    
+    <string name="Zero">0</string>
+    
+    <string name="Restpoint">남은 포인트</string>
+    <string name="Save">저장</string>
+    <string name="ModifyStat">능력치 조정</string>
+    <string name="ModifyTactic">전략 설정</string>
+    <string name="Delete">삭제</string>
+    <string name="PutName">이름 입력</string>
+    
+    <string name="Battle">전투</string>
+    <string name="leftArrow">-</string>
+    <string name="rightArrow">+</string>
+    <string name="selectCond">전술 실행 조건을 고르세요.</string>
+    <string name="selectValue">전술에 적용될 값을 고르세요.</string>
+    <string name="selectAction">실행할 행동을 선택세요.</string>
+    <string name="selectOption">무엇을 하시겠습니까?</string>
+    <string name="battleFieldSelect">전장을 선택하세요.</string>
+    <string name="run">실행</string><string name="createUnit">새 구성원</string>
+    <string name="createTeam">새 팀 구성</string>
+    <string name="confirm">확인</string>
+    <string name="manageTeam">팀 구성 변경</string>
+    <string name="createTeamDialog">새 팀의 이름을 정하세요.</string>
+
+</resources>

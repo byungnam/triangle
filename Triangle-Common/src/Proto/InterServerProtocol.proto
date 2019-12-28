@@ -1,0 +1,21 @@
+package Triangle.Protocol;
+option java_package = "Triangle.Protocol";
+option java_outer_classname = "InterServerProtocol";
+
+message ServerUp {
+	required string serverName = 1;
+}
+message HeartBeat {
+	required string serverName = 1;
+}
+message JoinLeave {
+	required int32 accountNumber = 1;
+}
+
+message InterServerMessage {  
+	enum InterServerMessageType { Join = 2; Leave = 3;  ServerUp = 1; HeartBeat = 7;}
+	required InterServerMessageType interServerMessageType = 100;
+	optional JoinLeave joinleave = 2;
+	optional ServerUp serverUp = 1;
+	optional HeartBeat heartBeat = 7;
+}

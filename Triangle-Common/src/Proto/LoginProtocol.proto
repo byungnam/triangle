@@ -1,0 +1,65 @@
+package Triangle.Protocol;
+option java_package = "Triangle.Protocol";
+option java_outer_classname = "LoginProtocol";
+
+message CreateAccount {
+	required string id = 1;
+	required string password = 2;
+	optional bool success = 3;
+}
+
+message DeleteAccount {
+	required string id = 1;
+	required string password = 2;
+	optional bool success = 3;
+}
+
+message Authentication {  
+	required string id = 1;
+	required string password = 2;
+	optional int32 accountNumber = 3;
+	repeated string serverName = 4;
+}
+
+message ServerInformation {
+	//required int32 numberOfUsers = 2;
+	required string serverAddress = 3;
+	required int32 serverPort = 4;
+}
+
+message JoinServer {
+	required int32 accountNumber = 1;
+	required string serverName = 2;
+	optional ServerInformation serverInformation = 3;
+}
+
+message LeaveServer {
+	required int32 accountNumber = 1;
+}
+
+message Disconnect {
+	required int32 accountNumber = 1;
+}
+
+message CheckIdConflict {
+	required string id = 1;
+	optional bool success = 2;
+}
+
+
+message LoginMessage {  
+	enum LoginMessageType { CreateAccount = 1; Authentication = 2; DeleteAccount = 3;
+													JoinServer = 4; LeaveServer = 5; Disconnect = 6; CheckIdConflict = 7;}
+	
+	required LoginMessageType loginMessageType = 100;
+	optional CreateAccount createAccount = 1;
+	optional Authentication authentication = 2;	
+	optional DeleteAccount deleteAccount = 3;
+	optional JoinServer joinServer = 4;
+	optional LeaveServer leaveServer = 5;
+	optional Disconnect disconnect = 6;
+	optional CheckIdConflict checkIdConflict = 7;
+	
+	optional ServerInformation serverInformation = 8;
+	
+}

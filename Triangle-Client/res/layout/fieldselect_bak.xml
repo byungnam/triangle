@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:orientation="vertical" android:id="@+id/LinearLayout02"
+	android:layout_height="fill_parent" android:layout_width="fill_parent"
+	android:background="@drawable/map">
+	<LinearLayout android:id="@+id/LinearLayout02"
+		android:layout_height="fill_parent" android:layout_width="fill_parent"
+		android:layout_weight="1" android:baselineAligned="false"
+		android:orientation="horizontal">
+		<TextView android:layout_height="fill_parent"
+			android:layout_width="fill_parent" android:layout_weight="1"
+			android:layout_gravity="center"></TextView>
+		<LinearLayout android:id="@+id/LinearLayout02"
+			android:layout_height="fill_parent" android:layout_width="fill_parent"
+			android:layout_weight="1" android:orientation="horizontal">
+			<TextView android:layout_height="fill_parent"
+				android:layout_width="fill_parent" android:layout_weight="2"></TextView>
+			<ImageButton android:layout_height="fill_parent"
+				android:layout_width="fill_parent"
+				android:background="@drawable/but2" android:layout_weight="1" android:id="@+id/Button06"></ImageButton>
+			<TextView android:layout_height="fill_parent"
+				android:layout_width="fill_parent" android:layout_weight="2"></TextView>
+		</LinearLayout>
+	</LinearLayout>
+	<LinearLayout android:id="@+id/LinearLayout02"
+		android:layout_height="fill_parent" android:layout_width="fill_parent"
+		android:layout_weight="1" android:baselineAligned="false"
+		android:orientation="horizontal">
+		<LinearLayout android:id="@+id/LinearLayout02"
+			android:layout_height="fill_parent" android:layout_width="fill_parent"
+			android:layout_weight="1" android:orientation="horizontal">
+			<TextView android:layout_height="fill_parent"
+				android:layout_width="fill_parent" android:layout_weight="2"></TextView>
+			<ImageButton android:layout_height="fill_parent"
+				android:layout_width="fill_parent"
+				android:background="@drawable/but2" android:layout_weight="1" android:id="@+id/Button04"></ImageButton>
+			<TextView android:layout_height="fill_parent"
+				android:layout_width="fill_parent" android:layout_weight="2"></TextView>
+		</LinearLayout>
+		<LinearLayout android:layout_height="fill_parent"
+			android:layout_width="fill_parent" android:layout_weight="1"
+			android:orientation="horizontal">
+			<ImageButton android:layout_height="fill_parent"
+				android:layout_width="fill_parent"
+				android:layout_weight="1" android:background="@drawable/but2" android:id="@+id/Button02"></ImageButton>
+			<ImageButton android:layout_height="fill_parent"
+				android:layout_width="fill_parent"
+				android:layout_weight="1" android:background="@drawable/but2" android:id="@+id/Button03"></ImageButton>
+		</LinearLayout>
+	</LinearLayout>
+	<LinearLayout android:orientation="horizontal" android:id="@+id/LinearLayout02"
+		android:layout_height="fill_parent" android:layout_width="fill_parent"
+		android:layout_weight="1">
+		<LinearLayout android:layout_height="fill_parent"
+			android:layout_width="fill_parent" android:layout_weight="1"
+			android:orientation="horizontal">
+			
+		</LinearLayout>
+		<LinearLayout android:layout_height="fill_parent"
+			android:layout_width="fill_parent" android:layout_weight="1"
+			android:orientation="horizontal">
+			<ImageButton android:layout_height="fill_parent"
+				android:layout_width="fill_parent"
+				android:layout_weight="4" android:background="@drawable/but" android:id="@+id/Button05"></ImageButton>
+			<ImageButton android:layout_height="fill_parent"
+				android:layout_width="fill_parent"
+				android:layout_weight="3" android:background="@drawable/but" android:id="@+id/Button01"></ImageButton>
+		</LinearLayout>
+	</LinearLayout>
+</LinearLayout>

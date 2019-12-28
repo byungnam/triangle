@@ -1,0 +1,206 @@
+package Triangle.Protocol;
+option java_package = "Triangle.Protocol";
+option java_outer_classname = "GameProtocol";
+
+
+message CombatRequest { 
+	required int32 allyTeamNumber = 1;
+	required int32 enemyTeamNumber = 2;
+	repeated ProtocolUnit allyUnit = 3;
+	repeated ProtocolUnit enemyUnit = 4;
+}
+
+message CombatResult {
+	optional bool combatResult = 1;
+	optional CombatReward combatReward = 2;
+}
+
+message CombatReward { 
+	required int32 exp = 2;
+	repeated int32 item = 3;
+} 
+
+message CreateUnit {
+	required string name = 2;
+	required int32 cls = 3;
+}
+
+message DeleteUnit {
+	required int32 unitNumber = 1;
+}
+
+message GetUnitByAccountNumber {
+	repeated ProtocolUnit unit = 2;
+}
+
+message GetUnitByTeamNumber {
+	required int32 teamNumber = 1;
+	repeated ProtocolUnit unit = 2;
+}
+
+message GetUnitByUnitNumber {
+	required int32 unitNumber = 1;
+	optional ProtocolUnit unit = 2;
+}
+
+message EditUnit {
+	required int32 unitNumber = 1;
+	required ProtocolUnit unit = 2;
+}
+
+message CreateTeam {
+	required string name = 2;
+}
+
+message DeleteTeam {
+	required int32 teamNumber = 1; 
+}
+
+message GetTeamByAccountNumber {
+	repeated ProtocolTeam team = 2;
+}
+
+message GetTeamByUnitNumber {
+	required int32 unitNumber = 1;
+	repeated ProtocolTeam team = 2;
+}
+
+message EditTeam {
+	required int32 teamNumber = 1;
+	required ProtocolTeam team = 2;
+}
+
+message CreateTactic {
+	required int32 unitNumber = 1;
+}
+
+message DeleteTactic {
+	required int32 unitNumber = 1;
+	required int32 priority = 2;
+}
+
+message GetTactic {
+	required int32 unitNumber = 1;
+	repeated ProtocolTactic tactics = 2;
+}
+
+message EditTactic {
+	required int32 unitNumber = 1;
+	required int32 priority = 2;
+	required ProtocolTactic tactic = 3;
+}
+
+message RegisterUnit {
+	required int32 unitNumber = 1;
+	required int32 teamNumber = 2;
+}
+
+message UnregisterUnit {
+	required int32 unitNumber = 1;
+	required int32 teamNumber = 2;
+}
+
+message GetNPCTeam {
+	required int32 npcNumber = 1;
+	repeated ProtocolTeam team = 2;
+
+}
+
+message LearnSkill {
+	required ProtocolSkill protocolSkill = 1; 
+}
+
+message getSkill {
+	repeated ProtocolSkill protocolSkill = 1; 
+}
+
+message gainItem {
+	repeated ProtocolItem protocolItem = 1;
+}
+
+message dropItem {
+	required ProtocolItem protocolItem = 1;
+}
+
+message getItem {
+	repeated ProtocolItem protocolItem = 1;
+}
+
+message ProtocolTeam {
+	required int32 teamNumber = 1;
+	required string teamName = 2;
+}
+
+message ProtocolUnit {
+	required int32 unitNumber = 1;
+	required string unitName = 3;
+	required int32 cls = 4;
+	required int32 level = 5;
+	required int32 point = 6;
+	required int32 str = 7;
+	required int32 dex = 8;
+	required int32 intel = 9;
+	required int32 vital = 10;
+	required int32 speed = 11;
+	required int32 exp = 12;
+	repeated ProtocolTactic tactics = 13;
+	repeated ProtocolSkill skills = 14;
+	repeated ProtocolItem items = 15;
+}
+
+message ProtocolSkill {
+  required int32 skillNumber = 1;
+  required int32 skillLevel = 2;
+  optional int32 exp = 3;
+}
+
+message ProtocolItem { 
+  required int32 itemNumber = 1;
+  required int32 quantity = 2;
+}
+
+message ProtocolTactic {
+	required int32 priority = 1;
+	required int32 condition = 2;
+	required int32 value = 3;
+	required int32 action = 4;
+	required int32 actionLevel = 5;
+}	
+
+message GameMessage {
+	enum GameMessageType { 
+										CreateUnit = 11; DeleteUnit = 12; EditUnit = 13; GetUnitByAccountNumber = 14;
+										GetUnitByTeamNumber = 15; GetUnitByUnitNumber = 16;	
+										CreateTeam = 17; DeleteTeam = 18; GetTeamByAccountNumber = 19; GetTeamByUnitNumber = 20; EditTeam = 21;
+										CreateTactic = 22; DeleteTactic = 23; GetTactic = 24; EditTactic = 25;
+										RegisterUnit = 26; UnregisterUnit = 27;
+										CombatRequest = 40; CombatResult = 41; GetNPCTeam = 42;
+										}
+	
+	required GameMessageType gameMessageType = 100;
+	required int32 accountNumber = 101;
+	optional int32 taskNumber = 102;
+	
+	optional bool result = 1;
+	optional CreateUnit createUnit = 3;
+	optional DeleteUnit deleteUnit = 4;
+	optional EditUnit editUnit = 5;
+	optional GetUnitByAccountNumber getUnitByAccountNumber = 6;
+	optional GetUnitByTeamNumber getUnitByTeamNumber = 7;
+	optional GetUnitByUnitNumber getUnitByUnitNumber = 8;
+	optional CreateTeam createTeam = 9; 
+	optional DeleteTeam deleteTeam = 10; 
+	optional GetTeamByAccountNumber getTeamByAccountNumber = 11;
+	optional GetTeamByUnitNumber getTeamByUnitNumber = 12;
+	optional EditTeam editTeam = 13;
+	optional CreateTactic createTactic = 14;
+	optional DeleteTactic deleteTactic = 15;
+	optional GetTactic getTactic = 16;
+	optional EditTactic editTactic = 17;
+	optional RegisterUnit registerUnit = 18;
+	optional UnregisterUnit unregisterUnit = 19; 
+	optional CombatRequest combatRequest = 20;
+	optional CombatResult combatResult = 21;
+	optional GetNPCTeam getNPCTeam = 22;
+	
+}

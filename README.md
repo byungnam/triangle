@@ -27,6 +27,7 @@ dotnet run --project src/Triangle.Desktop
 dotnet run --project src/Triangle.Desktop -- --screenshot shot.png                # 전술 편집 화면을 PNG로 저장하고 종료
 dotnet run --project src/Triangle.Desktop -- --combat --screenshot shot.png       # 전투가 끝난 화면
 dotnet run --project src/Triangle.Desktop -- --combat --screenshot shot.png 40    # 로그 40줄까지 진행한 중간 화면
+dotnet run --project src/Triangle.Desktop -- --save /tmp/test-save.json            # 세이브 위치 바꾸기 (기본: ~/.config/Triangle/save.json)
 ```
 
 콘텐츠(`src/Triangle.Desktop/Content/Content.mgcb`)는 빌드할 때 함께 처리된다. 에디터는 `src/Triangle.Desktop`에서 `dotnet tool restore && dotnet mgcb-editor`로 연다.

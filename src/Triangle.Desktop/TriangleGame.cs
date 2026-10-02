@@ -12,7 +12,9 @@ namespace Triangle.Desktop;
 /// <param name="ScreenshotPath">지정하면 첫 화면을 PNG에 저장하고 종료한다.</param>
 /// <param name="ScreenshotLines">전투 화면 스크린샷 전에 진행할 로그 줄 수. null이면 전투 끝까지.</param>
 /// <param name="StartInCombat">전술 편집 대신 전투 화면으로 시작한다.</param>
-public sealed record LaunchOptions(string? ScreenshotPath = null, int? ScreenshotLines = null, bool StartInCombat = false);
+/// <param name="SavePath">세이브 파일 경로. null이면 OS별 기본 위치.</param>
+public sealed record LaunchOptions(
+    string? ScreenshotPath = null, int? ScreenshotLines = null, bool StartInCombat = false, string? SavePath = null);
 
 public class TriangleGame : Game
 {
@@ -31,6 +33,7 @@ public class TriangleGame : Game
     private Party _party = null!;
     private TacticEditorScene _editor = null!;
     private int _framesDrawn;
+    private bool _quitConfirmed;
 
     public TriangleGame(LaunchOptions options)
     {
@@ -79,8 +82,10 @@ public class TriangleGame : Game
             return new ErrorScene(_ui, "게임 데이터를 읽지 못했습니다", e.Errors);
         }
 
-        _party = DemoParty.Create();
-        _editor = new TacticEditorScene(_ui, _data, _party, Bounds, StartCombat, Exit);
+        var store = new SaveStore(_options.SavePath ?? SaveStore.DefaultPath);
+        var loaded = store.Load(_data, DemoParty.Create);
+        _party = loaded.Party;
+        _editor = new TacticEditorScene(_ui, _data, _party, store, Bounds, StartCombat, ConfirmedExit, LoadNotice(loaded));
 
         if (!_options.StartInCombat)
         {
@@ -96,10 +101,41 @@ public class TriangleGame : Game
         return combat;
     }
 
+    private static (string, Color)? LoadNotice(LoadResult result) => result.Status switch
+    {
+        LoadStatus.Loaded => ("세이브를 불러왔습니다", Theme.TextDim),
+        LoadStatus.Recovered => ($"세이브를 읽지 못해 새로 시작합니다. 원래 파일: {Path.GetFileName(result.BrokenFilePath)}", Theme.Enemy),
+        _ => null,
+    };
+
     private CombatLogScene CreateCombat(string encounterId) =>
         new(_ui, _data, _party.ToCombatantSetups(_data), encounterId, seed: 1, Bounds, back: () => _scene = _editor);
 
     private void StartCombat(string encounterId) => _scene = CreateCombat(encounterId);
+
+    /// <summary>편집 화면이 종료를 확인했다 (저장했거나 버리기로 했다).</summary>
+    private void ConfirmedExit()
+    {
+        _quitConfirmed = true;
+        Exit();
+    }
+
+    /// <summary>
+    /// 창 닫기 버튼 등으로 종료할 때, 저장하지 않은 변경이 있으면 종료를 취소하고
+    /// 편집 화면에서 확인 창을 띄운다.
+    /// </summary>
+    protected override void OnExiting(object sender, ExitingEventArgs args)
+    {
+        if (!_quitConfirmed && _options.ScreenshotPath is null && _editor is { HasUnsavedChanges: true })
+        {
+            args.Cancel = true;
+            _scene = _editor;
+            _editor.RequestQuit();
+            return;
+        }
+
+        base.OnExiting(sender, args);
+    }
 
     protected override void Update(GameTime gameTime)
     {

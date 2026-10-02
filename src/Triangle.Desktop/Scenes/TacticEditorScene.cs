@@ -31,6 +31,7 @@ internal sealed class TacticEditorScene : IScene
     private readonly GameData _data;
     private readonly Party _party;
     private readonly Rectangle _bounds;
+    private readonly SaveStore _store;
     private readonly Action<string> _startCombat;
     private readonly Action _quit;
     private readonly MyraDesktop _desktop = new();
@@ -39,13 +40,21 @@ internal sealed class TacticEditorScene : IScene
     private int _selected;
     private string _encounterId;
     private bool _dirty = true;
+    private bool _unsaved;
+    private (string Text, Color Color)? _notice;
+    private Window? _quitDialog;
 
-    public TacticEditorScene(Ui ui, GameData data, Party party, Rectangle bounds, Action<string> startCombat, Action quit)
+    /// <param name="notice">처음에 보여줄 안내 (세이브를 복구했다는 등).</param>
+    public TacticEditorScene(
+        Ui ui, GameData data, Party party, SaveStore store, Rectangle bounds,
+        Action<string> startCombat, Action quit, (string Text, Color Color)? notice = null)
     {
         _ui = ui;
         _data = data;
         _party = party;
+        _store = store;
         _bounds = bounds;
+        _notice = notice;
         _startCombat = startCombat;
         _quit = quit;
         _encounterId = data.Encounters.Keys.First();
@@ -53,13 +62,45 @@ internal sealed class TacticEditorScene : IScene
 
     private PartyMember Selected => _party.Members[_selected];
 
+    public bool HasUnsavedChanges => _unsaved;
+
+    /// <summary>종료를 요청한다. 저장하지 않은 변경이 있으면 먼저 확인 창을 띄운다.</summary>
+    public void RequestQuit()
+    {
+        if (_unsaved)
+        {
+            ShowQuitDialog();
+        }
+        else
+        {
+            _quit();
+        }
+    }
+
     public void Update(GameTime gameTime, Input input)
     {
+        // 확인 창이 떠 있으면 Esc는 취소다. 창을 띄운 Esc가 바로 창을 닫지 않도록
+        // Myra의 CloseKey 대신 여기서 처리한다 (Pressed는 새로 누른 순간만 참).
+        if (_quitDialog is not null)
+        {
+            if (input.Pressed(Keys.Escape))
+            {
+                _quitDialog.Close();
+            }
+
+            return;
+        }
+
         // 드롭다운이 열려 있을 때의 Esc는 드롭다운을 닫는 데 쓴다.
         if (input.Pressed(Keys.Escape) && !_combos.Any(c => c.IsExpanded))
         {
-            _quit();
+            RequestQuit();
             return;
+        }
+
+        if (input.Pressed(Keys.S) && input.IsDown(Keys.LeftControl, Keys.RightControl))
+        {
+            Save();
         }
 
         // 위젯 이벤트 처리 중에 트리를 갈아끼우지 않도록 다음 프레임에 다시 만든다.
@@ -72,7 +113,8 @@ internal sealed class TacticEditorScene : IScene
 
     public void Draw(SpriteBatch batch)
     {
-        if (_dirty)
+        // 확인 창이 떠 있는 동안에는 트리를 갈아끼우지 않는다 (창이 함께 사라지지 않도록).
+        if (_dirty && _quitDialog is null)
         {
             Rebuild();
             _dirty = false;
@@ -80,8 +122,15 @@ internal sealed class TacticEditorScene : IScene
 
         batch.Begin();
         _ui.Text(batch, _ui.BoldFont(28), "전술 편집", new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
-        const string help = "조건이 참인 첫 전술을 쓴다. 대상은 스킬이 정한다.     Esc  종료";
+        const string help = "조건이 참인 첫 전술을 쓴다. 대상은 스킬이 정한다.     Ctrl+S  저장     Esc  종료";
         _ui.Text(batch, _ui.Font(16), help, new Vector2(_bounds.Left + Margin, _bounds.Bottom - FooterHeight + 10), Theme.TextDim);
+
+        if (_notice is { } notice)
+        {
+            var font = _ui.Font(16);
+            var width = font.MeasureString(notice.Text).X;
+            _ui.Text(batch, font, notice.Text, new Vector2(_bounds.Right - Margin - width, _bounds.Bottom - FooterHeight + 10), notice.Color);
+        }
 
         var memberArea = MemberArea;
         _ui.Panel(batch, new Rectangle(memberArea.X - 16, memberArea.Y - 12, memberArea.Width + 32, memberArea.Height + 24));
@@ -103,6 +152,85 @@ internal sealed class TacticEditorScene : IScene
     }
 
     private void MarkDirty() => _dirty = true;
+
+    /// <summary>파티가 바뀌었다. 저장 전까지 "저장하지 않은 변경"으로 표시한다.</summary>
+    private void MarkChanged()
+    {
+        _unsaved = true;
+        _notice = null;
+        MarkDirty();
+    }
+
+    private bool Save()
+    {
+        var saved = false;
+        try
+        {
+            _store.Save(_party);
+            _unsaved = false;
+            saved = true;
+            _notice = ($"저장했습니다 ({DateTime.Now:HH:mm:ss})", Theme.Heal);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            _notice = ($"저장하지 못했습니다: {e.Message}", Theme.Enemy);
+        }
+
+        MarkDirty();
+        return saved;
+    }
+
+    private void ShowQuitDialog()
+    {
+        if (_quitDialog is not null)
+        {
+            return;
+        }
+
+        var content = new VerticalStackPanel { Spacing = 20, Padding = new Thickness(24, 16) };
+        content.Widgets.Add(Label("저장하지 않은 변경이 있습니다. 저장할까요?", 18, Theme.Text));
+
+        var buttons = new HorizontalStackPanel { Spacing = 10, HorizontalAlignment = HorizontalAlignment.Right };
+        var saveAndQuit = TextButton("저장하고 종료", Theme.Accent, Theme.AccentHover, bold: true);
+        var discard = TextButton("저장하지 않고 종료", Theme.Button, Theme.ButtonHover);
+        var cancel = TextButton("취소", Theme.Button, Theme.ButtonHover);
+        buttons.Widgets.Add(saveAndQuit);
+        buttons.Widgets.Add(discard);
+        buttons.Widgets.Add(cancel);
+        content.Widgets.Add(buttons);
+
+        var window = new Window
+        {
+            Title = "종료",
+            TitleFont = _ui.BoldFont(18),
+            TitleTextColor = Theme.Text,
+            Content = content,
+            Background = new SolidBrush(Theme.Panel),
+            Border = new SolidBrush(Theme.PanelBorder),
+            BorderThickness = new Thickness(1),
+            CloseKey = null,
+        };
+
+        saveAndQuit.Click += (_, _) =>
+        {
+            // 저장에 실패하면 종료하지 않고 창을 닫아 오류 안내를 보여준다.
+            window.Close();
+            if (Save())
+            {
+                _quit();
+            }
+        };
+        discard.Click += (_, _) =>
+        {
+            window.Close();
+            _quit();
+        };
+        cancel.Click += (_, _) => window.Close();
+        window.Closed += (_, _) => _quitDialog = null;
+
+        _quitDialog = window;
+        window.ShowModal(_desktop);
+    }
 
     // ── 위젯 트리 ──────────────────────────────────────────
 
@@ -204,7 +332,7 @@ internal sealed class TacticEditorScene : IScene
         addButton.Click += (_, _) =>
         {
             member.AddTactic(Condition.Always, 0, _data.Skills.Keys.First());
-            MarkDirty();
+            MarkChanged();
         };
         tactics.Widgets.Add(addButton);
 
@@ -231,7 +359,7 @@ internal sealed class TacticEditorScene : IScene
             button.Click += (_, _) =>
             {
                 member.Row = option;
-                MarkDirty();
+                MarkChanged();
             };
             row.Widgets.Add(button);
         }
@@ -265,7 +393,7 @@ internal sealed class TacticEditorScene : IScene
             var next = conditions[conditionCombo.SelectedIndex ?? 0];
             var value = TacticText.ValueAfterConditionChange(tactic.Condition, next, tactic.Value);
             member.ReplaceTactic(index, next, value, tactic.SkillId);
-            MarkDirty();
+            MarkChanged();
         };
         row.Widgets.Add(conditionCombo);
 
@@ -277,7 +405,7 @@ internal sealed class TacticEditorScene : IScene
             valueCombo.SelectedIndexChanged += (_, _) =>
             {
                 member.ReplaceTactic(index, tactic.Condition, values[valueCombo.SelectedIndex ?? 0], tactic.SkillId);
-                MarkDirty();
+                MarkChanged();
             };
             row.Widgets.Add(valueCombo);
         }
@@ -292,7 +420,7 @@ internal sealed class TacticEditorScene : IScene
         skillCombo.SelectedIndexChanged += (_, _) =>
         {
             member.ReplaceTactic(index, tactic.Condition, tactic.Value, skills[skillCombo.SelectedIndex ?? 0].Id);
-            MarkDirty();
+            MarkChanged();
         };
         row.Widgets.Add(skillCombo);
 
@@ -323,6 +451,12 @@ internal sealed class TacticEditorScene : IScene
         start.Width = 180;
         start.Click += (_, _) => _startCombat(_encounterId);
         bar.Widgets.Add(start);
+
+        var save = TextButton("저장", _unsaved ? Theme.Accent : Theme.Button, _unsaved ? Theme.AccentHover : Theme.ButtonHover);
+        save.Width = 100;
+        save.Click += (_, _) => Save();
+        bar.Widgets.Add(save);
+        bar.Widgets.Add(Label(_unsaved ? "저장하지 않은 변경이 있습니다" : "", 16, Theme.Cover));
 
         return bar;
     }
@@ -396,7 +530,7 @@ internal sealed class TacticEditorScene : IScene
         button.Click += (_, _) =>
         {
             action();
-            MarkDirty();
+            MarkChanged();
         };
         return button;
     }

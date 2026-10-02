@@ -123,8 +123,8 @@ public static class GameDataLoader
     private static void ValidateClass(ClassDefinition c, List<string> errors)
     {
         var at = $"{ClassesFile} '{c.Id}'";
-        RequireText(c.Id, $"{ClassesFile}: id", errors);
-        RequireText(c.Name, $"{at}: name", errors);
+        DataValidation.RequireText(c.Id, $"{ClassesFile}: id", errors);
+        DataValidation.RequireText(c.Name, $"{at}: name", errors);
         if (c.SpeedPercent <= 0)
         {
             errors.Add($"{at}: speedPercent must be positive, got {c.SpeedPercent}");
@@ -134,11 +134,11 @@ public static class GameDataLoader
     private static void ValidateSkill(SkillDefinition s, List<string> errors)
     {
         var at = $"{SkillsFile} '{s.Id}'";
-        RequireText(s.Id, $"{SkillsFile}: id", errors);
-        RequireText(s.Name, $"{at}: name", errors);
-        RequireNonNegative(s.HpCost, $"{at}: hpCost", errors);
-        RequireNonNegative(s.MpCost, $"{at}: mpCost", errors);
-        RequireNonNegative(s.Power, $"{at}: power", errors);
+        DataValidation.RequireText(s.Id, $"{SkillsFile}: id", errors);
+        DataValidation.RequireText(s.Name, $"{at}: name", errors);
+        DataValidation.RequireNonNegative(s.HpCost, $"{at}: hpCost", errors);
+        DataValidation.RequireNonNegative(s.MpCost, $"{at}: mpCost", errors);
+        DataValidation.RequireNonNegative(s.Power, $"{at}: power", errors);
     }
 
     private static void ValidateEncounter(
@@ -148,8 +148,8 @@ public static class GameDataLoader
         List<string> errors)
     {
         var at = $"{EncountersFile} '{e.Id}'";
-        RequireText(e.Id, $"{EncountersFile}: id", errors);
-        RequireText(e.Name, $"{at}: name", errors);
+        DataValidation.RequireText(e.Id, $"{EncountersFile}: id", errors);
+        DataValidation.RequireText(e.Name, $"{at}: name", errors);
         if (e.Units.Count == 0)
         {
             errors.Add($"{at}: needs at least one unit");
@@ -163,76 +163,19 @@ public static class GameDataLoader
         foreach (var unit in e.Units)
         {
             var unitAt = $"{at} unit '{unit.Id}'";
-            RequireText(unit.Id, $"{at}: unit id", errors);
-            RequireText(unit.Name, $"{unitAt}: name", errors);
+            DataValidation.RequireText(unit.Id, $"{at}: unit id", errors);
+            DataValidation.RequireText(unit.Name, $"{unitAt}: name", errors);
             if (!classes.ContainsKey(unit.ClassId))
             {
                 errors.Add($"{unitAt}: unknown class '{unit.ClassId}'");
             }
 
-            ValidateStats(unit.Stats, unitAt, errors);
+            DataValidation.ValidateStats(unit.Stats, unitAt, errors);
 
             foreach (var tactic in unit.Tactics)
             {
-                ValidateTactic(tactic, $"{unitAt} tactic {tactic.Priority}", skills, errors);
+                DataValidation.ValidateTactic(tactic, $"{unitAt} tactic {tactic.Priority}", skills, errors);
             }
-        }
-    }
-
-    private static void ValidateStats(Stats stats, string at, List<string> errors)
-    {
-        RequireNonNegative(stats.Str, $"{at}: str", errors);
-        RequireNonNegative(stats.Dex, $"{at}: dex", errors);
-        RequireNonNegative(stats.Vital, $"{at}: vital", errors);
-        RequireNonNegative(stats.Intel, $"{at}: intel", errors);
-        RequireNonNegative(stats.Speed, $"{at}: speed", errors);
-    }
-
-    private static void ValidateTactic(
-        Tactic tactic, string at, IReadOnlyDictionary<string, SkillDefinition> skills, List<string> errors)
-    {
-        if (!skills.ContainsKey(tactic.SkillId))
-        {
-            errors.Add($"{at}: unknown skill '{tactic.SkillId}'");
-        }
-
-        switch (tactic.Condition)
-        {
-            case Condition.Always:
-                break;
-            case >= Condition.SelfHpAtLeast and <= Condition.AllyAverageMpAtMost:
-                if (tactic.Value is < 0 or > 100)
-                {
-                    errors.Add($"{at}: {tactic.Condition} value must be a percent 0-100, got {tactic.Value}");
-                }
-
-                break;
-            case Condition.EveryNthTurn:
-                if (tactic.Value <= 0)
-                {
-                    errors.Add($"{at}: {tactic.Condition} value must be positive, got {tactic.Value}");
-                }
-
-                break;
-            default:
-                RequireNonNegative(tactic.Value, $"{at}: {tactic.Condition} value", errors);
-                break;
-        }
-    }
-
-    private static void RequireText(string value, string what, List<string> errors)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            errors.Add($"{what} must not be empty");
-        }
-    }
-
-    private static void RequireNonNegative(int value, string what, List<string> errors)
-    {
-        if (value < 0)
-        {
-            errors.Add($"{what} must not be negative, got {value}");
         }
     }
 }

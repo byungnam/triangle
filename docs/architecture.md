@@ -38,7 +38,7 @@ triangle/
 │  │  ├─ Combat/                #   CombatSimulator, ATB 타임라인, CombatEvent
 │  │  ├─ Skills/                #   스킬 정의 (효과, 비용, 대상 규칙)
 │  │  ├─ Data/                  #   JSON 정의 로더 (직업, 스킬, 적 팀)
-│  │  └─ Progress/              #   파티(전열·전술 편집). 로스터와 세이브는 예정
+│  │  └─ Progress/              #   파티(전열·전술 편집), 세이브
 │  ├─ Triangle.Editor/          # (예정) 데이터 편집기 도구. Triangle.Core의 정의 클래스를 그대로 사용
 │  └─ Triangle.Desktop/         # MonoGame DesktopGL 실행 프로젝트
 │     ├─ Scenes/                #   타이틀, 로스터, 유닛 상세, 전술 편집, 전투, 결과
@@ -146,7 +146,12 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 - 값 선택지는 조건 종류에 따라 다르다. HP/MP 조건은 0–100% (10% 단위), 횟수와 턴 조건은 1–10이다. 조건을 바꿀 때 값의 종류(%, 횟수, 턴)가 같으면 값을 유지한다.
 - 아래에서 상대 적 팀을 고르고 "전투 시험"을 누르면 전투 기록 화면으로 간다. Esc를 누르면 편집 화면으로 돌아오고, 편집 내용과 선택이 그대로 유지된다.
 - 편집 로직(우선순위 재번호, 순서 변경, 전열 전환)은 `Triangle.Core/Progress/PartyMember`에 있고 테스트로 고정되어 있다. 화면은 편집할 때마다 Myra 위젯 트리를 다시 만든다.
-- 파티는 아직 시연용 `DemoParty`에서 만든다. 편집 내용은 저장되지 않는다(세이브 예정).
+- 파티는 시작할 때 세이브에서 불러온다. 세이브가 없으면 시연용 `DemoParty`로 시작한다.
+- **저장 버튼**(또는 Ctrl+S)으로 저장한다. 자동 저장은 하지 않는다. 바뀐 내용이 있으면 버튼이 강조되고 "저장하지 않은 변경이 있습니다"가 보인다.
+- 저장하지 않은 변경이 있을 때 종료하려 하면 확인 창을 띄운다: **저장하고 종료 / 저장하지 않고 종료 / 취소**(Esc도 취소).
+  - Esc로 종료할 때와 창 닫기 버튼으로 종료할 때 모두 해당한다. 창 닫기는 `TriangleGame.OnExiting`에서 종료를 취소하고 편집 화면으로 돌아와 확인 창을 띄운다(전투 화면에 있었어도 마찬가지다).
+  - 저장하고 종료하다 저장에 실패하면 종료하지 않고 오류를 보여준다.
+  - 확인 창은 Myra의 CloseKey를 쓰지 않는다. 창을 띄운 Esc가 같은 프레임에 창을 바로 닫아 버리기 때문이다. Esc는 장면의 입력 처리에서 다음 프레임부터 취소로 다룬다.
 
 #### 전투 기록 (`Scenes/CombatLogScene.cs`, 2026-10-02)
 
@@ -164,6 +169,7 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 - 확인용 실행 옵션:
   - `--screenshot <경로> [줄 수]`: 첫 화면을 몇 프레임 그린 뒤 PNG로 저장하고 종료한다(첫 프레임에는 글자가 빠질 수 있어서다).
   - `--combat`: 전투 기록 화면으로 시작한다. 이때 줄 수를 주면 로그를 그만큼 진행한 중간 화면을, 없으면 끝난 화면을 찍는다.
+  - `--save <경로>`: 세이브 파일 위치를 바꾼다. 실제 세이브를 건드리지 않고 시험할 때 쓴다.
 
 ### 게임 데이터 (`Triangle.Core/Data/`)
 
@@ -179,8 +185,14 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 
 ### 저장
 
-- 로컬 JSON 세이브 파일. 위치는 OS별 사용자 데이터 폴더(`Environment.SpecialFolder.ApplicationData/Triangle/`).
-- 세이브 데이터에 스키마 버전 필드를 넣는다.
+구현은 `Triangle.Core/Progress/SaveGame.cs`, `SaveStore.cs`에 있다 (2026-10-02).
+
+- 로컬 JSON 세이브 파일 하나다. 위치는 `ApplicationData/Triangle/save.json`이다(Linux `~/.config/Triangle/`, Windows `%APPDATA%\Triangle\`). `--save <경로>`로 바꿀 수 있다.
+- 형식: `{ "version": 1, "party": [ { id, name, classId, stats, row, tactics } ] }`. JSON 설정은 게임 데이터와 같다(`GameDataJson.Options`).
+- 불러올 때 게임 데이터와 맞는지 검증한다: 버전, 중복 ID, 없는 직업이나 스킬, 스탯·조건 값 범위. 검증 규칙은 게임 데이터 로더와 같은 `DataValidation`을 쓴다.
+- 저장은 `save.json.tmp`에 쓴 뒤 교체한다. 쓰는 도중에 꺼져도 기존 세이브는 남는다.
+- 세이브가 깨져 있으면 `save.json.broken-<시각>`으로 옮겨 두고 새로 시작한다. 화면 아래에 그 사실과 파일 이름을 보여준다. 덮어쓰지 않으므로 손으로 복구할 수 있다.
+- 버전이 오르면 이전 버전을 변환하는 코드를 둔다(아직 버전 1뿐이다).
 
 ## 기술 스택
 

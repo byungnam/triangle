@@ -15,4 +15,7 @@ internal sealed class Input
     }
 
     public bool Pressed(Keys key) => _current.IsKeyDown(key) && !_previous.IsKeyDown(key);
+
+    /// <summary>주어진 키 중 하나라도 눌려 있다 (Ctrl 좌우 같은 조합키 확인용).</summary>
+    public bool IsDown(params Keys[] keys) => keys.Any(_current.IsKeyDown);
 }

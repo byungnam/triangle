@@ -19,7 +19,7 @@ public sealed record LaunchOptions(
     string? ScreenshotPath = null, int? ScreenshotLines = null, bool StartInCombat = false, string? SavePath = null);
 
 /// <summary>
-/// 화면 흐름: 마을 ↔ (전술 편집, 숙련·패시브, 모집, 상점·창고), 마을 → 출정 → 원정 ↔ (전투 기록, 전술 편집) → 귀환 → 마을.
+/// 화면 흐름: 마을 ↔ (전술 편집, 숙련·패시브, 모집, 상점·창고, 제작), 마을 → 출정 → 원정 ↔ (전투 기록, 전술 편집) → 귀환 → 마을.
 /// 원정 중에는 전투가 끝날 때마다, 출정과 귀환 때 자동 저장하고, 종료하면 항상 저장한다.
 /// 마을에서는 수동 저장이고, 저장하지 않고 종료하면 확인 창을 띄운다.
 /// </summary>
@@ -99,7 +99,7 @@ public class TriangleGame : Game
         var loaded = store.Load(data, () => StartingCompany.Create(data, Random.Shared.Next()));
         _session = new GameSession(data, loaded.Company, store) { Notice = LoadNotice(loaded) };
 
-        _village = new VillageScene(_ui, Session, Bounds, OpenEditor, OpenRecruit, OpenShop, Depart, ConfirmedExit);
+        _village = new VillageScene(_ui, Session, Bounds, OpenEditor, OpenRecruit, OpenShop, OpenCraft, Depart, ConfirmedExit);
         _expedition = new ExpeditionScene(_ui, Session, Bounds, NextBattle, ReturnFromExpedition, OpenEditor);
         _editor = new TacticEditorScene(_ui, Session, Bounds, OpenTraining, ShowHome);
 
@@ -157,6 +157,8 @@ public class TriangleGame : Game
     private void OpenRecruit() => _scene = new RecruitScene(_ui, Session, Bounds, back: ShowHome);
 
     private void OpenShop() => _scene = new ShopScene(_ui, Session, Bounds, back: ShowHome);
+
+    private void OpenCraft() => _scene = new CraftScene(_ui, Session, Bounds, back: ShowHome);
 
     /// <summary>출정한다. 원정 상태를 바로 저장한다.</summary>
     private void Depart(string zoneId)

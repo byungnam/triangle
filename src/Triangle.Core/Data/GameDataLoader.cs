@@ -23,6 +23,7 @@ public static class GameDataLoader
     public const string ItemsFile = "items.json";
     public const string ZonesFile = "zones.json";
     public const string RecruitsFile = "recruits.json";
+    public const string RecipesFile = "recipes.json";
 
     public static GameData LoadDirectory(string directory)
     {
@@ -50,16 +51,17 @@ public static class GameDataLoader
         var items = Read(ItemsFile);
         var zones = Read(ZonesFile);
         var recruits = Read(RecruitsFile);
+        var recipes = Read(RecipesFile);
         if (errors.Count > 0)
         {
             throw new GameDataException(errors);
         }
 
-        return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, recruits!);
+        return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, recruits!, recipes!);
     }
 
     public static GameData Parse(string masteriesJson, string skillsJson, string actionsJson, string encountersJson, string effectsJson = "[]",
-        string itemsJson = "[]", string zonesJson = "[]", string recruitsJson = "[]")
+        string itemsJson = "[]", string zonesJson = "[]", string recruitsJson = "[]", string recipesJson = "[]")
     {
         var errors = new List<string>();
 
@@ -71,6 +73,7 @@ public static class GameDataLoader
         var items = Deserialize<ItemDefinition>(itemsJson, ItemsFile, errors);
         var zones = Deserialize<ZoneDefinition>(zonesJson, ZonesFile, errors);
         var recruits = Deserialize<RecruitTemplate>(recruitsJson, RecruitsFile, errors);
+        var recipes = Deserialize<RecipeDefinition>(recipesJson, RecipesFile, errors);
 
         // 형식 오류가 있으면 참조 검증은 의미가 없다.
         if (errors.Count > 0)
@@ -96,6 +99,14 @@ public static class GameDataLoader
         var itemMap = ToMap(items!, i => i.Id, ItemsFile, errors);
         var zoneMap = ToMap(zones!, z => z.Id, ZonesFile, errors);
         var recruitMap = ToMap(recruits!, r => r.Id, RecruitsFile, errors);
+        var recipeMap = new Dictionary<string, RecipeDefinition>();
+        foreach (var recipe in recipes!)
+        {
+            if (!recipeMap.TryAdd(recipe.Result ?? "", recipe))
+            {
+                errors.Add($"{RecipesFile}: more than one recipe for '{recipe.Result}'");
+            }
+        }
 
         foreach (var m in masteries!)
         {
@@ -147,12 +158,17 @@ public static class GameDataLoader
             ValidateRecruit(recruit, skillMap, actionMap, itemMap, errors);
         }
 
+        foreach (var recipe in recipes)
+        {
+            ValidateRecipe(recipe, itemMap, errors);
+        }
+
         if (errors.Count > 0)
         {
             throw new GameDataException(errors);
         }
 
-        return new GameData(masteryMap, skillMap, actionMap, effectMap, encounterMap, itemMap, zoneMap, recruitMap);
+        return new GameData(masteryMap, skillMap, actionMap, effectMap, encounterMap, itemMap, zoneMap, recruitMap, recipeMap);
     }
 
     private static List<T>? Deserialize<T>(string json, string fileName, List<string> errors)
@@ -334,6 +350,48 @@ public static class GameDataLoader
             {
                 errors.Add($"{at}: ability {i + 1} lists '{duplicate.Key}' more than once");
             }
+        }
+    }
+
+    private static void ValidateRecipe(RecipeDefinition recipe, IReadOnlyDictionary<string, ItemDefinition> items, List<string> errors)
+    {
+        var at = $"{RecipesFile} '{recipe.Result}'";
+        if (!items.TryGetValue(recipe.Result ?? "", out var result))
+        {
+            errors.Add($"{at}: unknown result item");
+        }
+        else if (!result.IsEquipment)
+        {
+            errors.Add($"{at}: result must be equipment, got {result.Slot}");
+        }
+
+        DataValidation.RequireNonNegative(recipe.Gold, $"{at}: gold", errors);
+        var materials = recipe.Materials ?? [];
+        if (materials.Count == 0)
+        {
+            errors.Add($"{at}: needs at least one material");
+        }
+
+        foreach (var material in materials)
+        {
+            if (!items.TryGetValue(material.ItemId ?? "", out var item))
+            {
+                errors.Add($"{at}: unknown material '{material.ItemId}'");
+            }
+            else if (item.IsEquipment)
+            {
+                errors.Add($"{at}: '{material.ItemId}' is not a material");
+            }
+
+            if (material.Count < 1)
+            {
+                errors.Add($"{at}: count of '{material.ItemId}' must be at least 1, got {material.Count}");
+            }
+        }
+
+        foreach (var duplicate in materials.GroupBy(m => m.ItemId).Where(g => g.Count() > 1))
+        {
+            errors.Add($"{at}: lists material '{duplicate.Key}' more than once");
         }
     }
 

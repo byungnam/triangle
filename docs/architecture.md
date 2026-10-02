@@ -46,7 +46,7 @@ triangle/
 │  │  ├─ Skills/                #   패시브 스킬 정의, 보너스 합계(SkillSet)
 │  │  ├─ Actions/               #   행동 정의 (효과, 비용, 대상 규칙, 태그, 요구 스킬)
 │  │  ├─ Data/                  #   JSON 정의 로더 (스킬, 행동, 적 팀)
-│  │  ├─ Items/                 #   아이템 정의 (장비 칸, 숙련 계열, 가격)
+│  │  ├─ Items/                 #   아이템 정의 (장비 칸, 숙련 계열, 티어, 가격), 상점 규칙, 제작법
 │  │  ├─ Expeditions/           #   지역 정의, 원정 상태와 규칙(출정·전투·전리품·사망·귀환)
 │  │  └─ Progress/              #   회사(로스터·출전 멤버·골드·창고·모집), 멤버 편집, 시작 회사, 세이브
 │  ├─ Triangle.Editor/          # (예정) 데이터 편집기 도구. Triangle.Core의 정의 클래스를 그대로 사용
@@ -208,7 +208,17 @@ EVE Online과 Albion Online을 참고했다. 구현은 `Items/`, `Progress/Party
 | T4 | 핵심 패시브 Lv5 + 트리의 두 번째 패시브 Lv1 | 제작만 |
 
   - 핵심 패시브: 검술, 활 숙련, 마력 제어, 치유술, 방어 기술(판금), 기동(가죽), 명상(천). 두 번째 패시브: 연속 베기, 속사, 마나 효율, 신성 마법, 체력 단련, 회피 훈련, 마력 집중. 방패는 검 트리, 성물은 성구 트리를 쓴다.
-- **아이템 파워**(Albion식): 아이템 계열 숙련 레벨마다 그 아이템의 기본 보너스가 상대적으로 +2%다(`ItemDefinition.BonusesAt`, 소수점 버림). 숙련 Lv10이면 방어 +10%가 +12%가 된다. 패시브 보너스와 행동 위력에는 곱하지 않는다. 장비 패널은 파워를 반영한 값을 보여준다.
+- **아이템 파워**(Albion식): 아이템 계열 숙련 레벨마다 그 아이템의 기본 보너스가 상대적으로 +2%다(`ItemDefinition.BonusesAt`, 반올림). 숙련 Lv10이면 방어 +10%가 +12%가 된다. 패시브 보너스와 행동 위력에는 곱하지 않는다. 장비 패널은 파워를 반영한 값을 보여준다.
+- **재료와 제작**(`recipes.json`, `RecipeDefinition`, `Company.Craft`): 재료는 부위 `Material` 아이템이다. 지역의 `itemDrops`로 떨어지고 상점에서 팔 수 있다(가격의 40%).
+  - 재료(임시): 철 조각(검·방패·판금·성구), 질긴 가죽(활·가죽), 마력 실(지팡이·성물·천), 고대 파편(T4, 카르타고 전선에서만).
+  - 제작법: `{ result, materials: [{ itemId, count }], gold }`. T3·T4 장비마다 하나씩 있다(결과 아이템 ID로 찾는다). 로더가 없는 결과·재료, 장비가 아닌 결과, 재료가 아닌 재료, 개수 1 미만, 중복 재료, 한 결과에 제작법 둘을 거른다.
+  - 수치(임시): T3는 주재료 6·부재료 2(주무기·몸통) 또는 4·1(나머지), T4는 10·4·고대 파편 3 또는 6·2·2. 골드는 장비 가격의 절반.
+
+| 지역 | 철 조각 | 질긴 가죽 | 마력 실 | 고대 파편 |
+|---|---|---|---|---|
+| 근교 숲 | 10% | 10% | 10% | |
+| 버려진 요새 | 25% | 25% | 25% | |
+| 카르타고 전선 | 30% | 30% | 30% | 15% |
 
 ### 효과 (`Effects/`, `effects.json`, 2026-10-02)
 
@@ -287,6 +297,12 @@ EVE Online과 Albion Online을 참고했다. 구현은 `Items/`, `Progress/Party
 - 오른쪽 창고: 끼지 않은 아이템과 재료를 개수와 함께 보여주고, 하나씩 가격의 40%(버림)에 판다. 낀 장비는 전술 편집에서 빼야 팔 수 있다.
 - 사고팔면 저장하지 않은 변경으로 표시한다(마을의 수동 저장).
 
+#### 제작 (`Scenes/CraftScene.cs`, 2026-10-02)
+
+- 마을의 "제작" 버튼으로 연다. 위에 창고의 재료 개수, 아래에 부위 탭과 제작법 목록이다.
+- 줄마다 결과 장비(부위, 티어, 이름, 계열, 보너스, 요구), 재료 "보유/필요"(모자라면 빨간색), 골드, 제작 버튼이다. 만든 장비는 창고로 간다.
+- 원정 중에는 제작할 수 없다(`Company.WhyCannotCraft`).
+
 #### 전술 편집 (`Scenes/TacticEditorScene.cs`, 2026-10-02)
 
 - **장비 패널**: 부위 5개마다 한 줄이다.
@@ -343,7 +359,7 @@ EVE Online과 Albion Online을 참고했다. 구현은 `Items/`, `Progress/Party
 
 ### 게임 데이터 (`Triangle.Core/Data/`)
 
-- `GameDataLoader.LoadDirectory("data")`가 `masteries.json`(장비 계열·숙련), `skills.json`(패시브 스킬), `actions.json`(행동), `effects.json`(효과), `encounters.json`, `items.json`(아이템), `zones.json`(지역), `recruits.json`(모집 틀)을 읽어 검증한 `GameData`를 돌려준다.
+- `GameDataLoader.LoadDirectory("data")`가 `masteries.json`(장비 계열·숙련), `skills.json`(패시브 스킬), `actions.json`(행동), `effects.json`(효과), `encounters.json`, `items.json`(아이템), `zones.json`(지역), `recruits.json`(모집 틀), `recipes.json`(제작법)을 읽어 검증한 `GameData`를 돌려준다.
 - 적 팀 유닛은 장비와 스킬 레벨을 바로 가진다(성장하지 않는다). `GameData.CreateEncounterTeam(id)`가 전투 입력으로 바꿔 준다.
 - JSON 규칙: 속성 이름은 camelCase, enum은 문자열(`"FrontFirst"`), 생략한 선택 속성은 기본값을 쓴다.
 - 검증은 멈추지 않고 오류를 모두 모아서 `GameDataException` 하나로 알려준다. 항목마다 파일, 줄 번호, ID가 붙는다.

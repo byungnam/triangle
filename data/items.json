@@ -1512,5 +1512,33 @@
         "percent": 12
       }
     ]
+  },
+  {
+    "id": "iron_scrap",
+    "name": "철 조각",
+    "description": "제작 재료. 검, 방패, 판금, 성구에 쓴다.",
+    "slot": "Material",
+    "price": 10
+  },
+  {
+    "id": "tough_leather",
+    "name": "질긴 가죽",
+    "description": "제작 재료. 활과 가죽 방어구에 쓴다.",
+    "slot": "Material",
+    "price": 10
+  },
+  {
+    "id": "mana_thread",
+    "name": "마력 실",
+    "description": "제작 재료. 지팡이, 성물, 천 방어구에 쓴다.",
+    "slot": "Material",
+    "price": 10
+  },
+  {
+    "id": "ancient_shard",
+    "name": "고대 파편",
+    "description": "T4 제작 재료. 카르타고 전선에서만 나온다.",
+    "slot": "Material",
+    "price": 30
   }
 ]

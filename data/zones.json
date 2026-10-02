@@ -25,7 +25,20 @@
       "goldMin": 20,
       "goldMax": 40,
       "depthBonusPercent": 20,
-      "itemDrops": [],
+      "itemDrops": [
+        {
+          "itemId": "iron_scrap",
+          "chance": 10
+        },
+        {
+          "itemId": "tough_leather",
+          "chance": 10
+        },
+        {
+          "itemId": "mana_thread",
+          "chance": 10
+        }
+      ],
       "equipmentDrop": {
         "chance": 20,
         "minTier": 1,
@@ -64,7 +77,20 @@
       "goldMin": 50,
       "goldMax": 80,
       "depthBonusPercent": 25,
-      "itemDrops": [],
+      "itemDrops": [
+        {
+          "itemId": "iron_scrap",
+          "chance": 25
+        },
+        {
+          "itemId": "tough_leather",
+          "chance": 25
+        },
+        {
+          "itemId": "mana_thread",
+          "chance": 25
+        }
+      ],
       "equipmentDrop": {
         "chance": 25,
         "minTier": 1,
@@ -103,7 +129,24 @@
       "goldMin": 90,
       "goldMax": 140,
       "depthBonusPercent": 30,
-      "itemDrops": [],
+      "itemDrops": [
+        {
+          "itemId": "iron_scrap",
+          "chance": 30
+        },
+        {
+          "itemId": "tough_leather",
+          "chance": 30
+        },
+        {
+          "itemId": "mana_thread",
+          "chance": 30
+        },
+        {
+          "itemId": "ancient_shard",
+          "chance": 15
+        }
+      ],
       "equipmentDrop": {
         "chance": 30,
         "minTier": 2,

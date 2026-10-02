@@ -284,6 +284,53 @@ public sealed class Company
         return true;
     }
 
+    /// <summary>
+    /// 그 장비를 제작할 수 없는 이유. null이면 만들 수 있다.
+    /// 원정 중, 제작법 없음, 재료 부족("재료가 모자랍니다: 철 조각 2/6"), 골드 부족.
+    /// </summary>
+    public string? WhyCannotCraft(string resultId, GameData data)
+    {
+        if (OnExpedition)
+        {
+            return "원정 중에는 제작할 수 없습니다";
+        }
+
+        if (!data.Recipes.TryGetValue(resultId, out var recipe))
+        {
+            return "제작법이 없습니다";
+        }
+
+        var missing = recipe.Materials.Where(m => StashCount(m.ItemId) < m.Count).ToList();
+        if (missing.Count > 0)
+        {
+            return "재료가 모자랍니다: " + string.Join(", ", missing.Select(m => $"{data.Items[m.ItemId].Name} {StashCount(m.ItemId)}/{m.Count}"));
+        }
+
+        return Gold < recipe.Gold ? "골드가 모자랍니다" : null;
+    }
+
+    /// <summary>재료와 골드를 내고 장비를 만들어 창고에 넣는다. 만들 수 없으면(<see cref="WhyCannotCraft"/>) false.</summary>
+    public bool Craft(string resultId, GameData data)
+    {
+        if (WhyCannotCraft(resultId, data) is not null)
+        {
+            return false;
+        }
+
+        var recipe = data.Recipes[resultId];
+        foreach (var material in recipe.Materials)
+        {
+            for (var i = 0; i < material.Count; i++)
+            {
+                TakeFromStash(material.ItemId);
+            }
+        }
+
+        Gold -= recipe.Gold;
+        AddToStash(resultId);
+        return true;
+    }
+
     /// <summary>모집 후보를 새로 굴린다 (원정이 끝날 때, 새 게임).</summary>
     public void RerollRecruits(GameData data)
     {

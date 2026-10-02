@@ -156,6 +156,60 @@ public class GameDataLoaderTests
     }
 
     [Fact]
+    public void Shipped_recipes_make_every_tier_three_and_four_item_from_dropped_materials()
+    {
+        var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
+
+        // T3·T4 장비마다 제작법이 하나 있고, T1·T2는 제작하지 않는다.
+        Assert.Equal(
+            data.Items.Values.Where(i => i.IsEquipment && i.Tier >= 3).Select(i => i.Id).Order(),
+            data.Recipes.Keys.Order());
+
+        // 재료는 모두 지역에서 떨어지고, 고대 파편은 가장 어려운 지역에서만 떨어져 T4 제작법에만 쓰인다.
+        var hardest = data.Zones.Values.MaxBy(z => z.Difficulty)!;
+        foreach (var material in data.Items.Values.Where(i => !i.IsEquipment))
+        {
+            var zones = data.Zones.Values.Where(z => z.Rewards.ItemDrops.Any(d => d.ItemId == material.Id)).ToList();
+            Assert.NotEmpty(zones);
+            if (material.Id == "ancient_shard")
+            {
+                Assert.Equal([hardest], zones);
+                Assert.All(data.Recipes.Values.Where(r => r.Materials.Any(m => m.ItemId == material.Id)), r => Assert.Equal(4, data.Items[r.Result].Tier));
+            }
+        }
+
+        Assert.All(data.Recipes.Values.Where(r => data.Items[r.Result].Tier == 4), r => Assert.Contains(r.Materials, m => m.ItemId == "ancient_shard"));
+    }
+
+    [Fact]
+    public void Rejects_bad_recipes()
+    {
+        const string items = """
+            [ { "id": "sword1", "name": "검", "slot": "MainHand", "mastery": "sword" },
+              { "id": "ore", "name": "광석", "slot": "Material" } ]
+            """;
+        const string recipes = """
+            [ { "result": "ghost", "materials": [ { "itemId": "ore", "count": 1 } ] },
+              { "result": "ore", "materials": [ { "itemId": "sword1", "count": 0 } ], "gold": -5 },
+              { "result": "sword1", "materials": [] },
+              { "result": "sword1", "materials": [ { "itemId": "ore", "count": 1 }, { "itemId": "ore", "count": 2 }, { "itemId": "dust", "count": 1 } ] } ]
+            """;
+
+        var errors = Assert.Throws<GameDataException>(() =>
+            GameDataLoader.Parse(Masteries, Skills, Actions, Encounters(), itemsJson: items, recipesJson: recipes)).Errors;
+
+        Assert.Contains("recipes.json 'ghost': unknown result item", errors);
+        Assert.Contains("recipes.json 'ore': result must be equipment, got Material", errors);
+        Assert.Contains("recipes.json 'ore': gold must not be negative, got -5", errors);
+        Assert.Contains("recipes.json 'ore': 'sword1' is not a material", errors);
+        Assert.Contains("recipes.json 'ore': count of 'sword1' must be at least 1, got 0", errors);
+        Assert.Contains("recipes.json: more than one recipe for 'sword1'", errors);
+        Assert.Contains("recipes.json 'sword1': needs at least one material", errors);
+        Assert.Contains("recipes.json 'sword1': unknown material 'dust'", errors);
+        Assert.Contains("recipes.json 'sword1': lists material 'ore' more than once", errors);
+    }
+
+    [Fact]
     public void Starting_company_fights_every_encounter_of_every_zone_to_the_end()
     {
         var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
@@ -417,8 +471,9 @@ public class GameDataLoaderTests
 
             var errors = Assert.Throws<GameDataException>(() => GameDataLoader.LoadDirectory(dir)).Errors;
 
-            Assert.Equal(6, errors.Count);
+            Assert.Equal(7, errors.Count);
             Assert.Contains(errors, e => e.StartsWith("items.json: cannot read"));
+            Assert.Contains(errors, e => e.StartsWith("recipes.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("zones.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("recruits.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("actions.json: cannot read"));

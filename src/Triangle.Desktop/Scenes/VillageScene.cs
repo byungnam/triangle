@@ -31,6 +31,7 @@ internal sealed class VillageScene : IScene
     private readonly Action _openEditor;
     private readonly Action _openRecruit;
     private readonly Action _openShop;
+    private readonly Action _openCraft;
     private readonly Action<string> _depart;
     private readonly Action _quit;
     private readonly MyraDesktop _desktop = new();
@@ -42,7 +43,7 @@ internal sealed class VillageScene : IScene
     /// <param name="depart">출정 (지역 ID). 부르기 전에 출정할 수 있는지 확인한다.</param>
     /// <param name="quit">종료가 확인되었다 (저장했거나 버리기로 했다).</param>
     public VillageScene(
-        Ui ui, GameSession session, Rectangle bounds, Action openEditor, Action openRecruit, Action openShop, Action<string> depart, Action quit)
+        Ui ui, GameSession session, Rectangle bounds, Action openEditor, Action openRecruit, Action openShop, Action openCraft, Action<string> depart, Action quit)
     {
         _ui = ui;
         _w = new Widgets(ui);
@@ -51,6 +52,7 @@ internal sealed class VillageScene : IScene
         _openEditor = openEditor;
         _openRecruit = openRecruit;
         _openShop = openShop;
+        _openCraft = openCraft;
         _depart = depart;
         _quit = quit;
         _zoneId = session.Data.Zones.Values.OrderBy(z => z.Difficulty).First().Id;
@@ -297,6 +299,11 @@ internal sealed class VillageScene : IScene
         shop.Width = 130;
         shop.Click += (_, _) => _openShop();
         bar.Widgets.Add(shop);
+
+        var craft = TextButton("제작", Theme.Button, Theme.ButtonHover);
+        craft.Width = 100;
+        craft.Click += (_, _) => _openCraft();
+        bar.Widgets.Add(craft);
 
         var why = ExpeditionRules.WhyCannotStart(Company, _session.Data, _zoneId);
         var depart = TextButton($"{Korean.EuroRo(_session.Data.Zones[_zoneId].Name)} 출정  ▶", Theme.Accent, Theme.AccentHover, bold: true);

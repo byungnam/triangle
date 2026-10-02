@@ -39,12 +39,13 @@ public sealed class SaveGameTests : IDisposable
         new PartyMember("a", "율리아", new Stats(10, 11, 21, 24, 12), Row.Back, "relic", "cloth",
             new Dictionary<string, int> { ["relic"] = MasteryProgression.XpForLevel(3) + 40, ["cloth"] = 120 },
             new Dictionary<string, int> { ["healing"] = 2 },
-            [new Tactic(1, Condition.AnyAllyHpAtMost, 50, "heal"), new Tactic(2, Condition.Always, 0, "strike")]),
+            [[new Tactic(1, Condition.AnyAllyHpAtMost, 50, "heal"), new Tactic(2, Condition.Always, 0, "strike")],
+             [new Tactic(1, Condition.Always, 0, "strike")]]),
         new PartyMember("b", "마르쿠스", new Stats(15, 12, 25, 20, 13), Row.Front, "sword", null,
             new Dictionary<string, int>(), new Dictionary<string, int>(), []),
     ]);
 
-    private static string Saved(string member) => $$"""{ "version": 3, "party": [ {{member}} ] }""";
+    private static string Saved(string member, int version = 4) => $$"""{ "version": {{version}}, "party": [ {{member}} ] }""";
 
     private static string Member(string extra) => $$"""
         { "id": "a", "name": "이름", "row": "Front",
@@ -65,7 +66,10 @@ public sealed class SaveGameTests : IDisposable
             Assert.Equal((o.Id, o.Name, o.Stats, o.Row, o.Weapon, o.Armor), (l.Id, l.Name, l.Stats, l.Row, l.Weapon, l.Armor));
             Assert.Equal(o.MasteryXp, l.MasteryXp);
             Assert.Equal(o.SkillLevels, l.SkillLevels);
-            Assert.Equal(o.Tactics, l.Tactics);
+            for (var set = 0; set < PartyMember.TacticSetCount; set++)
+            {
+                Assert.Equal(o.TacticSets[set], l.TacticSets[set]);
+            }
         }
     }
 
@@ -74,7 +78,9 @@ public sealed class SaveGameTests : IDisposable
     {
         var json = SaveGame.Serialize(SampleParty());
 
-        Assert.Contains("\"version\": 3", json);
+        Assert.Contains("\"version\": 4", json);
+        Assert.Contains("\"tacticSets\"", json);
+        Assert.DoesNotContain("\"tactics\"", json);
         Assert.Contains("\"name\": \"율리아\"", json);
         Assert.Contains("\"weapon\": \"relic\"", json);
         Assert.Contains("\"healing\": 2", json);
@@ -97,7 +103,7 @@ public sealed class SaveGameTests : IDisposable
             , "weapon": "cloth", "armor": "ghost_armor",
             "masteryXp": { "ghost": 100 },
             "skillLevels": { "ghost_skill": 1 },
-            "tactics": [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "removed_action" } ]
+            "tacticSets": [ [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "removed_action" } ] ]
             """);
 
         var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Saved(member), Data)).Errors;
@@ -106,7 +112,7 @@ public sealed class SaveGameTests : IDisposable
         Assert.Contains("save member 'a': armor: unknown mastery 'ghost_armor'", errors);
         Assert.Contains("save member 'a': unknown mastery 'ghost'", errors);
         Assert.Contains("save member 'a': unknown skill 'ghost_skill'", errors);
-        Assert.Contains("save member 'a' tactic 1: unknown action 'removed_action'", errors);
+        Assert.Contains("save member 'a' set 1 tactic 1: unknown action 'removed_action'", errors);
     }
 
     [Fact]
@@ -130,15 +136,47 @@ public sealed class SaveGameTests : IDisposable
         // 치료는 성구가 필요한데 검을 들었다 (장비를 바꾼 경우).
         var member = Member("""
             , "weapon": "sword", "masteryXp": { "relic": 300 }, "skillLevels": { "healing": 1 },
-            "tactics": [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "strike" },
-                         { "priority": 2, "condition": "Always", "value": 0, "actionId": "heal" } ]
+            "tacticSets": [ [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "strike" },
+                              { "priority": 2, "condition": "Always", "value": 0, "actionId": "heal" } ] ]
             """);
 
         var party = SaveGame.Deserialize(Saved(member), Data);
 
-        Assert.Equal([1], party.Members[0].LockedTacticIndexes(Data));
+        Assert.Equal([1], party.Members[0].LockedTacticIndexes(Data, 0));
+        Assert.True(party.HasLockedTactics(Data));
         party.Members[0].Weapon = "relic";
-        Assert.Empty(party.Members[0].LockedTacticIndexes(Data));
+        Assert.Empty(party.Members[0].LockedTacticIndexes(Data, 0));
+    }
+
+    [Fact]
+    public void Reads_version_3_saves_by_moving_tactics_into_set_1()
+    {
+        var member = Member("""
+            , "tactics": [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "strike" } ]
+            """);
+
+        var party = SaveGame.Deserialize(Saved(member, version: 3), Data);
+
+        Assert.Equal(0, party.ActiveTacticSet);
+        Assert.Equal(new Tactic(1, Condition.Always, 0, "strike"), Assert.Single(party.Members[0].TacticSets[0]));
+        Assert.Empty(party.Members[0].TacticSets[1]);
+    }
+
+    [Fact]
+    public void Rejects_bad_tactic_set_data()
+    {
+        var tooMany = Member(""", "tacticSets": [ [], [], [] ]""");
+        var oldField = Member(""", "tactics": []""");
+
+        var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Saved(tooMany), Data)).Errors;
+        Assert.Contains("save member 'a': at most 2 tactic sets, got 3", errors);
+
+        errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Saved(oldField), Data)).Errors;
+        Assert.Contains("save member 'a': 'tactics' is a version 3 field; use 'tacticSets'", errors);
+
+        var badActive = """{ "version": 4, "activeTacticSet": 5, "party": [ """ + Member("") + " ] }";
+        errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(badActive, Data)).Errors;
+        Assert.Contains("save: activeTacticSet must be 0-1, got 5", errors);
     }
 
     [Fact]
@@ -167,14 +205,16 @@ public sealed class SaveGameTests : IDisposable
         var store = new SaveStore(Path.Combine(_dir, "nested", "save.json"));
         var party = SampleParty();
         party.Members[1].ToggleRow();
-        party.Members[1].AddTactic(Condition.EveryNthTurn, 3, "strike");
+        party.Members[1].TacticSets[1].Add(Condition.EveryNthTurn, 3, "strike");
+        party.ActiveTacticSet = 1;
 
         store.Save(party);
         var result = store.Load(Data, () => throw new InvalidOperationException("should not create new"));
 
         Assert.Equal(LoadStatus.Loaded, result.Status);
         Assert.Equal(Row.Back, result.Party.Members[1].Row);
-        Assert.Equal(new Tactic(1, Condition.EveryNthTurn, 3, "strike"), Assert.Single(result.Party.Members[1].Tactics));
+        Assert.Equal(new Tactic(1, Condition.EveryNthTurn, 3, "strike"), Assert.Single(result.Party.Members[1].TacticSets[1]));
+        Assert.Equal(1, result.Party.ActiveTacticSet);
         Assert.False(File.Exists(store.Path + ".tmp"));
     }
 

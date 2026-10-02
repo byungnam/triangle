@@ -7,12 +7,12 @@ namespace Triangle.Core.Tests.Progress;
 public class PartyMemberTests
 {
     private static PartyMember Member(params Tactic[] tactics) =>
-        new("m", "멤버", new Stats(10, 10, 20, 10, 10), Row.Front, null, null, new Dictionary<string, int>(), new Dictionary<string, int>(), tactics);
+        new("m", "멤버", new Stats(10, 10, 20, 10, 10), Row.Front, null, null, new Dictionary<string, int>(), new Dictionary<string, int>(), [tactics]);
 
-    private static string[] Skills(PartyMember m) => m.Tactics.Select(t => t.ActionId).ToArray();
+    private static string[] Skills(PartyMember m) => m.TacticSets[0].Select(t => t.ActionId).ToArray();
 
     private static void AssertPrioritiesAreSequential(PartyMember m) =>
-        Assert.Equal(Enumerable.Range(1, m.Tactics.Count), m.Tactics.Select(t => t.Priority));
+        Assert.Equal(Enumerable.Range(1, m.TacticSets[0].Count), m.TacticSets[0].Select(t => t.Priority));
 
     [Fact]
     public void Constructor_orders_by_priority_and_renumbers_from_one()
@@ -31,9 +31,9 @@ public class PartyMemberTests
     {
         var m = Member(new Tactic(1, Condition.Always, 0, "a"));
 
-        m.AddTactic(Condition.SelfHpAtMost, 30, "b");
+        m.TacticSets[0].Add(Condition.SelfHpAtMost, 30, "b");
 
-        Assert.Equal(new Tactic(2, Condition.SelfHpAtMost, 30, "b"), m.Tactics[1]);
+        Assert.Equal(new Tactic(2, Condition.SelfHpAtMost, 30, "b"), m.TacticSets[0][1]);
     }
 
     [Fact]
@@ -41,9 +41,9 @@ public class PartyMemberTests
     {
         var m = Member(new Tactic(1, Condition.Always, 0, "a"), new Tactic(2, Condition.Always, 0, "b"));
 
-        m.ReplaceTactic(1, Condition.EveryNthTurn, 2, "c");
+        m.TacticSets[0].Replace(1, Condition.EveryNthTurn, 2, "c");
 
-        Assert.Equal(new Tactic(2, Condition.EveryNthTurn, 2, "c"), m.Tactics[1]);
+        Assert.Equal(new Tactic(2, Condition.EveryNthTurn, 2, "c"), m.TacticSets[0][1]);
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public class PartyMemberTests
             new Tactic(2, Condition.Always, 0, "b"),
             new Tactic(3, Condition.Always, 0, "c"));
 
-        m.RemoveTactic(0);
+        m.TacticSets[0].Remove(0);
 
         Assert.Equal(["b", "c"], Skills(m));
         AssertPrioritiesAreSequential(m);
@@ -68,7 +68,7 @@ public class PartyMemberTests
             new Tactic(2, Condition.Always, 0, "b"),
             new Tactic(3, Condition.Always, 0, "c"));
 
-        Assert.True(m.MoveTactic(2, -1));
+        Assert.True(m.TacticSets[0].Move(2, -1));
 
         Assert.Equal(["a", "c", "b"], Skills(m));
         AssertPrioritiesAreSequential(m);
@@ -82,8 +82,31 @@ public class PartyMemberTests
     {
         var m = Member(new Tactic(1, Condition.Always, 0, "a"), new Tactic(2, Condition.Always, 0, "b"));
 
-        Assert.False(m.MoveTactic(index, offset));
+        Assert.False(m.TacticSets[0].Move(index, offset));
         Assert.Equal(["a", "b"], Skills(m));
+    }
+
+    [Fact]
+    public void Members_always_have_two_independent_tactic_sets()
+    {
+        var m = Member(new Tactic(1, Condition.Always, 0, "a"));
+
+        Assert.Equal(PartyMember.TacticSetCount, m.TacticSets.Count);
+        Assert.Empty(m.TacticSets[1]);
+
+        m.TacticSets[1].Add(Condition.Always, 0, "b");
+        Assert.Equal(["a"], m.TacticSets[0].Select(t => t.ActionId));
+        Assert.Equal(["b"], m.TacticSets[1].Select(t => t.ActionId));
+    }
+
+    [Fact]
+    public void Party_rejects_unknown_tactic_set()
+    {
+        var party = new Party([Member()]);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => party.ActiveTacticSet = 2);
+        party.ActiveTacticSet = 1;
+        Assert.Equal(1, party.ActiveTacticSet);
     }
 
     [Fact]

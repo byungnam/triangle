@@ -91,11 +91,11 @@ public class MasteryTests
     public void Changing_weapon_locks_weapon_tactics()
     {
         var m = new PartyMember("m", "멤버", new Stats(15, 15, 15, 15, 15), Row.Front, "bow", null, new Dictionary<string, int>(), new Dictionary<string, int>(),
-            [new Tactic(1, Condition.Always, 0, "shot"), new Tactic(2, Condition.Always, 0, "strike")]);
+            [[new Tactic(1, Condition.Always, 0, "shot"), new Tactic(2, Condition.Always, 0, "strike")]]);
 
-        Assert.Empty(m.LockedTacticIndexes(Data));
+        Assert.Empty(m.LockedTacticIndexes(Data, 0));
         m.Weapon = "sword";
-        Assert.Equal([0], m.LockedTacticIndexes(Data));
+        Assert.Equal([0], m.LockedTacticIndexes(Data, 0));
     }
 
     [Fact]

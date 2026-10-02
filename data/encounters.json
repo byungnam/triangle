@@ -94,5 +94,137 @@
         ]
       }
     ]
+  },
+  {
+    "id": "elite",
+    "name": "정예 부대",
+    "description": "임시 수치. 시연 파티 전술 측정용 상대 (2026-10-02, 시드 500개: 이전 단순 전술 승률 4%, 다듬은 전술 98%)",
+    "units": [
+      {
+        "id": "elite_soldier_1",
+        "name": "정예병",
+        "stats": {
+          "str": 16,
+          "dex": 13,
+          "vital": 22,
+          "intel": 20,
+          "speed": 13
+        },
+        "row": "Front",
+        "weapon": "sword",
+        "armor": "plate",
+        "skills": {
+          "swordsmanship": 2,
+          "defense": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 2,
+            "actionId": "heavy_strike"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "elite_soldier_2",
+        "name": "정예병",
+        "stats": {
+          "str": 16,
+          "dex": 13,
+          "vital": 22,
+          "intel": 20,
+          "speed": 13
+        },
+        "row": "Front",
+        "weapon": "sword",
+        "armor": "plate",
+        "skills": {
+          "swordsmanship": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "elite_archer",
+        "name": "정예 궁수",
+        "stats": {
+          "str": 11,
+          "dex": 15,
+          "vital": 18,
+          "intel": 22,
+          "speed": 14
+        },
+        "row": "Back",
+        "weapon": "bow",
+        "armor": "leather",
+        "skills": {
+          "archery": 3
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "poison_arrow"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "fire_arrow"
+          }
+        ]
+      },
+      {
+        "id": "elite_priest",
+        "name": "정예 사제",
+        "stats": {
+          "str": 10,
+          "dex": 11,
+          "vital": 20,
+          "intel": 25,
+          "speed": 12
+        },
+        "row": "Back",
+        "weapon": "relic",
+        "armor": "cloth",
+        "skills": {
+          "healing": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "AnyAllyHpAtMost",
+            "value": 50,
+            "actionId": "heal"
+          },
+          {
+            "priority": 2,
+            "condition": "OnTurn",
+            "value": 2,
+            "actionId": "regen"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      }
+    ]
   }
 ]

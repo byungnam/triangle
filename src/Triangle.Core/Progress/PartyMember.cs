@@ -9,14 +9,17 @@ namespace Triangle.Core.Progress;
 
 /// <summary>
 /// 플레이어 파티의 유닛 한 명.
-/// - 전열과 전술 목록을 편집한다. 전술 우선순위는 항상 목록 순서대로 1, 2, 3… 이다.
+/// - 전열과 전술을 편집한다. 전술은 세트 두 벌(<see cref="TacticSetCount"/>)을 저장하고,
+///   어느 세트로 싸울지는 파티가 정한다(<see cref="Party.ActiveTacticSet"/>).
 /// - 무기 계열 하나, 방어구 계열 하나를 장착한다.
 /// - 장착한 계열로 싸우면 그 숙련 경험치가 쌓이고, 숙련 레벨 1당 그 트리 포인트 1점이 생긴다.
 ///   포인트로 그 트리의 패시브 스킬을 배운다 (되돌릴 수 없다).
 /// </summary>
 public sealed class PartyMember
 {
-    private readonly List<Tactic> _tactics = [];
+    public const int TacticSetCount = 2;
+
+    private readonly TacticList[] _tacticSets;
     private readonly Dictionary<string, int> _masteryXp;
     private readonly Dictionary<string, int> _skillLevels;
 
@@ -29,7 +32,7 @@ public sealed class PartyMember
         string? armor,
         IReadOnlyDictionary<string, int> masteryXp,
         IReadOnlyDictionary<string, int> skillLevels,
-        IEnumerable<Tactic> tactics)
+        IReadOnlyList<IEnumerable<Tactic>> tacticSets)
     {
         Id = id;
         Name = name;
@@ -39,12 +42,15 @@ public sealed class PartyMember
         Armor = armor;
         _masteryXp = new Dictionary<string, int>(masteryXp);
         _skillLevels = new Dictionary<string, int>(skillLevels.Where(p => p.Value > 0));
-        foreach (var tactic in tactics.OrderBy(t => t.Priority))
+        if (tacticSets.Count > TacticSetCount)
         {
-            _tactics.Add(tactic);
+            throw new ArgumentException($"At most {TacticSetCount} tactic sets.", nameof(tacticSets));
         }
 
-        Renumber();
+        // 모자란 세트는 빈 목록으로 채운다.
+        _tacticSets = Enumerable.Range(0, TacticSetCount)
+            .Select(i => new TacticList(i < tacticSets.Count ? tacticSets[i] : []))
+            .ToArray();
     }
 
     public string Id { get; }
@@ -58,7 +64,8 @@ public sealed class PartyMember
     /// <summary>장착한 방어구 계열 ID.</summary>
     public string? Armor { get; set; }
 
-    public IReadOnlyList<Tactic> Tactics => _tactics;
+    /// <summary>전술 세트들 (항상 <see cref="TacticSetCount"/>벌).</summary>
+    public IReadOnlyList<TacticList> TacticSets => _tacticSets;
 
     /// <summary>숙련 ID별 누적 경험치.</summary>
     public IReadOnlyDictionary<string, int> MasteryXp => _masteryXp;
@@ -123,10 +130,10 @@ public sealed class PartyMember
     /// 지금 장비와 스킬로 쓸 수 없는 행동이 든 전술의 위치.
     /// 무기를 바꾸었거나 게임 데이터가 바뀌었을 때 생긴다.
     /// </summary>
-    public IReadOnlyList<int> LockedTacticIndexes(GameData data)
+    public IReadOnlyList<int> LockedTacticIndexes(GameData data, int tacticSet)
     {
         var skills = Skills(data);
-        return _tactics
+        return _tacticSets[tacticSet]
             .Select((t, i) => (t, i))
             .Where(x => !data.Actions.TryGetValue(x.t.ActionId, out var action) || !action.IsUsableBy(Weapon, skills))
             .Select(x => x.i)
@@ -135,52 +142,6 @@ public sealed class PartyMember
 
     public void ToggleRow() => Row = Row == Row.Front ? Row.Back : Row.Front;
 
-    /// <summary>목록 끝에 추가한다. 우선순위는 자동으로 정해진다.</summary>
-    public void AddTactic(Condition condition, int value, string actionId)
-    {
-        _tactics.Add(new Tactic(_tactics.Count + 1, condition, value, actionId));
-    }
-
-    /// <summary>index 위치의 전술 내용을 바꾼다. 우선순위는 위치를 따른다.</summary>
-    public void ReplaceTactic(int index, Condition condition, int value, string actionId)
-    {
-        _tactics[index] = new Tactic(index + 1, condition, value, actionId);
-    }
-
-    public void RemoveTactic(int index)
-    {
-        _tactics.RemoveAt(index);
-        Renumber();
-    }
-
-    /// <summary>
-    /// index 위치의 전술을 offset만큼 옮긴다(-1이면 한 칸 위로).
-    /// 목록 밖으로 나가면 아무것도 하지 않고 false를 돌려준다.
-    /// </summary>
-    public bool MoveTactic(int index, int offset)
-    {
-        var target = index + offset;
-        if (index < 0 || index >= _tactics.Count || target < 0 || target >= _tactics.Count)
-        {
-            return false;
-        }
-
-        (_tactics[index], _tactics[target]) = (_tactics[target], _tactics[index]);
-        Renumber();
-        return true;
-    }
-
-    public CombatantSetup ToCombatantSetup(GameData data) =>
-        new(Id, Name, Stats, Row, Weapon, Armor, new Dictionary<string, int>(_skillLevels), _tactics.ToList());
-
-    private void Renumber()
-    {
-        for (var i = 0; i < _tactics.Count; i++)
-        {
-            if (_tactics[i].Priority != i + 1)
-            {
-                _tactics[i] = _tactics[i] with { Priority = i + 1 };
-            }
-        }
-    }
+    public CombatantSetup ToCombatantSetup(GameData data, int tacticSet) =>
+        new(Id, Name, Stats, Row, Weapon, Armor, new Dictionary<string, int>(_skillLevels), _tacticSets[tacticSet].ToList());
 }

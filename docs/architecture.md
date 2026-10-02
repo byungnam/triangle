@@ -36,7 +36,7 @@ triangle/
 ├─ src/
 │  ├─ Triangle.Core/            # 순수 C# 클래스 라이브러리 (MonoGame 참조 없음)
 │  │  ├─ Units/                 #   Unit, Stats, 파생 스탯 계산
-│  │  ├─ Tactics/               #   Tactic, Condition, TargetSelector, 평가기
+│  │  ├─ Tactics/               #   Tactic, Condition, 편집 가능한 전술 목록(TacticList)
 │  │  ├─ Combat/                #   CombatSimulator, ATB 타임라인, CombatEvent
 │  │  ├─ Masteries/             #   장비 계열·숙련 정의, 숙련 레벨 표, 전투에서 얻는 숙련 경험치
 │  │  ├─ Effects/               #   버프·디버프·지속 피해·회복 정의
@@ -213,10 +213,15 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
   - 전열: 전위/후위 버튼
   - 전술 표: 순위, 조건, 값, 스킬 드롭다운, ▲▼ 순서 변경, 삭제, "+ 전술 추가"(최대 10개)
 - 값 선택지는 조건 종류에 따라 다르다. HP/MP 조건은 0–100% (10% 단위), 횟수와 턴 조건은 1–10이다. 조건을 바꿀 때 값의 종류(%, 횟수, 턴)가 같으면 값을 유지한다.
-- 아래에서 상대 적 팀을 고르고 "전투 시험"을 누르면 전투 기록 화면으로 간다. Esc를 누르면 편집 화면으로 돌아오고, 편집 내용과 선택이 그대로 유지된다.
+- **전술 세트**: 유닛마다 전술 목록을 두 벌(`PartyMember.TacticSetCount`) 저장한다.
+  - 파티 목록 위의 "전술 세트 1 / 2"로 고르면 파티 전원이 그 세트로 바뀌고, 편집도 전투도 그 세트로 한다(`Party.ActiveTacticSet`).
+  - 상대에 따라 세트를 바꿔 쓰는 용도다. 장비와 전열은 세트와 관계없이 하나다.
+  - 고른 세트도 세이브에 들어간다.
+  - 잠긴 전술 검사(전투 막기, 파티 목록 표시)는 지금 고른 세트만 본다.
+- 아래에서 상대 적 팀을 고르고(훈련 부대, 정예 부대) "전투 시험"을 누르면 전투 기록 화면으로 간다. Esc를 누르면 편집 화면으로 돌아오고, 편집 내용과 선택이 그대로 유지된다.
 - 편집 로직(우선순위 재번호, 순서 변경, 전열 전환)은 `Triangle.Core/Progress/PartyMember`에 있고 테스트로 고정되어 있다. 화면은 편집할 때마다 Myra 위젯 트리를 다시 만든다.
 - 파티는 시작할 때 세이브에서 불러온다. 세이브가 없으면 시연용 `DemoParty`로 시작한다.
-  - 시연 파티의 전술은 측정해서 골랐다(2026-10-02, 시드 500개). 훈련 부대보다 강한 측정용 상대(코드에 없음)에게 이전 전술은 승률 4%, 지금 전술은 98%였다.
+  - 시연 파티의 전술 세트 1은 측정해서 골랐다(2026-10-02, 시드 500개). 정예 부대에게 세트 2(처음의 단순한 전술)는 승률 4%, 세트 1은 98%였다.
   - 핵심은 MP 관리(MP가 낮으면 MP 없는 행동으로 바꿔 "자원 부족"으로 턴을 잃지 않기), 위급/여유 회복 분리, 상태 효과를 처음과 주기적으로 다시 걸기다.
   - 이미 저장된 세이브에는 반영되지 않는다(세이브의 전술이 우선).
 - **저장 버튼**(또는 Ctrl+S)으로 저장한다. 자동 저장은 하지 않는다. 바뀐 내용이 있으면 버튼이 강조되고 "저장하지 않은 변경이 있습니다"가 보인다.
@@ -261,7 +266,8 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 구현은 `Triangle.Core/Progress/SaveGame.cs`, `SaveStore.cs`에 있다 (2026-10-02).
 
 - 로컬 JSON 세이브 파일 하나다. 위치는 `ApplicationData/Triangle/save.json`이다(Linux `~/.config/Triangle/`, Windows `%APPDATA%\Triangle\`). `--save <경로>`로 바꿀 수 있다.
-- 형식(버전 3): `{ "version": 3, "party": [ { id, name, stats, row, weapon, armor, masteryXp, skillLevels, tactics } ] }`. JSON 설정은 게임 데이터와 같다(`GameDataJson.Options`).
+- 형식(버전 4): `{ "version": 4, "activeTacticSet": 0, "party": [ { id, name, stats, row, weapon, armor, masteryXp, skillLevels, tacticSets: [[…], […]] } ] }`. JSON 설정은 게임 데이터와 같다(`GameDataJson.Options`).
+  - 버전 3(전술 목록 하나)은 **변환해서 읽는다**. 그 전술을 세트 1로 옮기고 세트 2는 비운다.
   - 버전 1(직업)과 2(EVE식 SP·훈련 큐)는 읽지 않고, 따로 보관한 뒤 새로 시작한다.
 - 불러올 때 게임 데이터와 맞는지 검증한다: 버전, 중복 ID, 없는 계열·스킬·행동, 장비 칸 불일치, 선행 스킬 미충족, 숙련 레벨보다 많이 쓴 포인트, 스탯·조건 값 범위. 잠긴 행동이 든 전술은 오류가 아니다(편집 화면이 표시하고 전투를 막는다). 검증 규칙은 게임 데이터 로더와 같은 `DataValidation`을 쓴다.
 - 저장은 `save.json.tmp`에 쓴 뒤 교체한다. 쓰는 도중에 꺼져도 기존 세이브는 남는다.

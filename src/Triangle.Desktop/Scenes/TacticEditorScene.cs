@@ -69,6 +69,9 @@ internal sealed class TacticEditorScene : IScene
 
     private PartyMember Selected => _party.Members[_selected];
 
+    /// <summary>지금 고른 세트의 전술 (편집도 전투도 이 세트로 한다).</summary>
+    private TacticList TacticsOf(PartyMember member) => member.TacticSets[_party.ActiveTacticSet];
+
     public bool HasUnsavedChanges => _unsaved;
 
     /// <summary>다른 화면(훈련, 전투 보상)에서 파티를 바꿨다.</summary>
@@ -278,6 +281,7 @@ internal sealed class TacticEditorScene : IScene
             VerticalAlignment = VerticalAlignment.Top,
         };
         list.Widgets.Add(Label("파티", 20, Theme.Ally, bold: true));
+        list.Widgets.Add(BuildTacticSetSelector());
 
         for (var i = 0; i < _party.Members.Count; i++)
         {
@@ -287,8 +291,8 @@ internal sealed class TacticEditorScene : IScene
 
             var content = new VerticalStackPanel { Spacing = 4 };
             content.Widgets.Add(Label(member.Name, 20, selected ? Theme.Text : Theme.Ally, bold: true));
-            content.Widgets.Add(Label($"{RowLabel(member.Row)} · 전술 {member.Tactics.Count}개", 15, Theme.TextDim));
-            if (member.LockedTacticIndexes(_data).Count is > 0 and var locked)
+            content.Widgets.Add(Label($"{RowLabel(member.Row)} · 전술 {TacticsOf(member).Count}개", 15, Theme.TextDim));
+            if (member.LockedTacticIndexes(_data, _party.ActiveTacticSet).Count is > 0 and var locked)
             {
                 content.Widgets.Add(Label($"잠긴 전술 {locked}개", 15, Theme.Enemy));
             }
@@ -336,12 +340,12 @@ internal sealed class TacticEditorScene : IScene
         panel.Widgets.Add(BuildTacticHeader());
 
         var tactics = new VerticalStackPanel { Spacing = 6 };
-        for (var i = 0; i < member.Tactics.Count; i++)
+        for (var i = 0; i < TacticsOf(member).Count; i++)
         {
             tactics.Widgets.Add(BuildTacticRow(member, i));
         }
 
-        if (member.Tactics.Count == 0)
+        if (TacticsOf(member).Count == 0)
         {
             tactics.Widgets.Add(Label("전술이 없으면 이 유닛은 매 턴 기다린다.", 16, Theme.TextDim));
         }
@@ -349,10 +353,10 @@ internal sealed class TacticEditorScene : IScene
         // 새 전술은 쓸 수 있는 첫 행동으로 시작한다.
         var firstUsable = _data.Actions.Values.FirstOrDefault(a => a.IsUsableBy(member.Weapon, skills));
         var addButton = TextButton("+ 전술 추가", Theme.Button, Theme.ButtonHover);
-        addButton.Enabled = member.Tactics.Count < MaxTactics && firstUsable is not null;
+        addButton.Enabled = TacticsOf(member).Count < MaxTactics && firstUsable is not null;
         addButton.Click += (_, _) =>
         {
-            member.AddTactic(Condition.Always, 0, firstUsable!.Id);
+            TacticsOf(member).Add(Condition.Always, 0, firstUsable!.Id);
             MarkChanged();
         };
         tactics.Widgets.Add(addButton);
@@ -365,6 +369,34 @@ internal sealed class TacticEditorScene : IScene
         StackPanel.SetProportionType(panel.Widgets[^1], ProportionType.Fill);
 
         return panel;
+    }
+
+    /// <summary>
+    /// 전술 세트 선택. 파티 전원이 같은 번호의 세트로 바뀌고, 편집도 전투도 그 세트로 한다.
+    /// 상대에 따라 세트를 바꿔 쓰는 용도. 고른 세트는 세이브에 함께 저장된다.
+    /// </summary>
+    private Widget BuildTacticSetSelector()
+    {
+        var row = new HorizontalStackPanel { Spacing = 6 };
+        row.Widgets.Add(Label("전술 세트", 16, Theme.Text, width: 76));
+        for (var set = 0; set < PartyMember.TacticSetCount; set++)
+        {
+            var index = set;
+            var active = _party.ActiveTacticSet == set;
+            var button = TextButton($"{set + 1}", active ? Theme.Selected : Theme.Button, Theme.ButtonHover, bold: active);
+            button.Width = 48;
+            button.Click += (_, _) =>
+            {
+                if (_party.ActiveTacticSet != index)
+                {
+                    _party.ActiveTacticSet = index;
+                    MarkChanged();
+                }
+            };
+            row.Widgets.Add(button);
+        }
+
+        return row;
     }
 
     private Widget BuildRowSelector(PartyMember member)
@@ -396,12 +428,13 @@ internal sealed class TacticEditorScene : IScene
         header.Widgets.Add(Label("조건", 15, Theme.TextDim, width: 230));
         header.Widgets.Add(Label("값", 15, Theme.TextDim, width: 120));
         header.Widgets.Add(Label("행동", 15, Theme.TextDim, width: 300));
+        header.Widgets.Add(Label($"전술 세트 {_party.ActiveTacticSet + 1} 편집 중", 15, Theme.Cover));
         return header;
     }
 
     private Widget BuildTacticRow(PartyMember member, int index)
     {
-        var tactic = member.Tactics[index];
+        var tactic = TacticsOf(member)[index];
         var row = new HorizontalStackPanel { Spacing = 8 };
 
         row.Widgets.Add(Label($"{tactic.Priority}", 18, Theme.Text, width: 40));
@@ -413,7 +446,7 @@ internal sealed class TacticEditorScene : IScene
         {
             var next = conditions[conditionCombo.SelectedIndex ?? 0];
             var value = TacticText.ValueAfterConditionChange(tactic.Condition, next, tactic.Value);
-            member.ReplaceTactic(index, next, value, tactic.ActionId);
+            TacticsOf(member).Replace(index, next, value, tactic.ActionId);
             MarkChanged();
         };
         row.Widgets.Add(conditionCombo);
@@ -425,7 +458,7 @@ internal sealed class TacticEditorScene : IScene
             var valueCombo = Combo(values.Select(v => TacticText.ValueLabel(tactic.Condition, v)), values.ToList().IndexOf(tactic.Value), 120);
             valueCombo.SelectedIndexChanged += (_, _) =>
             {
-                member.ReplaceTactic(index, tactic.Condition, values[valueCombo.SelectedIndex ?? 0], tactic.ActionId);
+                TacticsOf(member).Replace(index, tactic.Condition, values[valueCombo.SelectedIndex ?? 0], tactic.ActionId);
                 MarkChanged();
             };
             row.Widgets.Add(valueCombo);
@@ -448,7 +481,7 @@ internal sealed class TacticEditorScene : IScene
             var chosen = actions[actionCombo.SelectedIndex ?? 0];
             if (Usable(chosen))
             {
-                member.ReplaceTactic(index, tactic.Condition, tactic.Value, chosen.Id);
+                TacticsOf(member).Replace(index, tactic.Condition, tactic.Value, chosen.Id);
                 MarkChanged();
             }
             else
@@ -459,9 +492,9 @@ internal sealed class TacticEditorScene : IScene
         row.Widgets.Add(actionCombo);
 
         // 순서 / 삭제
-        row.Widgets.Add(SmallButton("▲", index > 0, () => member.MoveTactic(index, -1)));
-        row.Widgets.Add(SmallButton("▼", index < member.Tactics.Count - 1, () => member.MoveTactic(index, 1)));
-        row.Widgets.Add(SmallButton("삭제", true, () => member.RemoveTactic(index), width: 56));
+        row.Widgets.Add(SmallButton("▲", index > 0, () => TacticsOf(member).Move(index, -1)));
+        row.Widgets.Add(SmallButton("▼", index < TacticsOf(member).Count - 1, () => TacticsOf(member).Move(index, 1)));
+        row.Widgets.Add(SmallButton("삭제", true, () => TacticsOf(member).Remove(index), width: 56));
 
         return row;
     }
@@ -482,7 +515,7 @@ internal sealed class TacticEditorScene : IScene
         bar.Widgets.Add(encounterCombo);
 
         // 게임 데이터가 바뀌어 잠긴 행동이 든 전술이 있으면 고칠 때까지 전투를 막는다.
-        var hasLocked = _party.Members.Any(m => m.LockedTacticIndexes(_data).Count > 0);
+        var hasLocked = _party.HasLockedTactics(_data);
         var start = TextButton("전투 시험  ▶", Theme.Accent, Theme.AccentHover, bold: true);
         start.Width = 180;
         start.Enabled = !hasLocked;

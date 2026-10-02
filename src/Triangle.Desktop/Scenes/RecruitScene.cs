@@ -133,8 +133,7 @@ internal sealed class RecruitScene : IScene
         panel.Widgets.Add(_w.Label($"지능 {s.Intel}   신속 {s.Speed}", 16, Theme.TextDim));
         panel.Widgets.Add(_w.Label($"HP {rules.MaxHp(s, noSkills)}   MP {rules.MaxMp(s, noSkills)}", 16, Theme.TextDim));
 
-        string Item(string? id) => id is null ? "없음" : data.Items[id].Name;
-        panel.Widgets.Add(_w.Label($"장비: {Item(template.Weapon)} / {Item(template.Armor)}", 16, Theme.Text));
+        panel.Widgets.Add(_w.Label($"장비: {ItemText.Gear(template.Equipment, data)}", 15, Theme.Text));
 
         panel.Widgets.Add(_w.Label("기본 전술", 16, Theme.Text));
         foreach (var tactic in template.Tactics.OrderBy(t => t.Priority))

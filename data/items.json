@@ -2,50 +2,297 @@
   {
     "id": "old_sword",
     "name": "낡은 검",
-    "description": "계열의 기본 아이템. 가격은 임시.",
+    "description": "T1. 수치는 임시.",
+    "slot": "MainHand",
     "mastery": "sword",
-    "price": 40
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "sword"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "heavy_strike"
+        ]
+      }
+    ]
   },
   {
     "id": "hunting_bow",
     "name": "사냥용 활",
-    "description": "계열의 기본 아이템. 가격은 임시.",
+    "description": "T1. 수치는 임시.",
+    "slot": "MainHand",
     "mastery": "bow",
-    "price": 40
+    "tier": 1,
+    "price": 40,
+    "twoHanded": true,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "bow"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "fire_arrow",
+          "snipe"
+        ]
+      },
+      {
+        "options": [
+          "poison_arrow"
+        ]
+      }
+    ]
   },
   {
     "id": "apprentice_staff",
     "name": "견습 지팡이",
-    "description": "계열의 기본 아이템. 가격은 임시.",
+    "description": "T1. 수치는 임시.",
+    "slot": "MainHand",
     "mastery": "staff",
-    "price": 40
+    "tier": 1,
+    "price": 40,
+    "twoHanded": true,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "staff"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "magic_bolt",
+          "fireball"
+        ]
+      },
+      {
+        "options": [
+          "weaken"
+        ]
+      }
+    ]
   },
   {
     "id": "wooden_relic",
     "name": "나무 성구",
-    "description": "계열의 기본 아이템. 가격은 임시.",
+    "description": "T1. 수치는 임시.",
+    "slot": "MainHand",
     "mastery": "relic",
-    "price": 40
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 5
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "heal",
+          "regen"
+        ]
+      },
+      {
+        "options": [
+          "bless"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "wooden_shield",
+    "name": "나무 방패",
+    "description": "T1. 수치는 임시.",
+    "slot": "OffHand",
+    "mastery": "sword",
+    "tier": 1,
+    "price": 30,
+    "bonuses": [
+      {
+        "kind": "DefensePercent",
+        "percent": 10
+      }
+    ]
+  },
+  {
+    "id": "holy_token",
+    "name": "작은 성물",
+    "description": "T1. 수치는 임시.",
+    "slot": "OffHand",
+    "mastery": "relic",
+    "tier": 1,
+    "price": 30,
+    "bonuses": [
+      {
+        "kind": "MaxMpPercent",
+        "percent": 5
+      },
+      {
+        "kind": "HealPercent",
+        "percent": 3
+      }
+    ]
+  },
+  {
+    "id": "plate_helm",
+    "name": "판금 투구",
+    "description": "T1. 수치는 임시.",
+    "slot": "Head",
+    "mastery": "plate",
+    "tier": 1,
+    "price": 30,
+    "bonuses": [
+      {
+        "kind": "DefensePercent",
+        "percent": 5
+      },
+      {
+        "kind": "MaxHpPercent",
+        "percent": 3
+      }
+    ]
   },
   {
     "id": "plate_armor",
     "name": "판금 갑옷",
-    "description": "계열의 기본 아이템. 가격은 임시.",
+    "description": "T1. 수치는 임시.",
+    "slot": "Body",
     "mastery": "plate",
-    "price": 60
+    "tier": 1,
+    "price": 60,
+    "bonuses": [
+      {
+        "kind": "DefensePercent",
+        "percent": 10
+      },
+      {
+        "kind": "MaxHpPercent",
+        "percent": 5
+      }
+    ]
+  },
+  {
+    "id": "plate_boots",
+    "name": "판금 장화",
+    "description": "T1. 수치는 임시.",
+    "slot": "Feet",
+    "mastery": "plate",
+    "tier": 1,
+    "price": 30,
+    "bonuses": [
+      {
+        "kind": "DefensePercent",
+        "percent": 5
+      }
+    ]
+  },
+  {
+    "id": "leather_cap",
+    "name": "가죽 모자",
+    "description": "T1. 수치는 임시.",
+    "slot": "Head",
+    "mastery": "leather",
+    "tier": 1,
+    "price": 20,
+    "bonuses": [
+      {
+        "kind": "DelayReductionPercent",
+        "percent": 2
+      }
+    ]
   },
   {
     "id": "leather_armor",
     "name": "가죽 갑옷",
-    "description": "계열의 기본 아이템. 가격은 임시.",
+    "description": "T1. 수치는 임시.",
+    "slot": "Body",
     "mastery": "leather",
-    "price": 40
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "DefensePercent",
+        "percent": 5
+      },
+      {
+        "kind": "DelayReductionPercent",
+        "percent": 3
+      }
+    ]
+  },
+  {
+    "id": "leather_boots",
+    "name": "가죽 장화",
+    "description": "T1. 수치는 임시.",
+    "slot": "Feet",
+    "mastery": "leather",
+    "tier": 1,
+    "price": 20,
+    "bonuses": [
+      {
+        "kind": "DelayReductionPercent",
+        "percent": 3
+      }
+    ]
+  },
+  {
+    "id": "cloth_hood",
+    "name": "천 두건",
+    "description": "T1. 수치는 임시.",
+    "slot": "Head",
+    "mastery": "cloth",
+    "tier": 1,
+    "price": 15,
+    "bonuses": [
+      {
+        "kind": "MaxMpPercent",
+        "percent": 5
+      }
+    ]
   },
   {
     "id": "cloth_robe",
     "name": "천 로브",
-    "description": "계열의 기본 아이템. 가격은 임시.",
+    "description": "T1. 수치는 임시.",
+    "slot": "Body",
     "mastery": "cloth",
-    "price": 30
+    "tier": 1,
+    "price": 30,
+    "bonuses": [
+      {
+        "kind": "MaxMpPercent",
+        "percent": 8
+      },
+      {
+        "kind": "MpCostReductionPercent",
+        "percent": 3
+      }
+    ]
+  },
+  {
+    "id": "cloth_shoes",
+    "name": "천 신발",
+    "description": "T1. 수치는 임시.",
+    "slot": "Feet",
+    "mastery": "cloth",
+    "tier": 1,
+    "price": 15,
+    "bonuses": [
+      {
+        "kind": "MpCostReductionPercent",
+        "percent": 3
+      }
+    ]
   }
 ]

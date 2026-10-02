@@ -1,5 +1,6 @@
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
+using Triangle.Core.Items;
 using Triangle.Core.Masteries;
 using Triangle.Core.Progress;
 
@@ -37,7 +38,7 @@ public static class ExpeditionRules
             return "출전 명단이 비어 있습니다";
         }
 
-        return company.HasLockedTactics(data) ? "잠긴 전술을 고쳐야 합니다" : null;
+        return company.WhyLineupCannotFight(data);
     }
 
     /// <summary>출정한다. 출전 멤버는 HP·MP가 가득 찬 상태로 시작한다.</summary>
@@ -51,7 +52,7 @@ public static class ExpeditionRules
         rules ??= CombatRules.Default;
         var members = company.LineupMembers.Select(m =>
         {
-            var skills = m.Skills(data);
+            var skills = m.CombatSkills(data);
             return new ExpeditionMember(m.Id, rules.MaxHp(m.Stats, skills), rules.MaxMp(m.Stats, skills), Down: false);
         });
         var expedition = new Expedition(zoneId, company.TakeSeed(), 0, members, 0, new Dictionary<string, int>(), null);
@@ -102,7 +103,7 @@ public static class ExpeditionRules
     /// 전투 결과를 반영한다. 원정이 끝났으면 그 요약을, 계속할 수 있으면 null을 돌려준다.
     /// - HP·MP를 갱신하고 쓰러진 멤버를 표시한다. 숙련 경험치는 바로 준다.
     /// - 이기면 전리품을 굴려 들고 있는 전리품에 더한다. 마지막 전투면 클리어 보너스를 받고 끝난다.
-    /// - 영구 사망 지역이면 쓰러진 멤버를 로스터에서 삭제한다. 장착 아이템은 확률로 파괴되고, 남은 것은 들고 간다.
+    /// - 영구 사망 지역이면 쓰러진 멤버를 로스터에서 삭제한다. 장착 아이템(최대 5개)은 하나씩 확률로 파괴되고, 남은 것은 들고 간다.
     /// - 지면(전멸) 전리품을 잃고 끝난다. 무승부는 강제 귀환이다(전리품 확정).
     /// </summary>
     public static ExpeditionSummary? ApplyResult(Company company, GameData data, CombatResult result)
@@ -141,7 +142,7 @@ public static class ExpeditionRules
             var random = new Random(StreamSeed(expedition, DeathStream));
             foreach (var member in downed)
             {
-                foreach (var item in new[] { member.Weapon, member.Armor }.OfType<string>())
+                foreach (var item in EquipmentSlots.All.Select(member.ItemIn).OfType<string>())
                 {
                     (random.Next(100) < zone.EquipmentDestroyChance ? destroyed : recovered).Add(item);
                 }
@@ -229,14 +230,15 @@ public static class ExpeditionRules
             expedition.Deaths.ToList());
     }
 
-    /// <summary>장착한 무기·방어구 계열 숙련에 경험치를 더한다.</summary>
+    /// <summary>주무기 계열과 입은 방어구 재질 숙련에 경험치를 더한다.</summary>
     private static List<XpReport> GrantMasteryXp(Company company, CombatResult result)
     {
         var reports = new List<XpReport>();
         foreach (var gain in MasteryGain.ForAllies(result))
         {
             var member = company.Member(gain.CombatantId);
-            foreach (var (mastery, amount) in new[] { (gain.Weapon, gain.WeaponXp), (gain.Armor, gain.ArmorXp) })
+            var gains = gain.Armor.Select(p => (Mastery: (string?)p.Key, Amount: p.Value)).Prepend((gain.Weapon, gain.WeaponXp));
+            foreach (var (mastery, amount) in gains)
             {
                 if (mastery is not null)
                 {

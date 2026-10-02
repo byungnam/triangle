@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Triangle.Core.Data;
 using Triangle.Core.Expeditions;
+using Triangle.Core.Items;
 using Triangle.Core.Masteries;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
@@ -16,15 +17,10 @@ public sealed record SaveFile
     /// <summary>전투에 쓸 전술 세트 (0부터).</summary>
     public int ActiveTacticSet { get; init; }
 
-    /// <summary>버전 4의 파티. 읽을 때만 쓰고 로스터와 출전 명단으로 옮긴다.</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public IReadOnlyList<SavedMember>? Party { get; init; }
+    /// <summary>보유한 캐릭터 모두.</summary>
+    public IReadOnlyList<SavedMember> Roster { get; init; } = [];
 
-    /// <summary>보유한 캐릭터 모두 (버전 5부터).</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public IReadOnlyList<SavedMember>? Roster { get; init; }
-
-    /// <summary>출전할 캐릭터 ID (버전 5부터).</summary>
+    /// <summary>출전할 캐릭터 ID.</summary>
     public IReadOnlyList<string> Lineup { get; init; } = [];
 
     public int Gold { get; init; }
@@ -65,8 +61,18 @@ public sealed record SavedMember
     public required Stats Stats { get; init; }
     public required Row Row { get; init; }
 
-    /// <summary>장착한 아이템 ID. 버전 4에서는 계열 ID다.</summary>
+    /// <summary>부위별 장착 아이템 ID (버전 6부터).</summary>
+    public IReadOnlyDictionary<EquipmentSlot, string> Equipment { get; init; } = new Dictionary<EquipmentSlot, string>();
+
+    /// <summary>부위별 행동 칸 선택 (버전 6부터). 없거나 맞지 않는 칸은 첫 옵션으로 본다.</summary>
+    public IReadOnlyDictionary<EquipmentSlot, IReadOnlyList<string>> AbilityChoices { get; init; } =
+        new Dictionary<EquipmentSlot, IReadOnlyList<string>>();
+
+    /// <summary>버전 5의 무기·방어구 아이템 ID. 읽을 때만 쓰고 주무기·몸통으로 옮긴다.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Weapon { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Armor { get; init; }
 
     /// <summary>숙련 ID별 누적 경험치.</summary>
@@ -88,23 +94,20 @@ public sealed class SaveGameException(IReadOnlyList<string> errors)
 
 /// <summary>
 /// 회사와 세이브 JSON 사이의 변환. 읽을 때 게임 데이터와 맞는지 검증한다.
-/// 요구 스킬을 못 채운 행동이 든 전술은 오류로 보지 않는다(게임 데이터가 바뀌었을 수 있다).
-/// 편집 화면이 그 전술을 표시하고 고칠 때까지 전투를 막는다.
+/// 요구 스킬을 못 채운 행동이 든 전술과 착용 조건을 못 채운 장비는 오류로 보지 않는다(게임 데이터가 바뀌었을 수 있다).
+/// 편집 화면이 그것을 표시하고 고칠 때까지 전투를 막는다.
 /// </summary>
 public static class SaveGame
 {
     /// <summary>
     /// 4: 전술 세트 두 벌과 사용할 세트 (2026-10-02).
     /// 5: 회사 (로스터, 출전 명단, 골드, 창고, 모집 후보, 진행 중인 원정), 장비는 아이템 ID (2026-10-02).
-    ///    버전 4는 파티를 로스터와 출전 명단으로, 장비 계열을 그 계열의 기본 아이템으로 바꾸고 시작 골드를 준다.
-    ///    그 이전은 읽지 않는다.
+    /// 6: 부위 5개 장비(equipment)와 행동 칸 선택(abilityChoices) (2026-10-02).
+    ///    버전 5는 무기를 주무기로, 방어구를 몸통으로 옮기고 행동 칸은 첫 옵션으로 고른다. 그 이전은 읽지 않는다.
     /// </summary>
-    public const int CurrentVersion = 5;
+    public const int CurrentVersion = 6;
 
-    private const int OldestReadableVersion = 4;
-
-    /// <summary>버전 4를 변환할 때 쓰는 시드 (그 세이브에는 시드가 없다).</summary>
-    private const int ConvertedSeed = 1;
+    private const int OldestReadableVersion = 5;
 
     public static string Serialize(Company company)
     {
@@ -137,8 +140,8 @@ public static class SaveGame
                 Name = m.Name,
                 Stats = m.Stats,
                 Row = m.Row,
-                Weapon = m.Weapon,
-                Armor = m.Armor,
+                Equipment = new SortedDictionary<EquipmentSlot, string>(m.Equipment.ToDictionary()),
+                AbilityChoices = new SortedDictionary<EquipmentSlot, IReadOnlyList<string>>(m.AbilityChoices.ToDictionary()),
                 MasteryXp = new SortedDictionary<string, int>(m.MasteryXp.ToDictionary()),
                 SkillLevels = new SortedDictionary<string, int>(m.SkillLevels.ToDictionary()),
                 TacticSets = m.TacticSets.Select(set => (IReadOnlyList<Tactic>)set.ToList()).ToList(),
@@ -149,6 +152,13 @@ public static class SaveGame
 
     public static Company Deserialize(string json, GameData data)
     {
+        // 버전을 먼저 본다: 읽지 않는 버전의 필드를 형식 오류로 보고하지 않도록.
+        var version = ReadVersion(json);
+        if (version is < OldestReadableVersion or > CurrentVersion)
+        {
+            throw new SaveGameException([$"save: unsupported version {version} (expected {OldestReadableVersion}-{CurrentVersion})"]);
+        }
+
         SaveFile? file;
         try
         {
@@ -165,23 +175,17 @@ public static class SaveGame
             throw new SaveGameException(["save: expected an object, found null"]);
         }
 
-        if (file.Version is < OldestReadableVersion or > CurrentVersion)
+        if (file.Version == 5)
         {
-            throw new SaveGameException([$"save: unsupported version {file.Version} (expected {OldestReadableVersion}-{CurrentVersion})"]);
-        }
-
-        var converted = file.Version == 4;
-        if (converted)
-        {
-            file = ConvertFromVersion4(file, data);
+            file = ConvertFromVersion5(file);
         }
 
         Validate(file, data);
 
         var saved = file.Expedition;
-        var company = new Company(
-            file.Roster!.Select(m =>
-                new PartyMember(m.Id, m.Name, m.Stats, m.Row, m.Weapon, m.Armor, m.MasteryXp, m.SkillLevels, m.TacticSets)),
+        return new Company(
+            file.Roster.Select(m =>
+                new PartyMember(m.Id, m.Name, m.Stats, m.Row, m.Equipment, m.AbilityChoices, m.MasteryXp, m.SkillLevels, m.TacticSets)),
             file.Lineup,
             file.Gold,
             file.Stash,
@@ -192,90 +196,61 @@ public static class SaveGame
             saved is null
                 ? null
                 : new Expedition(saved.ZoneId, saved.Seed, saved.BattleIndex, saved.Members, saved.CarriedGold, saved.CarriedItems, saved.LastBattle, saved.Deaths));
-        if (converted)
-        {
-            company.RerollRecruits(data);
-        }
+    }
 
-        return company;
+    private static int ReadVersion(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                throw new SaveGameException(["save: expected an object"]);
+            }
+
+            return document.RootElement.TryGetProperty("version", out var v) && v.TryGetInt32(out var version)
+                ? version
+                : throw new SaveGameException(["save: 'version' is missing or not an integer"]);
+        }
+        catch (JsonException e)
+        {
+            var line = e.LineNumber is { } n ? $" line {n + 1}" : "";
+            throw new SaveGameException([$"save{line}: {e.Message}"]);
+        }
     }
 
     /// <summary>
-    /// 버전 4 → 5: 파티 멤버는 로스터로, 앞의 <see cref="Company.MaxLineup"/>명은 출전 명단으로.
-    /// 장비 계열은 그 계열의 기본 아이템으로 바꾼다. 골드는 시작값을 준다.
+    /// 버전 5 → 6: 무기 아이템은 주무기로, 방어구 아이템은 몸통으로 옮긴다. v5 기본 아이템 ID는 새 T1 아이템 ID와 같다.
+    /// 행동 칸 선택은 비워 두면 첫 옵션이 된다. 이제 쓸 수 없는 행동이 든 전술은 잠긴다(편집 화면에서 고친다).
     /// </summary>
-    private static SaveFile ConvertFromVersion4(SaveFile file, GameData data)
+    private static SaveFile ConvertFromVersion5(SaveFile file)
     {
-        var errors = new List<string>();
-        if (file.Roster is not null)
+        static Dictionary<EquipmentSlot, string> ToEquipment(SavedMember m)
         {
-            errors.Add("save: 'roster' is a version 5 field; version 4 uses 'party'");
-        }
-
-        var party = file.Party ?? [];
-
-        string? ToItem(string? masteryId, EquipmentSlot slot, string at)
-        {
-            if (masteryId is null)
+            var equipment = new Dictionary<EquipmentSlot, string>();
+            if (m.Weapon is not null)
             {
-                return null;
+                equipment[EquipmentSlot.MainHand] = m.Weapon;
             }
 
-            DataValidation.RequireSlot(masteryId, slot, at, data.Masteries, errors);
-            if (!data.Masteries.ContainsKey(masteryId))
+            if (m.Armor is not null)
             {
-                return null;
+                equipment[EquipmentSlot.Body] = m.Armor;
             }
 
-            var item = data.BasicItemFor(masteryId);
-            if (item is null)
-            {
-                errors.Add($"{at}: no item of mastery '{masteryId}' to convert to");
-            }
-
-            return item?.Id;
+            return equipment;
         }
 
-        var roster = party.Select(m => m with
-        {
-            Weapon = ToItem(m.Weapon, EquipmentSlot.Weapon, $"save member '{m.Id}': weapon"),
-            Armor = ToItem(m.Armor, EquipmentSlot.Armor, $"save member '{m.Id}': armor"),
-        }).ToList();
-
-        if (party.Count == 0)
-        {
-            errors.Add("save: party is empty");
-        }
-
-        if (errors.Count > 0)
-        {
-            throw new SaveGameException(errors);
-        }
-
-        return new SaveFile
+        return file with
         {
             Version = CurrentVersion,
-            ActiveTacticSet = file.ActiveTacticSet,
-            Roster = roster,
-            Lineup = roster.Select(m => m.Id).Distinct().Take(Company.MaxLineup).ToList(),
-            Gold = Company.StartingGold,
-            NextSeed = ConvertedSeed,
+            Roster = file.Roster.Select(m => m with { Equipment = ToEquipment(m), Weapon = null, Armor = null }).ToList(),
         };
     }
 
     private static void Validate(SaveFile file, GameData data)
     {
         var errors = new List<string>();
-        if (file.Party is not null)
-        {
-            errors.Add("save: 'party' is a version 4 field; use 'roster' and 'lineup'");
-        }
-
-        if (file.Roster is null)
-        {
-            errors.Add("save: 'roster' is missing");
-            throw new SaveGameException(errors);
-        }
 
         if (file.ActiveTacticSet is < 0 or >= PartyMember.TacticSetCount)
         {
@@ -410,8 +385,16 @@ public static class SaveGame
         DataValidation.RequireText(member.Id, "save: member id", errors);
         DataValidation.RequireText(member.Name, $"{at}: name", errors);
         DataValidation.ValidateStats(member.Stats, at, errors);
-        DataValidation.ValidateItem(member.Weapon, EquipmentSlot.Weapon, $"{at}: weapon", data.Items, data.Masteries, errors);
-        DataValidation.ValidateItem(member.Armor, EquipmentSlot.Armor, $"{at}: armor", data.Items, data.Masteries, errors);
+        if (member.Weapon is not null || member.Armor is not null)
+        {
+            errors.Add($"{at}: 'weapon' and 'armor' are version 5 fields; use 'equipment'");
+        }
+
+        DataValidation.ValidateEquipped(member.Equipment, $"{at}: equipment", data.Items, errors);
+        foreach (var slot in member.AbilityChoices.Keys.Where(s => !member.Equipment.ContainsKey(s)))
+        {
+            errors.Add($"{at}: ability choices for empty slot {slot}");
+        }
 
         foreach (var (masteryId, xp) in member.MasteryXp)
         {

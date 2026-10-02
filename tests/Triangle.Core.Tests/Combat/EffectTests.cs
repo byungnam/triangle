@@ -210,14 +210,14 @@ public class EffectTests
         var ticked = -result.Events.OfType<EffectTicked>().Where(t => t.TargetId == "a").Sum(t => t.HpChange);
         var gain = Assert.Single(MasteryGain.ForAllies(result));
         Assert.True(ticked > 0);
-        Assert.Equal(ticked / MasteryRules.Default.DamageTakenPerXp + MasteryRules.Default.ResultXp(result.Outcome), gain.ArmorXp);
+        Assert.Equal(ticked / MasteryRules.Default.DamageTakenPerXp + MasteryRules.Default.ResultXp(result.Outcome), gain.Armor["plate"]);
     }
 
     [Fact]
     public void Loader_rejects_unknown_effects_and_bad_durations()
     {
         var errors = Assert.Throws<GameDataException>(() => GameDataLoader.Parse(
-            """[ { "id": "bow", "name": "활", "slot": "Weapon" } ]""",
+            """[ { "id": "bow", "name": "활", "kind": "Weapon" } ]""",
             "[]",
             """
             [ { "id": "a", "name": "A", "applies": [ { "effectId": "ghost", "duration": 2 } ] },

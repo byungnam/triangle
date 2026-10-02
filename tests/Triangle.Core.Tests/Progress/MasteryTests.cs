@@ -1,6 +1,7 @@
 using Triangle.Core.Actions;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
+using Triangle.Core.Items;
 using Triangle.Core.Masteries;
 using Triangle.Core.Progress;
 using Triangle.Core.Skills;
@@ -13,9 +14,9 @@ public class MasteryTests
 {
     private static readonly GameData Data = GameDataLoader.Parse(
         """
-        [ { "id": "bow", "name": "활", "slot": "Weapon" },
-          { "id": "sword", "name": "검", "slot": "Weapon" },
-          { "id": "plate", "name": "판금", "slot": "Armor" } ]
+        [ { "id": "bow", "name": "활", "kind": "Weapon" },
+          { "id": "sword", "name": "검", "kind": "Weapon" },
+          { "id": "plate", "name": "판금", "kind": "Armor" } ]
         """,
         """
         [ { "id": "archery", "name": "활 숙련", "mastery": "bow" },
@@ -23,18 +24,18 @@ public class MasteryTests
           { "id": "swordsmanship", "name": "검술", "mastery": "sword" } ]
         """,
         """
-        [ { "id": "strike", "name": "공격", "power": 10 },
-          { "id": "shot", "name": "화살", "power": 10, "weapon": "bow" } ]
+        [ { "id": "strike", "name": "공격", "power": 10, "universal": true },
+          { "id": "shot", "name": "화살", "power": 10 } ]
         """,
         """[ { "id": "camp", "name": "야영지", "units": [ { "id": "e", "name": "적", "row": "Front", "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 } } ] } ]""",
         itemsJson: """
-        [ { "id": "short_bow", "name": "짧은 활", "mastery": "bow" },
-          { "id": "old_sword", "name": "낡은 검", "mastery": "sword" },
-          { "id": "plate_mail", "name": "판금 갑옷", "mastery": "plate" } ]
+        [ { "id": "short_bow", "name": "짧은 활", "slot": "MainHand", "mastery": "bow", "abilities": [ { "options": [ "shot" ] } ] },
+          { "id": "old_sword", "name": "낡은 검", "slot": "MainHand", "mastery": "sword" },
+          { "id": "plate_mail", "name": "판금 갑옷", "slot": "Body", "mastery": "plate" } ]
         """);
 
     private static PartyMember Member(Dictionary<string, int>? xp = null, Dictionary<string, int>? skills = null) =>
-        new("m", "멤버", new Stats(15, 15, 15, 15, 15), Row.Front, "short_bow", "plate_mail", xp ?? [], skills ?? [], []);
+        new("m", "멤버", new Stats(15, 15, 15, 15, 15), Row.Front, TestGear.Of("short_bow", "plate_mail"), null, xp ?? [], skills ?? [], []);
 
     [Theory]
     [InlineData(0, 0)]
@@ -95,13 +96,34 @@ public class MasteryTests
     [Fact]
     public void Changing_weapon_locks_weapon_tactics()
     {
-        var m = new PartyMember("m", "멤버", new Stats(15, 15, 15, 15, 15), Row.Front, "short_bow", null, new Dictionary<string, int>(), new Dictionary<string, int>(),
-            [[new Tactic(1, Condition.Always, 0, "shot"), new Tactic(2, Condition.Always, 0, "strike")]]);
+        var m = new PartyMember("m", "멤버", new Stats(15, 15, 15, 15, 15), Row.Front, TestGear.Of("short_bow"), null, new Dictionary<string, int>(),
+            new Dictionary<string, int>(), [[new Tactic(1, Condition.Always, 0, "shot"), new Tactic(2, Condition.Always, 0, "strike")]]);
 
         Assert.Empty(m.LockedTacticIndexes(Data, 0));
-        m.Weapon = "old_sword";
+        m.SetItem(EquipmentSlot.MainHand, "old_sword", Data);
         Assert.Equal([0], m.LockedTacticIndexes(Data, 0));
         Assert.Equal("sword", m.ToCombatantSetup(Data, 0).Weapon);
+    }
+
+    [Fact]
+    public void Armor_xp_is_split_by_pieces_per_material()
+    {
+        CombatantSetup Setup(string id, string actionId, IReadOnlyList<string>? pieces) =>
+            new CombatantSetup(id, id, new Stats(10, 10, 100, 10, 10), Row.Front, null, null, SkillSet.NoSkills, [new Tactic(1, Condition.Always, 0, actionId)])
+            {
+                ArmorPieces = pieces,
+            };
+
+        var result = CombatSimulator.Run([Setup("a", "strike", ["plate", "cloth", "cloth"])], [Setup("e", "strike", null)], Data.Catalog, seed: 1,
+            new CombatRules { MaxActions = 10 });
+        var taken = result.Events.OfType<Damaged>().Where(d => d.TargetId == "a").Sum(d => d.Amount);
+        var total = taken / MasteryRules.Default.DamageTakenPerXp + MasteryRules.Default.ResultXp(result.Outcome);
+
+        var gain = Assert.Single(MasteryGain.ForAllies(result));
+
+        // 판금 머리 + 천 몸통·신발: 판금 1/3, 천 2/3. 무기가 없으면 무기 경험치도 없다.
+        Assert.Equal(new Dictionary<string, int> { ["plate"] = total / 3, ["cloth"] = total * 2 / 3 }, gain.Armor);
+        Assert.Equal(0, gain.WeaponXp);
     }
 
     [Fact]
@@ -123,9 +145,9 @@ public class MasteryTests
 
         var gain = Assert.Single(MasteryGain.ForAllies(result));
 
-        Assert.Equal(("a", "bow", "plate"), (gain.CombatantId, gain.Weapon, gain.Armor));
+        Assert.Equal(("a", "bow"), (gain.CombatantId, gain.Weapon));
         Assert.Equal(actions * rules.XpPerAction + dealt / rules.AmountPerXp + resultXp, gain.WeaponXp);
-        Assert.Equal(taken / rules.DamageTakenPerXp + resultXp, gain.ArmorXp);
+        Assert.Equal(new Dictionary<string, int> { ["plate"] = taken / rules.DamageTakenPerXp + resultXp }, gain.Armor);
         Assert.True(actions > 0 && dealt > 0 && taken > 0);
     }
 }

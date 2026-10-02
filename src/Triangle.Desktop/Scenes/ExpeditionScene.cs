@@ -193,7 +193,7 @@ internal sealed class ExpeditionScene : IScene
             VerticalAlignment = VerticalAlignment.Top,
         };
 
-        var locked = Company.HasLockedTactics(_session.Data);
+        var locked = Company.WhyLineupCannotFight(_session.Data) is not null;
         var next = _w.TextButton("다음 전투  ▶", Theme.Accent, Theme.AccentHover, bold: true);
         next.Width = 180;
         next.Enabled = ExpeditionRules.CanContinue(Company, _session.Data) && !locked;
@@ -217,7 +217,7 @@ internal sealed class ExpeditionScene : IScene
 
         if (locked)
         {
-            bar.Widgets.Add(_w.Label("잠긴 행동이 든 전술을 고쳐야 전투할 수 있습니다", 16, Theme.Enemy));
+            bar.Widgets.Add(_w.Label(Company.WhyLineupCannotFight(_session.Data)!, 16, Theme.Enemy));
         }
 
         bar.Left = _bounds.Left + Margin;

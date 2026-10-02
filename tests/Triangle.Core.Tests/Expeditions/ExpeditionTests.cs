@@ -19,21 +19,26 @@ public class ExpeditionTests
             """;
     }
 
+    private const string ItemsJson = """
+        [ { "id": "old_sword", "name": "낡은 검", "slot": "MainHand", "mastery": "sword" },
+          { "id": "old_shield", "name": "낡은 방패", "slot": "OffHand", "mastery": "sword" },
+          { "id": "plate_helm", "name": "판금 투구", "slot": "Head", "mastery": "plate" },
+          { "id": "plate_armor", "name": "판금 갑옷", "slot": "Body", "mastery": "plate" },
+          { "id": "plate_boots", "name": "판금 장화", "slot": "Feet", "mastery": "plate" } ]
+        """;
+
     private static readonly GameData Data = GameDataLoader.Parse(
         """
-        [ { "id": "sword", "name": "검", "slot": "Weapon" },
-          { "id": "plate", "name": "판금", "slot": "Armor" } ]
+        [ { "id": "sword", "name": "검", "kind": "Weapon" },
+          { "id": "plate", "name": "판금", "kind": "Armor" } ]
         """,
         "[]",
-        """[ { "id": "strike", "name": "공격", "power": 10 } ]""",
+        """[ { "id": "strike", "name": "공격", "power": 10, "universal": true } ]""",
         "[ " + string.Join(", ",
             Enemy("dummy", 1, 1, attacks: false),
             Enemy("wall", 1, 100_000, attacks: false),
             Enemy("brute", 10, 100_000, attacks: true)) + " ]",
-        itemsJson: """
-        [ { "id": "old_sword", "name": "낡은 검", "mastery": "sword" },
-          { "id": "plate_armor", "name": "판금 갑옷", "mastery": "plate" } ]
-        """,
+        itemsJson: ItemsJson,
         zonesJson: """
         [ { "id": "forest", "name": "숲", "maxBattles": 3, "encounters": [ { "encounterId": "dummy", "weight": 1 } ],
             "rewards": { "goldMin": 10, "goldMax": 10, "depthBonusPercent": 50, "clearBonusGold": 100,
@@ -50,12 +55,18 @@ public class ExpeditionTests
         [ { "id": "rookie", "name": "신입", "names": [ "가", "나", "다" ], "row": "Front",
             "statsMin": { "str": 10, "dex": 10, "vital": 10, "intel": 10, "speed": 10 },
             "statsMax": { "str": 12, "dex": 12, "vital": 12, "intel": 12, "speed": 12 },
-            "weapon": "old_sword", "armor": "plate_armor",
+            "equipment": { "MainHand": "old_sword", "Body": "plate_armor" },
             "tactics": [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "strike" } ], "price": 100 } ]
         """);
 
+    /// <summary>부위 5개 모두 (부위 순서).</summary>
+    private static readonly string[] FullGearItems = ["old_sword", "old_shield", "plate_helm", "plate_armor", "plate_boots"];
+
+    private static readonly Dictionary<Triangle.Core.Items.EquipmentSlot, string> FullGear =
+        TestGear.Of(mainHand: "old_sword", offHand: "old_shield", head: "plate_helm", body: "plate_armor", feet: "plate_boots");
+
     private static PartyMember Member(string id, int vital = 20) =>
-        new(id, id.ToUpperInvariant(), new Stats(10, 10, vital, 10, 10), Row.Front, "old_sword", "plate_armor",
+        new(id, id.ToUpperInvariant(), new Stats(10, 10, vital, 10, 10), Row.Front, FullGear, null,
             new Dictionary<string, int>(), new Dictionary<string, int>(), [[new Tactic(1, Condition.Always, 0, "strike")]]);
 
     private static Company NewCompany(int gold = 0) =>
@@ -277,13 +288,12 @@ public class ExpeditionTests
         var report = expedition.LastBattle!;
         Assert.Equal(["A"], report.Deaths);
         Assert.Empty(report.Destroyed);
-        Assert.Equal(["old_sword", "plate_armor"], report.Recovered);
+        Assert.Equal(FullGearItems, report.Recovered);
 
         var summary = ExpeditionRules.Return(company, Data);
 
         Assert.Equal(["A"], summary.Deaths);
-        Assert.Equal(1, company.StashCount("old_sword"));
-        Assert.Equal(1, company.StashCount("plate_armor"));
+        Assert.All(FullGearItems, item => Assert.Equal(1, company.StashCount(item)));
     }
 
     [Fact]
@@ -295,7 +305,7 @@ public class ExpeditionTests
         ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("a", 0, 0), ("b", 50, 5)));
 
         var report = company.Expedition!.LastBattle!;
-        Assert.Equal(["old_sword", "plate_armor"], report.Destroyed);
+        Assert.Equal(FullGearItems, report.Destroyed);
         Assert.Empty(report.Recovered);
         Assert.Empty(company.Expedition.CarriedItems);
     }
@@ -306,11 +316,11 @@ public class ExpeditionTests
         // 30%로 굴린 결과는 시드가 같으면 같고, 여러 시드에 걸쳐 대략 30%다.
         var zone = Data.Zones["grave0"] with { Id = "grave30", EquipmentDestroyChance = 30 };
         var data = GameDataLoader.Parse(
-            """[ { "id": "sword", "name": "검", "slot": "Weapon" }, { "id": "plate", "name": "판금", "slot": "Armor" } ]""",
+            """[ { "id": "sword", "name": "검", "kind": "Weapon" }, { "id": "plate", "name": "판금", "kind": "Armor" } ]""",
             "[]",
-            """[ { "id": "strike", "name": "공격", "power": 10 } ]""",
+            """[ { "id": "strike", "name": "공격", "power": 10, "universal": true } ]""",
             "[ " + Enemy("dummy", 1, 1, attacks: false) + " ]",
-            itemsJson: """[ { "id": "old_sword", "name": "낡은 검", "mastery": "sword" }, { "id": "plate_armor", "name": "판금 갑옷", "mastery": "plate" } ]""",
+            itemsJson: ItemsJson,
             zonesJson: System.Text.Json.JsonSerializer.Serialize(new[] { zone }, GameDataJson.Options));
 
         IReadOnlyList<string> Destroyed(int seed)
@@ -323,7 +333,7 @@ public class ExpeditionTests
 
         Assert.Equal(Destroyed(3), Destroyed(3));
         var total = Enumerable.Range(0, 500).Sum(seed => Destroyed(seed).Count);
-        Assert.InRange(total * 100 / 1000, 25, 35);
+        Assert.InRange(total * 100 / (500 * FullGearItems.Length), 25, 35);
     }
 
     [Fact]

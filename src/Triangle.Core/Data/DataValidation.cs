@@ -19,16 +19,16 @@ internal static class DataValidation
         RequireNonNegative(stats.Speed, $"{at}: speed", errors);
     }
 
-    /// <summary>장비: 무기 칸에는 무기 계열, 방어구 칸에는 방어구 계열이어야 한다. null은 맨손·맨몸.</summary>
+    /// <summary>적 장비: 무기 칸에는 무기 계열, 방어구 칸에는 방어구 계열이어야 한다. null은 맨손·맨몸.</summary>
     public static void ValidateEquipment(
         string? weapon, string? armor, string at, IReadOnlyDictionary<string, MasteryDefinition> masteries, List<string> errors)
     {
-        RequireSlot(weapon, EquipmentSlot.Weapon, $"{at}: weapon", masteries, errors);
-        RequireSlot(armor, EquipmentSlot.Armor, $"{at}: armor", masteries, errors);
+        RequireKind(weapon, MasteryKind.Weapon, $"{at}: weapon", masteries, errors);
+        RequireKind(armor, MasteryKind.Armor, $"{at}: armor", masteries, errors);
     }
 
-    public static void RequireSlot(
-        string? id, EquipmentSlot slot, string what, IReadOnlyDictionary<string, MasteryDefinition> masteries, List<string> errors)
+    public static void RequireKind(
+        string? id, MasteryKind kind, string what, IReadOnlyDictionary<string, MasteryDefinition> masteries, List<string> errors)
     {
         if (id is null)
         {
@@ -39,33 +39,36 @@ internal static class DataValidation
         {
             errors.Add($"{what}: unknown mastery '{id}'");
         }
-        else if (mastery.Slot != slot)
+        else if (mastery.Kind != kind)
         {
-            errors.Add($"{what}: '{id}' is {mastery.Slot}, not {slot}");
+            errors.Add($"{what}: '{id}' is {mastery.Kind}, not {kind}");
         }
     }
 
-    /// <summary>장착한 아이템: 있는 아이템이고, 계열이 그 슬롯에 맞는지. null은 맨손·맨몸.</summary>
-    public static void ValidateItem(
-        string? itemId,
-        EquipmentSlot slot,
-        string what,
+    /// <summary>
+    /// 부위별 장착 아이템: 있는 아이템이고, 아이템의 부위가 그 칸과 같은지. 착용 조건과 두손·보조 충돌은
+    /// 오류로 보지 않는다(게임 데이터가 바뀌었을 수 있다, "착용 불가"로 처리한다).
+    /// </summary>
+    public static void ValidateEquipped(
+        IReadOnlyDictionary<EquipmentSlot, string> equipment,
+        string at,
         IReadOnlyDictionary<string, ItemDefinition> items,
-        IReadOnlyDictionary<string, MasteryDefinition> masteries,
         List<string> errors)
     {
-        if (itemId is null)
+        foreach (var (slot, itemId) in equipment)
         {
-            return;
-        }
-
-        if (!items.TryGetValue(itemId, out var item))
-        {
-            errors.Add($"{what}: unknown item '{itemId}'");
-        }
-        else if (masteries.TryGetValue(item.Mastery, out var mastery) && mastery.Slot != slot)
-        {
-            errors.Add($"{what}: '{itemId}' is {mastery.Slot}, not {slot}");
+            if (!slot.IsEquipment())
+            {
+                errors.Add($"{at}: {slot} is not an equipment slot");
+            }
+            else if (!items.TryGetValue(itemId, out var item))
+            {
+                errors.Add($"{at}: {slot}: unknown item '{itemId}'");
+            }
+            else if (item.Slot != slot)
+            {
+                errors.Add($"{at}: {slot}: '{itemId}' is {item.Slot}");
+            }
         }
     }
 

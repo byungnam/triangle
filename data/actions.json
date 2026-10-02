@@ -2,7 +2,7 @@
   {
     "id": "basic_attack",
     "name": "기본 공격",
-    "description": "임시 수치. 어떤 무기로든 쓸 수 있다. 활 위력 같은 보너스는 든 무기를 따른다",
+    "description": "임시 수치. 공용 행동: 아이템 없이 누구나 쓴다. 활 위력 같은 보너스는 든 주무기를 따른다",
     "hpCost": 0,
     "mpCost": 0,
     "effect": "Damage",
@@ -14,7 +14,8 @@
     "scope": "Single",
     "ignoresCover": false,
     "tags": [],
-    "requirements": []
+    "requirements": [],
+    "universal": true
   },
   {
     "id": "heavy_strike",
@@ -36,8 +37,7 @@
         "skillId": "swordsmanship",
         "level": 2
       }
-    ],
-    "weapon": "sword"
+    ]
   },
   {
     "id": "fire_arrow",
@@ -54,8 +54,7 @@
     "scope": "Single",
     "ignoresCover": false,
     "tags": [],
-    "requirements": [],
-    "weapon": "bow"
+    "requirements": []
   },
   {
     "id": "snipe",
@@ -81,8 +80,7 @@
         "skillId": "precision_shooting",
         "level": 1
       }
-    ],
-    "weapon": "bow"
+    ]
   },
   {
     "id": "magic_bolt",
@@ -99,8 +97,7 @@
     "scope": "Single",
     "ignoresCover": false,
     "tags": [],
-    "requirements": [],
-    "weapon": "staff"
+    "requirements": []
   },
   {
     "id": "heal",
@@ -122,8 +119,7 @@
         "skillId": "healing",
         "level": 1
       }
-    ],
-    "weapon": "relic"
+    ]
   },
   {
     "id": "bless",
@@ -151,8 +147,7 @@
         "effectId": "blessed",
         "duration": 3
       }
-    ],
-    "weapon": "relic"
+    ]
   },
   {
     "id": "weaken",
@@ -180,8 +175,7 @@
         "effectId": "weakened",
         "duration": 3
       }
-    ],
-    "weapon": "staff"
+    ]
   },
   {
     "id": "poison_arrow",
@@ -209,8 +203,7 @@
         "effectId": "poisoned",
         "duration": 3
       }
-    ],
-    "weapon": "bow"
+    ]
   },
   {
     "id": "fireball",
@@ -238,8 +231,7 @@
         "effectId": "burning",
         "duration": 2
       }
-    ],
-    "weapon": "staff"
+    ]
   },
   {
     "id": "regen",
@@ -267,8 +259,7 @@
         "effectId": "regenerating",
         "duration": 3
       }
-    ],
-    "weapon": "relic"
+    ]
   },
   {
     "id": "focus",
@@ -290,6 +281,7 @@
         "skillId": "meditation",
         "level": 2
       }
-    ]
+    ],
+    "universal": true
   }
 ]

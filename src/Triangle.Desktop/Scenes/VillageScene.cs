@@ -216,7 +216,7 @@ internal sealed class VillageScene : IScene
         var row = new HorizontalStackPanel { Spacing = 10 };
         var text = new VerticalStackPanel { Spacing = 2, Width = width - 100 };
         text.Widgets.Add(Label($"{member.Name}  ·  {(member.Row == Row.Front ? "전위" : "후위")}", 18, Theme.Text, bold: true));
-        text.Widgets.Add(Label($"{ItemName(member.Weapon)} / {ItemName(member.Armor)}", 15, Theme.TextDim));
+        text.Widgets.Add(Label(ItemText.Gear(member.Equipment, _session.Data), 15, Theme.TextDim));
         row.Widgets.Add(text);
 
         var button = TextButton(action, Theme.Button, Theme.ButtonHover);
@@ -233,7 +233,6 @@ internal sealed class VillageScene : IScene
         return row;
     }
 
-    private string ItemName(string? itemId) => itemId is null ? "없음" : _session.Data.Items[itemId].Name;
 
     /// <summary>전투지역 목록 (난이도순). 고른 지역으로 출정한다. 영구 사망 지역은 빨간 경고를 단다.</summary>
     private Widget BuildZones(Rectangle area)

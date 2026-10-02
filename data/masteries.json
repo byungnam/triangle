@@ -2,43 +2,43 @@
   {
     "id": "sword",
     "name": "검",
-    "slot": "Weapon",
+    "kind": "Weapon",
     "description": "근접 무기"
   },
   {
     "id": "bow",
     "name": "활",
-    "slot": "Weapon",
+    "kind": "Weapon",
     "description": "원거리 물리"
   },
   {
     "id": "staff",
     "name": "지팡이",
-    "slot": "Weapon",
+    "kind": "Weapon",
     "description": "마법 공격"
   },
   {
     "id": "relic",
     "name": "성구",
-    "slot": "Weapon",
+    "kind": "Weapon",
     "description": "회복과 신성"
   },
   {
     "id": "plate",
     "name": "판금",
-    "slot": "Armor",
+    "kind": "Armor",
     "description": "방어형"
   },
   {
     "id": "leather",
     "name": "가죽",
-    "slot": "Armor",
+    "kind": "Armor",
     "description": "기동형"
   },
   {
     "id": "cloth",
     "name": "천",
-    "slot": "Armor",
+    "kind": "Armor",
     "description": "마력형"
   }
 ]

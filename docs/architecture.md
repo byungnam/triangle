@@ -10,6 +10,7 @@
 | 대상 선택 | **스킬마다 대상 우선순위 규칙을 가진다.** 플레이어가 특정 대상을 직접 지정할 수 없게 해서, 전위/후위 배치가 전략의 중심이 되도록 한다. | 2026-10-02 |
 | 진형 | 전위/후위 2줄. 아래 [진형 규칙](#진형-규칙) 참고 | 2026-10-02 |
 | 데이터 형식 | 게임 데이터와 세이브 모두 **JSON** (System.Text.Json). 데이터는 별도 편집기 도구로 수정한다 | 2026-10-02 |
+| UI 라이브러리 | **Myra**. FontStashSharp로 글자를 그리므로 한글이 그대로 된다 | 2026-10-02 |
 
 레거시 분석은 [legacy/](legacy/README.md)에 있다.
 
@@ -24,7 +25,7 @@
 
 ## 솔루션 구조
 
-스캐폴딩 완료 (2026-10-02). 아직 없는 폴더(Progress/, Scenes/ 등)는 구현하면서 만든다.
+스캐폴딩 완료 (2026-10-02). 아직 없는 폴더는 구현하면서 만든다.
 
 ```
 triangle/
@@ -37,7 +38,7 @@ triangle/
 │  │  ├─ Combat/                #   CombatSimulator, ATB 타임라인, CombatEvent
 │  │  ├─ Skills/                #   스킬 정의 (효과, 비용, 대상 규칙)
 │  │  ├─ Data/                  #   JSON 정의 로더 (직업, 스킬, 적 팀)
-│  │  └─ Progress/              #   로스터, 팀 편성, 세이브 데이터 모델
+│  │  └─ Progress/              #   파티(전열·전술 편집). 로스터와 세이브는 예정
 │  ├─ Triangle.Editor/          # (예정) 데이터 편집기 도구. Triangle.Core의 정의 클래스를 그대로 사용
 │  └─ Triangle.Desktop/         # MonoGame DesktopGL 실행 프로젝트
 │     ├─ Scenes/                #   타이틀, 로스터, 유닛 상세, 전술 편집, 전투, 결과
@@ -127,12 +128,27 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 
 ### 화면
 
-- 화면이 늘어나면 간단한 씬 스택(`SceneManager.Push/Pop`)으로 관리한다. 지금은 `IScene` 하나를 `TriangleGame`이 들고 있다.
+- 화면이 더 늘어나면 간단한 씬 스택(`SceneManager.Push/Pop`)으로 관리한다. 지금은 `TriangleGame`이 현재 `IScene`을 갈아끼운다: 전술 편집 ⇄ 전투 기록.
 - 레거시 화면 흐름을 기준으로 한다: 타이틀 → 로스터(팀/유닛) → 유닛 상세 → 스탯 배분 / 전술 편집 → 전투 준비 → 전투 재생 → 결과.
-- UI 라이브러리: MonoGame에는 UI가 없다. 후보는 **Gum**(MonoGame 공식 튜토리얼에서 사용)과 Myra다. 입력 위젯(전술 편집 등)이 필요해질 때 정한다. 지금은 사각형과 글자를 직접 그린다(`Rendering/Ui.cs`).
+- UI 라이브러리: **Myra** (2026-10-02 결정).
+  - 같은 저자의 FontStashSharp로 글자를 그려서 한글이 그대로 된다. Gum은 미리 구운 비트맵 폰트가 기본이라 한글 처리가 걸려서 제외했다.
+  - 입력 위젯(버튼, 드롭다운)이 필요한 화면은 Myra를 쓴다. 전투 기록처럼 보여주기만 하는 화면은 사각형과 글자를 직접 그린다(`Rendering/Ui.cs`).
+  - `TriangleGame.SetUpMyra()`가 Myra 기본 스타일의 글꼴을 나눔고딕으로 바꾼다.
+  - 주의: `Panel` 안에 위치를 직접 지정한 위젯은 `HorizontalAlignment.Left`/`VerticalAlignment.Top`으로 고정해야 한다. 그렇지 않으면 화면 끝까지 늘어나고, 그 안의 세로 가운데 정렬 라벨이 그려지지 않는다.
 - **한글 글꼴**: SpriteFont는 한글 11,172자를 미리 구워야 해서 쓰지 않는다. FontStashSharp로 TTF에서 필요한 글자만 그때그때 그린다. 글꼴은 나눔고딕(OFL)이며 `src/Triangle.Desktop/Fonts/`에 라이선스와 함께 들어 있다.
 
-#### 첫 화면: 전투 기록 (`Scenes/CombatLogScene.cs`, 2026-10-02)
+#### 첫 화면: 전술 편집 (`Scenes/TacticEditorScene.cs`, 2026-10-02)
+
+- 왼쪽은 파티 목록이다(이름, 직업, 전열, 전술 수).
+- 가운데에서 선택한 유닛을 편집한다.
+  - 전열: 전위/후위 버튼
+  - 전술 표: 순위, 조건, 값, 스킬 드롭다운, ▲▼ 순서 변경, 삭제, "+ 전술 추가"(최대 10개)
+- 값 선택지는 조건 종류에 따라 다르다. HP/MP 조건은 0–100% (10% 단위), 횟수와 턴 조건은 1–10이다. 조건을 바꿀 때 값의 종류(%, 횟수, 턴)가 같으면 값을 유지한다.
+- 아래에서 상대 적 팀을 고르고 "전투 시험"을 누르면 전투 기록 화면으로 간다. Esc를 누르면 편집 화면으로 돌아오고, 편집 내용과 선택이 그대로 유지된다.
+- 편집 로직(우선순위 재번호, 순서 변경, 전열 전환)은 `Triangle.Core/Progress/PartyMember`에 있고 테스트로 고정되어 있다. 화면은 편집할 때마다 Myra 위젯 트리를 다시 만든다.
+- 파티는 아직 시연용 `DemoParty`에서 만든다. 편집 내용은 저장되지 않는다(세이브 예정).
+
+#### 전투 기록 (`Scenes/CombatLogScene.cs`, 2026-10-02)
 
 - 시연용 아군 4명(`DemoParty`)과 `training` 적 팀의 전투를 미리 끝까지 계산한다. 그다음 이벤트를 0.35초에 한 줄씩 재생한다.
   - 턴 시작처럼 줄이 없는 이벤트는 기다리지 않고 바로 넘긴다.
@@ -143,9 +159,11 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
   - 전투 시작/종료 줄은 두 칸에 걸쳐 가운데에 둔다.
   - 칸 폭에 맞춰 문장을 짧게 쓰고(예: "훈련병 A에게 78 피해 (HP 72)"), 그래도 넘치면 공백 단위로 줄을 바꾼다.
 - 로그 문장은 `CombatLogFormatter`가 만든다. 조사(이/가, 을/를, 은/는, 와/과)는 받침에 맞춰 붙인다. 같은 진영에 같은 이름이 있으면 "훈련병 A/B"로 구분한다.
-- 키: Space는 끝까지 보기, R은 다른 시드로 다시 전투, Esc는 종료.
+- 키: Space는 끝까지 보기, R은 다른 시드로 다시 전투, Esc/Backspace는 전술 편집으로 돌아가기.
 - 데이터를 읽지 못하면 `ErrorScene`이 검증 오류 목록을 보여준다.
-- `--screenshot <경로> [줄 수]`로 실행하면 화면을 PNG로 저장하고 종료한다(확인용). 줄 수를 주면 로그를 그만큼 진행한 중간 화면을, 없으면 끝난 화면을 찍는다.
+- 확인용 실행 옵션:
+  - `--screenshot <경로> [줄 수]`: 첫 화면을 몇 프레임 그린 뒤 PNG로 저장하고 종료한다(첫 프레임에는 글자가 빠질 수 있어서다).
+  - `--combat`: 전투 기록 화면으로 시작한다. 이때 줄 수를 주면 로그를 그만큼 진행한 중간 화면을, 없으면 끝난 화면을 찍는다.
 
 ### 게임 데이터 (`Triangle.Core/Data/`)
 
@@ -174,6 +192,7 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 | 데이터 · 세이브 | JSON (System.Text.Json) | .NET 기본 기능이라 추가 패키지가 없다. 게임, 편집기, 테스트가 같은 설정(`GameDataJson.Options`)을 쓴다. 세이브는 예정 |
 | 콘텐츠 | MonoGame Content Builder (MGCB) | 아직 쓰는 콘텐츠가 없다 |
 | 글자 | FontStashSharp.MonoGame 1.6 + 나눔고딕 (OFL) | 한글을 필요한 글자만 동적으로 그린다 |
+| UI 위젯 | Myra 1.6.6 | 버튼, 드롭다운, 스크롤. FontStashSharp 버전은 1.6.1 하나로 맞는다 |
 
 ## 미결정 (→ [legacy/rewrite-notes.md](legacy/rewrite-notes.md#리라이트-전에-결정할-것))
 
@@ -182,5 +201,4 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 - 직업과 스킬 목록, 밸런스 수치
 - 1차 범위에 넣을 시스템 (효과, 경험치, 아이템, 부활 등)
 - 테마 유지 여부
-- UI 라이브러리 (입력 위젯이 필요해질 때)
 - 데이터 편집기의 형태 (MonoGame + ImGui, Avalonia 등)

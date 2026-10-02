@@ -22,4 +22,11 @@ internal static class Theme
     public static readonly Color HpBarLow = new(217, 83, 79);
     public static readonly Color MpBar = new(86, 128, 214);
     public static readonly Color BarBack = new(15, 17, 21);
+
+    public static readonly Color Button = new(44, 50, 62);
+    public static readonly Color ButtonHover = new(58, 66, 82);
+    public static readonly Color ButtonPressed = new(36, 41, 51);
+    public static readonly Color Selected = new(52, 74, 112);
+    public static readonly Color Accent = new(74, 128, 214);
+    public static readonly Color AccentHover = new(94, 148, 234);
 }

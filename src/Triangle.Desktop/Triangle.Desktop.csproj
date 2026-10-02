@@ -25,6 +25,7 @@
     <PackageReference Include="FontStashSharp.MonoGame" Version="1.6.1" />
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.*" />
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.*" />
+    <PackageReference Include="Myra" Version="1.6.6" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Triangle.Core\Triangle.Core.csproj" />

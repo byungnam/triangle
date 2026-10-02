@@ -30,8 +30,10 @@ internal sealed class CombatLogScene : IScene
 
     private readonly Ui _ui;
     private readonly GameData _data;
+    private readonly IReadOnlyList<CombatantSetup> _allySetups;
     private readonly string _encounterId;
     private readonly Rectangle _bounds;
+    private readonly Action _back;
 
     /// <summary>Side가 null이면 두 칸에 걸쳐 가운데에 그린다 (전투 시작/종료).</summary>
     private sealed record LogEntry(LogLine Line, CombatSide? Side, bool StartsBlock);
@@ -49,12 +51,16 @@ internal sealed class CombatLogScene : IScene
     private CombatSide _actingSide;
     private bool _blockStarting;
 
-    public CombatLogScene(Ui ui, GameData data, string encounterId, int seed, Rectangle bounds)
+    /// <param name="back">Esc/Backspace를 누르면 호출된다 (이전 화면으로).</param>
+    public CombatLogScene(
+        Ui ui, GameData data, IReadOnlyList<CombatantSetup> allies, string encounterId, int seed, Rectangle bounds, Action back)
     {
         _ui = ui;
         _data = data;
+        _allySetups = allies;
         _encounterId = encounterId;
         _bounds = bounds;
+        _back = back;
         Start(seed);
     }
 
@@ -65,7 +71,7 @@ internal sealed class CombatLogScene : IScene
     public void Start(int seed)
     {
         _seed = seed;
-        var allies = DemoParty.Create(_data);
+        var allies = _allySetups;
         var enemies = _data.CreateEncounterTeam(_encounterId);
         _result = CombatSimulator.Run(allies, enemies, _data.Skills, seed);
 
@@ -104,6 +110,12 @@ internal sealed class CombatLogScene : IScene
 
     public void Update(GameTime gameTime, Input input)
     {
+        if (input.Pressed(Keys.Escape) || input.Pressed(Keys.Back))
+        {
+            _back();
+            return;
+        }
+
         if (input.Pressed(Keys.R))
         {
             Start(_seed + 1);
@@ -369,7 +381,7 @@ internal sealed class CombatLogScene : IScene
 
     private void DrawFooter(SpriteBatch batch)
     {
-        const string help = "Space  끝까지 보기     R  다른 시드로 다시 전투     Esc  종료";
+        const string help = "Space  끝까지 보기     R  다른 시드로 다시 전투     Esc  전술 편집으로";
         _ui.Text(batch, _ui.Font(16), help, new Vector2(_bounds.Left + Margin, _bounds.Bottom - FooterHeight + 10), Theme.TextDim);
     }
 

@@ -9,8 +9,16 @@
     "equipmentDestroyChance": 0,
     "encounters": [
       {
-        "encounterId": "training",
-        "weight": 1
+        "encounterId": "wild_dogs",
+        "weight": 3
+      },
+      {
+        "encounterId": "forest_bandits",
+        "weight": 3
+      },
+      {
+        "encounterId": "poachers",
+        "weight": 2
       }
     ],
     "rewards": {
@@ -40,11 +48,19 @@
     "equipmentDestroyChance": 30,
     "encounters": [
       {
-        "encounterId": "training",
-        "weight": 1
+        "encounterId": "deserters",
+        "weight": 3
       },
       {
-        "encounterId": "elite",
+        "encounterId": "fort_archers",
+        "weight": 3
+      },
+      {
+        "encounterId": "bandit_chief",
+        "weight": 2
+      },
+      {
+        "encounterId": "training",
         "weight": 1
       }
     ],
@@ -74,6 +90,18 @@
     "permadeath": true,
     "equipmentDestroyChance": 60,
     "encounters": [
+      {
+        "encounterId": "carthage_infantry",
+        "weight": 3
+      },
+      {
+        "encounterId": "numidian_raiders",
+        "weight": 3
+      },
+      {
+        "encounterId": "baal_priests",
+        "weight": 2
+      },
       {
         "encounterId": "elite",
         "weight": 1

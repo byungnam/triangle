@@ -11,6 +11,8 @@
 | 진형 | 전위/후위 2줄. 아래 [진형 규칙](#진형-규칙) 참고 | 2026-10-02 |
 | 데이터 형식 | 게임 데이터와 세이브 모두 **JSON** (System.Text.Json). 데이터는 별도 편집기 도구로 수정한다 | 2026-10-02 |
 | UI 라이브러리 | **Myra**. FontStashSharp로 글자를 그리므로 한글이 그대로 된다 | 2026-10-02 |
+| 육성 | **직업 없음.** EVE Online식 패시브 스킬(Lv1~5, 랭크, 선행)을 전투 SP로 훈련한다. 행동은 요구 스킬 레벨로 열린다. 아래 [스킬과 행동](#스킬과-행동) 참고 | 2026-10-02 |
+| 사망 | 부활 없음. 전투 중 사망을 가장 큰 페널티로 모델링할 예정이다(결과는 미정) | 2026-10-02 |
 
 레거시 분석은 [legacy/](legacy/README.md)에 있다.
 
@@ -18,7 +20,7 @@
 
 1. **게임 규칙은 MonoGame에 의존하지 않는다.** 전투, 전술, 육성 규칙은 순수 C# 라이브러리(`Triangle.Core`)에 둔다. 단위 테스트를 할 수 있고, 나중에 모바일이나 다른 표현 방식으로 옮기기도 쉬워진다.
 2. **전투는 결정적이다.** 같은 입력과 같은 시드면 항상 같은 결과가 나온다. 전투 엔진은 화면을 직접 건드리지 않고 **이벤트 목록**만 출력한다. 화면은 그 이벤트를 재생한다. 텍스트 로그로 보여줄지 애니메이션으로 보여줄지는 나중에 바꿀 수 있다.
-3. **데이터 주도.** 직업, 스킬, 적 팀, 밸런스 수치는 코드가 아니라 데이터 파일(JSON)에 둔다. 데이터는 별도 편집기 도구로 수정한다. 레거시의 `Skills.xml` + UnitManager 역할을 대신한다.
+3. **데이터 주도.** 스킬, 행동, 적 팀, 밸런스 수치는 코드가 아니라 데이터 파일(JSON)에 둔다. 데이터는 별도 편집기 도구로 수정한다. 레거시의 `Skills.xml` + UnitManager 역할을 대신한다.
    - 편집기가 파일을 다시 쓰므로 주석은 남지 않는다. 메모가 필요하면 `description` 같은 필드에 둔다.
    - 저장할 때 들여쓰기와 필드 순서를 고정해서 git diff를 깔끔하게 유지한다.
 4. **ID는 문자열 키.** `"basic_attack"`, `"soldier"`처럼 쓰고, 레거시처럼 enum 순서값에 의존하지 않는다.
@@ -36,8 +38,9 @@ triangle/
 │  │  ├─ Units/                 #   Unit, Stats, 파생 스탯 계산
 │  │  ├─ Tactics/               #   Tactic, Condition, TargetSelector, 평가기
 │  │  ├─ Combat/                #   CombatSimulator, ATB 타임라인, CombatEvent
-│  │  ├─ Skills/                #   스킬 정의 (효과, 비용, 대상 규칙)
-│  │  ├─ Data/                  #   JSON 정의 로더 (직업, 스킬, 적 팀)
+│  │  ├─ Skills/                #   패시브 스킬 정의, 레벨-SP 표, 보너스 합계(SkillSet)
+│  │  ├─ Actions/               #   행동 정의 (효과, 비용, 대상 규칙, 태그, 요구 스킬)
+│  │  ├─ Data/                  #   JSON 정의 로더 (스킬, 행동, 적 팀)
 │  │  └─ Progress/              #   파티(전열·전술 편집), 세이브
 │  ├─ Triangle.Editor/          # (예정) 데이터 편집기 도구. Triangle.Core의 정의 클래스를 그대로 사용
 │  └─ Triangle.Desktop/         # MonoGame DesktopGL 실행 프로젝트
@@ -47,8 +50,8 @@ triangle/
 │     ├─ Content/               #   MonoGame Content Pipeline (폰트, 텍스처)
 │     └─ Program.cs, TriangleGame.cs
 ├─ data/                        # 게임 데이터 JSON (빌드 시 Desktop·테스트 출력의 data/로 복사)
-│  ├─ classes.json
 │  ├─ skills.json
+│  ├─ actions.json
 │  └─ encounters.json
 ├─ tests/
 │  └─ Triangle.Core.Tests/      # xUnit — 전투/전술 규칙 테스트
@@ -78,7 +81,7 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 //   Damaged(target, amount, hpAfter), Healed(...), Died(unit), CombatEnded(outcome)
 ```
 
-- ATB: 레거시와 같은 방식이다. 행동한 유닛의 타이머에 `TIME × 100 / (직업 속도% × speed)`(버림)를 더하고, 타이머가 가장 낮은 유닛이 다음에 행동한다. 동률은 시드 RNG나 고정 규칙으로 깬다.
+- ATB: 레거시와 같은 방식이다. 행동한 유닛의 타이머에 `TIME / speed`(버림) × (100 − 대기 감소%)를 더하고, 타이머가 가장 낮은 유닛이 다음에 행동한다. 동률은 시드 RNG나 고정 규칙으로 깬다.
 - 전술: **정렬된 리스트**를 위에서부터 평가한다. 처음 참이 되는 조건의 행동을 실행한다. 전술에는 대상 칸이 없다.
 - 대상: 스킬 정의(데이터)에 대상 규칙이 있다. 예: "전위 우선 적", "후위 적 무작위", "HP 비율이 가장 낮은 아군", "자신". 진형(전위/후위)이 어떤 대상을 고를 수 있는지에 영향을 준다.
 - 상한에 도달했을 때의 결과(무승부/패배)는 규칙 데이터에서 설정한다.
@@ -95,7 +98,7 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 - **정수 연산만 사용**: 규칙 계산에는 실수(float/double)를 쓰지 않는다. 경계값 오차를 없애려는 것이다.
   - 비율 비교는 교차 곱셈으로 한다: `현재 × 100 ≥ 값 × 최대`.
   - 아군 평균 조건은 분수를 정확히 더해서 비교한다(BigInteger).
-  - 계수는 모두 정수 백분율이다. 직업 속도 110 = 1.10배, 위력 증가 5%/스탯, 경감 2%/방어.
+  - 계수는 모두 정수 백분율이다. 위력 증가 5%/스탯, 경감 2%/방어, 스킬 보너스 %/레벨.
   - 반올림은 사사오입이고, 행동 간격만 버림이다(레거시와 같음).
   - 구현은 `Triangle.Core/Combat/Ratio.cs`에 있다.
 - **`MaxUses`**: 최대 N회. 조건이 참으로 판정되어 선택된 횟수를 센다. 비용 부족이나 대상 없음으로 턴을 잃어도 1회로 센다(레거시와 같음).
@@ -104,6 +107,28 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 - **경감**: `× 100 / (100 + 방어 × 2)`. 물리는 Def(=Str), 마법은 MDef(=Intel)로 경감한다.
 - **행동 상한**: 상한에 도달했을 때의 결과는 `CombatRules.ActionLimitOutcome`으로 정하며 기본값은 무승부다. 레거시에서는 패배였다.
 - **동률 처리**: 첫 행동 순서는 시드 RNG로 정한다. 그 뒤로는 먼저 예약된 쪽이 먼저 행동한다.
+
+### 스킬과 행동
+
+2026-10-02에 직업을 없애고 EVE Online식 육성으로 바꿨다.
+
+- **스킬**(`skills.json`, `Skills/SkillDefinition`)은 패시브만 있다. 직접 행동을 주지 않는다.
+  - 레벨 1~5. 랭크(난이도 배수)와 1차·2차 스탯(훈련 속도용, 2단계에서 사용)이 있다.
+  - 선행 스킬이 있다. 선행 순환은 데이터 오류다.
+  - 레벨마다 보너스를 준다(정수 %, 태그가 있으면 그 태그의 행동에만):
+    - 위력, 회복량
+    - MP 소모 감소
+    - 행동 뒤 대기 감소("연사")
+    - 최대 HP·MP
+    - 받는 피해 감소
+  - 감소 보너스는 합계 90%가 상한이다(`CombatRules.MaxReductionPercent`).
+- **레벨과 SP**: EVE 표(Lv1 250, Lv2 1,415, Lv3 8,000, Lv4 45,255, Lv5 256,000)에 랭크를 곱한다(`SkillProgression`). 파티 멤버는 스킬별 누적 SP를 저장하고 레벨은 계산한다.
+- **행동**(`actions.json`, `Actions/ActionDefinition`)은 전술에서 쓴다. `tags`(melee, bow, magic, holy 등)와 `requirements`(요구 스킬 레벨)가 있다.
+- **잠긴 행동**(요구 미달)은 전투 규칙에서 다루지 않고 전투 전에 막는다.
+  - 적 팀: 데이터 오류로 처리한다.
+  - 파티: 세이브에는 남겨 두고 편집 화면이 빨간색 "(잠김)"으로 표시한다. 고칠 때까지 "전투 시험"을 막는다.
+  - 시뮬레이터: 잠긴 행동이 들어오면 `ArgumentException`을 던진다.
+- 계획 중: 2단계 훈련(전투 SP, 훈련 큐, 스탯에 따른 훈련 속도), 3단계 효과(버프·디버프, 지속 피해·회복, MP 회복).
 
 ### 진형 규칙
 
@@ -139,7 +164,7 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 
 #### 첫 화면: 전술 편집 (`Scenes/TacticEditorScene.cs`, 2026-10-02)
 
-- 왼쪽은 파티 목록이다(이름, 직업, 전열, 전술 수).
+- 왼쪽은 파티 목록이다(이름, 전열, 전술 수, 잠긴 전술 수).
 - 가운데에서 선택한 유닛을 편집한다.
   - 전열: 전위/후위 버튼
   - 전술 표: 순위, 조건, 값, 스킬 드롭다운, ▲▼ 순서 변경, 삭제, "+ 전술 추가"(최대 10개)
@@ -173,12 +198,12 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 
 ### 게임 데이터 (`Triangle.Core/Data/`)
 
-- `GameDataLoader.LoadDirectory("data")`가 `classes.json`, `skills.json`, `encounters.json`을 읽어 검증한 `GameData`를 돌려준다.
-- 적 팀 유닛은 직업을 ID로 참조한다. `GameData.CreateEncounterTeam(id)`가 전투 입력으로 바꿔 준다.
+- `GameDataLoader.LoadDirectory("data")`가 `skills.json`(패시브 스킬), `actions.json`(행동), `encounters.json`을 읽어 검증한 `GameData`를 돌려준다.
+- 적 팀 유닛은 스킬을 레벨로 바로 가진다(훈련하지 않는다). `GameData.CreateEncounterTeam(id)`가 전투 입력으로 바꿔 준다.
 - JSON 규칙: 속성 이름은 camelCase, enum은 문자열(`"FrontFirst"`), 생략한 선택 속성은 기본값을 쓴다.
 - 검증은 멈추지 않고 오류를 모두 모아서 `GameDataException` 하나로 알려준다. 항목마다 파일, 줄 번호, ID가 붙는다.
   - 형식: 잘못된 JSON, 모르는 속성(오타), 필수 속성 누락, 잘못된 enum 값, 숫자로 쓴 enum
-  - 참조: 중복 ID, 없는 직업이나 스킬 참조
+  - 참조: 중복 ID, 없는 스킬·행동 참조, 선행 스킬 순환, 적 유닛의 선행 스킬 미충족, 적 전술의 행동 요구 미충족
   - 범위: 음수 비용·위력·스탯, HP/MP 조건 값이 0–100 밖, `EveryNthTurn` 값 ≤ 0
 - 저장소의 `data/` 파일 자체도 테스트에서 검증한다. 모든 적 팀이 실제로 전투를 끝까지 치르는지까지 확인한다.
 - 현재 데이터는 레거시 값을 참고한 **임시 수치**다(`description`에 표시).
@@ -189,7 +214,7 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 
 - 로컬 JSON 세이브 파일 하나다. 위치는 `ApplicationData/Triangle/save.json`이다(Linux `~/.config/Triangle/`, Windows `%APPDATA%\Triangle\`). `--save <경로>`로 바꿀 수 있다.
 - 형식: `{ "version": 1, "party": [ { id, name, classId, stats, row, tactics } ] }`. JSON 설정은 게임 데이터와 같다(`GameDataJson.Options`).
-- 불러올 때 게임 데이터와 맞는지 검증한다: 버전, 중복 ID, 없는 직업이나 스킬, 스탯·조건 값 범위. 검증 규칙은 게임 데이터 로더와 같은 `DataValidation`을 쓴다.
+- 불러올 때 게임 데이터와 맞는지 검증한다: 버전, 중복 ID, 없는 스킬·행동, 선행 스킬 미충족, 스탯·조건 값 범위. 잠긴 행동이 든 전술은 오류가 아니다(편집 화면이 표시하고 전투를 막는다). 검증 규칙은 게임 데이터 로더와 같은 `DataValidation`을 쓴다.
 - 저장은 `save.json.tmp`에 쓴 뒤 교체한다. 쓰는 도중에 꺼져도 기존 세이브는 남는다.
 - 세이브가 깨져 있으면 `save.json.broken-<시각>`으로 옮겨 두고 새로 시작한다. 화면 아래에 그 사실과 파일 이름을 보여준다. 덮어쓰지 않으므로 손으로 복구할 수 있다.
 - 버전이 오르면 이전 버전을 변환하는 코드를 둔다(아직 버전 1뿐이다).
@@ -210,7 +235,8 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 
 - 전투 표현 (텍스트 로그 / 스프라이트 연출)
 - 한 줄당 인원 / 팀 최대 인원
-- 직업과 스킬 목록, 밸런스 수치
+- 스킬·행동 목록과 밸런스 수치 (지금은 전부 임시)
+- 사망의 결과 (영구 사망, SP 손실 등)
 - 1차 범위에 넣을 시스템 (효과, 경험치, 아이템, 부활 등)
 - 테마 유지 여부
 - 데이터 편집기의 형태 (MonoGame + ImGui, Avalonia 등)

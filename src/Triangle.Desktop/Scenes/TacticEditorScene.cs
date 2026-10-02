@@ -5,9 +5,11 @@ using Myra.Graphics2D;
 using Myra.Graphics2D.Brushes;
 using Myra.Graphics2D.UI;
 using MyraDesktop = Myra.Graphics2D.UI.Desktop;
+using Triangle.Core.Actions;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
 using Triangle.Core.Progress;
+using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
 using Triangle.Desktop.Rendering;
@@ -122,7 +124,7 @@ internal sealed class TacticEditorScene : IScene
 
         batch.Begin();
         _ui.Text(batch, _ui.BoldFont(28), "전술 편집", new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
-        const string help = "조건이 참인 첫 전술을 쓴다. 대상은 스킬이 정한다.     Ctrl+S  저장     Esc  종료";
+        const string help = "조건이 참인 첫 전술을 쓴다. 대상은 행동이 정한다.     Ctrl+S  저장     Esc  종료";
         _ui.Text(batch, _ui.Font(16), help, new Vector2(_bounds.Left + Margin, _bounds.Bottom - FooterHeight + 10), Theme.TextDim);
 
         if (_notice is { } notice)
@@ -277,7 +279,11 @@ internal sealed class TacticEditorScene : IScene
 
             var content = new VerticalStackPanel { Spacing = 4 };
             content.Widgets.Add(Label(member.Name, 20, selected ? Theme.Text : Theme.Ally, bold: true));
-            content.Widgets.Add(Label($"{_data.Classes[member.ClassId].Name} · {RowLabel(member.Row)} · 전술 {member.Tactics.Count}개", 15, Theme.TextDim));
+            content.Widgets.Add(Label($"{RowLabel(member.Row)} · 전술 {member.Tactics.Count}개", 15, Theme.TextDim));
+            if (member.LockedTacticIndexes(_data).Count is > 0 and var locked)
+            {
+                content.Widgets.Add(Label($"잠긴 전술 {locked}개", 15, Theme.Enemy));
+            }
 
             var button = StyledButton(content, selected ? Theme.Selected : Theme.Panel, Theme.ButtonHover);
             button.Width = PartyWidth;
@@ -296,20 +302,20 @@ internal sealed class TacticEditorScene : IScene
     private Widget BuildMemberEditor(Rectangle area)
     {
         var member = Selected;
-        var cls = _data.Classes[member.ClassId];
         var rules = CombatRules.Default;
+        var skills = member.Skills(_data);
 
         var panel = new VerticalStackPanel { Spacing = 12, Width = area.Width, Height = area.Height };
 
         var title = new HorizontalStackPanel { Spacing = 12 };
         title.Widgets.Add(Label(member.Name, 26, Theme.Text, bold: true));
-        title.Widgets.Add(Label(cls.Name, 18, Theme.TextDim));
+        title.Widgets.Add(Label(SkillSummary(skills), 16, Theme.TextDim));
         panel.Widgets.Add(title);
 
         var s = member.Stats;
         panel.Widgets.Add(Label(
             $"근력 {s.Str}   민첩 {s.Dex}   체력 {s.Vital}   지능 {s.Intel}   신속 {s.Speed}" +
-            $"        HP {s.Vital * rules.HpPerVital}   MP {s.Intel * rules.MpPerIntel}",
+            $"        HP {rules.MaxHp(s, skills)}   MP {rules.MaxMp(s, skills)}",
             16, Theme.TextDim));
 
         panel.Widgets.Add(BuildRowSelector(member));
@@ -327,11 +333,13 @@ internal sealed class TacticEditorScene : IScene
             tactics.Widgets.Add(Label("전술이 없으면 이 유닛은 매 턴 기다린다.", 16, Theme.TextDim));
         }
 
+        // 새 전술은 쓸 수 있는 첫 행동으로 시작한다.
+        var firstUsable = _data.Actions.Values.FirstOrDefault(skills.CanUse);
         var addButton = TextButton("+ 전술 추가", Theme.Button, Theme.ButtonHover);
-        addButton.Enabled = member.Tactics.Count < MaxTactics;
+        addButton.Enabled = member.Tactics.Count < MaxTactics && firstUsable is not null;
         addButton.Click += (_, _) =>
         {
-            member.AddTactic(Condition.Always, 0, _data.Skills.Keys.First());
+            member.AddTactic(Condition.Always, 0, firstUsable!.Id);
             MarkChanged();
         };
         tactics.Widgets.Add(addButton);
@@ -374,7 +382,7 @@ internal sealed class TacticEditorScene : IScene
         header.Widgets.Add(Label("순위", 15, Theme.TextDim, width: 40));
         header.Widgets.Add(Label("조건", 15, Theme.TextDim, width: 230));
         header.Widgets.Add(Label("값", 15, Theme.TextDim, width: 120));
-        header.Widgets.Add(Label("스킬", 15, Theme.TextDim, width: 230));
+        header.Widgets.Add(Label("행동", 15, Theme.TextDim, width: 300));
         return header;
     }
 
@@ -392,7 +400,7 @@ internal sealed class TacticEditorScene : IScene
         {
             var next = conditions[conditionCombo.SelectedIndex ?? 0];
             var value = TacticText.ValueAfterConditionChange(tactic.Condition, next, tactic.Value);
-            member.ReplaceTactic(index, next, value, tactic.SkillId);
+            member.ReplaceTactic(index, next, value, tactic.ActionId);
             MarkChanged();
         };
         row.Widgets.Add(conditionCombo);
@@ -404,7 +412,7 @@ internal sealed class TacticEditorScene : IScene
             var valueCombo = Combo(values.Select(v => TacticText.ValueLabel(tactic.Condition, v)), values.ToList().IndexOf(tactic.Value), 120);
             valueCombo.SelectedIndexChanged += (_, _) =>
             {
-                member.ReplaceTactic(index, tactic.Condition, values[valueCombo.SelectedIndex ?? 0], tactic.SkillId);
+                member.ReplaceTactic(index, tactic.Condition, values[valueCombo.SelectedIndex ?? 0], tactic.ActionId);
                 MarkChanged();
             };
             row.Widgets.Add(valueCombo);
@@ -414,15 +422,27 @@ internal sealed class TacticEditorScene : IScene
             row.Widgets.Add(Label("—", 17, Theme.TextDim, width: 120));
         }
 
-        // 스킬
-        var skills = _data.Skills.Values.ToList();
-        var skillCombo = Combo(skills.Select(SkillLabel), skills.FindIndex(sk => sk.Id == tactic.SkillId), 230);
-        skillCombo.SelectedIndexChanged += (_, _) =>
+        // 행동: 쓸 수 있는 행동을 먼저, 잠긴 행동은 아래에 (고를 수 없음)
+        var skills = member.Skills(_data);
+        var actions = _data.Actions.Values.OrderBy(a => skills.CanUse(a) ? 0 : 1).ToList();
+        var items = actions.Select(a => skills.CanUse(a)
+            ? (ActionLabel(a), Theme.Text)
+            : ($"(잠김) {a.Name} — {RequirementText(skills.Missing(a.Requirements))}", Theme.Enemy));
+        var actionCombo = Combo(items, actions.FindIndex(a => a.Id == tactic.ActionId), 300);
+        actionCombo.SelectedIndexChanged += (_, _) =>
         {
-            member.ReplaceTactic(index, tactic.Condition, tactic.Value, skills[skillCombo.SelectedIndex ?? 0].Id);
-            MarkChanged();
+            var chosen = actions[actionCombo.SelectedIndex ?? 0];
+            if (skills.CanUse(chosen))
+            {
+                member.ReplaceTactic(index, tactic.Condition, tactic.Value, chosen.Id);
+                MarkChanged();
+            }
+            else
+            {
+                MarkDirty(); // 잠긴 행동은 고를 수 없다. 원래 선택으로 되돌린다.
+            }
         };
-        row.Widgets.Add(skillCombo);
+        row.Widgets.Add(actionCombo);
 
         // 순서 / 삭제
         row.Widgets.Add(SmallButton("▲", index > 0, () => member.MoveTactic(index, -1)));
@@ -447,8 +467,11 @@ internal sealed class TacticEditorScene : IScene
         encounterCombo.SelectedIndexChanged += (_, _) => _encounterId = encounters[encounterCombo.SelectedIndex ?? 0].Id;
         bar.Widgets.Add(encounterCombo);
 
+        // 게임 데이터가 바뀌어 잠긴 행동이 든 전술이 있으면 고칠 때까지 전투를 막는다.
+        var hasLocked = _party.Members.Any(m => m.LockedTacticIndexes(_data).Count > 0);
         var start = TextButton("전투 시험  ▶", Theme.Accent, Theme.AccentHover, bold: true);
         start.Width = 180;
+        start.Enabled = !hasLocked;
         start.Click += (_, _) => _startCombat(_encounterId);
         bar.Widgets.Add(start);
 
@@ -456,7 +479,9 @@ internal sealed class TacticEditorScene : IScene
         save.Width = 100;
         save.Click += (_, _) => Save();
         bar.Widgets.Add(save);
-        bar.Widgets.Add(Label(_unsaved ? "저장하지 않은 변경이 있습니다" : "", 16, Theme.Cover));
+        bar.Widgets.Add(hasLocked
+            ? Label("잠긴 행동이 든 전술을 고쳐야 전투할 수 있습니다", 16, Theme.Enemy)
+            : Label(_unsaved ? "저장하지 않은 변경이 있습니다" : "", 16, Theme.Cover));
 
         return bar;
     }
@@ -465,20 +490,30 @@ internal sealed class TacticEditorScene : IScene
 
     private static string RowLabel(Row row) => row == Row.Front ? "전위" : "후위";
 
-    private static string SkillLabel(Triangle.Core.Skills.SkillDefinition skill)
+    private static string ActionLabel(ActionDefinition action)
     {
         var cost = new List<string>();
-        if (skill.MpCost > 0)
+        if (action.MpCost > 0)
         {
-            cost.Add($"MP {skill.MpCost}");
+            cost.Add($"MP {action.MpCost}");
         }
 
-        if (skill.HpCost > 0)
+        if (action.HpCost > 0)
         {
-            cost.Add($"HP {skill.HpCost}");
+            cost.Add($"HP {action.HpCost}");
         }
 
-        return cost.Count == 0 ? skill.Name : $"{skill.Name} ({string.Join(", ", cost)})";
+        return cost.Count == 0 ? action.Name : $"{action.Name} ({string.Join(", ", cost)})";
+    }
+
+    private string RequirementText(IEnumerable<SkillRequirement> requirements) =>
+        string.Join(", ", requirements.Select(r => $"{_data.Skills[r.SkillId].Name} {r.Level}"));
+
+    /// <summary>배운 스킬을 데이터 순서대로 "활 숙련 4 · 정밀 사격 1"처럼 보여준다.</summary>
+    private string SkillSummary(SkillSet skills)
+    {
+        var learned = _data.Skills.Values.Where(s => skills.Level(s.Id) > 0).Select(s => $"{s.Name} {skills.Level(s.Id)}").ToList();
+        return learned.Count == 0 ? "배운 스킬 없음" : string.Join(" · ", learned);
     }
 
     private Label Label(string text, int size, Color color, bool bold = false, int? width = null) => new()
@@ -490,16 +525,19 @@ internal sealed class TacticEditorScene : IScene
         VerticalAlignment = VerticalAlignment.Center,
     };
 
-    private ComboView Combo(IEnumerable<string> items, int selectedIndex, int width)
+    private ComboView Combo(IEnumerable<string> items, int selectedIndex, int width) =>
+        Combo(items.Select(i => (i, Theme.Text)), selectedIndex, width);
+
+    private ComboView Combo(IEnumerable<(string Text, Color Color)> items, int selectedIndex, int width)
     {
         var combo = new ComboView { Width = width, DropdownMaximumHeight = 320 };
-        foreach (var item in items)
+        foreach (var (text, color) in items)
         {
             combo.Widgets.Add(new Label
             {
-                Text = item,
+                Text = text,
                 Font = _ui.Font(17),
-                TextColor = Theme.Text,
+                TextColor = color,
                 Padding = new Thickness(8, 4),
             });
         }

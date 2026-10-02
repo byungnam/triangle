@@ -1,3 +1,6 @@
+using Triangle.Core.Skills;
+using Triangle.Core.Units;
+
 namespace Triangle.Core.Combat;
 
 /// <summary>
@@ -8,7 +11,7 @@ public sealed record CombatRules
 {
     public static CombatRules Default { get; } = new();
 
-    /// <summary>행동 간격 = TimeConstant × 100 / (직업 SpeedPercent × speed), 버림.</summary>
+    /// <summary>행동 간격 = TimeConstant / speed (버림) × (100 − 대기 감소%) / 100.</summary>
     public int TimeConstant { get; init; } = 1000;
 
     /// <summary>전투 전체에서 허용하는 행동 횟수(라운드가 아니라 개별 행동).</summary>
@@ -24,4 +27,13 @@ public sealed record CombatRules
 
     /// <summary>스탯 1당 위력 증가(%): 위력 × (100 + stat × 값) / 100.</summary>
     public int PowerScalingPercentPerPoint { get; init; } = 5;
+
+    /// <summary>감소 보너스(대기, MP 소모, 받는 피해)의 합계 상한(%).</summary>
+    public int MaxReductionPercent { get; init; } = 90;
+
+    public int MaxHp(Stats stats, SkillSet skills) =>
+        Ratio.ApplyPercent(stats.Vital * HpPerVital, 100 + skills.Bonus(BonusKind.MaxHpPercent));
+
+    public int MaxMp(Stats stats, SkillSet skills) =>
+        Ratio.ApplyPercent(stats.Intel * MpPerIntel, 100 + skills.Bonus(BonusKind.MaxMpPercent));
 }

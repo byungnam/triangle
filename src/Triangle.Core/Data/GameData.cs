@@ -1,6 +1,6 @@
+using Triangle.Core.Actions;
 using Triangle.Core.Combat;
 using Triangle.Core.Skills;
-using Triangle.Core.Units;
 
 namespace Triangle.Core.Data;
 
@@ -8,18 +8,26 @@ namespace Triangle.Core.Data;
 public sealed class GameData
 {
     internal GameData(
-        IReadOnlyDictionary<string, ClassDefinition> classes,
         IReadOnlyDictionary<string, SkillDefinition> skills,
+        IReadOnlyDictionary<string, ActionDefinition> actions,
         IReadOnlyDictionary<string, EncounterDefinition> encounters)
     {
-        Classes = classes;
         Skills = skills;
+        Actions = actions;
         Encounters = encounters;
+        Catalog = new CombatCatalog(actions, skills);
     }
 
-    public IReadOnlyDictionary<string, ClassDefinition> Classes { get; }
+    /// <summary>훈련하는 패시브 스킬.</summary>
     public IReadOnlyDictionary<string, SkillDefinition> Skills { get; }
+
+    /// <summary>전술에서 쓰는 행동.</summary>
+    public IReadOnlyDictionary<string, ActionDefinition> Actions { get; }
+
     public IReadOnlyDictionary<string, EncounterDefinition> Encounters { get; }
+
+    /// <summary>전투 시뮬레이터에 넘기는 정의 묶음.</summary>
+    public CombatCatalog Catalog { get; }
 
     /// <summary>적 팀 정의를 전투 입력으로 바꾼다.</summary>
     public IReadOnlyList<CombatantSetup> CreateEncounterTeam(string encounterId)
@@ -30,7 +38,7 @@ public sealed class GameData
         }
 
         return encounter.Units
-            .Select(u => new CombatantSetup(u.Id, u.Name, Classes[u.ClassId], u.Stats, u.Row, u.Tactics))
+            .Select(u => new CombatantSetup(u.Id, u.Name, u.Stats, u.Row, u.Skills, u.Tactics))
             .ToList();
     }
 }

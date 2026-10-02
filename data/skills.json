@@ -1,62 +1,221 @@
 [
   {
-    "id": "basic_attack",
-    "name": "기본 공격",
-    "description": "임시 수치 (첫 화면 시연용으로 조정). 레거시 Skills.xml은 남아 있지 않음",
-    "hpCost": 0,
-    "mpCost": 0,
-    "effect": "Damage",
-    "damageType": "Physical",
-    "power": 60,
-    "side": "Enemy",
-    "rule": "FrontFirst",
-    "rows": "Any",
-    "scope": "Single",
-    "ignoresCover": false
-  },
-  {
-    "id": "fire_arrow",
-    "name": "화살",
+    "id": "melee_weapons",
+    "name": "근접 무기 숙련",
     "description": "임시 수치",
-    "hpCost": 0,
-    "mpCost": 10,
-    "effect": "Damage",
-    "damageType": "Physical",
-    "power": 65,
-    "side": "Enemy",
-    "rule": "Random",
-    "rows": "Any",
-    "scope": "Single",
-    "ignoresCover": false
+    "group": "근접 전투",
+    "rank": 1,
+    "primary": "Str",
+    "secondary": "Vital",
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percentPerLevel": 5,
+        "tag": "melee"
+      }
+    ]
   },
   {
-    "id": "artillery",
-    "name": "포대 사격",
-    "description": "임시 수치. 후위를 직접 노린다",
-    "hpCost": 0,
-    "mpCost": 30,
-    "effect": "Damage",
-    "damageType": "Physical",
-    "power": 80,
-    "side": "Enemy",
-    "rule": "BackFirst",
-    "rows": "Any",
-    "scope": "Single",
-    "ignoresCover": true
-  },
-  {
-    "id": "heal",
-    "name": "치료",
+    "id": "archery",
+    "name": "활 숙련",
     "description": "임시 수치",
-    "hpCost": 0,
-    "mpCost": 20,
-    "effect": "Heal",
-    "damageType": "Magical",
-    "power": 35,
-    "side": "Ally",
-    "rule": "LowestHpRatio",
-    "rows": "Any",
-    "scope": "Single",
-    "ignoresCover": false
+    "group": "궁술",
+    "rank": 1,
+    "primary": "Dex",
+    "secondary": "Str",
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percentPerLevel": 5,
+        "tag": "bow"
+      }
+    ]
+  },
+  {
+    "id": "rapid_fire",
+    "name": "속사",
+    "description": "임시 수치",
+    "group": "궁술",
+    "rank": 2,
+    "primary": "Dex",
+    "secondary": "Speed",
+    "prerequisites": [
+      {
+        "skillId": "archery",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "DelayReductionPercent",
+        "percentPerLevel": 4,
+        "tag": "bow"
+      }
+    ]
+  },
+  {
+    "id": "precision_shooting",
+    "name": "정밀 사격",
+    "description": "임시 수치",
+    "group": "궁술",
+    "rank": 3,
+    "primary": "Dex",
+    "secondary": "Intel",
+    "prerequisites": [
+      {
+        "skillId": "archery",
+        "level": 4
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percentPerLevel": 3,
+        "tag": "bow"
+      }
+    ]
+  },
+  {
+    "id": "magic_control",
+    "name": "마력 제어",
+    "description": "임시 수치",
+    "group": "마법",
+    "rank": 1,
+    "primary": "Intel",
+    "secondary": "Speed",
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percentPerLevel": 5,
+        "tag": "magic"
+      }
+    ]
+  },
+  {
+    "id": "mana_efficiency",
+    "name": "마나 효율",
+    "description": "임시 수치",
+    "group": "마법",
+    "rank": 2,
+    "primary": "Intel",
+    "secondary": "Vital",
+    "prerequisites": [
+      {
+        "skillId": "magic_control",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MpCostReductionPercent",
+        "percentPerLevel": 5,
+        "tag": "magic"
+      }
+    ]
+  },
+  {
+    "id": "healing",
+    "name": "치유술",
+    "description": "임시 수치",
+    "group": "신성",
+    "rank": 1,
+    "primary": "Intel",
+    "secondary": "Vital",
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percentPerLevel": 5
+      }
+    ]
+  },
+  {
+    "id": "holy_magic",
+    "name": "신성 마법",
+    "description": "임시 수치",
+    "group": "신성",
+    "rank": 3,
+    "primary": "Intel",
+    "secondary": "Vital",
+    "prerequisites": [
+      {
+        "skillId": "healing",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percentPerLevel": 5,
+        "tag": "holy"
+      }
+    ]
+  },
+  {
+    "id": "endurance",
+    "name": "체력 단련",
+    "description": "임시 수치",
+    "group": "신체",
+    "rank": 1,
+    "primary": "Vital",
+    "secondary": "Str",
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "MaxHpPercent",
+        "percentPerLevel": 5
+      }
+    ]
+  },
+  {
+    "id": "meditation",
+    "name": "명상",
+    "description": "임시 수치",
+    "group": "신체",
+    "rank": 1,
+    "primary": "Intel",
+    "secondary": "Vital",
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "MaxMpPercent",
+        "percentPerLevel": 5
+      }
+    ]
+  },
+  {
+    "id": "defense",
+    "name": "방어 기술",
+    "description": "임시 수치",
+    "group": "신체",
+    "rank": 2,
+    "primary": "Vital",
+    "secondary": "Str",
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percentPerLevel": 3
+      }
+    ]
+  },
+  {
+    "id": "mobility",
+    "name": "기동",
+    "description": "임시 수치",
+    "group": "신체",
+    "rank": 2,
+    "primary": "Speed",
+    "secondary": "Dex",
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "DelayReductionPercent",
+        "percentPerLevel": 2
+      }
+    ]
   }
 ]

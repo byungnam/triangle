@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Triangle.Core.Data;
+using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
 
@@ -16,9 +17,12 @@ public sealed record SavedMember
 {
     public required string Id { get; init; }
     public required string Name { get; init; }
-    public required string ClassId { get; init; }
     public required Stats Stats { get; init; }
     public required Row Row { get; init; }
+
+    /// <summary>스킬 ID별 누적 SP.</summary>
+    public IReadOnlyDictionary<string, int> SkillPoints { get; init; } = new Dictionary<string, int>();
+
     public IReadOnlyList<Tactic> Tactics { get; init; } = [];
 }
 
@@ -29,10 +33,15 @@ public sealed class SaveGameException(IReadOnlyList<string> errors)
     public IReadOnlyList<string> Errors { get; } = errors;
 }
 
-/// <summary>파티와 세이브 JSON 사이의 변환. 읽을 때 게임 데이터와 맞는지 검증한다.</summary>
+/// <summary>
+/// 파티와 세이브 JSON 사이의 변환. 읽을 때 게임 데이터와 맞는지 검증한다.
+/// 요구 스킬을 못 채운 행동이 든 전술은 오류로 보지 않는다(게임 데이터가 바뀌었을 수 있다).
+/// 편집 화면이 그 전술을 표시하고 고칠 때까지 전투를 막는다.
+/// </summary>
 public static class SaveGame
 {
-    public const int CurrentVersion = 1;
+    /// <summary>2: 직업 제거, 스킬 SP 추가 (2026-10-02). 1은 읽지 않는다.</summary>
+    public const int CurrentVersion = 2;
 
     public static string Serialize(Party party)
     {
@@ -43,9 +52,9 @@ public static class SaveGame
             {
                 Id = m.Id,
                 Name = m.Name,
-                ClassId = m.ClassId,
                 Stats = m.Stats,
                 Row = m.Row,
+                SkillPoints = new SortedDictionary<string, int>(m.SkillPoints.ToDictionary()),
                 Tactics = m.Tactics.ToList(),
             }).ToList(),
         };
@@ -72,7 +81,7 @@ public static class SaveGame
 
         Validate(file, data);
 
-        return new Party(file.Party.Select(m => new PartyMember(m.Id, m.Name, m.ClassId, m.Stats, m.Row, m.Tactics)));
+        return new Party(file.Party.Select(m => new PartyMember(m.Id, m.Name, m.Stats, m.Row, m.SkillPoints, m.Tactics)));
     }
 
     private static void Validate(SaveFile file, GameData data)
@@ -98,15 +107,30 @@ public static class SaveGame
             var at = $"save member '{member.Id}'";
             DataValidation.RequireText(member.Id, "save: member id", errors);
             DataValidation.RequireText(member.Name, $"{at}: name", errors);
-            if (!data.Classes.ContainsKey(member.ClassId))
+            DataValidation.ValidateStats(member.Stats, at, errors);
+
+            foreach (var (skillId, sp) in member.SkillPoints)
             {
-                errors.Add($"{at}: unknown class '{member.ClassId}'");
+                if (!data.Skills.ContainsKey(skillId))
+                {
+                    errors.Add($"{at}: unknown skill '{skillId}'");
+                }
+
+                DataValidation.RequireNonNegative(sp, $"{at}: skill points of '{skillId}'", errors);
             }
 
-            DataValidation.ValidateStats(member.Stats, at, errors);
+            if (member.SkillPoints.Keys.All(data.Skills.ContainsKey))
+            {
+                var levels = member.SkillPoints
+                    .Select(p => (p.Key, Level: SkillProgression.LevelFor(data.Skills[p.Key].Rank, p.Value)))
+                    .Where(x => x.Level > 0)
+                    .ToDictionary(x => x.Key, x => x.Level);
+                DataValidation.ValidateSkillLevels(levels, at, data.Skills, errors);
+            }
+
             foreach (var tactic in member.Tactics)
             {
-                DataValidation.ValidateTactic(tactic, $"{at} tactic {tactic.Priority}", data.Skills, errors);
+                DataValidation.ValidateTactic(tactic, $"{at} tactic {tactic.Priority}", data.Actions, errors);
             }
         }
 

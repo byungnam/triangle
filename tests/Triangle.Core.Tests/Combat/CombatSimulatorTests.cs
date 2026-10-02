@@ -1,3 +1,4 @@
+using Triangle.Core.Actions;
 using Triangle.Core.Combat;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
@@ -7,37 +8,37 @@ namespace Triangle.Core.Tests.Combat;
 
 public class CombatSimulatorTests
 {
-    private static readonly ClassDefinition Plain = new("plain", "Plain");
-
-    private static readonly SkillDefinition Strike = new()
+    private static readonly ActionDefinition Strike = new()
     {
         Id = "strike", Name = "Strike", Power = 10, Rule = TargetRule.FrontFirst,
     };
 
-    private static readonly SkillDefinition Snipe = new()
+    private static readonly ActionDefinition Snipe = new()
     {
         Id = "snipe", Name = "Snipe", Power = 10, Rule = TargetRule.BackFirst,
     };
 
-    private static readonly SkillDefinition PiercingSnipe = Snipe with { Id = "piercing", IgnoresCover = true };
+    private static readonly ActionDefinition PiercingSnipe = Snipe with { Id = "piercing", IgnoresCover = true };
 
-    private static readonly SkillDefinition Sweep = new()
+    private static readonly ActionDefinition Sweep = new()
     {
         Id = "sweep", Name = "Sweep", Power = 10, Scope = TargetScope.All,
     };
 
-    private static readonly SkillDefinition Heal = new()
+    private static readonly ActionDefinition Heal = new()
     {
-        Id = "heal", Name = "Heal", Effect = SkillEffect.Heal, Power = 10,
+        Id = "heal", Name = "Heal", Effect = ActionEffect.Heal, Power = 10,
         Side = TargetSide.Ally, Rule = TargetRule.LowestHpRatio,
     };
 
-    private static readonly SkillDefinition FrontOnlyStrike = Strike with { Id = "front_only", Rows = RowRestriction.FrontOnly };
+    private static readonly ActionDefinition FrontOnlyStrike = Strike with { Id = "front_only", Rows = RowRestriction.FrontOnly };
 
-    private static readonly SkillDefinition Expensive = Strike with { Id = "expensive", MpCost = 100_000 };
+    private static readonly ActionDefinition Expensive = Strike with { Id = "expensive", MpCost = 100_000 };
 
-    private static readonly Dictionary<string, SkillDefinition> Skills =
+    private static readonly Dictionary<string, ActionDefinition> Actions =
         new[] { Strike, Snipe, PiercingSnipe, Sweep, Heal, FrontOnlyStrike, Expensive }.ToDictionary(s => s.Id);
+
+    private static readonly CombatCatalog Catalog = new(Actions, new Dictionary<string, SkillDefinition>());
 
     private static CombatantSetup Unit(
         string id,
@@ -47,12 +48,12 @@ public class CombatSimulatorTests
         int intel = 10,
         int speed = 10,
         params Tactic[] tactics) =>
-        new(id, id, Plain, new Stats(str, 10, vital, intel, speed), row, tactics);
+        new(id, id, new Stats(str, 10, vital, intel, speed), row, SkillSet.NoSkills, tactics);
 
-    private static Tactic Always(string skillId, int priority = 1) => new(priority, Condition.Always, 0, skillId);
+    private static Tactic Always(string actionId, int priority = 1) => new(priority, Condition.Always, 0, actionId);
 
     private static CombatResult Run(CombatantSetup[] allies, CombatantSetup[] enemies, int seed = 1, CombatRules? rules = null) =>
-        CombatSimulator.Run(allies, enemies, Skills, seed, rules);
+        CombatSimulator.Run(allies, enemies, Catalog, seed, rules);
 
     [Fact]
     public void Damage_is_scaled_by_attack_stat_and_reduced_by_defense()
@@ -88,7 +89,7 @@ public class CombatSimulatorTests
             [Unit("a", tactics: [Always("sweep", 3), Always("snipe", 1), Always("strike", 2)])],
             [Unit("e", vital: 100)]);
 
-        var used = result.Events.OfType<SkillUsed>().Where(s => s.ActorId == "a").Select(s => s.SkillId).Distinct();
+        var used = result.Events.OfType<ActionUsed>().Where(s => s.ActorId == "a").Select(s => s.ActionId).Distinct();
         Assert.Equal(["snipe"], used);
     }
 
@@ -114,9 +115,9 @@ public class CombatSimulatorTests
             [Unit("e", vital: 1000)],
             rules: new CombatRules { MaxActions = 20 });
 
-        var used = result.Events.OfType<SkillUsed>().Where(s => s.ActorId == "a").ToList();
-        Assert.Equal(2, used.Count(s => s.SkillId == "snipe"));
-        Assert.True(used.Count(s => s.SkillId == "strike") > 0);
+        var used = result.Events.OfType<ActionUsed>().Where(s => s.ActorId == "a").ToList();
+        Assert.Equal(2, used.Count(s => s.ActionId == "snipe"));
+        Assert.True(used.Count(s => s.ActionId == "strike") > 0);
     }
 
     [Fact]
@@ -127,10 +128,10 @@ public class CombatSimulatorTests
             [Unit("e", vital: 1000)],
             rules: new CombatRules { MaxActions = 20 });
 
-        var mine = result.Events.Where(e => e is Waited { ActorId: "a" } or SkillUsed { ActorId: "a" }).ToList();
+        var mine = result.Events.Where(e => e is Waited { ActorId: "a" } or ActionUsed { ActorId: "a" }).ToList();
         Assert.Equal(new Waited("a", WaitReason.NotEnoughResource, 1), mine[0]);
         Assert.Equal(new Waited("a", WaitReason.NotEnoughResource, 1), mine[1]);
-        Assert.All(mine.Skip(2), e => Assert.Equal("strike", Assert.IsType<SkillUsed>(e).SkillId));
+        Assert.All(mine.Skip(2), e => Assert.Equal("strike", Assert.IsType<ActionUsed>(e).ActionId));
     }
 
     [Fact]
@@ -206,7 +207,7 @@ public class CombatSimulatorTests
             [Unit("front", Row.Front, vital: 1000), Unit("back", Row.Back, vital: 1000)],
             rules: new CombatRules { MaxActions = 3 });
 
-        var firstUse = result.Events.SkipWhile(e => e is not SkillUsed).Skip(1).TakeWhile(e => e is Damaged).Cast<Damaged>();
+        var firstUse = result.Events.SkipWhile(e => e is not ActionUsed).Skip(1).TakeWhile(e => e is Damaged).Cast<Damaged>();
         Assert.Equal(["back", "front"], firstUse.Select(d => d.TargetId).Order());
         Assert.Empty(result.Events.OfType<Covered>());
     }
@@ -219,7 +220,7 @@ public class CombatSimulatorTests
             [Unit("back", Row.Back, vital: 1000)],
             rules: new CombatRules { MaxActions = 5 });
 
-        Assert.DoesNotContain(result.Events, e => e is SkillUsed { ActorId: "a" });
+        Assert.DoesNotContain(result.Events, e => e is ActionUsed { ActorId: "a" });
         Assert.All(
             result.Events.OfType<Waited>().Where(w => w.ActorId == "a"),
             w => Assert.Equal(new Waited("a", WaitReason.NoTarget, 1), w));
@@ -233,7 +234,7 @@ public class CombatSimulatorTests
             [Unit("e", vital: 1000)],
             rules: new CombatRules { MaxActions = 5 });
 
-        Assert.DoesNotContain(result.Events, e => e is SkillUsed { ActorId: "a" });
+        Assert.DoesNotContain(result.Events, e => e is ActionUsed { ActorId: "a" });
         Assert.All(
             result.Events.OfType<Waited>().Where(w => w.ActorId == "a"),
             w => Assert.Equal(new Waited("a", WaitReason.NotEnoughResource, 1), w));
@@ -247,7 +248,7 @@ public class CombatSimulatorTests
             [Unit("e", vital: 1000)],
             rules: new CombatRules { MaxActions = 5 });
 
-        var used = result.Events.OfType<SkillUsed>().Where(s => s.ActorId == "a").Select(s => s.SkillId).Distinct();
+        var used = result.Events.OfType<ActionUsed>().Where(s => s.ActorId == "a").Select(s => s.ActionId).Distinct();
         Assert.Equal(["strike"], used);
     }
 
@@ -292,7 +293,7 @@ public class CombatSimulatorTests
     }
 
     [Fact]
-    public void Unknown_skill_is_rejected()
+    public void Unknown_action_is_rejected()
     {
         Assert.Throws<ArgumentException>(() => Run([Unit("a", tactics: Always("nope"))], [Unit("e")]));
     }

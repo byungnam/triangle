@@ -1,7 +1,6 @@
 using System.Text.Json;
+using Triangle.Core.Actions;
 using Triangle.Core.Skills;
-using Triangle.Core.Tactics;
-using Triangle.Core.Units;
 
 namespace Triangle.Core.Data;
 
@@ -11,8 +10,8 @@ namespace Triangle.Core.Data;
 /// </summary>
 public static class GameDataLoader
 {
-    public const string ClassesFile = "classes.json";
     public const string SkillsFile = "skills.json";
+    public const string ActionsFile = "actions.json";
     public const string EncountersFile = "encounters.json";
 
     public static GameData LoadDirectory(string directory)
@@ -33,23 +32,23 @@ public static class GameDataLoader
             }
         }
 
-        var classes = Read(ClassesFile);
         var skills = Read(SkillsFile);
+        var actions = Read(ActionsFile);
         var encounters = Read(EncountersFile);
         if (errors.Count > 0)
         {
             throw new GameDataException(errors);
         }
 
-        return Parse(classes!, skills!, encounters!);
+        return Parse(skills!, actions!, encounters!);
     }
 
-    public static GameData Parse(string classesJson, string skillsJson, string encountersJson)
+    public static GameData Parse(string skillsJson, string actionsJson, string encountersJson)
     {
         var errors = new List<string>();
 
-        var classes = Deserialize<ClassDefinition>(classesJson, ClassesFile, errors);
         var skills = Deserialize<SkillDefinition>(skillsJson, SkillsFile, errors);
+        var actions = Deserialize<ActionDefinition>(actionsJson, ActionsFile, errors);
         var encounters = Deserialize<EncounterDefinition>(encountersJson, EncountersFile, errors);
 
         // 형식 오류가 있으면 참조 검증은 의미가 없다.
@@ -58,23 +57,25 @@ public static class GameDataLoader
             throw new GameDataException(errors);
         }
 
-        var classMap = ToMap(classes!, c => c.Id, ClassesFile, errors);
         var skillMap = ToMap(skills!, s => s.Id, SkillsFile, errors);
+        var actionMap = ToMap(actions!, a => a.Id, ActionsFile, errors);
         var encounterMap = ToMap(encounters!, e => e.Id, EncountersFile, errors);
-
-        foreach (var c in classes!)
-        {
-            ValidateClass(c, errors);
-        }
 
         foreach (var s in skills!)
         {
-            ValidateSkill(s, errors);
+            ValidateSkill(s, skillMap, errors);
+        }
+
+        ValidateNoPrerequisiteCycles(skillMap, errors);
+
+        foreach (var a in actions!)
+        {
+            ValidateAction(a, skillMap, errors);
         }
 
         foreach (var e in encounters!)
         {
-            ValidateEncounter(e, classMap, skillMap, errors);
+            ValidateEncounter(e, skillMap, actionMap, errors);
         }
 
         if (errors.Count > 0)
@@ -82,7 +83,7 @@ public static class GameDataLoader
             throw new GameDataException(errors);
         }
 
-        return new GameData(classMap, skillMap, encounterMap);
+        return new GameData(skillMap, actionMap, encounterMap);
     }
 
     private static List<T>? Deserialize<T>(string json, string fileName, List<string> errors)
@@ -120,31 +121,68 @@ public static class GameDataLoader
         return map;
     }
 
-    private static void ValidateClass(ClassDefinition c, List<string> errors)
-    {
-        var at = $"{ClassesFile} '{c.Id}'";
-        DataValidation.RequireText(c.Id, $"{ClassesFile}: id", errors);
-        DataValidation.RequireText(c.Name, $"{at}: name", errors);
-        if (c.SpeedPercent <= 0)
-        {
-            errors.Add($"{at}: speedPercent must be positive, got {c.SpeedPercent}");
-        }
-    }
-
-    private static void ValidateSkill(SkillDefinition s, List<string> errors)
+    private static void ValidateSkill(SkillDefinition s, IReadOnlyDictionary<string, SkillDefinition> skills, List<string> errors)
     {
         var at = $"{SkillsFile} '{s.Id}'";
         DataValidation.RequireText(s.Id, $"{SkillsFile}: id", errors);
         DataValidation.RequireText(s.Name, $"{at}: name", errors);
-        DataValidation.RequireNonNegative(s.HpCost, $"{at}: hpCost", errors);
-        DataValidation.RequireNonNegative(s.MpCost, $"{at}: mpCost", errors);
-        DataValidation.RequireNonNegative(s.Power, $"{at}: power", errors);
+        if (s.Rank < 1)
+        {
+            errors.Add($"{at}: rank must be at least 1, got {s.Rank}");
+        }
+
+        DataValidation.ValidateRequirements(s.Prerequisites, $"{at} prerequisite", skills, errors);
+    }
+
+    /// <summary>선행 스킬이 돌고 돌아 자기 자신을 요구하면 영원히 배울 수 없다.</summary>
+    private static void ValidateNoPrerequisiteCycles(IReadOnlyDictionary<string, SkillDefinition> skills, List<string> errors)
+    {
+        var done = new HashSet<string>();
+        var visiting = new HashSet<string>();
+
+        bool Visit(string id, List<string> path)
+        {
+            if (done.Contains(id) || !skills.TryGetValue(id, out var skill))
+            {
+                return true;
+            }
+
+            if (!visiting.Add(id))
+            {
+                var start = path.IndexOf(id);
+                errors.Add($"{SkillsFile}: prerequisite cycle {string.Join(" -> ", path.Skip(start).Append(id))}");
+                return false;
+            }
+
+            path.Add(id);
+            var ok = skill.Prerequisites.All(p => Visit(p.SkillId, path));
+            path.RemoveAt(path.Count - 1);
+            visiting.Remove(id);
+            done.Add(id);
+            return ok;
+        }
+
+        foreach (var id in skills.Keys)
+        {
+            Visit(id, []);
+        }
+    }
+
+    private static void ValidateAction(ActionDefinition a, IReadOnlyDictionary<string, SkillDefinition> skills, List<string> errors)
+    {
+        var at = $"{ActionsFile} '{a.Id}'";
+        DataValidation.RequireText(a.Id, $"{ActionsFile}: id", errors);
+        DataValidation.RequireText(a.Name, $"{at}: name", errors);
+        DataValidation.RequireNonNegative(a.HpCost, $"{at}: hpCost", errors);
+        DataValidation.RequireNonNegative(a.MpCost, $"{at}: mpCost", errors);
+        DataValidation.RequireNonNegative(a.Power, $"{at}: power", errors);
+        DataValidation.ValidateRequirements(a.Requirements, $"{at} requirement", skills, errors);
     }
 
     private static void ValidateEncounter(
         EncounterDefinition e,
-        IReadOnlyDictionary<string, ClassDefinition> classes,
         IReadOnlyDictionary<string, SkillDefinition> skills,
+        IReadOnlyDictionary<string, ActionDefinition> actions,
         List<string> errors)
     {
         var at = $"{EncountersFile} '{e.Id}'";
@@ -165,16 +203,21 @@ public static class GameDataLoader
             var unitAt = $"{at} unit '{unit.Id}'";
             DataValidation.RequireText(unit.Id, $"{at}: unit id", errors);
             DataValidation.RequireText(unit.Name, $"{unitAt}: name", errors);
-            if (!classes.ContainsKey(unit.ClassId))
-            {
-                errors.Add($"{unitAt}: unknown class '{unit.ClassId}'");
-            }
-
             DataValidation.ValidateStats(unit.Stats, unitAt, errors);
+            DataValidation.ValidateSkillLevels(unit.Skills, unitAt, skills, errors);
 
+            var set = new SkillSet(unit.Skills, skills);
             foreach (var tactic in unit.Tactics)
             {
-                DataValidation.ValidateTactic(tactic, $"{unitAt} tactic {tactic.Priority}", skills, errors);
+                var tacticAt = $"{unitAt} tactic {tactic.Priority}";
+                DataValidation.ValidateTactic(tactic, tacticAt, actions, errors);
+                if (actions.TryGetValue(tactic.ActionId, out var action))
+                {
+                    foreach (var missing in set.Missing(action.Requirements))
+                    {
+                        errors.Add($"{tacticAt}: '{tactic.ActionId}' needs '{missing.SkillId}' level {missing.Level}");
+                    }
+                }
             }
         }
     }

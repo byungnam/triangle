@@ -73,7 +73,7 @@ internal sealed class CombatLogScene : IScene
         _seed = seed;
         var allies = _allySetups;
         var enemies = _data.CreateEncounterTeam(_encounterId);
-        _result = CombatSimulator.Run(allies, enemies, _data.Skills, seed);
+        _result = CombatSimulator.Run(allies, enemies, _data.Catalog, seed);
 
         _allies.Clear();
         _enemies.Clear();
@@ -89,7 +89,7 @@ internal sealed class CombatLogScene : IScene
 
         _formatter = new CombatLogFormatter(
             _units.ToDictionary(u => u.Key, u => u.Value.Name),
-            _data.Skills.ToDictionary(s => s.Key, s => s.Value.Name));
+            _data.Actions.ToDictionary(a => a.Key, a => a.Value.Name));
 
         _log.Clear();
         _log.Add(new LogEntry(new LogLine($"{Korean.WaGwa(EncounterName)}의 전투 시작!", Theme.Text), null, false));
@@ -171,9 +171,9 @@ internal sealed class CombatLogScene : IScene
                 }
 
                 break;
-            case SkillUsed s:
-                _units[s.ActorId].Hp = s.ActorHp;
-                _units[s.ActorId].Mp = s.ActorMp;
+            case ActionUsed a:
+                _units[a.ActorId].Hp = a.ActorHp;
+                _units[a.ActorId].Mp = a.ActorMp;
                 break;
             case Damaged d:
                 _units[d.TargetId].Hp = d.HpAfter;

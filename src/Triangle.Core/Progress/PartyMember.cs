@@ -1,5 +1,6 @@
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
+using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
 
@@ -8,18 +9,21 @@ namespace Triangle.Core.Progress;
 /// <summary>
 /// 플레이어 파티의 유닛 한 명. 전열과 전술 목록을 편집할 수 있다.
 /// 전술의 우선순위는 항상 목록 순서대로 1, 2, 3… 이다.
+/// 스킬은 훈련으로 쌓은 SP로 저장하고, 레벨은 SP와 스킬 랭크로 계산한다.
 /// </summary>
 public sealed class PartyMember
 {
     private readonly List<Tactic> _tactics = [];
+    private readonly Dictionary<string, int> _skillPoints;
 
-    public PartyMember(string id, string name, string classId, Stats stats, Row row, IEnumerable<Tactic> tactics)
+    public PartyMember(
+        string id, string name, Stats stats, Row row, IReadOnlyDictionary<string, int> skillPoints, IEnumerable<Tactic> tactics)
     {
         Id = id;
         Name = name;
-        ClassId = classId;
         Stats = stats;
         Row = row;
+        _skillPoints = new Dictionary<string, int>(skillPoints);
         foreach (var tactic in tactics.OrderBy(t => t.Priority))
         {
             _tactics.Add(tactic);
@@ -30,24 +34,47 @@ public sealed class PartyMember
 
     public string Id { get; }
     public string Name { get; }
-    public string ClassId { get; }
     public Stats Stats { get; }
     public Row Row { get; set; }
 
     public IReadOnlyList<Tactic> Tactics => _tactics;
 
+    /// <summary>스킬 ID별 누적 SP.</summary>
+    public IReadOnlyDictionary<string, int> SkillPoints => _skillPoints;
+
+    /// <summary>1레벨 이상인 스킬의 레벨.</summary>
+    public IReadOnlyDictionary<string, int> SkillLevels(GameData data) =>
+        _skillPoints
+            .Where(p => data.Skills.ContainsKey(p.Key))
+            .Select(p => (p.Key, Level: SkillProgression.LevelFor(data.Skills[p.Key].Rank, p.Value)))
+            .Where(x => x.Level > 0)
+            .ToDictionary(x => x.Key, x => x.Level);
+
+    public SkillSet Skills(GameData data) => new(SkillLevels(data), data.Skills);
+
+    /// <summary>요구 스킬을 못 채운 행동이 든 전술의 위치 (게임 데이터가 바뀌었을 때 생길 수 있다).</summary>
+    public IReadOnlyList<int> LockedTacticIndexes(GameData data)
+    {
+        var skills = Skills(data);
+        return _tactics
+            .Select((t, i) => (t, i))
+            .Where(x => !data.Actions.TryGetValue(x.t.ActionId, out var action) || !skills.CanUse(action))
+            .Select(x => x.i)
+            .ToList();
+    }
+
     public void ToggleRow() => Row = Row == Row.Front ? Row.Back : Row.Front;
 
     /// <summary>목록 끝에 추가한다. 우선순위는 자동으로 정해진다.</summary>
-    public void AddTactic(Condition condition, int value, string skillId)
+    public void AddTactic(Condition condition, int value, string actionId)
     {
-        _tactics.Add(new Tactic(_tactics.Count + 1, condition, value, skillId));
+        _tactics.Add(new Tactic(_tactics.Count + 1, condition, value, actionId));
     }
 
     /// <summary>index 위치의 전술 내용을 바꾼다. 우선순위는 위치를 따른다.</summary>
-    public void ReplaceTactic(int index, Condition condition, int value, string skillId)
+    public void ReplaceTactic(int index, Condition condition, int value, string actionId)
     {
-        _tactics[index] = new Tactic(index + 1, condition, value, skillId);
+        _tactics[index] = new Tactic(index + 1, condition, value, actionId);
     }
 
     public void RemoveTactic(int index)
@@ -74,7 +101,7 @@ public sealed class PartyMember
     }
 
     public CombatantSetup ToCombatantSetup(GameData data) =>
-        new(Id, Name, data.Classes[ClassId], Stats, Row, _tactics.ToList());
+        new(Id, Name, Stats, Row, SkillLevels(data), _tactics.ToList());
 
     private void Renumber()
     {

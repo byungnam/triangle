@@ -9,14 +9,14 @@ internal sealed record LogLine(string Text, Color Color, bool Indented = false);
 /// <summary>전투 이벤트를 짧은 한국어 문장으로 바꾼다. 로그가 두 칸으로 나뉘므로 짧게 쓴다.</summary>
 internal sealed class CombatLogFormatter(
     IReadOnlyDictionary<string, string> unitNames,
-    IReadOnlyDictionary<string, string> skillNames)
+    IReadOnlyDictionary<string, string> actionNames)
 {
     /// <summary>화면에 줄로 보여줄 필요가 없는 이벤트(턴 시작)면 null.</summary>
     public LogLine? Format(CombatEvent e) => e switch
     {
         TurnStarted => null,
 
-        SkillUsed s => new($"{Name(s.ActorId)}의 {skillNames[s.SkillId]}", Theme.Text),
+        ActionUsed a => new($"{Name(a.ActorId)}의 {actionNames[a.ActionId]}", Theme.Text),
 
         Waited w => new(w.Reason switch
         {

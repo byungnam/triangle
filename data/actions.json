@@ -1,0 +1,97 @@
+[
+  {
+    "id": "basic_attack",
+    "name": "기본 공격",
+    "description": "임시 수치. 요구 스킬 없음",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 60,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "melee"
+    ],
+    "requirements": []
+  },
+  {
+    "id": "fire_arrow",
+    "name": "화살",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 65,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "bow"
+    ],
+    "requirements": [
+      {
+        "skillId": "archery",
+        "level": 1
+      }
+    ]
+  },
+  {
+    "id": "snipe",
+    "name": "저격",
+    "description": "임시 수치. 엄호를 무시하고 후위를 노린다",
+    "hpCost": 0,
+    "mpCost": 30,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 80,
+    "side": "Enemy",
+    "rule": "BackFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [
+      "bow"
+    ],
+    "requirements": [
+      {
+        "skillId": "archery",
+        "level": 3
+      },
+      {
+        "skillId": "precision_shooting",
+        "level": 1
+      }
+    ]
+  },
+  {
+    "id": "heal",
+    "name": "치료",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "Heal",
+    "damageType": "Magical",
+    "power": 35,
+    "side": "Ally",
+    "rule": "LowestHpRatio",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "holy"
+    ],
+    "requirements": [
+      {
+        "skillId": "healing",
+        "level": 1
+      }
+    ]
+  }
+]

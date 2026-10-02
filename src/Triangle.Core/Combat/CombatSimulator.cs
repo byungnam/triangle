@@ -1,3 +1,4 @@
+using Triangle.Core.Actions;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
@@ -9,14 +10,15 @@ namespace Triangle.Core.Combat;
 /// </summary>
 /// <remarks>
 /// 행동 순서는 ATB 방식이다. 다음 행동 시각이 가장 이른 유닛이 행동하고,
-/// 행동 후 TimeConstant / (직업 계수 × speed) 만큼 뒤로 밀린다.
-/// 턴이 오면 전술을 우선순위 순으로 훑어 조건이 참인 첫 전술의 스킬을 쓴다.
-/// 그 스킬의 비용을 낼 수 없거나 대상이 없으면 턴을 잃는다.
+/// 행동 후 TimeConstant / speed 만큼(스킬의 대기 감소 적용) 뒤로 밀린다.
+/// 턴이 오면 전술을 우선순위 순으로 훑어 조건이 참인 첫 전술의 행동을 쓴다.
+/// 그 행동의 비용을 낼 수 없거나 대상이 없으면 턴을 잃는다.
+/// 스킬은 패시브 보너스(위력, 회복, MP 소모, 대기, 최대 HP/MP, 받는 피해)로만 작용한다.
 /// </remarks>
 public sealed class CombatSimulator
 {
     private readonly CombatRules _rules;
-    private readonly IReadOnlyDictionary<string, SkillDefinition> _skills;
+    private readonly CombatCatalog _catalog;
     private readonly Random _random;
     private readonly List<Combatant> _combatants;
     private readonly List<CombatEvent> _events = [];
@@ -25,17 +27,17 @@ public sealed class CombatSimulator
     private CombatSimulator(
         IReadOnlyList<CombatantSetup> allies,
         IReadOnlyList<CombatantSetup> enemies,
-        IReadOnlyDictionary<string, SkillDefinition> skills,
+        CombatCatalog catalog,
         int seed,
         CombatRules rules)
     {
         _rules = rules;
-        _skills = skills;
+        _catalog = catalog;
         _random = new Random(seed);
         _combatants =
         [
-            .. allies.Select(s => new Combatant(s, CombatSide.Ally, rules)),
-            .. enemies.Select(s => new Combatant(s, CombatSide.Enemy, rules)),
+            .. allies.Select(s => new Combatant(s, CombatSide.Ally, rules, new SkillSet(s.Skills, catalog.Skills))),
+            .. enemies.Select(s => new Combatant(s, CombatSide.Enemy, rules, new SkillSet(s.Skills, catalog.Skills))),
         ];
 
         // 모두 시각 0에서 시작하므로 첫 행동 순서는 무작위로 정한다.
@@ -48,18 +50,22 @@ public sealed class CombatSimulator
     public static CombatResult Run(
         IReadOnlyList<CombatantSetup> allies,
         IReadOnlyList<CombatantSetup> enemies,
-        IReadOnlyDictionary<string, SkillDefinition> skills,
+        CombatCatalog catalog,
         int seed,
         CombatRules? rules = null)
     {
-        Validate(allies, enemies, skills);
-        return new CombatSimulator(allies, enemies, skills, seed, rules ?? CombatRules.Default).Run();
+        Validate(allies, enemies, catalog);
+        return new CombatSimulator(allies, enemies, catalog, seed, rules ?? CombatRules.Default).Run();
     }
 
+    /// <summary>
+    /// 잘못된 입력은 전투 규칙으로 처리하지 않고 거부한다. 잠긴 행동(요구 스킬 미달)도 여기서 막는다.
+    /// 데이터 로더와 편집 화면이 미리 걸러 주므로, 여기서 걸리면 호출하는 쪽의 버그다.
+    /// </summary>
     private static void Validate(
         IReadOnlyList<CombatantSetup> allies,
         IReadOnlyList<CombatantSetup> enemies,
-        IReadOnlyDictionary<string, SkillDefinition> skills)
+        CombatCatalog catalog)
     {
         if (allies.Count == 0 || enemies.Count == 0)
         {
@@ -74,11 +80,22 @@ public sealed class CombatSimulator
 
         foreach (var setup in allies.Concat(enemies))
         {
+            foreach (var skillId in setup.Skills.Keys.Where(id => !catalog.Skills.ContainsKey(id)))
+            {
+                throw new ArgumentException($"Combatant '{setup.Id}' has unknown skill '{skillId}'.");
+            }
+
+            var skills = new SkillSet(setup.Skills, catalog.Skills);
             foreach (var tactic in setup.Tactics)
             {
-                if (!skills.ContainsKey(tactic.SkillId))
+                if (!catalog.Actions.TryGetValue(tactic.ActionId, out var action))
                 {
-                    throw new ArgumentException($"Combatant '{setup.Id}' uses unknown skill '{tactic.SkillId}'.");
+                    throw new ArgumentException($"Combatant '{setup.Id}' uses unknown action '{tactic.ActionId}'.");
+                }
+
+                if (!skills.CanUse(action))
+                {
+                    throw new ArgumentException($"Combatant '{setup.Id}' cannot use locked action '{tactic.ActionId}'.");
                 }
             }
         }
@@ -110,7 +127,7 @@ public sealed class CombatSimulator
                 return Finish(outcome, action);
             }
 
-            actor.NextActionTime += ActionDelay(actor);
+            actor.NextActionTime += ActionDelay(actor, plan?.Action);
             actor.TieBreak = _nextTieBreak++;
         }
 
@@ -138,17 +155,22 @@ public sealed class CombatSimulator
         return null;
     }
 
-    private long ActionDelay(Combatant c)
+    /// <summary>행동 뒤 대기. 대기 감소 보너스는 태그 없는 것(전체 속도)과 방금 쓴 행동의 태그 것을 더한다.</summary>
+    private long ActionDelay(Combatant c, ActionDefinition? used)
     {
         var speed = Math.Max(1, c.Stats.Speed);
-        var speedPercent = Math.Max(1, c.Class.SpeedPercent);
-        var delay = (long)_rules.TimeConstant * 100 / ((long)speedPercent * speed);
+        var baseDelay = _rules.TimeConstant / speed;
+        var reduction = Reduction(c.Skills.Bonus(BonusKind.DelayReductionPercent, used?.Tags));
+        var delay = (long)baseDelay * (100 - reduction) / 100;
         return Math.Max(1, delay);
     }
 
+    /// <summary>감소 보너스를 0 ~ 상한 사이로 자른다.</summary>
+    private int Reduction(int percent) => Math.Clamp(percent, 0, _rules.MaxReductionPercent);
+
     // ── 전술 ───────────────────────────────────────────────
 
-    private sealed record Plan(Tactic Tactic, SkillDefinition Skill, IReadOnlyList<Combatant> Targets);
+    private sealed record Plan(Tactic Tactic, ActionDefinition Action, IReadOnlyList<Combatant> Targets);
 
     /// <summary>
     /// 조건이 참인 첫 전술을 고른다. 그 전술의 비용을 낼 수 없거나 대상이 없으면
@@ -167,19 +189,19 @@ public sealed class CombatSimulator
             // 레거시와 같이 조건이 참으로 판정된 시점에 센다. 이후 턴을 잃어도 1회로 친다.
             actor.AddUse(i);
 
-            var skill = _skills[tactic.SkillId];
-            if (!CanPay(actor, skill))
+            var action = _catalog.Actions[tactic.ActionId];
+            if (!CanPay(actor, action))
             {
                 return (null, new Waited(actor.Id, WaitReason.NotEnoughResource, tactic.Priority));
             }
 
-            var targets = Candidates(actor, skill);
+            var targets = Candidates(actor, action);
             if (targets.Count == 0)
             {
                 return (null, new Waited(actor.Id, WaitReason.NoTarget, tactic.Priority));
             }
 
-            return (new Plan(tactic, skill, targets), null);
+            return (new Plan(tactic, action, targets), null);
         }
 
         return (null, new Waited(actor.Id, WaitReason.NoMatchingTactic, null));
@@ -224,8 +246,11 @@ public sealed class CombatSimulator
         };
     }
 
-    private static bool CanPay(Combatant actor, SkillDefinition skill) =>
-        actor.Mp >= skill.MpCost && (skill.HpCost == 0 || actor.Hp > skill.HpCost);
+    private bool CanPay(Combatant actor, ActionDefinition action) =>
+        actor.Mp >= MpCost(actor, action) && (action.HpCost == 0 || actor.Hp > action.HpCost);
+
+    private int MpCost(Combatant actor, ActionDefinition action) =>
+        Ratio.ApplyPercent(action.MpCost, 100 - Reduction(actor.Skills.Bonus(BonusKind.MpCostReductionPercent, action.Tags)));
 
     // ── 대상 ───────────────────────────────────────────────
 
@@ -236,16 +261,16 @@ public sealed class CombatSimulator
         side == CombatSide.Ally ? CombatSide.Enemy : CombatSide.Ally;
 
     /// <summary>줄 제한까지 통과한 후보. 전체 공격이면 이 목록이 곧 대상이다.</summary>
-    private List<Combatant> Candidates(Combatant actor, SkillDefinition skill)
+    private List<Combatant> Candidates(Combatant actor, ActionDefinition action)
     {
-        if (skill.Side == TargetSide.Self)
+        if (action.Side == TargetSide.Self)
         {
             return [actor];
         }
 
-        var side = skill.Side == TargetSide.Enemy ? Opposite(actor.Side) : actor.Side;
+        var side = action.Side == TargetSide.Enemy ? Opposite(actor.Side) : actor.Side;
         return Living(side)
-            .Where(c => skill.Rows switch
+            .Where(c => action.Rows switch
             {
                 RowRestriction.FrontOnly => c.Row == Row.Front,
                 RowRestriction.BackOnly => c.Row == Row.Back,
@@ -283,24 +308,24 @@ public sealed class CombatSimulator
 
     private void Execute(Combatant actor, Plan plan)
     {
-        var skill = plan.Skill;
-        actor.Hp -= skill.HpCost;
-        actor.Mp -= skill.MpCost;
-        _events.Add(new SkillUsed(actor.Id, skill.Id, plan.Tactic.Priority, actor.Hp, actor.Mp));
+        var action = plan.Action;
+        actor.Hp -= action.HpCost;
+        actor.Mp -= MpCost(actor, action);
+        _events.Add(new ActionUsed(actor.Id, action.Id, plan.Tactic.Priority, actor.Hp, actor.Mp));
 
-        IReadOnlyList<Combatant> targets = skill.Scope == TargetScope.All
+        IReadOnlyList<Combatant> targets = action.Scope == TargetScope.All
             ? plan.Targets
-            : [ApplyCover(skill, PickOne(plan.Targets, skill.Rule))];
+            : [ApplyCover(action, PickOne(plan.Targets, action.Rule))];
 
         foreach (var target in targets)
         {
-            Apply(actor, skill, target);
+            Apply(actor, action, target);
         }
     }
 
-    private Combatant ApplyCover(SkillDefinition skill, Combatant target)
+    private Combatant ApplyCover(ActionDefinition action, Combatant target)
     {
-        if (skill.Side != TargetSide.Enemy || skill.IgnoresCover || target.Row != Row.Back)
+        if (action.Side != TargetSide.Enemy || action.IgnoresCover || target.Row != Row.Back)
         {
             return target;
         }
@@ -316,13 +341,13 @@ public sealed class CombatSimulator
         return cover;
     }
 
-    private void Apply(Combatant actor, SkillDefinition skill, Combatant target)
+    private void Apply(Combatant actor, ActionDefinition action, Combatant target)
     {
-        switch (skill.Effect)
+        switch (action.Effect)
         {
-            case SkillEffect.Damage:
+            case ActionEffect.Damage:
             {
-                var amount = Math.Min(target.Hp, DamageAmount(actor, skill, target));
+                var amount = Math.Min(target.Hp, DamageAmount(actor, action, target));
                 target.Hp -= amount;
                 _events.Add(new Damaged(target.Id, amount, target.Hp));
                 if (!target.IsAlive)
@@ -332,9 +357,11 @@ public sealed class CombatSimulator
 
                 break;
             }
-            case SkillEffect.Heal:
+            case ActionEffect.Heal:
             {
-                var amount = Math.Min(target.MaxHp - target.Hp, Scaled(skill.Power, actor.Stats.Intel));
+                var bonus = actor.Skills.Bonus(BonusKind.HealPercent, action.Tags) + actor.Skills.Bonus(BonusKind.PowerPercent, action.Tags);
+                var heal = Ratio.ApplyPercent(Scaled(action.Power, actor.Stats.Intel), 100 + bonus);
+                var amount = Math.Min(target.MaxHp - target.Hp, heal);
                 target.Hp += amount;
                 _events.Add(new Healed(target.Id, amount, target.Hp));
                 break;
@@ -342,14 +369,19 @@ public sealed class CombatSimulator
         }
     }
 
-    private int DamageAmount(Combatant actor, SkillDefinition skill, Combatant target)
+    /// <summary>
+    /// 위력 × 스탯 보정 × 위력 보너스 → 방어 경감 → 받는 피해 감소.
+    /// 각 단계에서 사사오입한다.
+    /// </summary>
+    private int DamageAmount(Combatant actor, ActionDefinition action, Combatant target)
     {
-        var (attackStat, defense) = skill.DamageType == DamageType.Physical
+        var (attackStat, defense) = action.DamageType == DamageType.Physical
             ? (actor.Stats.Str, target.Defense)
             : (actor.Stats.Intel, target.MagicDefense);
 
-        var raw = Scaled(skill.Power, attackStat);
-        return Ratio.DivideRounded((long)raw * 100, 100 + (long)defense * _rules.DefenseReductionPercentPerPoint);
+        var raw = Ratio.ApplyPercent(Scaled(action.Power, attackStat), 100 + actor.Skills.Bonus(BonusKind.PowerPercent, action.Tags));
+        var mitigated = Ratio.DivideRounded((long)raw * 100, 100 + (long)defense * _rules.DefenseReductionPercentPerPoint);
+        return Ratio.ApplyPercent(mitigated, 100 - Reduction(target.Skills.Bonus(BonusKind.DamageTakenReductionPercent)));
     }
 
     private int Scaled(int power, int stat) =>

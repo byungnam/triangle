@@ -1,3 +1,4 @@
+using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
 
@@ -8,26 +9,26 @@ public sealed class Combatant
 {
     private readonly int[] _tacticUses;
 
-    internal Combatant(CombatantSetup setup, CombatSide side, CombatRules rules)
+    internal Combatant(CombatantSetup setup, CombatSide side, CombatRules rules, SkillSet skills)
     {
         Id = setup.Id;
         Name = setup.Name;
-        Class = setup.Class;
+        Skills = skills;
         Stats = setup.Stats;
         Row = setup.Row;
         Side = side;
         Tactics = setup.Tactics.OrderBy(t => t.Priority).ToArray();
         _tacticUses = new int[Tactics.Count];
 
-        MaxHp = setup.Stats.Vital * rules.HpPerVital;
-        MaxMp = setup.Stats.Intel * rules.MpPerIntel;
+        MaxHp = rules.MaxHp(setup.Stats, skills);
+        MaxMp = rules.MaxMp(setup.Stats, skills);
         Hp = MaxHp;
         Mp = MaxMp;
     }
 
     public string Id { get; }
     public string Name { get; }
-    public ClassDefinition Class { get; }
+    public SkillSet Skills { get; }
     public Stats Stats { get; }
     public Row Row { get; }
     public CombatSide Side { get; }

@@ -10,17 +10,17 @@ public enum WaitReason
     /// <summary>조건이 참인 전술이 없다.</summary>
     NoMatchingTactic,
 
-    /// <summary>선택된 전술의 스킬 비용을 낼 수 없다.</summary>
+    /// <summary>선택된 전술의 행동 비용을 낼 수 없다.</summary>
     NotEnoughResource,
 
-    /// <summary>선택된 전술의 스킬에 맞는 대상이 없다.</summary>
+    /// <summary>선택된 전술의 행동에 맞는 대상이 없다.</summary>
     NoTarget,
 }
 
 /// <summary>행동하지 못하고 턴을 넘겼다. <paramref name="TacticPriority"/>는 선택됐지만 실패한 전술이다.</summary>
 public sealed record Waited(string ActorId, WaitReason Reason, int? TacticPriority) : CombatEvent;
 
-public sealed record SkillUsed(string ActorId, string SkillId, int TacticPriority, int ActorHp, int ActorMp) : CombatEvent;
+public sealed record ActionUsed(string ActorId, string ActionId, int TacticPriority, int ActorHp, int ActorMp) : CombatEvent;
 
 /// <summary>후위인 <paramref name="ProtectedId"/>를 노린 공격을 전위 <paramref name="CoverId"/>가 대신 받았다.</summary>
 public sealed record Covered(string ProtectedId, string CoverId) : CombatEvent;

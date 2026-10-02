@@ -10,9 +10,15 @@ public sealed class SaveGameTests : IDisposable
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "triangle-save-" + Guid.NewGuid());
 
     private static readonly GameData Data = GameDataLoader.Parse(
-        """[ { "id": "soldier", "name": "병사" } ]""",
-        """[ { "id": "strike", "name": "공격", "power": 10 }, { "id": "heal", "name": "치료", "effect": "Heal" } ]""",
-        """[ { "id": "camp", "name": "야영지", "units": [ { "id": "e", "name": "적", "classId": "soldier", "row": "Front", "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 } } ] } ]""");
+        """
+        [ { "id": "healing", "name": "치유술" },
+          { "id": "holy", "name": "신성 마법", "rank": 3, "prerequisites": [ { "skillId": "healing", "level": 3 } ] } ]
+        """,
+        """
+        [ { "id": "strike", "name": "공격", "power": 10 },
+          { "id": "heal", "name": "치료", "effect": "Heal", "requirements": [ { "skillId": "healing", "level": 1 } ] } ]
+        """,
+        """[ { "id": "camp", "name": "야영지", "units": [ { "id": "e", "name": "적", "row": "Front", "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 } } ] } ]""");
 
     public void Dispose()
     {
@@ -24,15 +30,16 @@ public sealed class SaveGameTests : IDisposable
 
     private static Party SampleParty() => new(
     [
-        new PartyMember("a", "마르쿠스", "soldier", new Stats(15, 12, 25, 20, 13), Row.Front,
+        new PartyMember("a", "마르쿠스", new Stats(15, 12, 25, 20, 13), Row.Front,
+            new Dictionary<string, int> { ["healing"] = 1_500 },
             [new Tactic(1, Condition.SelfHpAtMost, 30, "heal"), new Tactic(2, Condition.Always, 0, "strike")]),
-        new PartyMember("b", "율리아", "soldier", new Stats(10, 11, 21, 24, 12), Row.Back, []),
+        new PartyMember("b", "율리아", new Stats(10, 11, 21, 24, 12), Row.Back, new Dictionary<string, int>(), []),
     ]);
 
-    private static string Saved(string party) => $$"""{ "version": 1, "party": [ {{party}} ] }""";
+    private static string Saved(string party) => $$"""{ "version": 2, "party": [ {{party}} ] }""";
 
     private const string ValidMember =
-        """{ "id": "a", "name": "이름", "classId": "soldier", "row": "Front", "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 } }""";
+        """{ "id": "a", "name": "이름", "row": "Front", "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 } }""";
 
     [Fact]
     public void Round_trips_party_members_rows_and_tactics()
@@ -45,7 +52,8 @@ public sealed class SaveGameTests : IDisposable
         for (var i = 0; i < original.Members.Count; i++)
         {
             var (o, l) = (original.Members[i], loaded.Members[i]);
-            Assert.Equal((o.Id, o.Name, o.ClassId, o.Stats, o.Row), (l.Id, l.Name, l.ClassId, l.Stats, l.Row));
+            Assert.Equal((o.Id, o.Name, o.Stats, o.Row), (l.Id, l.Name, l.Stats, l.Row));
+            Assert.Equal(o.SkillPoints, l.SkillPoints);
             Assert.Equal(o.Tactics, l.Tactics);
         }
     }
@@ -55,7 +63,8 @@ public sealed class SaveGameTests : IDisposable
     {
         var json = SaveGame.Serialize(SampleParty());
 
-        Assert.Contains("\"version\": 1", json);
+        Assert.Contains("\"version\": 2", json);
+        Assert.Contains("\"healing\": 1500", json);
         Assert.Contains("\"name\": \"율리아\"", json);
         Assert.Contains("\"condition\": \"SelfHpAtMost\"", json);
     }
@@ -72,15 +81,65 @@ public sealed class SaveGameTests : IDisposable
     public void Rejects_references_missing_from_game_data()
     {
         var member = """
-            { "id": "a", "name": "이름", "classId": "ghost", "row": "Front",
+            { "id": "a", "name": "이름", "row": "Front",
               "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 },
-              "tactics": [ { "priority": 1, "condition": "Always", "value": 0, "skillId": "removed_skill" } ] }
+              "skillPoints": { "ghost": 100, "holy": 750 },
+              "tactics": [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "removed_action" } ] }
             """;
 
         var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Saved(member), Data)).Errors;
 
-        Assert.Contains("save member 'a': unknown class 'ghost'", errors);
-        Assert.Contains("save member 'a' tactic 1: unknown skill 'removed_skill'", errors);
+        Assert.Contains("save member 'a': unknown skill 'ghost'", errors);
+        Assert.Contains("save member 'a' tactic 1: unknown action 'removed_action'", errors);
+    }
+
+    [Fact]
+    public void Rejects_skills_trained_without_prerequisites()
+    {
+        // 신성 마법 1레벨(랭크 3 → 750 SP)은 치유술 3이 필요하다.
+        var member = """
+            { "id": "a", "name": "이름", "row": "Front",
+              "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 },
+              "skillPoints": { "holy": 750, "healing": 250 } }
+            """;
+
+        var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Saved(member), Data)).Errors;
+
+        Assert.Contains("save member 'a': 'holy' needs 'healing' level 3", errors);
+    }
+
+    [Fact]
+    public void Rejects_version_1_saves_from_before_skills()
+    {
+        var e = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize("""{ "version": 1, "party": [] }""", Data));
+
+        Assert.Contains("unsupported version 1", Assert.Single(e.Errors));
+    }
+
+    [Fact]
+    public void Loads_tactics_whose_action_became_locked_and_reports_them()
+    {
+        // 치료를 쓰는 전술이 있지만 치유술 SP가 없다 (게임 데이터가 바뀐 경우).
+        var member = """
+            { "id": "a", "name": "이름", "row": "Front",
+              "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 },
+              "tactics": [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "strike" },
+                           { "priority": 2, "condition": "Always", "value": 0, "actionId": "heal" } ] }
+            """;
+
+        var party = SaveGame.Deserialize(Saved(member), Data);
+
+        Assert.Equal([1], party.Members[0].LockedTacticIndexes(Data));
+    }
+
+    [Fact]
+    public void Skill_levels_are_derived_from_skill_points_and_rank()
+    {
+        var party = SampleParty();
+
+        Assert.Equal(new Dictionary<string, int> { ["healing"] = 2 }, party.Members[0].SkillLevels(Data));
+        Assert.Empty(party.Members[1].SkillLevels(Data));
+        Assert.Empty(party.Members[0].LockedTacticIndexes(Data));
     }
 
     [Fact]

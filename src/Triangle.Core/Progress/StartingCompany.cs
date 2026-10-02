@@ -1,3 +1,4 @@
+using Triangle.Core.Data;
 using Triangle.Core.Masteries;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
@@ -22,10 +23,12 @@ public static class StartingCompany
     private static Tactic T(int priority, Condition condition, int value, string actionId) => new(priority, condition, value, actionId);
 
     /// <param name="seed">회사의 첫 시드 (원정과 모집이 이어서 쓴다).</param>
-    public static Company Create(int seed)
+    public static Company Create(GameData data, int seed)
     {
         var members = Members();
-        return new Company(members, members.Select(m => m.Id), Company.StartingGold, new Dictionary<string, int>(), activeTacticSet: 0, seed);
+        var company = new Company(members, members.Select(m => m.Id), Company.StartingGold, new Dictionary<string, int>(), activeTacticSet: 0, seed);
+        company.RerollRecruits(data);
+        return company;
     }
 
     private static List<PartyMember> Members() =>

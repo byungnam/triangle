@@ -75,7 +75,7 @@ public class GameDataLoaderTests
         Assert.All(data.Masteries.Keys, m => Assert.NotNull(data.BasicItemFor(m)));
 
         // 시작 회사가 데이터와 맞아야 한다 (세이브로 왕복해서 검증).
-        var company = StartingCompany.Create(seed: 1);
+        var company = StartingCompany.Create(data, seed: 1);
         Assert.Equal(company.Roster.Count, SaveGame.Deserialize(SaveGame.Serialize(company), data).Roster.Count);
         Assert.False(company.HasLockedTactics(data));
 
@@ -89,6 +89,60 @@ public class GameDataLoaderTests
             var result = CombatSimulator.Run([ally], data.CreateEncounterTeam(id), data.Catalog, seed: 1);
             Assert.IsType<CombatEnded>(result.Events[^1]);
         }
+    }
+
+    [Fact]
+    public void Starting_company_fights_every_encounter_of_every_zone_to_the_end()
+    {
+        var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
+        var company = StartingCompany.Create(data, seed: 1);
+
+        Assert.NotEmpty(data.Zones);
+        Assert.NotEmpty(data.Recruits);
+        foreach (var zone in data.Zones.Values)
+        {
+            foreach (var encounter in zone.Encounters)
+            {
+                var result = CombatSimulator.Run(company.LineupSetups(data), data.CreateEncounterTeam(encounter.EncounterId), data.Catalog, seed: 1);
+                Assert.IsType<CombatEnded>(result.Events[^1]);
+            }
+        }
+    }
+
+    [Fact]
+    public void Rejects_bad_zones_and_recruit_templates()
+    {
+        const string zones = """
+            [ { "id": "z", "name": "지역", "maxBattles": 0, "equipmentDestroyChance": 120,
+                "encounters": [ { "encounterId": "ghost", "weight": 0 } ],
+                "rewards": { "goldMin": 10, "goldMax": 5, "itemDrops": [ { "itemId": "ghost_item", "chance": 101 } ] } },
+              { "id": "empty", "name": "빈 지역", "maxBattles": 1, "encounters": [] } ]
+            """;
+        const string recruits = """
+            [ { "id": "r", "name": "신입", "names": [], "row": "Front", "price": -1,
+                "statsMin": { "str": 5, "dex": 1, "vital": 1, "intel": 1, "speed": 1 },
+                "statsMax": { "str": 4, "dex": 1, "vital": 1, "intel": 1, "speed": 1 },
+                "weapon": "plate_mail",
+                "tactics": [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "shot" } ] } ]
+            """;
+        const string items = """[ { "id": "plate_mail", "name": "판금", "mastery": "plate" } ]""";
+
+        var errors = Assert.Throws<GameDataException>(() => GameDataLoader.Parse(
+            Masteries, Skills, Actions, Encounters(), itemsJson: items, zonesJson: zones, recruitsJson: recruits)).Errors;
+
+        Assert.Contains("zones.json 'z': maxBattles must be at least 1, got 0", errors);
+        Assert.Contains("zones.json 'z': equipmentDestroyChance must be 0-100, got 120", errors);
+        Assert.Contains("zones.json 'z': unknown encounter 'ghost'", errors);
+        Assert.Contains("zones.json 'z': weight of 'ghost' must be at least 1, got 0", errors);
+        Assert.Contains("zones.json 'z': goldMax 5 is less than goldMin 10", errors);
+        Assert.Contains("zones.json 'z': drops unknown item 'ghost_item'", errors);
+        Assert.Contains("zones.json 'z': chance of 'ghost_item' must be 0-100, got 101", errors);
+        Assert.Contains("zones.json 'empty': needs at least one encounter", errors);
+        Assert.Contains("recruits.json 'r': needs at least one name", errors);
+        Assert.Contains("recruits.json 'r': statsMax must be at least statsMin for every stat", errors);
+        Assert.Contains("recruits.json 'r': price must not be negative, got -1", errors);
+        Assert.Contains("recruits.json 'r': weapon: 'plate_mail' is Armor, not Weapon", errors);
+        Assert.Contains("recruits.json 'r' tactic 1: a new recruit cannot use 'shot'", errors);
     }
 
     [Fact]
@@ -265,8 +319,10 @@ public class GameDataLoaderTests
 
             var errors = Assert.Throws<GameDataException>(() => GameDataLoader.LoadDirectory(dir)).Errors;
 
-            Assert.Equal(4, errors.Count);
+            Assert.Equal(6, errors.Count);
             Assert.Contains(errors, e => e.StartsWith("items.json: cannot read"));
+            Assert.Contains(errors, e => e.StartsWith("zones.json: cannot read"));
+            Assert.Contains(errors, e => e.StartsWith("recruits.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("actions.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("effects.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("encounters.json: cannot read"));

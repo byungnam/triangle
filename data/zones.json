@@ -1,0 +1,99 @@
+[
+  {
+    "id": "outskirts_forest",
+    "name": "근교 숲",
+    "description": "초보 지역. 쓰러져도 원정이 끝나면 회복한다. 수치는 임시.",
+    "difficulty": 1,
+    "maxBattles": 3,
+    "permadeath": false,
+    "equipmentDestroyChance": 0,
+    "encounters": [
+      {
+        "encounterId": "training",
+        "weight": 1
+      }
+    ],
+    "rewards": {
+      "goldMin": 20,
+      "goldMax": 40,
+      "depthBonusPercent": 20,
+      "itemDrops": [
+        {
+          "itemId": "old_sword",
+          "chance": 10
+        },
+        {
+          "itemId": "leather_armor",
+          "chance": 10
+        }
+      ],
+      "clearBonusGold": 50
+    }
+  },
+  {
+    "id": "abandoned_fort",
+    "name": "버려진 요새",
+    "description": "보통 지역. 영구 사망, 장비 파괴 30%. 수치는 임시.",
+    "difficulty": 2,
+    "maxBattles": 4,
+    "permadeath": true,
+    "equipmentDestroyChance": 30,
+    "encounters": [
+      {
+        "encounterId": "training",
+        "weight": 1
+      },
+      {
+        "encounterId": "elite",
+        "weight": 1
+      }
+    ],
+    "rewards": {
+      "goldMin": 50,
+      "goldMax": 80,
+      "depthBonusPercent": 25,
+      "itemDrops": [
+        {
+          "itemId": "hunting_bow",
+          "chance": 15
+        },
+        {
+          "itemId": "plate_armor",
+          "chance": 10
+        }
+      ],
+      "clearBonusGold": 150
+    }
+  },
+  {
+    "id": "carthage_front",
+    "name": "카르타고 전선",
+    "description": "어려움 지역. 영구 사망, 장비 파괴 60%. 수치는 임시.",
+    "difficulty": 3,
+    "maxBattles": 5,
+    "permadeath": true,
+    "equipmentDestroyChance": 60,
+    "encounters": [
+      {
+        "encounterId": "elite",
+        "weight": 1
+      }
+    ],
+    "rewards": {
+      "goldMin": 90,
+      "goldMax": 140,
+      "depthBonusPercent": 30,
+      "itemDrops": [
+        {
+          "itemId": "apprentice_staff",
+          "chance": 15
+        },
+        {
+          "itemId": "wooden_relic",
+          "chance": 15
+        }
+      ],
+      "clearBonusGold": 400
+    }
+  }
+]

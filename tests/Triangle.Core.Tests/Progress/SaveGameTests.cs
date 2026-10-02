@@ -1,4 +1,5 @@
 using Triangle.Core.Data;
+using Triangle.Core.Expeditions;
 using Triangle.Core.Masteries;
 using Triangle.Core.Progress;
 using Triangle.Core.Tactics;
@@ -250,6 +251,59 @@ public sealed class SaveGameTests : IDisposable
 
         var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Version5(Member("") + ", " + Member("")), Data)).Errors;
         Assert.Contains("save: duplicate member id 'a'", errors);
+    }
+
+    [Fact]
+    public void Saves_and_restores_an_expedition_in_progress()
+    {
+        var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
+        var company = StartingCompany.Create(data, seed: 11);
+        var zone = data.Zones.Values.First(z => !z.Permadeath);
+        ExpeditionRules.Start(company, data, zone.Id);
+        ExpeditionRules.ApplyResult(company, data, ExpeditionRules.Fight(company, data));
+        Assert.NotNull(company.Expedition); // 첫 전투로는 끝나지 않는 지역이어야 한다
+
+        var loaded = SaveGame.Deserialize(SaveGame.Serialize(company), data);
+
+        var (a, b) = (company.Expedition!, loaded.Expedition!);
+        Assert.Equal((a.ZoneId, a.Seed, a.BattleIndex, a.CarriedGold), (b.ZoneId, b.Seed, b.BattleIndex, b.CarriedGold));
+        Assert.Equal(a.Members, b.Members);
+        Assert.Equal(a.CarriedItems, b.CarriedItems);
+        Assert.Equal(a.LastBattle!.Xp, b.LastBattle!.Xp);
+        Assert.Equal((a.LastBattle.Outcome, a.LastBattle.EncounterId, a.LastBattle.Gold), (b.LastBattle.Outcome, b.LastBattle.EncounterId, b.LastBattle.Gold));
+        Assert.Equal(company.RecruitOffers, loaded.RecruitOffers);
+        Assert.Equal(company.NextSeed, loaded.NextSeed);
+
+        // 불러온 뒤의 다음 전투도 같다.
+        Assert.Equal(ExpeditionRules.Fight(company, data).Events, ExpeditionRules.Fight(loaded, data).Events);
+    }
+
+    [Fact]
+    public void Rejects_inconsistent_expeditions()
+    {
+        var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
+        var zone = data.Zones.Values.First();
+        var json = SaveGame.Serialize(StartingCompany.Create(data, seed: 1));
+        var lineup = StartingCompany.Create(data, seed: 1).Lineup;
+        var members = string.Join(", ", lineup.Skip(1).Select(id => $$"""{ "id": "{{id}}", "hp": 10, "mp": -1, "down": true }"""));
+        var expedition = $$"""
+            "expedition": { "zoneId": "{{zone.Id}}", "seed": 1, "battleIndex": {{zone.MaxBattles}},
+              "members": [ {{members}}, { "id": "ghost", "hp": 1, "mp": 1, "down": true } ], "carriedItems": { "ghost_item": 1 } },
+            "version"
+            """;
+
+        var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(json.Replace("\"version\"", expedition), data)).Errors;
+
+        Assert.Contains($"save expedition: battleIndex must be 0-{zone.MaxBattles - 1}, got {zone.MaxBattles}", errors);
+        Assert.Contains("save expedition: needs at least one standing member", errors);
+        Assert.Contains("save expedition: member 'ghost' is not in the lineup", errors);
+        Assert.Contains($"save expedition: lineup member '{lineup[0]}' is not on the expedition", errors);
+        Assert.Contains($"save expedition member '{lineup[1]}': mp must not be negative, got -1", errors);
+        Assert.Contains("save expedition: carries unknown item 'ghost_item'", errors);
+
+        var unknownZone = json.Replace("\"version\"", """ "expedition": { "zoneId": "nowhere", "seed": 1, "battleIndex": 0, "members": [] }, "version" """);
+        errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(unknownZone, data)).Errors;
+        Assert.Contains("save expedition: unknown zone 'nowhere'", errors);
     }
 
     [Fact]

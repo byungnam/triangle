@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Triangle.Core.Data;
+using Triangle.Core.Expeditions;
 using Triangle.Core.Masteries;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
@@ -32,6 +33,29 @@ public sealed record SaveFile
     public IReadOnlyDictionary<string, int> Stash { get; init; } = new Dictionary<string, int>();
 
     public int NextSeed { get; init; }
+
+    public int NextRecruitNumber { get; init; } = 1;
+
+    public IReadOnlyList<RecruitOffer> RecruitOffers { get; init; } = [];
+
+    /// <summary>진행 중인 원정. 마을에 있으면 없다.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SavedExpedition? Expedition { get; init; }
+}
+
+public sealed record SavedExpedition
+{
+    public required string ZoneId { get; init; }
+    public required int Seed { get; init; }
+    public required int BattleIndex { get; init; }
+    public required IReadOnlyList<ExpeditionMember> Members { get; init; }
+    public int CarriedGold { get; init; }
+    public IReadOnlyDictionary<string, int> CarriedItems { get; init; } = new Dictionary<string, int>();
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public BattleReport? LastBattle { get; init; }
+
+    public IReadOnlyList<string> Deaths { get; init; } = [];
 }
 
 public sealed record SavedMember
@@ -71,7 +95,7 @@ public static class SaveGame
 {
     /// <summary>
     /// 4: 전술 세트 두 벌과 사용할 세트 (2026-10-02).
-    /// 5: 회사 (로스터, 출전 명단, 골드, 창고), 장비는 아이템 ID (2026-10-02).
+    /// 5: 회사 (로스터, 출전 명단, 골드, 창고, 모집 후보, 진행 중인 원정), 장비는 아이템 ID (2026-10-02).
     ///    버전 4는 파티를 로스터와 출전 명단으로, 장비 계열을 그 계열의 기본 아이템으로 바꾸고 시작 골드를 준다.
     ///    그 이전은 읽지 않는다.
     /// </summary>
@@ -90,6 +114,21 @@ public static class SaveGame
             ActiveTacticSet = company.ActiveTacticSet,
             Gold = company.Gold,
             NextSeed = company.NextSeed,
+            NextRecruitNumber = company.NextRecruitNumber,
+            RecruitOffers = company.RecruitOffers.ToList(),
+            Expedition = company.Expedition is { } e
+                ? new SavedExpedition
+                {
+                    ZoneId = e.ZoneId,
+                    Seed = e.Seed,
+                    BattleIndex = e.BattleIndex,
+                    Members = e.Members.ToList(),
+                    CarriedGold = e.CarriedGold,
+                    CarriedItems = new SortedDictionary<string, int>(e.CarriedItems.ToDictionary()),
+                    LastBattle = e.LastBattle,
+                    Deaths = e.Deaths.ToList(),
+                }
+                : null,
             Stash = new SortedDictionary<string, int>(company.Stash.ToDictionary()),
             Lineup = company.Lineup.ToList(),
             Roster = company.Roster.Select(m => new SavedMember
@@ -131,21 +170,34 @@ public static class SaveGame
             throw new SaveGameException([$"save: unsupported version {file.Version} (expected {OldestReadableVersion}-{CurrentVersion})"]);
         }
 
-        if (file.Version == 4)
+        var converted = file.Version == 4;
+        if (converted)
         {
             file = ConvertFromVersion4(file, data);
         }
 
         Validate(file, data);
 
-        return new Company(
+        var saved = file.Expedition;
+        var company = new Company(
             file.Roster!.Select(m =>
                 new PartyMember(m.Id, m.Name, m.Stats, m.Row, m.Weapon, m.Armor, m.MasteryXp, m.SkillLevels, m.TacticSets)),
             file.Lineup,
             file.Gold,
             file.Stash,
             file.ActiveTacticSet,
-            file.NextSeed);
+            file.NextSeed,
+            file.RecruitOffers,
+            file.NextRecruitNumber,
+            saved is null
+                ? null
+                : new Expedition(saved.ZoneId, saved.Seed, saved.BattleIndex, saved.Members, saved.CarriedGold, saved.CarriedItems, saved.LastBattle, saved.Deaths));
+        if (converted)
+        {
+            company.RerollRecruits(data);
+        }
+
+        return company;
     }
 
     /// <summary>
@@ -270,9 +322,85 @@ public static class SaveGame
             ValidateMember(member, data, errors);
         }
 
+        if (file.NextRecruitNumber < 1)
+        {
+            errors.Add($"save: nextRecruitNumber must be at least 1, got {file.NextRecruitNumber}");
+        }
+
+        foreach (var offer in file.RecruitOffers)
+        {
+            if (!data.Recruits.ContainsKey(offer.TemplateId))
+            {
+                errors.Add($"save: recruit offer '{offer.Name}' has unknown template '{offer.TemplateId}'");
+            }
+
+            DataValidation.RequireText(offer.Name, "save: recruit offer name", errors);
+            DataValidation.ValidateStats(offer.Stats, $"save recruit offer '{offer.Name}'", errors);
+            DataValidation.RequireNonNegative(offer.Price, $"save recruit offer '{offer.Name}': price", errors);
+        }
+
+        if (file.Expedition is { } expedition)
+        {
+            ValidateExpedition(expedition, file, data, errors);
+        }
+
         if (errors.Count > 0)
         {
             throw new SaveGameException(errors);
+        }
+    }
+
+    /// <summary>원정 상태의 일관성: 지역, 전투 번호, 멤버(로스터와 출전 명단에 있는지), 전리품.</summary>
+    private static void ValidateExpedition(SavedExpedition expedition, SaveFile file, GameData data, List<string> errors)
+    {
+        const string at = "save expedition";
+        if (!data.Zones.TryGetValue(expedition.ZoneId, out var zone))
+        {
+            errors.Add($"{at}: unknown zone '{expedition.ZoneId}'");
+        }
+        else if (expedition.BattleIndex < 0 || expedition.BattleIndex >= zone.MaxBattles)
+        {
+            errors.Add($"{at}: battleIndex must be 0-{zone.MaxBattles - 1}, got {expedition.BattleIndex}");
+        }
+
+        if (expedition.Members.All(m => m.Down))
+        {
+            errors.Add($"{at}: needs at least one standing member");
+        }
+
+        foreach (var duplicate in expedition.Members.GroupBy(m => m.Id).Where(g => g.Count() > 1))
+        {
+            errors.Add($"{at}: duplicate member '{duplicate.Key}'");
+        }
+
+        foreach (var member in expedition.Members)
+        {
+            if (!file.Lineup.Contains(member.Id))
+            {
+                errors.Add($"{at}: member '{member.Id}' is not in the lineup");
+            }
+
+            DataValidation.RequireNonNegative(member.Hp, $"{at} member '{member.Id}': hp", errors);
+            DataValidation.RequireNonNegative(member.Mp, $"{at} member '{member.Id}': mp", errors);
+        }
+
+        foreach (var id in file.Lineup.Where(id => expedition.Members.All(m => m.Id != id)))
+        {
+            errors.Add($"{at}: lineup member '{id}' is not on the expedition");
+        }
+
+        DataValidation.RequireNonNegative(expedition.CarriedGold, $"{at}: carriedGold", errors);
+        foreach (var (itemId, count) in expedition.CarriedItems)
+        {
+            if (!data.Items.ContainsKey(itemId))
+            {
+                errors.Add($"{at}: carries unknown item '{itemId}'");
+            }
+
+            if (count < 1)
+            {
+                errors.Add($"{at}: count of '{itemId}' must be at least 1, got {count}");
+            }
         }
     }
 
@@ -282,8 +410,8 @@ public static class SaveGame
         DataValidation.RequireText(member.Id, "save: member id", errors);
         DataValidation.RequireText(member.Name, $"{at}: name", errors);
         DataValidation.ValidateStats(member.Stats, at, errors);
-        DataValidation.ValidateItem(member.Weapon, EquipmentSlot.Weapon, $"{at}: weapon", data, errors);
-        DataValidation.ValidateItem(member.Armor, EquipmentSlot.Armor, $"{at}: armor", data, errors);
+        DataValidation.ValidateItem(member.Weapon, EquipmentSlot.Weapon, $"{at}: weapon", data.Items, data.Masteries, errors);
+        DataValidation.ValidateItem(member.Armor, EquipmentSlot.Armor, $"{at}: armor", data.Items, data.Masteries, errors);
 
         foreach (var (masteryId, xp) in member.MasteryXp)
         {

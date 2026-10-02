@@ -1,4 +1,5 @@
 using Triangle.Core.Actions;
+using Triangle.Core.Items;
 using Triangle.Core.Masteries;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
@@ -45,20 +46,34 @@ internal static class DataValidation
     }
 
     /// <summary>장착한 아이템: 있는 아이템이고, 계열이 그 슬롯에 맞는지. null은 맨손·맨몸.</summary>
-    public static void ValidateItem(string? itemId, EquipmentSlot slot, string what, GameData data, List<string> errors)
+    public static void ValidateItem(
+        string? itemId,
+        EquipmentSlot slot,
+        string what,
+        IReadOnlyDictionary<string, ItemDefinition> items,
+        IReadOnlyDictionary<string, MasteryDefinition> masteries,
+        List<string> errors)
     {
         if (itemId is null)
         {
             return;
         }
 
-        if (!data.Items.TryGetValue(itemId, out var item))
+        if (!items.TryGetValue(itemId, out var item))
         {
             errors.Add($"{what}: unknown item '{itemId}'");
         }
-        else if (data.Masteries[item.Mastery].Slot != slot)
+        else if (masteries.TryGetValue(item.Mastery, out var mastery) && mastery.Slot != slot)
         {
-            errors.Add($"{what}: '{itemId}' is {data.Masteries[item.Mastery].Slot}, not {slot}");
+            errors.Add($"{what}: '{itemId}' is {mastery.Slot}, not {slot}");
+        }
+    }
+
+    public static void RequirePercent(int value, string what, List<string> errors)
+    {
+        if (value is < 0 or > 100)
+        {
+            errors.Add($"{what} must be 0-100, got {value}");
         }
     }
 

@@ -1,0 +1,194 @@
+[
+  {
+    "id": "rookie_swordsman",
+    "name": "신입 검사",
+    "description": "전위. 수치는 임시.",
+    "names": [
+      "루키우스",
+      "티투스",
+      "세쿤두스",
+      "퀸투스",
+      "데키무스",
+      "아울루스",
+      "프리스카",
+      "루킬라",
+      "세르빌리아",
+      "파우스타",
+      "옥타비아",
+      "코르넬리아"
+    ],
+    "statsMin": {
+      "str": 12,
+      "dex": 10,
+      "vital": 21,
+      "intel": 17,
+      "speed": 10
+    },
+    "statsMax": {
+      "str": 15,
+      "dex": 13,
+      "vital": 25,
+      "intel": 20,
+      "speed": 13
+    },
+    "row": "Front",
+    "weapon": "old_sword",
+    "armor": "plate_armor",
+    "tactics": [
+      {
+        "priority": 1,
+        "condition": "Always",
+        "value": 0,
+        "actionId": "basic_attack"
+      }
+    ],
+    "price": 120
+  },
+  {
+    "id": "rookie_archer",
+    "name": "신입 궁수",
+    "description": "후위. 수치는 임시.",
+    "names": [
+      "루키우스",
+      "티투스",
+      "세쿤두스",
+      "퀸투스",
+      "데키무스",
+      "아울루스",
+      "프리스카",
+      "루킬라",
+      "세르빌리아",
+      "파우스타",
+      "옥타비아",
+      "코르넬리아"
+    ],
+    "statsMin": {
+      "str": 9,
+      "dex": 12,
+      "vital": 18,
+      "intel": 21,
+      "speed": 11
+    },
+    "statsMax": {
+      "str": 11,
+      "dex": 15,
+      "vital": 21,
+      "intel": 24,
+      "speed": 14
+    },
+    "row": "Back",
+    "weapon": "hunting_bow",
+    "armor": "leather_armor",
+    "tactics": [
+      {
+        "priority": 1,
+        "condition": "SelfMpAtMost",
+        "value": 20,
+        "actionId": "basic_attack"
+      },
+      {
+        "priority": 2,
+        "condition": "Always",
+        "value": 0,
+        "actionId": "fire_arrow"
+      }
+    ],
+    "price": 120
+  },
+  {
+    "id": "rookie_mage",
+    "name": "신입 마법사",
+    "description": "후위. 수치는 임시.",
+    "names": [
+      "루키우스",
+      "티투스",
+      "세쿤두스",
+      "퀸투스",
+      "데키무스",
+      "아울루스",
+      "프리스카",
+      "루킬라",
+      "세르빌리아",
+      "파우스타",
+      "옥타비아",
+      "코르넬리아"
+    ],
+    "statsMin": {
+      "str": 8,
+      "dex": 10,
+      "vital": 17,
+      "intel": 23,
+      "speed": 10
+    },
+    "statsMax": {
+      "str": 10,
+      "dex": 12,
+      "vital": 20,
+      "intel": 27,
+      "speed": 13
+    },
+    "row": "Back",
+    "weapon": "apprentice_staff",
+    "armor": "cloth_robe",
+    "tactics": [
+      {
+        "priority": 1,
+        "condition": "SelfMpAtMost",
+        "value": 20,
+        "actionId": "basic_attack"
+      },
+      {
+        "priority": 2,
+        "condition": "Always",
+        "value": 0,
+        "actionId": "magic_bolt"
+      }
+    ],
+    "price": 130
+  },
+  {
+    "id": "rookie_priest",
+    "name": "신입 사제",
+    "description": "후위. 치유술을 배우기 전에는 기본 공격만 한다. 수치는 임시.",
+    "names": [
+      "루키우스",
+      "티투스",
+      "세쿤두스",
+      "퀸투스",
+      "데키무스",
+      "아울루스",
+      "프리스카",
+      "루킬라",
+      "세르빌리아",
+      "파우스타",
+      "옥타비아",
+      "코르넬리아"
+    ],
+    "statsMin": {
+      "str": 9,
+      "dex": 10,
+      "vital": 19,
+      "intel": 22,
+      "speed": 10
+    },
+    "statsMax": {
+      "str": 11,
+      "dex": 12,
+      "vital": 22,
+      "intel": 26,
+      "speed": 12
+    },
+    "row": "Back",
+    "weapon": "wooden_relic",
+    "armor": "cloth_robe",
+    "tactics": [
+      {
+        "priority": 1,
+        "condition": "Always",
+        "value": 0,
+        "actionId": "basic_attack"
+      }
+    ],
+    "price": 110
+  }
+]

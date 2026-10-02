@@ -85,7 +85,7 @@ public class TriangleGame : Game
         }
 
         var store = new SaveStore(_options.SavePath ?? SaveStore.DefaultPath);
-        var loaded = store.Load(_data, () => StartingCompany.Create(Random.Shared.Next()));
+        var loaded = store.Load(_data, () => StartingCompany.Create(_data, Random.Shared.Next()));
         _company = loaded.Company;
         _editor = new TacticEditorScene(_ui, _data, _company, store, Bounds, StartCombat, OpenTraining, ConfirmedExit, LoadNotice(loaded));
 

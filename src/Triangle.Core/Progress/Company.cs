@@ -1,5 +1,6 @@
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
+using Triangle.Core.Expeditions;
 using Triangle.Core.Masteries;
 
 namespace Triangle.Core.Progress;
@@ -8,6 +9,7 @@ namespace Triangle.Core.Progress;
 /// 플레이어의 용병 회사. 세이브 데이터가 이 모델을 저장한다.
 /// - 로스터: 보유한 캐릭터 모두. 출전 명단은 그중 최대 <see cref="MaxLineup"/>명이다.
 /// - 골드와 창고(아이템 ID별 개수). 장착과 해제는 창고와 오간다.
+/// - 모집 후보와 진행 중인 원정. 원정 중에는 명단, 장비, 모집을 바꿀 수 없다(전술과 전열만 바꾼다).
 /// </summary>
 public sealed class Company
 {
@@ -19,6 +21,7 @@ public sealed class Company
     private readonly List<PartyMember> _roster;
     private readonly List<string> _lineup;
     private readonly Dictionary<string, int> _stash;
+    private readonly List<RecruitOffer> _recruitOffers;
     private int _activeTacticSet;
 
     public Company(
@@ -27,7 +30,10 @@ public sealed class Company
         int gold,
         IReadOnlyDictionary<string, int> stash,
         int activeTacticSet,
-        int nextSeed)
+        int nextSeed,
+        IEnumerable<RecruitOffer>? recruitOffers = null,
+        int nextRecruitNumber = 1,
+        Expedition? expedition = null)
     {
         _roster = roster.ToList();
         _lineup = lineup.ToList();
@@ -45,6 +51,9 @@ public sealed class Company
         _stash = new Dictionary<string, int>(stash.Where(p => p.Value > 0));
         ActiveTacticSet = activeTacticSet;
         NextSeed = nextSeed;
+        _recruitOffers = recruitOffers?.ToList() ?? [];
+        NextRecruitNumber = nextRecruitNumber;
+        Expedition = expedition;
     }
 
     /// <summary>보유한 캐릭터 모두.</summary>
@@ -73,6 +82,17 @@ public sealed class Company
     /// <summary>다음 무작위 시드. 원정과 모집이 <see cref="TakeSeed"/>로 꺼내 쓴다 (같은 세이브면 같은 결과).</summary>
     public int NextSeed { get; private set; }
 
+    /// <summary>마을의 모집 후보. 원정이 끝날 때마다 새로 굴린다.</summary>
+    public IReadOnlyList<RecruitOffer> RecruitOffers => _recruitOffers;
+
+    /// <summary>다음 신입의 일련번호 (ID는 recruit_번호).</summary>
+    public int NextRecruitNumber { get; private set; }
+
+    /// <summary>진행 중인 원정. 마을에 있으면 null.</summary>
+    public Expedition? Expedition { get; internal set; }
+
+    public bool OnExpedition => Expedition is not null;
+
     public PartyMember Member(string id) => _roster.Single(m => m.Id == id);
 
     public bool IsInLineup(string memberId) => _lineup.Contains(memberId);
@@ -88,7 +108,7 @@ public sealed class Company
     /// <summary>출전 명단에 넣는다. 이미 있거나 꽉 찼거나 로스터에 없으면 false.</summary>
     public bool AddToLineup(string memberId)
     {
-        if (_lineup.Count >= MaxLineup || _lineup.Contains(memberId) || _roster.All(m => m.Id != memberId))
+        if (OnExpedition || _lineup.Count >= MaxLineup || _lineup.Contains(memberId) || _roster.All(m => m.Id != memberId))
         {
             return false;
         }
@@ -97,7 +117,7 @@ public sealed class Company
         return true;
     }
 
-    public bool RemoveFromLineup(string memberId) => _lineup.Remove(memberId);
+    public bool RemoveFromLineup(string memberId) => !OnExpedition && _lineup.Remove(memberId);
 
     public int StashCount(string itemId) => _stash.GetValueOrDefault(itemId);
 
@@ -133,10 +153,15 @@ public sealed class Company
 
     /// <summary>
     /// 창고의 아이템을 장착한다. 슬롯은 아이템의 계열이 정하고, 끼고 있던 아이템은 창고로 돌아간다.
-    /// 이미 낀 아이템이면 아무것도 하지 않고 true. 창고에 없으면 false.
+    /// 이미 낀 아이템이면 아무것도 하지 않고 true. 창고에 없거나 원정 중이면 false.
     /// </summary>
     public bool Equip(string memberId, string itemId, GameData data)
     {
+        if (OnExpedition)
+        {
+            return false;
+        }
+
         var member = Member(memberId);
         var slot = data.Masteries[data.Items[itemId].Mastery].Slot;
         var current = slot == EquipmentSlot.Weapon ? member.Weapon : member.Armor;
@@ -165,6 +190,70 @@ public sealed class Company
         }
 
         return true;
+    }
+
+    /// <summary>모집 후보를 새로 굴린다 (원정이 끝날 때, 새 게임).</summary>
+    public void RerollRecruits(GameData data)
+    {
+        _recruitOffers.Clear();
+        _recruitOffers.AddRange(Recruitment.Roll(data, TakeSeed()));
+    }
+
+    /// <summary>
+    /// 후보의 고용 비용. 로스터가 비었고 가장 싼 후보도 못 살 만큼 골드가 없으면, 가장 싼 후보 한 명은 무료다
+    /// (영구 사망 지역에서 전멸해도 게임이 막히지 않도록).
+    /// </summary>
+    public int HirePrice(int offerIndex)
+    {
+        var price = _recruitOffers[offerIndex].Price;
+        if (_roster.Count > 0 || _recruitOffers.Count == 0)
+        {
+            return price;
+        }
+
+        var cheapest = _recruitOffers.Min(o => o.Price);
+        return Gold < cheapest && offerIndex == _recruitOffers.FindIndex(o => o.Price == cheapest) ? 0 : price;
+    }
+
+    public bool CanHire(int offerIndex) =>
+        !OnExpedition && offerIndex >= 0 && offerIndex < _recruitOffers.Count && Gold >= HirePrice(offerIndex);
+
+    /// <summary>
+    /// 후보를 고용한다: 골드를 내고 로스터에 넣는다. 출전 명단에 자리가 있으면 명단에도 넣는다.
+    /// 시작 장비는 새로 생긴다. 숙련 0, 패시브 없음, 두 전술 세트 모두 템플릿의 기본 전술.
+    /// 골드가 모자라거나 원정 중이면 null.
+    /// </summary>
+    public PartyMember? Hire(int offerIndex, GameData data)
+    {
+        if (!CanHire(offerIndex))
+        {
+            return null;
+        }
+
+        var offer = _recruitOffers[offerIndex];
+        var template = data.Recruits[offer.TemplateId];
+        string id;
+        do
+        {
+            id = $"recruit_{NextRecruitNumber++}";
+        }
+        while (_roster.Any(m => m.Id == id));
+
+        Gold -= HirePrice(offerIndex);
+        _recruitOffers.RemoveAt(offerIndex);
+        var member = new PartyMember(
+            id, offer.Name, offer.Stats, template.Row, template.Weapon, template.Armor,
+            new Dictionary<string, int>(), new Dictionary<string, int>(), [template.Tactics, template.Tactics]);
+        _roster.Add(member);
+        AddToLineup(id);
+        return member;
+    }
+
+    /// <summary>영구 사망: 로스터와 출전 명단에서 뺀다.</summary>
+    internal void RemoveMember(string memberId)
+    {
+        _roster.RemoveAll(m => m.Id == memberId);
+        _lineup.Remove(memberId);
     }
 
     public IReadOnlyList<CombatantSetup> LineupSetups(GameData data) =>

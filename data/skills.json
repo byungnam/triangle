@@ -1,18 +1,36 @@
 [
   {
-    "id": "melee_weapons",
-    "name": "근접 무기 숙련",
+    "id": "swordsmanship",
+    "name": "검술",
     "description": "임시 수치",
-    "group": "근접 전투",
+    "mastery": "sword",
     "rank": 1,
-    "primary": "Str",
-    "secondary": "Vital",
     "prerequisites": [],
     "bonuses": [
       {
         "kind": "PowerPercent",
         "percentPerLevel": 5,
-        "tag": "melee"
+        "tag": "sword"
+      }
+    ]
+  },
+  {
+    "id": "flurry",
+    "name": "연속 베기",
+    "description": "임시 수치",
+    "mastery": "sword",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "swordsmanship",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "DelayReductionPercent",
+        "percentPerLevel": 4,
+        "tag": "sword"
       }
     ]
   },
@@ -20,10 +38,8 @@
     "id": "archery",
     "name": "활 숙련",
     "description": "임시 수치",
-    "group": "궁술",
+    "mastery": "bow",
     "rank": 1,
-    "primary": "Dex",
-    "secondary": "Str",
     "prerequisites": [],
     "bonuses": [
       {
@@ -37,10 +53,8 @@
     "id": "rapid_fire",
     "name": "속사",
     "description": "임시 수치",
-    "group": "궁술",
+    "mastery": "bow",
     "rank": 2,
-    "primary": "Dex",
-    "secondary": "Speed",
     "prerequisites": [
       {
         "skillId": "archery",
@@ -59,10 +73,8 @@
     "id": "precision_shooting",
     "name": "정밀 사격",
     "description": "임시 수치",
-    "group": "궁술",
+    "mastery": "bow",
     "rank": 3,
-    "primary": "Dex",
-    "secondary": "Intel",
     "prerequisites": [
       {
         "skillId": "archery",
@@ -81,16 +93,14 @@
     "id": "magic_control",
     "name": "마력 제어",
     "description": "임시 수치",
-    "group": "마법",
+    "mastery": "staff",
     "rank": 1,
-    "primary": "Intel",
-    "secondary": "Speed",
     "prerequisites": [],
     "bonuses": [
       {
         "kind": "PowerPercent",
         "percentPerLevel": 5,
-        "tag": "magic"
+        "tag": "staff"
       }
     ]
   },
@@ -98,10 +108,8 @@
     "id": "mana_efficiency",
     "name": "마나 효율",
     "description": "임시 수치",
-    "group": "마법",
+    "mastery": "staff",
     "rank": 2,
-    "primary": "Intel",
-    "secondary": "Vital",
     "prerequisites": [
       {
         "skillId": "magic_control",
@@ -112,7 +120,7 @@
       {
         "kind": "MpCostReductionPercent",
         "percentPerLevel": 5,
-        "tag": "magic"
+        "tag": "staff"
       }
     ]
   },
@@ -120,10 +128,8 @@
     "id": "healing",
     "name": "치유술",
     "description": "임시 수치",
-    "group": "신성",
+    "mastery": "relic",
     "rank": 1,
-    "primary": "Intel",
-    "secondary": "Vital",
     "prerequisites": [],
     "bonuses": [
       {
@@ -136,10 +142,8 @@
     "id": "holy_magic",
     "name": "신성 마법",
     "description": "임시 수치",
-    "group": "신성",
+    "mastery": "relic",
     "rank": 3,
-    "primary": "Intel",
-    "secondary": "Vital",
     "prerequisites": [
       {
         "skillId": "healing",
@@ -150,39 +154,7 @@
       {
         "kind": "PowerPercent",
         "percentPerLevel": 5,
-        "tag": "holy"
-      }
-    ]
-  },
-  {
-    "id": "endurance",
-    "name": "체력 단련",
-    "description": "임시 수치",
-    "group": "신체",
-    "rank": 1,
-    "primary": "Vital",
-    "secondary": "Str",
-    "prerequisites": [],
-    "bonuses": [
-      {
-        "kind": "MaxHpPercent",
-        "percentPerLevel": 5
-      }
-    ]
-  },
-  {
-    "id": "meditation",
-    "name": "명상",
-    "description": "임시 수치",
-    "group": "신체",
-    "rank": 1,
-    "primary": "Intel",
-    "secondary": "Vital",
-    "prerequisites": [],
-    "bonuses": [
-      {
-        "kind": "MaxMpPercent",
-        "percentPerLevel": 5
+        "tag": "relic"
       }
     ]
   },
@@ -190,10 +162,8 @@
     "id": "defense",
     "name": "방어 기술",
     "description": "임시 수치",
-    "group": "신체",
-    "rank": 2,
-    "primary": "Vital",
-    "secondary": "Str",
+    "mastery": "plate",
+    "rank": 1,
     "prerequisites": [],
     "bonuses": [
       {
@@ -203,18 +173,87 @@
     ]
   },
   {
+    "id": "endurance",
+    "name": "체력 단련",
+    "description": "임시 수치",
+    "mastery": "plate",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "defense",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MaxHpPercent",
+        "percentPerLevel": 5
+      }
+    ]
+  },
+  {
     "id": "mobility",
     "name": "기동",
     "description": "임시 수치",
-    "group": "신체",
-    "rank": 2,
-    "primary": "Speed",
-    "secondary": "Dex",
+    "mastery": "leather",
+    "rank": 1,
     "prerequisites": [],
     "bonuses": [
       {
         "kind": "DelayReductionPercent",
         "percentPerLevel": 2
+      }
+    ]
+  },
+  {
+    "id": "evasion_training",
+    "name": "회피 훈련",
+    "description": "임시 수치",
+    "mastery": "leather",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "mobility",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percentPerLevel": 2
+      }
+    ]
+  },
+  {
+    "id": "meditation",
+    "name": "명상",
+    "description": "임시 수치",
+    "mastery": "cloth",
+    "rank": 1,
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "MaxMpPercent",
+        "percentPerLevel": 5
+      }
+    ]
+  },
+  {
+    "id": "arcane_focus",
+    "name": "마력 집중",
+    "description": "임시 수치",
+    "mastery": "cloth",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "meditation",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MpCostReductionPercent",
+        "percentPerLevel": 3
       }
     ]
   }

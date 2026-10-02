@@ -1,5 +1,6 @@
 using Triangle.Core.Actions;
 using Triangle.Core.Combat;
+using Triangle.Core.Masteries;
 using Triangle.Core.Skills;
 
 namespace Triangle.Core.Data;
@@ -8,17 +9,24 @@ namespace Triangle.Core.Data;
 public sealed class GameData
 {
     internal GameData(
+        IReadOnlyDictionary<string, MasteryDefinition> masteries,
         IReadOnlyDictionary<string, SkillDefinition> skills,
         IReadOnlyDictionary<string, ActionDefinition> actions,
         IReadOnlyDictionary<string, EncounterDefinition> encounters)
     {
+        Masteries = masteries;
         Skills = skills;
         Actions = actions;
         Encounters = encounters;
         Catalog = new CombatCatalog(actions, skills);
     }
 
-    /// <summary>훈련하는 패시브 스킬.</summary>
+    /// <summary>장비 계열이자 숙련 트리.</summary>
+    public IReadOnlyDictionary<string, MasteryDefinition> Masteries { get; }
+
+    public IEnumerable<MasteryDefinition> MasteriesFor(EquipmentSlot slot) => Masteries.Values.Where(m => m.Slot == slot);
+
+    /// <summary>숙련 트리의 패시브 스킬.</summary>
     public IReadOnlyDictionary<string, SkillDefinition> Skills { get; }
 
     /// <summary>전술에서 쓰는 행동.</summary>
@@ -38,7 +46,7 @@ public sealed class GameData
         }
 
         return encounter.Units
-            .Select(u => new CombatantSetup(u.Id, u.Name, u.Stats, u.Row, u.Skills, u.Tactics))
+            .Select(u => new CombatantSetup(u.Id, u.Name, u.Stats, u.Row, u.Weapon, u.Armor, u.Skills, u.Tactics))
             .ToList();
     }
 }

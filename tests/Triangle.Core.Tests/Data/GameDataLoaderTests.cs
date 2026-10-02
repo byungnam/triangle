@@ -2,6 +2,7 @@ using System.Text.Json;
 using Triangle.Core.Actions;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
+using Triangle.Core.Masteries;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
@@ -10,11 +11,19 @@ namespace Triangle.Core.Tests.Data;
 
 public class GameDataLoaderTests
 {
+    private const string Masteries = """
+        [
+          { "id": "bow", "name": "활", "slot": "Weapon" },
+          { "id": "sword", "name": "검", "slot": "Weapon" },
+          { "id": "plate", "name": "판금", "slot": "Armor" }
+        ]
+        """;
+
     private const string Skills = """
         [
-          { "id": "archery", "name": "활 숙련", "group": "궁술", "primary": "Dex", "secondary": "Str",
+          { "id": "archery", "name": "활 숙련", "mastery": "bow",
             "bonuses": [ { "kind": "PowerPercent", "percentPerLevel": 5, "tag": "bow" } ] },
-          { "id": "precision", "name": "정밀 사격", "rank": 3,
+          { "id": "precision", "name": "정밀 사격", "mastery": "bow", "rank": 3,
             "prerequisites": [ { "skillId": "archery", "level": 4 } ] }
         ]
         """;
@@ -22,7 +31,7 @@ public class GameDataLoaderTests
     private const string Actions = """
         [
           { "id": "strike", "name": "공격", "power": 10, "rule": "FrontFirst", "tags": [ "melee" ] },
-          { "id": "shot", "name": "화살", "power": 10, "tags": [ "bow" ],
+          { "id": "shot", "name": "화살", "power": 10, "weapon": "bow",
             "requirements": [ { "skillId": "archery", "level": 1 } ] },
           { "id": "heal", "name": "치료", "effect": "Heal", "power": 10, "side": "Ally", "rule": "LowestHpRatio", "mpCost": 5 }
         ]
@@ -30,14 +39,15 @@ public class GameDataLoaderTests
 
     private static string Encounters(
         string tactics = """{ "priority": 1, "condition": "Always", "value": 0, "actionId": "strike" }""",
-        string skills = "{}") => $$"""
+        string skills = "{}",
+        string weapon = "bow") => $$"""
         [
           {
             "id": "camp",
             "name": "야영지",
             "units": [
               {
-                "id": "e1", "name": "적", "row": "Back",
+                "id": "e1", "name": "적", "row": "Back", "weapon": "{{weapon}}", "armor": "plate",
                 "stats": { "str": 10, "dex": 10, "vital": 20, "intel": 10, "speed": 10 },
                 "skills": {{skills}},
                 "tactics": [ {{tactics}} ]
@@ -47,22 +57,23 @@ public class GameDataLoaderTests
         ]
         """;
 
-    private static GameDataException Fails(string skills, string actions, string encounters) =>
-        Assert.Throws<GameDataException>(() => GameDataLoader.Parse(skills, actions, encounters));
+    private static GameDataException Fails(string skills, string actions, string encounters, string masteries = Masteries) =>
+        Assert.Throws<GameDataException>(() => GameDataLoader.Parse(masteries, skills, actions, encounters));
 
     [Fact]
     public void Shipped_data_files_are_valid_and_playable()
     {
         var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
 
+        Assert.NotEmpty(data.Masteries);
         Assert.NotEmpty(data.Skills);
         Assert.NotEmpty(data.Actions);
         Assert.NotEmpty(data.Encounters);
 
         // 모든 적 팀이 실제 전투에 들어갈 수 있어야 한다.
-        var basic = data.Actions.Values.First(a => a.Requirements.Count == 0);
+        var basic = data.Actions.Values.First(a => a.Requirements.Count == 0 && a.Weapon is null);
         var ally = new CombatantSetup(
-            "ally", "아군", new Stats(15, 15, 25, 20, 13), Row.Front, SkillSet.NoSkills,
+            "ally", "아군", new Stats(15, 15, 25, 20, 13), Row.Front, null, null, SkillSet.NoSkills,
             [new Tactic(1, Condition.Always, 0, basic.Id)]);
         foreach (var id in data.Encounters.Keys)
         {
@@ -74,10 +85,11 @@ public class GameDataLoaderTests
     [Fact]
     public void Parses_skills_actions_and_encounters()
     {
-        var data = GameDataLoader.Parse(Skills, Actions, Encounters(skills: """{ "archery": 2 }"""));
+        var data = GameDataLoader.Parse(Masteries, Skills, Actions, Encounters(skills: """{ "archery": 2 }"""));
 
+        Assert.Equal(EquipmentSlot.Armor, data.Masteries["plate"].Slot);
         var archery = data.Skills["archery"];
-        Assert.Equal((Stat.Dex, Stat.Str, 1), (archery.Primary, archery.Secondary, archery.Rank));
+        Assert.Equal(("bow", 1), (archery.Mastery, archery.Rank));
         Assert.Equal(new SkillBonus(BonusKind.PowerPercent, 5, "bow"), Assert.Single(archery.Bonuses));
         Assert.Equal(new SkillRequirement("archery", 4), Assert.Single(data.Skills["precision"].Prerequisites));
 
@@ -86,11 +98,12 @@ public class GameDataLoaderTests
         Assert.Equal(TargetSide.Ally, heal.Side);
         Assert.Equal(5, heal.MpCost);
         Assert.Equal(TargetScope.Single, heal.Scope); // 생략하면 기본값
-        Assert.Equal(["bow"], data.Actions["shot"].Tags);
+        Assert.Equal("bow", data.Actions["shot"].Weapon);
 
         var unit = Assert.Single(data.CreateEncounterTeam("camp"));
         Assert.Equal("적", unit.Name);
         Assert.Equal(Row.Back, unit.Row);
+        Assert.Equal(("bow", "plate"), (unit.Weapon, unit.Armor));
         Assert.Equal(2, unit.Skills["archery"]);
         Assert.Equal(new Tactic(1, Condition.Always, 0, "strike"), Assert.Single(unit.Tactics));
     }
@@ -98,13 +111,13 @@ public class GameDataLoaderTests
     [Fact]
     public void Serialized_data_round_trips_with_readable_korean()
     {
-        var data = GameDataLoader.Parse(Skills, Actions, Encounters());
+        var data = GameDataLoader.Parse(Masteries, Skills, Actions, Encounters());
         var json = JsonSerializer.Serialize(data.Actions.Values.ToList(), GameDataJson.Options);
 
         Assert.Contains("\"name\": \"치료\"", json);
         Assert.Contains("\"rule\": \"LowestHpRatio\"", json);
 
-        var again = GameDataLoader.Parse(Skills, json, Encounters());
+        var again = GameDataLoader.Parse(Masteries, Skills, json, Encounters());
         Assert.Equal(data.Actions["heal"].Name, again.Actions["heal"].Name);
         Assert.Equal(data.Actions["shot"].Requirements, again.Actions["shot"].Requirements);
     }
@@ -129,7 +142,7 @@ public class GameDataLoaderTests
     [Fact]
     public void Rejects_missing_required_properties_and_numeric_enums()
     {
-        Assert.StartsWith("skills.json", Assert.Single(Fails("""[ { "name": "이름만" } ]""", Actions, Encounters()).Errors));
+        Assert.StartsWith("skills.json", Assert.Single(Fails("""[ { "name": "이름만", "mastery": "bow" } ]""", Actions, Encounters()).Errors));
         Assert.StartsWith("actions.json", Assert.Single(Fails(Skills, """[ { "id": "x" } ]""", Encounters()).Errors));
         Fails(Skills, """[ { "id": "x", "name": "y", "rule": 1 } ]""", Encounters());
     }
@@ -167,9 +180,9 @@ public class GameDataLoaderTests
     {
         var skills = """
             [
-              { "id": "a", "name": "A", "prerequisites": [ { "skillId": "b", "level": 1 } ] },
-              { "id": "b", "name": "B", "prerequisites": [ { "skillId": "c", "level": 1 } ] },
-              { "id": "c", "name": "C", "prerequisites": [ { "skillId": "a", "level": 1 } ] }
+              { "id": "a", "name": "A", "mastery": "bow", "prerequisites": [ { "skillId": "b", "level": 1 } ] },
+              { "id": "b", "name": "B", "mastery": "bow", "prerequisites": [ { "skillId": "c", "level": 1 } ] },
+              { "id": "c", "name": "C", "mastery": "bow", "prerequisites": [ { "skillId": "a", "level": 1 } ] }
             ]
             """;
 
@@ -191,12 +204,37 @@ public class GameDataLoaderTests
     }
 
     [Fact]
+    public void Validates_equipment_slots_weapon_requirements_and_tree_membership()
+    {
+        var skills = """
+            [ { "id": "archery", "name": "활 숙련", "mastery": "bow" },
+              { "id": "cross", "name": "다른 트리 선행", "mastery": "sword",
+                "prerequisites": [ { "skillId": "archery", "level": 1 } ] },
+              { "id": "lost", "name": "없는 트리", "mastery": "nowhere" } ]
+            """;
+        var actions = """
+            [ { "id": "strike", "name": "공격" },
+              { "id": "shot", "name": "화살", "weapon": "bow" },
+              { "id": "bad", "name": "방어구를 무기로", "weapon": "plate" } ]
+            """;
+        var tactics = """{ "priority": 1, "condition": "Always", "value": 0, "actionId": "shot" }""";
+
+        var errors = Fails(skills, actions, Encounters(tactics, weapon: "sword")).Errors;
+
+        Assert.Contains("skills.json 'cross': prerequisite 'archery' belongs to another mastery tree", errors);
+        Assert.Contains("skills.json 'lost': unknown mastery 'nowhere'", errors);
+        Assert.Contains("actions.json 'bad': weapon: 'plate' is Armor, not Weapon", errors);
+        Assert.Contains("encounters.json 'camp' unit 'e1' tactic 1: 'shot' needs weapon 'bow'", errors);
+    }
+
+    [Fact]
     public void Missing_files_are_reported_by_name()
     {
         var dir = Path.Combine(Path.GetTempPath(), "triangle-missing-" + Guid.NewGuid());
         Directory.CreateDirectory(dir);
         try
         {
+            File.WriteAllText(Path.Combine(dir, GameDataLoader.MasteriesFile), Masteries);
             File.WriteAllText(Path.Combine(dir, GameDataLoader.SkillsFile), Skills);
 
             var errors = Assert.Throws<GameDataException>(() => GameDataLoader.LoadDirectory(dir)).Errors;

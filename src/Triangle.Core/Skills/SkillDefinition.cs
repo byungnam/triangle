@@ -1,15 +1,5 @@
 namespace Triangle.Core.Skills;
 
-/// <summary>기본 스탯 종류. 스킬의 훈련 속도를 정하는 1차·2차 스탯에 쓴다.</summary>
-public enum Stat
-{
-    Str,
-    Dex,
-    Vital,
-    Intel,
-    Speed,
-}
-
 /// <summary>스킬 레벨마다 주는 보너스의 종류. 값은 모두 정수 백분율이다.</summary>
 public enum BonusKind
 {
@@ -39,7 +29,8 @@ public sealed record SkillRequirement(string SkillId, int Level);
 public sealed record SkillBonus(BonusKind Kind, int PercentPerLevel, string? Tag = null);
 
 /// <summary>
-/// 훈련하는 패시브 스킬 (EVE Online 방식). 레벨 1–5, 랭크가 높을수록 훈련에 SP가 더 든다.
+/// 숙련 트리의 패시브 스킬. 레벨 1–5. 그 트리의 숙련 포인트로 배운다 (Albion 데스티니 보드처럼
+/// 장비를 써서 숙련을 올리고, 숙련 레벨이 주는 포인트로 찍는다).
 /// 행동을 직접 주지 않고, 보너스를 주거나 행동의 요구 조건이 된다.
 /// </summary>
 public sealed record SkillDefinition
@@ -52,15 +43,11 @@ public sealed record SkillDefinition
     /// <summary>편집기용 메모.</summary>
     public string? Description { get; init; }
 
-    /// <summary>스킬 묶음 (화면에서 묶어 보여주는 용도, 예: "궁술").</summary>
-    public string Group { get; init; } = "";
+    /// <summary>이 스킬이 속한 숙련 트리 (masteries.json의 ID). 그 숙련의 포인트로만 배운다.</summary>
+    public required string Mastery { get; init; }
 
-    /// <summary>훈련 난이도 배수. 레벨별 필요 SP에 곱한다.</summary>
+    /// <summary>레벨 하나를 올리는 데 드는 포인트.</summary>
     public int Rank { get; init; } = 1;
-
-    /// <summary>훈련 속도에 영향을 주는 스탯 (EVE의 속성처럼).</summary>
-    public Stat Primary { get; init; } = Stat.Intel;
-    public Stat Secondary { get; init; } = Stat.Vital;
 
     public IReadOnlyList<SkillRequirement> Prerequisites { get; init; } = [];
     public IReadOnlyList<SkillBonus> Bonuses { get; init; } = [];

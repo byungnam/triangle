@@ -8,6 +8,7 @@ using MyraDesktop = Myra.Graphics2D.UI.Desktop;
 using Triangle.Core.Actions;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
+using Triangle.Core.Masteries;
 using Triangle.Core.Progress;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
@@ -316,18 +317,13 @@ internal sealed class TacticEditorScene : IScene
 
         var title = new HorizontalStackPanel { Spacing = 12 };
         title.Widgets.Add(Label(member.Name, 26, Theme.Text, bold: true));
-        var training = TextButton("스킬 훈련", Theme.Button, Theme.ButtonHover);
+        var training = TextButton("숙련·패시브", Theme.Button, Theme.ButtonHover);
         training.Click += (_, _) => _openTraining(member);
         title.Widgets.Add(training);
         title.Widgets.Add(Label(SkillSummary(skills), 16, Theme.TextDim));
-        if (member.TrainingQueue.Count > 0 || member.UnallocatedSp > 0)
-        {
-            var queueText = member.TrainingQueue.Count > 0
-                ? $"훈련 중: {_data.Skills[member.TrainingQueue[0].SkillId].Name} Lv {member.TrainingQueue[0].Level}"
-                : $"미배정 SP {member.UnallocatedSp:N0}";
-            title.Widgets.Add(Label(queueText, 15, Theme.Cover));
-        }
         panel.Widgets.Add(title);
+
+        panel.Widgets.Add(BuildEquipmentSelector(member));
 
         var s = member.Stats;
         panel.Widgets.Add(Label(
@@ -351,7 +347,7 @@ internal sealed class TacticEditorScene : IScene
         }
 
         // 새 전술은 쓸 수 있는 첫 행동으로 시작한다.
-        var firstUsable = _data.Actions.Values.FirstOrDefault(skills.CanUse);
+        var firstUsable = _data.Actions.Values.FirstOrDefault(a => a.IsUsableBy(member.Weapon, skills));
         var addButton = TextButton("+ 전술 추가", Theme.Button, Theme.ButtonHover);
         addButton.Enabled = member.Tactics.Count < MaxTactics && firstUsable is not null;
         addButton.Click += (_, _) =>
@@ -441,15 +437,16 @@ internal sealed class TacticEditorScene : IScene
 
         // 행동: 쓸 수 있는 행동을 먼저, 잠긴 행동은 아래에 (고를 수 없음)
         var skills = member.Skills(_data);
-        var actions = _data.Actions.Values.OrderBy(a => skills.CanUse(a) ? 0 : 1).ToList();
-        var items = actions.Select(a => skills.CanUse(a)
+        bool Usable(ActionDefinition a) => a.IsUsableBy(member.Weapon, skills);
+        var actions = _data.Actions.Values.OrderBy(a => Usable(a) ? 0 : 1).ToList();
+        var items = actions.Select(a => Usable(a)
             ? (ActionLabel(a), Theme.Text)
-            : ($"(잠김) {a.Name} — {RequirementText(skills.Missing(a.Requirements))}", Theme.Enemy));
+            : ($"(잠김) {a.Name} — {LockReason(a, member.Weapon, skills)}", Theme.Enemy));
         var actionCombo = Combo(items, actions.FindIndex(a => a.Id == tactic.ActionId), 300);
         actionCombo.SelectedIndexChanged += (_, _) =>
         {
             var chosen = actions[actionCombo.SelectedIndex ?? 0];
-            if (skills.CanUse(chosen))
+            if (Usable(chosen))
             {
                 member.ReplaceTactic(index, tactic.Condition, tactic.Value, chosen.Id);
                 MarkChanged();
@@ -523,8 +520,50 @@ internal sealed class TacticEditorScene : IScene
         return cost.Count == 0 ? action.Name : $"{action.Name} ({string.Join(", ", cost)})";
     }
 
-    private string RequirementText(IEnumerable<SkillRequirement> requirements) =>
-        string.Join(", ", requirements.Select(r => $"{_data.Skills[r.SkillId].Name} {r.Level}"));
+    /// <summary>행동을 못 쓰는 이유, 예: "활 필요, 정밀 사격 1".</summary>
+    private string LockReason(ActionDefinition action, string? weapon, SkillSet skills)
+    {
+        var reasons = new List<string>();
+        if (action.Weapon is not null && action.Weapon != weapon)
+        {
+            reasons.Add($"{_data.Masteries[action.Weapon].Name} 필요");
+        }
+
+        reasons.AddRange(skills.Missing(action.Requirements).Select(r => $"{_data.Skills[r.SkillId].Name} {r.Level}"));
+        return string.Join(", ", reasons);
+    }
+
+    /// <summary>무기·방어구 계열 선택. 무기를 바꾸면 그 무기가 필요한 전술이 잠길 수 있다(빨간색으로 표시).</summary>
+    private Widget BuildEquipmentSelector(PartyMember member)
+    {
+        var row = new HorizontalStackPanel { Spacing = 8 };
+        foreach (var (slot, label) in new[] { (EquipmentSlot.Weapon, "무기"), (EquipmentSlot.Armor, "방어구") })
+        {
+            var options = _data.MasteriesFor(slot).ToList();
+            var current = slot == EquipmentSlot.Weapon ? member.Weapon : member.Armor;
+            row.Widgets.Add(Label(label, 17, Theme.Text, width: slot == EquipmentSlot.Weapon ? 48 : 60));
+            var combo = Combo(
+                options.Select(m => ($"{m.Name}  (숙련 Lv {member.MasteryLevel(m.Id)})", Theme.Text)),
+                options.FindIndex(m => m.Id == current), 190);
+            combo.SelectedIndexChanged += (_, _) =>
+            {
+                var chosen = options[combo.SelectedIndex ?? 0].Id;
+                if (slot == EquipmentSlot.Weapon)
+                {
+                    member.Weapon = chosen;
+                }
+                else
+                {
+                    member.Armor = chosen;
+                }
+
+                MarkChanged();
+            };
+            row.Widgets.Add(combo);
+        }
+
+        return row;
+    }
 
     /// <summary>배운 스킬을 데이터 순서대로 "활 숙련 4 · 정밀 사격 1"처럼 보여준다.</summary>
     private string SkillSummary(SkillSet skills)

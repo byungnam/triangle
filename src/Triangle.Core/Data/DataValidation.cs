@@ -1,4 +1,5 @@
 using Triangle.Core.Actions;
+using Triangle.Core.Masteries;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
@@ -15,6 +16,32 @@ internal static class DataValidation
         RequireNonNegative(stats.Vital, $"{at}: vital", errors);
         RequireNonNegative(stats.Intel, $"{at}: intel", errors);
         RequireNonNegative(stats.Speed, $"{at}: speed", errors);
+    }
+
+    /// <summary>장비: 무기 칸에는 무기 계열, 방어구 칸에는 방어구 계열이어야 한다. null은 맨손·맨몸.</summary>
+    public static void ValidateEquipment(
+        string? weapon, string? armor, string at, IReadOnlyDictionary<string, MasteryDefinition> masteries, List<string> errors)
+    {
+        RequireSlot(weapon, EquipmentSlot.Weapon, $"{at}: weapon", masteries, errors);
+        RequireSlot(armor, EquipmentSlot.Armor, $"{at}: armor", masteries, errors);
+    }
+
+    public static void RequireSlot(
+        string? id, EquipmentSlot slot, string what, IReadOnlyDictionary<string, MasteryDefinition> masteries, List<string> errors)
+    {
+        if (id is null)
+        {
+            return;
+        }
+
+        if (!masteries.TryGetValue(id, out var mastery))
+        {
+            errors.Add($"{what}: unknown mastery '{id}'");
+        }
+        else if (mastery.Slot != slot)
+        {
+            errors.Add($"{what}: '{id}' is {mastery.Slot}, not {slot}");
+        }
     }
 
     /// <summary>요구/선행 조건: 있는 스킬을 가리키고 레벨이 1–5인지.</summary>

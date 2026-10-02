@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Triangle.Core.Data;
-using Triangle.Core.Skills;
+using Triangle.Core.Masteries;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
 
@@ -19,16 +19,16 @@ public sealed record SavedMember
     public required string Name { get; init; }
     public required Stats Stats { get; init; }
     public required Row Row { get; init; }
+    public string? Weapon { get; init; }
+    public string? Armor { get; init; }
 
-    /// <summary>스킬 ID별 누적 SP.</summary>
-    public IReadOnlyDictionary<string, int> SkillPoints { get; init; } = new Dictionary<string, int>();
+    /// <summary>숙련 ID별 누적 경험치.</summary>
+    public IReadOnlyDictionary<string, int> MasteryXp { get; init; } = new Dictionary<string, int>();
+
+    /// <summary>배운 스킬의 레벨.</summary>
+    public IReadOnlyDictionary<string, int> SkillLevels { get; init; } = new Dictionary<string, int>();
 
     public IReadOnlyList<Tactic> Tactics { get; init; } = [];
-
-    public IReadOnlyList<TrainingQueueEntry> TrainingQueue { get; init; } = [];
-
-    /// <summary>큐가 비어 아직 넣지 않은 SP.</summary>
-    public int UnallocatedSp { get; init; }
 }
 
 /// <summary>세이브를 읽거나 검증하다 실패했다. 발견한 오류를 모두 담는다.</summary>
@@ -45,8 +45,8 @@ public sealed class SaveGameException(IReadOnlyList<string> errors)
 /// </summary>
 public static class SaveGame
 {
-    /// <summary>2: 직업 제거, 스킬 SP·훈련 큐 추가 (2026-10-02). 1은 읽지 않는다.</summary>
-    public const int CurrentVersion = 2;
+    /// <summary>3: 장비와 숙련 (Albion식), SP·훈련 큐 제거 (2026-10-02). 이전 버전은 읽지 않는다.</summary>
+    public const int CurrentVersion = 3;
 
     public static string Serialize(Party party)
     {
@@ -59,10 +59,11 @@ public static class SaveGame
                 Name = m.Name,
                 Stats = m.Stats,
                 Row = m.Row,
-                SkillPoints = new SortedDictionary<string, int>(m.SkillPoints.ToDictionary()),
+                Weapon = m.Weapon,
+                Armor = m.Armor,
+                MasteryXp = new SortedDictionary<string, int>(m.MasteryXp.ToDictionary()),
+                SkillLevels = new SortedDictionary<string, int>(m.SkillLevels.ToDictionary()),
                 Tactics = m.Tactics.ToList(),
-                TrainingQueue = m.TrainingQueue.ToList(),
-                UnallocatedSp = m.UnallocatedSp,
             }).ToList(),
         };
         return JsonSerializer.Serialize(file, GameDataJson.Options);
@@ -89,7 +90,7 @@ public static class SaveGame
         Validate(file, data);
 
         return new Party(file.Party.Select(m =>
-            new PartyMember(m.Id, m.Name, m.Stats, m.Row, m.SkillPoints, m.Tactics, m.TrainingQueue, m.UnallocatedSp)));
+            new PartyMember(m.Id, m.Name, m.Stats, m.Row, m.Weapon, m.Armor, m.MasteryXp, m.SkillLevels, m.Tactics)));
     }
 
     private static void Validate(SaveFile file, GameData data)
@@ -116,32 +117,32 @@ public static class SaveGame
             DataValidation.RequireText(member.Id, "save: member id", errors);
             DataValidation.RequireText(member.Name, $"{at}: name", errors);
             DataValidation.ValidateStats(member.Stats, at, errors);
+            DataValidation.ValidateEquipment(member.Weapon, member.Armor, at, data.Masteries, errors);
 
-            foreach (var (skillId, sp) in member.SkillPoints)
+            foreach (var (masteryId, xp) in member.MasteryXp)
             {
-                if (!data.Skills.ContainsKey(skillId))
+                if (!data.Masteries.ContainsKey(masteryId))
                 {
-                    errors.Add($"{at}: unknown skill '{skillId}'");
+                    errors.Add($"{at}: unknown mastery '{masteryId}'");
                 }
 
-                DataValidation.RequireNonNegative(sp, $"{at}: skill points of '{skillId}'", errors);
+                DataValidation.RequireNonNegative(xp, $"{at}: xp of '{masteryId}'", errors);
             }
 
-            if (member.SkillPoints.Keys.All(data.Skills.ContainsKey))
-            {
-                var levels = member.SkillPoints
-                    .Select(p => (p.Key, Level: SkillProgression.LevelFor(data.Skills[p.Key].Rank, p.Value)))
-                    .Where(x => x.Level > 0)
-                    .ToDictionary(x => x.Key, x => x.Level);
-                DataValidation.ValidateSkillLevels(levels, at, data.Skills, errors);
+            DataValidation.ValidateSkillLevels(member.SkillLevels, at, data.Skills, errors);
 
-                if (!Training.IsValidQueue(member.TrainingQueue, levels, data))
+            // 쓴 포인트가 숙련 레벨이 준 포인트를 넘으면 안 된다.
+            foreach (var group in member.SkillLevels
+                         .Where(p => data.Skills.ContainsKey(p.Key))
+                         .GroupBy(p => data.Skills[p.Key].Mastery))
+            {
+                var spent = group.Sum(p => data.Skills[p.Key].Rank * p.Value);
+                var earned = MasteryProgression.LevelFor(member.MasteryXp.GetValueOrDefault(group.Key));
+                if (spent > earned)
                 {
-                    errors.Add($"{at}: training queue is out of order or skips prerequisites");
+                    errors.Add($"{at}: spent {spent} points in '{group.Key}' but mastery level is {earned}");
                 }
             }
-
-            DataValidation.RequireNonNegative(member.UnallocatedSp, $"{at}: unallocatedSp", errors);
 
             foreach (var tactic in member.Tactics)
             {

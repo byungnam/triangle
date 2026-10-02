@@ -48,7 +48,7 @@ public class CombatSimulatorTests
         int intel = 10,
         int speed = 10,
         params Tactic[] tactics) =>
-        new(id, id, new Stats(str, 10, vital, intel, speed), row, SkillSet.NoSkills, tactics);
+        new(id, id, new Stats(str, 10, vital, intel, speed), row, null, null, SkillSet.NoSkills, tactics);
 
     private static Tactic Always(string actionId, int priority = 1) => new(priority, Condition.Always, 0, actionId);
 

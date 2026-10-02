@@ -1,6 +1,6 @@
 namespace Triangle.Desktop.Rendering;
 
-/// <summary>이름 뒤 조사 선택 (받침 유무에 따라 이/가, 을/를, 은/는, 와/과).</summary>
+/// <summary>이름 뒤 조사 선택 (받침 유무에 따라 이/가, 을/를, 은/는, 와/과, 으로/로).</summary>
 internal static class Korean
 {
     public static string IGa(string word) => word + (HasFinalConsonant(word) ? "이" : "가");
@@ -10,6 +10,11 @@ internal static class Korean
     public static string EunNeun(string word) => word + (HasFinalConsonant(word) ? "은" : "는");
 
     public static string WaGwa(string word) => word + (HasFinalConsonant(word) ? "과" : "와");
+
+    /// <summary>으로/로: 받침이 없거나 ㄹ 받침이면 "로".</summary>
+    public static string EuroRo(string word) => word + (HasFinalConsonant(word) && !EndsWithRieul(word) ? "으로" : "로");
+
+    private static bool EndsWithRieul(string word) => word.Length > 0 && word[^1] is >= '가' and <= '힣' && (word[^1] - '가') % 28 == 8;
 
     private static bool HasFinalConsonant(string word)
     {

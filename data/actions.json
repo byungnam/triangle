@@ -2,7 +2,7 @@
   {
     "id": "basic_attack",
     "name": "기본 공격",
-    "description": "임시 수치. 요구 스킬 없음",
+    "description": "임시 수치. 어떤 무기로든 쓸 수 있다. 활 위력 같은 보너스는 든 무기를 따른다",
     "hpCost": 0,
     "mpCost": 0,
     "effect": "Damage",
@@ -13,10 +13,31 @@
     "rows": "Any",
     "scope": "Single",
     "ignoresCover": false,
-    "tags": [
-      "melee"
-    ],
+    "tags": [],
     "requirements": []
+  },
+  {
+    "id": "heavy_strike",
+    "name": "강타",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 85,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "swordsmanship",
+        "level": 2
+      }
+    ],
+    "weapon": "sword"
   },
   {
     "id": "fire_arrow",
@@ -32,15 +53,9 @@
     "rows": "Any",
     "scope": "Single",
     "ignoresCover": false,
-    "tags": [
-      "bow"
-    ],
-    "requirements": [
-      {
-        "skillId": "archery",
-        "level": 1
-      }
-    ]
+    "tags": [],
+    "requirements": [],
+    "weapon": "bow"
   },
   {
     "id": "snipe",
@@ -56,9 +71,7 @@
     "rows": "Any",
     "scope": "Single",
     "ignoresCover": true,
-    "tags": [
-      "bow"
-    ],
+    "tags": [],
     "requirements": [
       {
         "skillId": "archery",
@@ -68,7 +81,26 @@
         "skillId": "precision_shooting",
         "level": 1
       }
-    ]
+    ],
+    "weapon": "bow"
+  },
+  {
+    "id": "magic_bolt",
+    "name": "마력탄",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 60,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "weapon": "staff"
   },
   {
     "id": "heal",
@@ -84,14 +116,13 @@
     "rows": "Any",
     "scope": "Single",
     "ignoresCover": false,
-    "tags": [
-      "holy"
-    ],
+    "tags": [],
     "requirements": [
       {
         "skillId": "healing",
         "level": 1
       }
-    ]
+    ],
+    "weapon": "relic"
   }
 ]

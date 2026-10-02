@@ -1,3 +1,4 @@
+using Triangle.Core.Data;
 using Triangle.Core.Skills;
 
 namespace Triangle.Desktop.Rendering;
@@ -5,29 +6,14 @@ namespace Triangle.Desktop.Rendering;
 /// <summary>스킬과 보너스의 화면 표시.</summary>
 internal static class SkillText
 {
-    public static string StatLabel(Stat stat) => stat switch
-    {
-        Stat.Str => "근력",
-        Stat.Dex => "민첩",
-        Stat.Vital => "체력",
-        Stat.Intel => "지능",
-        _ => "신속",
-    };
+    /// <summary>보너스 태그(숙련 ID 등)를 이름으로, 예: "bow" → "활 ".</summary>
+    private static string TagLabel(string? tag, GameData data) =>
+        tag is null ? "" : (data.Masteries.TryGetValue(tag, out var m) ? m.Name : tag) + " ";
 
-    public static string TagLabel(string? tag) => tag switch
+    /// <summary>레벨당 보너스, 예: "활 위력 +5%". 감소는 일반 하이픈을 쓴다(글꼴에 − 기호가 없다).</summary>
+    public static string BonusLabel(SkillBonus bonus, GameData data)
     {
-        null => "",
-        "melee" => "근접 ",
-        "bow" => "활 ",
-        "magic" => "마법 ",
-        "holy" => "신성 ",
-        _ => tag + " ",
-    };
-
-    /// <summary>레벨당 보너스, 예: "활 위력 +5%".</summary>
-    public static string BonusLabel(SkillBonus bonus)
-    {
-        var tag = TagLabel(bonus.Tag);
+        var tag = TagLabel(bonus.Tag, data);
         var p = bonus.PercentPerLevel;
         return bonus.Kind switch
         {
@@ -46,5 +32,5 @@ internal static class SkillText
     public static string LevelPips(int level) =>
         new string('■', level) + new string('□', SkillDefinition.MaxLevel - level);
 
-    public static string Sp(int sp) => sp.ToString("N0");
+    public static string Number(int value) => value.ToString("N0");
 }

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Triangle.Core.Actions;
+using Triangle.Core.Masteries;
 using Triangle.Core.Skills;
 
 namespace Triangle.Core.Data;
@@ -10,6 +11,7 @@ namespace Triangle.Core.Data;
 /// </summary>
 public static class GameDataLoader
 {
+    public const string MasteriesFile = "masteries.json";
     public const string SkillsFile = "skills.json";
     public const string ActionsFile = "actions.json";
     public const string EncountersFile = "encounters.json";
@@ -32,6 +34,7 @@ public static class GameDataLoader
             }
         }
 
+        var masteries = Read(MasteriesFile);
         var skills = Read(SkillsFile);
         var actions = Read(ActionsFile);
         var encounters = Read(EncountersFile);
@@ -40,13 +43,14 @@ public static class GameDataLoader
             throw new GameDataException(errors);
         }
 
-        return Parse(skills!, actions!, encounters!);
+        return Parse(masteries!, skills!, actions!, encounters!);
     }
 
-    public static GameData Parse(string skillsJson, string actionsJson, string encountersJson)
+    public static GameData Parse(string masteriesJson, string skillsJson, string actionsJson, string encountersJson)
     {
         var errors = new List<string>();
 
+        var masteries = Deserialize<MasteryDefinition>(masteriesJson, MasteriesFile, errors);
         var skills = Deserialize<SkillDefinition>(skillsJson, SkillsFile, errors);
         var actions = Deserialize<ActionDefinition>(actionsJson, ActionsFile, errors);
         var encounters = Deserialize<EncounterDefinition>(encountersJson, EncountersFile, errors);
@@ -57,25 +61,32 @@ public static class GameDataLoader
             throw new GameDataException(errors);
         }
 
+        var masteryMap = ToMap(masteries!, m => m.Id, MasteriesFile, errors);
         var skillMap = ToMap(skills!, s => s.Id, SkillsFile, errors);
         var actionMap = ToMap(actions!, a => a.Id, ActionsFile, errors);
         var encounterMap = ToMap(encounters!, e => e.Id, EncountersFile, errors);
 
+        foreach (var m in masteries!)
+        {
+            DataValidation.RequireText(m.Id, $"{MasteriesFile}: id", errors);
+            DataValidation.RequireText(m.Name, $"{MasteriesFile} '{m.Id}': name", errors);
+        }
+
         foreach (var s in skills!)
         {
-            ValidateSkill(s, skillMap, errors);
+            ValidateSkill(s, masteryMap, skillMap, errors);
         }
 
         ValidateNoPrerequisiteCycles(skillMap, errors);
 
         foreach (var a in actions!)
         {
-            ValidateAction(a, skillMap, errors);
+            ValidateAction(a, masteryMap, skillMap, errors);
         }
 
         foreach (var e in encounters!)
         {
-            ValidateEncounter(e, skillMap, actionMap, errors);
+            ValidateEncounter(e, masteryMap, skillMap, actionMap, errors);
         }
 
         if (errors.Count > 0)
@@ -83,7 +94,7 @@ public static class GameDataLoader
             throw new GameDataException(errors);
         }
 
-        return new GameData(skillMap, actionMap, encounterMap);
+        return new GameData(masteryMap, skillMap, actionMap, encounterMap);
     }
 
     private static List<T>? Deserialize<T>(string json, string fileName, List<string> errors)
@@ -121,11 +132,28 @@ public static class GameDataLoader
         return map;
     }
 
-    private static void ValidateSkill(SkillDefinition s, IReadOnlyDictionary<string, SkillDefinition> skills, List<string> errors)
+    private static void ValidateSkill(
+        SkillDefinition s,
+        IReadOnlyDictionary<string, MasteryDefinition> masteries,
+        IReadOnlyDictionary<string, SkillDefinition> skills,
+        List<string> errors)
     {
         var at = $"{SkillsFile} '{s.Id}'";
         DataValidation.RequireText(s.Id, $"{SkillsFile}: id", errors);
         DataValidation.RequireText(s.Name, $"{at}: name", errors);
+        if (!masteries.ContainsKey(s.Mastery))
+        {
+            errors.Add($"{at}: unknown mastery '{s.Mastery}'");
+        }
+
+        foreach (var p in s.Prerequisites)
+        {
+            if (skills.TryGetValue(p.SkillId, out var pre) && pre.Mastery != s.Mastery)
+            {
+                errors.Add($"{at}: prerequisite '{p.SkillId}' belongs to another mastery tree");
+            }
+        }
+
         if (s.Rank < 1)
         {
             errors.Add($"{at}: rank must be at least 1, got {s.Rank}");
@@ -168,7 +196,11 @@ public static class GameDataLoader
         }
     }
 
-    private static void ValidateAction(ActionDefinition a, IReadOnlyDictionary<string, SkillDefinition> skills, List<string> errors)
+    private static void ValidateAction(
+        ActionDefinition a,
+        IReadOnlyDictionary<string, MasteryDefinition> masteries,
+        IReadOnlyDictionary<string, SkillDefinition> skills,
+        List<string> errors)
     {
         var at = $"{ActionsFile} '{a.Id}'";
         DataValidation.RequireText(a.Id, $"{ActionsFile}: id", errors);
@@ -177,10 +209,12 @@ public static class GameDataLoader
         DataValidation.RequireNonNegative(a.MpCost, $"{at}: mpCost", errors);
         DataValidation.RequireNonNegative(a.Power, $"{at}: power", errors);
         DataValidation.ValidateRequirements(a.Requirements, $"{at} requirement", skills, errors);
+        DataValidation.RequireSlot(a.Weapon, EquipmentSlot.Weapon, $"{at}: weapon", masteries, errors);
     }
 
     private static void ValidateEncounter(
         EncounterDefinition e,
+        IReadOnlyDictionary<string, MasteryDefinition> masteries,
         IReadOnlyDictionary<string, SkillDefinition> skills,
         IReadOnlyDictionary<string, ActionDefinition> actions,
         List<string> errors)
@@ -204,6 +238,7 @@ public static class GameDataLoader
             DataValidation.RequireText(unit.Id, $"{at}: unit id", errors);
             DataValidation.RequireText(unit.Name, $"{unitAt}: name", errors);
             DataValidation.ValidateStats(unit.Stats, unitAt, errors);
+            DataValidation.ValidateEquipment(unit.Weapon, unit.Armor, unitAt, masteries, errors);
             DataValidation.ValidateSkillLevels(unit.Skills, unitAt, skills, errors);
 
             var set = new SkillSet(unit.Skills, skills);
@@ -213,6 +248,11 @@ public static class GameDataLoader
                 DataValidation.ValidateTactic(tactic, tacticAt, actions, errors);
                 if (actions.TryGetValue(tactic.ActionId, out var action))
                 {
+                    if (action.Weapon is not null && action.Weapon != unit.Weapon)
+                    {
+                        errors.Add($"{tacticAt}: '{tactic.ActionId}' needs weapon '{action.Weapon}'");
+                    }
+
                     foreach (var missing in set.Missing(action.Requirements))
                     {
                         errors.Add($"{tacticAt}: '{tactic.ActionId}' needs '{missing.SkillId}' level {missing.Level}");

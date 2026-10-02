@@ -93,7 +93,7 @@ public sealed class CombatSimulator
                     throw new ArgumentException($"Combatant '{setup.Id}' uses unknown action '{tactic.ActionId}'.");
                 }
 
-                if (!skills.CanUse(action))
+                if (!action.IsUsableBy(setup.Weapon, skills))
                 {
                     throw new ArgumentException($"Combatant '{setup.Id}' cannot use locked action '{tactic.ActionId}'.");
                 }
@@ -160,7 +160,7 @@ public sealed class CombatSimulator
     {
         var speed = Math.Max(1, c.Stats.Speed);
         var baseDelay = _rules.TimeConstant / speed;
-        var reduction = Reduction(c.Skills.Bonus(BonusKind.DelayReductionPercent, used?.Tags));
+        var reduction = Reduction(c.Skills.Bonus(BonusKind.DelayReductionPercent, used?.BonusTags(c.Weapon)));
         var delay = (long)baseDelay * (100 - reduction) / 100;
         return Math.Max(1, delay);
     }
@@ -250,7 +250,7 @@ public sealed class CombatSimulator
         actor.Mp >= MpCost(actor, action) && (action.HpCost == 0 || actor.Hp > action.HpCost);
 
     private int MpCost(Combatant actor, ActionDefinition action) =>
-        Ratio.ApplyPercent(action.MpCost, 100 - Reduction(actor.Skills.Bonus(BonusKind.MpCostReductionPercent, action.Tags)));
+        Ratio.ApplyPercent(action.MpCost, 100 - Reduction(actor.Skills.Bonus(BonusKind.MpCostReductionPercent, action.BonusTags(actor.Weapon))));
 
     // ── 대상 ───────────────────────────────────────────────
 
@@ -359,7 +359,8 @@ public sealed class CombatSimulator
             }
             case ActionEffect.Heal:
             {
-                var bonus = actor.Skills.Bonus(BonusKind.HealPercent, action.Tags) + actor.Skills.Bonus(BonusKind.PowerPercent, action.Tags);
+                var tags = action.BonusTags(actor.Weapon);
+                var bonus = actor.Skills.Bonus(BonusKind.HealPercent, tags) + actor.Skills.Bonus(BonusKind.PowerPercent, tags);
                 var heal = Ratio.ApplyPercent(Scaled(action.Power, actor.Stats.Intel), 100 + bonus);
                 var amount = Math.Min(target.MaxHp - target.Hp, heal);
                 target.Hp += amount;
@@ -379,7 +380,7 @@ public sealed class CombatSimulator
             ? (actor.Stats.Str, target.Defense)
             : (actor.Stats.Intel, target.MagicDefense);
 
-        var raw = Ratio.ApplyPercent(Scaled(action.Power, attackStat), 100 + actor.Skills.Bonus(BonusKind.PowerPercent, action.Tags));
+        var raw = Ratio.ApplyPercent(Scaled(action.Power, attackStat), 100 + actor.Skills.Bonus(BonusKind.PowerPercent, action.BonusTags(actor.Weapon)));
         var mitigated = Ratio.DivideRounded((long)raw * 100, 100 + (long)defense * _rules.DefenseReductionPercentPerPoint);
         return Ratio.ApplyPercent(mitigated, 100 - Reduction(target.Skills.Bonus(BonusKind.DamageTakenReductionPercent)));
     }

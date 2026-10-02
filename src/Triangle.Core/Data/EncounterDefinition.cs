@@ -15,13 +15,17 @@ public sealed record EncounterDefinition
     public required IReadOnlyList<EncounterUnitDefinition> Units { get; init; }
 }
 
-/// <summary>적 팀의 유닛 한 명. 적은 훈련하지 않으므로 스킬을 레벨로 바로 정한다.</summary>
+/// <summary>적 팀의 유닛 한 명. 적은 성장하지 않으므로 스킬을 레벨로 바로 정한다.</summary>
 public sealed record EncounterUnitDefinition
 {
     public required string Id { get; init; }
     public required string Name { get; init; }
     public required Stats Stats { get; init; }
     public required Row Row { get; init; }
+
+    /// <summary>장착한 무기·방어구 계열 ID.</summary>
+    public string? Weapon { get; init; }
+    public string? Armor { get; init; }
 
     /// <summary>스킬 ID별 레벨 (1–5).</summary>
     public IReadOnlyDictionary<string, int> Skills { get; init; } = new Dictionary<string, int>();

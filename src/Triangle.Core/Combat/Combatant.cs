@@ -14,6 +14,8 @@ public sealed class Combatant
         Id = setup.Id;
         Name = setup.Name;
         Skills = skills;
+        Weapon = setup.Weapon;
+        Armor = setup.Armor;
         Stats = setup.Stats;
         Row = setup.Row;
         Side = side;
@@ -29,6 +31,8 @@ public sealed class Combatant
     public string Id { get; }
     public string Name { get; }
     public SkillSet Skills { get; }
+    public string? Weapon { get; }
+    public string? Armor { get; }
     public Stats Stats { get; }
     public Row Row { get; }
     public CombatSide Side { get; }

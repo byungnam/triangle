@@ -1,5 +1,6 @@
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
+using Triangle.Core.Masteries;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
@@ -7,33 +8,37 @@ using Triangle.Core.Units;
 namespace Triangle.Core.Progress;
 
 /// <summary>
-/// 플레이어 파티의 유닛 한 명. 전열과 전술 목록을 편집할 수 있다.
-/// 전술의 우선순위는 항상 목록 순서대로 1, 2, 3… 이다.
-/// 스킬은 훈련으로 쌓은 SP로 저장하고, 레벨은 SP와 스킬 랭크로 계산한다.
+/// 플레이어 파티의 유닛 한 명.
+/// - 전열과 전술 목록을 편집한다. 전술 우선순위는 항상 목록 순서대로 1, 2, 3… 이다.
+/// - 무기 계열 하나, 방어구 계열 하나를 장착한다.
+/// - 장착한 계열로 싸우면 그 숙련 경험치가 쌓이고, 숙련 레벨 1당 그 트리 포인트 1점이 생긴다.
+///   포인트로 그 트리의 패시브 스킬을 배운다 (되돌릴 수 없다).
 /// </summary>
 public sealed class PartyMember
 {
     private readonly List<Tactic> _tactics = [];
-    private readonly Dictionary<string, int> _skillPoints;
-    private readonly List<TrainingQueueEntry> _trainingQueue;
+    private readonly Dictionary<string, int> _masteryXp;
+    private readonly Dictionary<string, int> _skillLevels;
 
     public PartyMember(
         string id,
         string name,
         Stats stats,
         Row row,
-        IReadOnlyDictionary<string, int> skillPoints,
-        IEnumerable<Tactic> tactics,
-        IEnumerable<TrainingQueueEntry>? trainingQueue = null,
-        int unallocatedSp = 0)
+        string? weapon,
+        string? armor,
+        IReadOnlyDictionary<string, int> masteryXp,
+        IReadOnlyDictionary<string, int> skillLevels,
+        IEnumerable<Tactic> tactics)
     {
         Id = id;
         Name = name;
         Stats = stats;
         Row = row;
-        _skillPoints = new Dictionary<string, int>(skillPoints);
-        _trainingQueue = trainingQueue?.ToList() ?? [];
-        UnallocatedSp = unallocatedSp;
+        Weapon = weapon;
+        Armor = armor;
+        _masteryXp = new Dictionary<string, int>(masteryXp);
+        _skillLevels = new Dictionary<string, int>(skillLevels.Where(p => p.Value > 0));
         foreach (var tactic in tactics.OrderBy(t => t.Priority))
         {
             _tactics.Add(tactic);
@@ -47,38 +52,83 @@ public sealed class PartyMember
     public Stats Stats { get; }
     public Row Row { get; set; }
 
+    /// <summary>장착한 무기 계열 ID. 바꾸면 그 무기가 필요한 전술이 잠길 수 있다.</summary>
+    public string? Weapon { get; set; }
+
+    /// <summary>장착한 방어구 계열 ID.</summary>
+    public string? Armor { get; set; }
+
     public IReadOnlyList<Tactic> Tactics => _tactics;
 
-    /// <summary>스킬 ID별 누적 SP.</summary>
-    public IReadOnlyDictionary<string, int> SkillPoints => _skillPoints;
+    /// <summary>숙련 ID별 누적 경험치.</summary>
+    public IReadOnlyDictionary<string, int> MasteryXp => _masteryXp;
 
-    /// <summary>훈련 큐. 받은 SP는 맨 앞부터 쌓인다. 조작은 <see cref="Training"/>으로 한다.</summary>
-    public IReadOnlyList<TrainingQueueEntry> TrainingQueue => _trainingQueue;
+    /// <summary>배운 스킬의 레벨 (1–5).</summary>
+    public IReadOnlyDictionary<string, int> SkillLevels => _skillLevels;
 
-    /// <summary>큐가 비어 있어 아직 스킬에 넣지 않은 SP (스탯 배율 적용 전).</summary>
-    public int UnallocatedSp { get; internal set; }
+    public SkillSet Skills(GameData data) => new(_skillLevels, data.Skills);
 
-    internal List<TrainingQueueEntry> MutableTrainingQueue => _trainingQueue;
+    public int MasteryLevel(string masteryId) => MasteryProgression.LevelFor(_masteryXp.GetValueOrDefault(masteryId));
 
-    internal void AddSkillPoints(string skillId, int sp) => _skillPoints[skillId] = _skillPoints.GetValueOrDefault(skillId) + sp;
+    /// <summary>그 트리에 쓴 포인트 = Σ(랭크 × 레벨).</summary>
+    public int PointsSpent(string masteryId, GameData data) =>
+        _skillLevels
+            .Where(p => data.Skills.TryGetValue(p.Key, out var s) && s.Mastery == masteryId)
+            .Sum(p => data.Skills[p.Key].Rank * p.Value);
 
-    /// <summary>1레벨 이상인 스킬의 레벨.</summary>
-    public IReadOnlyDictionary<string, int> SkillLevels(GameData data) =>
-        _skillPoints
-            .Where(p => data.Skills.ContainsKey(p.Key))
-            .Select(p => (p.Key, Level: SkillProgression.LevelFor(data.Skills[p.Key].Rank, p.Value)))
-            .Where(x => x.Level > 0)
-            .ToDictionary(x => x.Key, x => x.Level);
+    public int PointsAvailable(string masteryId, GameData data) => MasteryLevel(masteryId) - PointsSpent(masteryId, data);
 
-    public SkillSet Skills(GameData data) => new(SkillLevels(data), data.Skills);
+    /// <summary>
+    /// 경험치를 더한다. 오른 숙련 레벨 수(= 새로 생긴 포인트)를 돌려준다.
+    /// </summary>
+    public int AddMasteryXp(string masteryId, int xp)
+    {
+        var before = MasteryLevel(masteryId);
+        _masteryXp[masteryId] = _masteryXp.GetValueOrDefault(masteryId) + Math.Max(0, xp);
+        return MasteryLevel(masteryId) - before;
+    }
 
-    /// <summary>요구 스킬을 못 채운 행동이 든 전술의 위치 (게임 데이터가 바뀌었을 때 생길 수 있다).</summary>
+    /// <summary>스킬을 다음 레벨로 올릴 수 없는 이유. null이면 올릴 수 있다.</summary>
+    public LearnBlocker? WhyCannotLearn(string skillId, GameData data)
+    {
+        var skill = data.Skills[skillId];
+        var level = _skillLevels.GetValueOrDefault(skillId);
+        if (level >= SkillDefinition.MaxLevel)
+        {
+            return new LearnBlocker(LearnBlockerKind.MaxLevel, []);
+        }
+
+        var missing = Skills(data).Missing(skill.Prerequisites);
+        if (missing.Count > 0)
+        {
+            return new LearnBlocker(LearnBlockerKind.Prerequisites, missing);
+        }
+
+        return PointsAvailable(skill.Mastery, data) < skill.Rank ? new LearnBlocker(LearnBlockerKind.NotEnoughPoints, []) : null;
+    }
+
+    /// <summary>포인트를 써서 스킬을 한 레벨 올린다. 올릴 수 없으면 false. 되돌릴 수 없다.</summary>
+    public bool Learn(string skillId, GameData data)
+    {
+        if (WhyCannotLearn(skillId, data) is not null)
+        {
+            return false;
+        }
+
+        _skillLevels[skillId] = _skillLevels.GetValueOrDefault(skillId) + 1;
+        return true;
+    }
+
+    /// <summary>
+    /// 지금 장비와 스킬로 쓸 수 없는 행동이 든 전술의 위치.
+    /// 무기를 바꾸었거나 게임 데이터가 바뀌었을 때 생긴다.
+    /// </summary>
     public IReadOnlyList<int> LockedTacticIndexes(GameData data)
     {
         var skills = Skills(data);
         return _tactics
             .Select((t, i) => (t, i))
-            .Where(x => !data.Actions.TryGetValue(x.t.ActionId, out var action) || !skills.CanUse(action))
+            .Where(x => !data.Actions.TryGetValue(x.t.ActionId, out var action) || !action.IsUsableBy(Weapon, skills))
             .Select(x => x.i)
             .ToList();
     }
@@ -121,7 +171,7 @@ public sealed class PartyMember
     }
 
     public CombatantSetup ToCombatantSetup(GameData data) =>
-        new(Id, Name, Stats, Row, SkillLevels(data), _tactics.ToList());
+        new(Id, Name, Stats, Row, Weapon, Armor, new Dictionary<string, int>(_skillLevels), _tactics.ToList());
 
     private void Renumber()
     {

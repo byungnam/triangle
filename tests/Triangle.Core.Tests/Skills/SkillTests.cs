@@ -10,7 +10,7 @@ public class SkillTests
 {
     private static SkillDefinition Skill(string id, BonusKind kind, int percent, string? tag = null, int rank = 1) => new()
     {
-        Id = id, Name = id, Rank = rank, Bonuses = [new SkillBonus(kind, percent, tag)],
+        Id = id, Name = id, Mastery = "any", Rank = rank, Bonuses = [new SkillBonus(kind, percent, tag)],
     };
 
     private static readonly Dictionary<string, SkillDefinition> Skills = new[]
@@ -34,45 +34,22 @@ public class SkillTests
     {
         Id = "locked", Name = "Locked", Power = 10, Requirements = [new SkillRequirement("archery", 3)],
     };
+    private static readonly ActionDefinition BowOnly = new() { Id = "bow_only", Name = "BowOnly", Power = 10, Weapon = "bow" };
 
     private static readonly CombatCatalog Catalog = new(
-        new[] { Shot, Punch, Costly, Mend, Locked }.ToDictionary(a => a.Id), Skills);
+        new[] { Shot, Punch, Costly, Mend, Locked, BowOnly }.ToDictionary(a => a.Id), Skills);
 
     private static Dictionary<string, int> Levels(params (string Id, int Level)[] levels) =>
         levels.ToDictionary(l => l.Id, l => l.Level);
 
-    private static CombatantSetup Unit(string id, Dictionary<string, int>? skills = null, int str = 10, int vital = 20, params Tactic[] tactics) =>
-        new(id, id, new Stats(str, 10, vital, 10, 10), Row.Front, skills ?? [], tactics);
+    private static CombatantSetup Unit(
+        string id, Dictionary<string, int>? skills = null, int str = 10, int vital = 20, string? weapon = null, params Tactic[] tactics) =>
+        new(id, id, new Stats(str, 10, vital, 10, 10), Row.Front, weapon, null, skills ?? [], tactics);
 
     private static Tactic Always(string actionId) => new(1, Condition.Always, 0, actionId);
 
     private static CombatResult Run(CombatantSetup ally, CombatantSetup enemy, int maxActions = 100) =>
         CombatSimulator.Run([ally], [enemy], Catalog, seed: 1, new CombatRules { MaxActions = maxActions });
-
-    // ── 진행 표 ────────────────────────────────────────────
-
-    [Theory]
-    [InlineData(1, 1, 250)]
-    [InlineData(1, 2, 1_415)]
-    [InlineData(1, 5, 256_000)]
-    [InlineData(3, 4, 135_765)]
-    [InlineData(2, 0, 0)]
-    public void SpForLevel_follows_eve_table_times_rank(int rank, int level, int sp)
-    {
-        Assert.Equal(sp, SkillProgression.SpForLevel(rank, level));
-    }
-
-    [Theory]
-    [InlineData(2, 0, 0)]
-    [InlineData(2, 499, 0)]
-    [InlineData(2, 500, 1)]
-    [InlineData(2, 2_829, 1)]
-    [InlineData(2, 2_830, 2)]
-    [InlineData(1, 10_000_000, 5)]
-    public void LevelFor_is_the_highest_level_reached(int rank, int sp, int level)
-    {
-        Assert.Equal(level, SkillProgression.LevelFor(rank, sp));
-    }
 
     // ── 보너스 합계, 요구 조건 ─────────────────────────────
 
@@ -157,6 +134,18 @@ public class SkillTests
         var turns = result.Events.OfType<TurnStarted>().GroupBy(t => t.ActorId).ToDictionary(g => g.Key, g => g.Count());
         Assert.Equal(20, turns["a"]);
         Assert.Equal(10, turns["e"]);
+    }
+
+    [Fact]
+    public void Weapon_bonus_tags_apply_to_generic_actions_and_weapon_gates_actions()
+    {
+        // 활을 들면 기본 공격(태그 없음)에도 "활 위력" 보너스가 붙는다.
+        var armed = Run(Unit("a", Levels(("archery", 4)), weapon: "bow", tactics: Always("punch")), Unit("e", str: 0, vital: 100));
+        Assert.Equal(18, armed.Events.OfType<Damaged>().First().Amount);
+
+        Assert.Throws<ArgumentException>(() => Run(Unit("a", weapon: "sword", tactics: Always("bow_only")), Unit("e")));
+        var ok = Run(Unit("a", weapon: "bow", tactics: Always("bow_only")), Unit("e"), maxActions: 2);
+        Assert.Contains(ok.Events, e => e is ActionUsed { ActionId: "bow_only" });
     }
 
     [Fact]

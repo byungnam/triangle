@@ -15,8 +15,11 @@
           "speed": 12
         },
         "row": "Front",
+        "weapon": "sword",
+        "armor": "plate",
         "skills": {
-          "melee_weapons": 1
+          "swordsmanship": 1,
+          "defense": 1
         },
         "tactics": [
           {
@@ -38,8 +41,11 @@
           "speed": 13
         },
         "row": "Front",
+        "weapon": "sword",
+        "armor": "plate",
         "skills": {
-          "melee_weapons": 1
+          "swordsmanship": 1,
+          "defense": 1
         },
         "tactics": [
           {
@@ -61,8 +67,9 @@
           "speed": 11
         },
         "row": "Back",
+        "weapon": "relic",
+        "armor": "cloth",
         "skills": {
-          "archery": 1,
           "healing": 1
         },
         "tactics": [
@@ -76,7 +83,7 @@
             "priority": 2,
             "condition": "Always",
             "value": 0,
-            "actionId": "fire_arrow"
+            "actionId": "basic_attack"
           }
         ]
       }

@@ -243,6 +243,47 @@ public sealed class Company
     public bool ChooseAbility(string memberId, EquipmentSlot slot, int abilityIndex, string optionId, GameData data) =>
         !OnExpedition && Member(memberId).SetAbility(slot, abilityIndex, optionId, data);
 
+    /// <summary>상점에서 살 수 없는 이유. null이면 살 수 있다. 원정 중, 상점에 없는 아이템, 골드 부족.</summary>
+    public string? WhyCannotBuy(string itemId, GameData data)
+    {
+        if (OnExpedition)
+        {
+            return "원정 중에는 상점을 쓸 수 없습니다";
+        }
+
+        if (!data.Items.TryGetValue(itemId, out var item) || !Shop.Sells(item))
+        {
+            return "상점에서 팔지 않습니다";
+        }
+
+        return Gold < item.Price ? "골드가 모자랍니다" : null;
+    }
+
+    /// <summary>정가에 사서 창고에 넣는다. 살 수 없으면(<see cref="WhyCannotBuy"/>) false.</summary>
+    public bool Buy(string itemId, GameData data)
+    {
+        if (WhyCannotBuy(itemId, data) is not null)
+        {
+            return false;
+        }
+
+        Gold -= data.Items[itemId].Price;
+        AddToStash(itemId);
+        return true;
+    }
+
+    /// <summary>창고의 아이템 하나를 판다(<see cref="Shop.SellPrice"/>). 원정 중이거나 창고에 없으면 false.</summary>
+    public bool Sell(string itemId, GameData data)
+    {
+        if (OnExpedition || !data.Items.TryGetValue(itemId, out var item) || !TakeFromStash(itemId))
+        {
+            return false;
+        }
+
+        Gold += Shop.SellPrice(item);
+        return true;
+    }
+
     /// <summary>모집 후보를 새로 굴린다 (원정이 끝날 때, 새 게임).</summary>
     public void RerollRecruits(GameData data)
     {

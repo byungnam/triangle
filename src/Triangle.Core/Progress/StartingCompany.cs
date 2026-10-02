@@ -1,12 +1,11 @@
 using Triangle.Core.Masteries;
-using Triangle.Core.Progress;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
 
-namespace Triangle.Desktop.Scenes;
+namespace Triangle.Core.Progress;
 
 /// <summary>
-/// 시연용 시작 파티. 세이브가 없을 때 쓴다.
+/// 새 게임의 시작 회사. 세이브가 없을 때 쓴다.
 /// 숙련 경험치는 배운 패시브의 포인트를 딱 채우는 레벨로 준다.
 /// </summary>
 /// <remarks>
@@ -16,16 +15,23 @@ namespace Triangle.Desktop.Scenes;
 /// - 위급할 때와 여유 있을 때 회복을 나눈다.
 /// - 상태 효과를 처음과 주기적으로 다시 건다.
 /// </remarks>
-internal static class DemoParty
+public static class StartingCompany
 {
     private static int Xp(int level) => MasteryProgression.XpForLevel(level);
 
     private static Tactic T(int priority, Condition condition, int value, string actionId) => new(priority, condition, value, actionId);
 
-    public static Party Create() => new(
+    /// <param name="seed">회사의 첫 시드 (원정과 모집이 이어서 쓴다).</param>
+    public static Company Create(int seed)
+    {
+        var members = Members();
+        return new Company(members, members.Select(m => m.Id), Company.StartingGold, new Dictionary<string, int>(), activeTacticSet: 0, seed);
+    }
+
+    private static List<PartyMember> Members() =>
     [
         // 전위 공격수: MP가 있으면 강타, MP가 20% 이하로 떨어지면 기본 공격으로 아낀다.
-        new PartyMember("ally_marcus", "마르쿠스", new Stats(15, 12, 25, 20, 13), Row.Front, "sword", "plate",
+        new PartyMember("ally_marcus", "마르쿠스", new Stats(15, 12, 25, 20, 13), Row.Front, "old_sword", "plate_armor",
             new Dictionary<string, int> { ["sword"] = Xp(4), ["plate"] = Xp(3) },
             new Dictionary<string, int> { ["swordsmanship"] = 2, ["flurry"] = 1, ["defense"] = 1, ["endurance"] = 1 },
             [
@@ -39,7 +45,7 @@ internal static class DemoParty
             ]),
 
         // 두 번째 전위: 같은 방식.
-        new PartyMember("ally_gaius", "가이우스", new Stats(14, 13, 24, 20, 12), Row.Front, "sword", "plate",
+        new PartyMember("ally_gaius", "가이우스", new Stats(14, 13, 24, 20, 12), Row.Front, "old_sword", "plate_armor",
             new Dictionary<string, int> { ["sword"] = Xp(2), ["plate"] = Xp(1) },
             new Dictionary<string, int> { ["swordsmanship"] = 2, ["defense"] = 1 },
             [
@@ -54,7 +60,7 @@ internal static class DemoParty
 
         // 후위 궁수: 첫 턴과 4턴마다 독(없는 적 우선), 2턴마다 저격(엄호 무시), 그 외 화살.
         // MP가 15% 이하면 기본 공격으로 아낀다.
-        new PartyMember("ally_claudia", "클라우디아", new Stats(10, 14, 20, 25, 13), Row.Back, "bow", "leather",
+        new PartyMember("ally_claudia", "클라우디아", new Stats(10, 14, 20, 25, 13), Row.Back, "hunting_bow", "leather_armor",
             new Dictionary<string, int> { ["bow"] = Xp(9), ["leather"] = Xp(1) },
             new Dictionary<string, int> { ["archery"] = 4, ["precision_shooting"] = 1, ["rapid_fire"] = 1, ["mobility"] = 1 },
             [
@@ -72,7 +78,7 @@ internal static class DemoParty
 
         // 후위 회복: 위급(40% 이하)하면 치료가 최우선. 첫 턴 축복, MP가 낮으면 정신 집중,
         // 평균 HP가 떨어지면 재생, 조금 다친 아군(65% 이하)은 치료, 4턴마다 축복을 다시 건다.
-        new PartyMember("ally_julia", "율리아", new Stats(10, 11, 21, 24, 12), Row.Back, "relic", "cloth",
+        new PartyMember("ally_julia", "율리아", new Stats(10, 11, 21, 24, 12), Row.Back, "wooden_relic", "cloth_robe",
             new Dictionary<string, int> { ["relic"] = Xp(2), ["cloth"] = Xp(2) },
             new Dictionary<string, int> { ["healing"] = 2, ["meditation"] = 2 },
             [
@@ -89,5 +95,5 @@ internal static class DemoParty
                 // 세트 2: 처음의 단순한 전술 (비교용)
                 [T(1, Condition.OnTurn, 1, "bless"), T(2, Condition.AnyAllyHpAtMost, 60, "heal"), T(3, Condition.Always, 0, "basic_attack")],
             ]),
-    ]);
+    ];
 }

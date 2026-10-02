@@ -32,7 +32,7 @@ public class TriangleGame : Game
     private Ui _ui = null!;
     private IScene _scene = null!;
     private GameData _data = null!;
-    private Party _party = null!;
+    private Company _company = null!;
     private TacticEditorScene _editor = null!;
     private int _framesDrawn;
     private bool _quitConfirmed;
@@ -85,9 +85,9 @@ public class TriangleGame : Game
         }
 
         var store = new SaveStore(_options.SavePath ?? SaveStore.DefaultPath);
-        var loaded = store.Load(_data, DemoParty.Create);
-        _party = loaded.Party;
-        _editor = new TacticEditorScene(_ui, _data, _party, store, Bounds, StartCombat, OpenTraining, ConfirmedExit, LoadNotice(loaded));
+        var loaded = store.Load(_data, () => StartingCompany.Create(Random.Shared.Next()));
+        _company = loaded.Company;
+        _editor = new TacticEditorScene(_ui, _data, _company, store, Bounds, StartCombat, OpenTraining, ConfirmedExit, LoadNotice(loaded));
 
         if (!_options.StartInCombat)
         {
@@ -111,7 +111,7 @@ public class TriangleGame : Game
     };
 
     private CombatLogScene CreateCombat(string encounterId) =>
-        new(_ui, _data, _party.ToCombatantSetups(_data), encounterId, seed: 1, Bounds, back: () => _scene = _editor);
+        new(_ui, _data, _company.LineupSetups(_data), encounterId, seed: 1, Bounds, back: () => _scene = _editor);
 
     /// <summary>전투를 시작하고 숙련 경험치를 준다 (다시 하기에는 주지 않는다).</summary>
     private void StartCombat(string encounterId)
@@ -131,7 +131,7 @@ public class TriangleGame : Game
         var lines = new List<LogLine> { new("숙련 경험치", Theme.Cover) };
         foreach (var gain in MasteryGain.ForAllies(result))
         {
-            var member = _party.Members.Single(m => m.Id == gain.CombatantId);
+            var member = _company.Member(gain.CombatantId);
             var parts = new List<string>();
             var levelUp = false;
             foreach (var (mastery, xp) in new[] { (gain.Weapon, gain.WeaponXp), (gain.Armor, gain.ArmorXp) })

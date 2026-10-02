@@ -3,6 +3,7 @@ using Triangle.Core.Actions;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
 using Triangle.Core.Masteries;
+using Triangle.Core.Progress;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
@@ -70,6 +71,14 @@ public class GameDataLoaderTests
         Assert.NotEmpty(data.Actions);
         Assert.NotEmpty(data.Encounters);
 
+        // 세이브 v4 변환과 신입 장비에 쓰도록 계열마다 기본 아이템이 있어야 한다.
+        Assert.All(data.Masteries.Keys, m => Assert.NotNull(data.BasicItemFor(m)));
+
+        // 시작 회사가 데이터와 맞아야 한다 (세이브로 왕복해서 검증).
+        var company = StartingCompany.Create(seed: 1);
+        Assert.Equal(company.Roster.Count, SaveGame.Deserialize(SaveGame.Serialize(company), data).Roster.Count);
+        Assert.False(company.HasLockedTactics(data));
+
         // 모든 적 팀이 실제 전투에 들어갈 수 있어야 한다.
         var basic = data.Actions.Values.First(a => a.Requirements.Count == 0 && a.Weapon is null);
         var ally = new CombatantSetup(
@@ -80,6 +89,23 @@ public class GameDataLoaderTests
             var result = CombatSimulator.Run([ally], data.CreateEncounterTeam(id), data.Catalog, seed: 1);
             Assert.IsType<CombatEnded>(result.Events[^1]);
         }
+    }
+
+    [Fact]
+    public void Rejects_items_with_unknown_mastery_or_negative_price()
+    {
+        const string items = """
+            [ { "id": "stick", "name": "막대", "mastery": "ghost" },
+              { "id": "bow1", "name": "활", "mastery": "bow", "price": -1 },
+              { "id": "bow1", "name": "활", "mastery": "bow" } ]
+            """;
+
+        var errors = Assert.Throws<GameDataException>(() =>
+            GameDataLoader.Parse(Masteries, Skills, Actions, Encounters(), itemsJson: items)).Errors;
+
+        Assert.Contains("items.json 'stick': unknown mastery 'ghost'", errors);
+        Assert.Contains("items.json 'bow1': price must not be negative, got -1", errors);
+        Assert.Contains("items.json: duplicate id 'bow1'", errors);
     }
 
     [Fact]
@@ -239,7 +265,8 @@ public class GameDataLoaderTests
 
             var errors = Assert.Throws<GameDataException>(() => GameDataLoader.LoadDirectory(dir)).Errors;
 
-            Assert.Equal(3, errors.Count);
+            Assert.Equal(4, errors.Count);
+            Assert.Contains(errors, e => e.StartsWith("items.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("actions.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("effects.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("encounters.json: cannot read"));

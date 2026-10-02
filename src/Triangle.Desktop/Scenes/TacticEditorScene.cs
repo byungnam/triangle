@@ -8,6 +8,7 @@ using MyraDesktop = Myra.Graphics2D.UI.Desktop;
 using Triangle.Core.Actions;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
+using Triangle.Core.Items;
 using Triangle.Core.Masteries;
 using Triangle.Core.Progress;
 using Triangle.Core.Skills;
@@ -32,7 +33,7 @@ internal sealed class TacticEditorScene : IScene
 
     private readonly Ui _ui;
     private readonly GameData _data;
-    private readonly Party _party;
+    private readonly Company _company;
     private readonly Rectangle _bounds;
     private readonly SaveStore _store;
     private readonly Action<string> _startCombat;
@@ -53,13 +54,13 @@ internal sealed class TacticEditorScene : IScene
 
     /// <param name="notice">처음에 보여줄 안내 (세이브를 복구했다는 등).</param>
     public TacticEditorScene(
-        Ui ui, GameData data, Party party, SaveStore store, Rectangle bounds,
+        Ui ui, GameData data, Company company, SaveStore store, Rectangle bounds,
         Action<string> startCombat, Action<PartyMember> openTraining, Action quit, (string Text, Color Color)? notice = null)
     {
         _ui = ui;
         _widgets = new Widgets(ui);
         _data = data;
-        _party = party;
+        _company = company;
         _store = store;
         _bounds = bounds;
         _notice = notice;
@@ -69,10 +70,10 @@ internal sealed class TacticEditorScene : IScene
         _encounterId = data.Encounters.Keys.First();
     }
 
-    private PartyMember Selected => _party.Members[_selected];
+    private PartyMember Selected => _company.Roster[_selected];
 
     /// <summary>지금 고른 세트의 전술 (편집도 전투도 이 세트로 한다).</summary>
-    private TacticList TacticsOf(PartyMember member) => member.TacticSets[_party.ActiveTacticSet];
+    private TacticList TacticsOf(PartyMember member) => member.TacticSets[_company.ActiveTacticSet];
 
     public bool HasUnsavedChanges => _unsaved;
 
@@ -182,7 +183,7 @@ internal sealed class TacticEditorScene : IScene
             _saveButton.OverBackground = new SolidBrush(Theme.AccentHover);
         }
 
-        if (_statusLabel is not null && !_party.HasLockedTactics(_data))
+        if (_statusLabel is not null && !_company.HasLockedTactics(_data))
         {
             _statusLabel.Text = "저장하지 않은 변경이 있습니다";
             _statusLabel.TextColor = Theme.Cover;
@@ -201,7 +202,7 @@ internal sealed class TacticEditorScene : IScene
         var saved = false;
         try
         {
-            _store.Save(_party);
+            _store.Save(_company);
             _unsaved = false;
             saved = true;
             _notice = ($"저장했습니다 ({DateTime.Now:HH:mm:ss})", Theme.Heal);
@@ -302,19 +303,19 @@ internal sealed class TacticEditorScene : IScene
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
         };
-        list.Widgets.Add(Label("파티", 20, Theme.Ally, bold: true));
+        list.Widgets.Add(Label("로스터", 20, Theme.Ally, bold: true));
         list.Widgets.Add(BuildTacticSetSelector());
 
-        for (var i = 0; i < _party.Members.Count; i++)
+        for (var i = 0; i < _company.Roster.Count; i++)
         {
-            var member = _party.Members[i];
+            var member = _company.Roster[i];
             var index = i;
             var selected = i == _selected;
 
             var content = new VerticalStackPanel { Spacing = 4 };
             content.Widgets.Add(Label(member.Name, 20, selected ? Theme.Text : Theme.Ally, bold: true));
             content.Widgets.Add(Label($"{RowLabel(member.Row)} · 전술 {TacticsOf(member).Count}개", 15, Theme.TextDim));
-            if (member.LockedTacticIndexes(_data, _party.ActiveTacticSet).Count is > 0 and var locked)
+            if (member.LockedTacticIndexes(_data, _company.ActiveTacticSet).Count is > 0 and var locked)
             {
                 content.Widgets.Add(Label($"잠긴 전술 {locked}개", 15, Theme.Enemy));
             }
@@ -373,7 +374,7 @@ internal sealed class TacticEditorScene : IScene
         }
 
         // 새 전술은 쓸 수 있는 첫 행동으로 시작한다.
-        var firstUsable = _data.Actions.Values.FirstOrDefault(a => a.IsUsableBy(member.Weapon, skills));
+        var firstUsable = _data.Actions.Values.FirstOrDefault(a => a.IsUsableBy(member.WeaponMastery(_data), skills));
         var addButton = TextButton("+ 전술 추가", Theme.Button, Theme.ButtonHover);
         addButton.Enabled = TacticsOf(member).Count < MaxTactics && firstUsable is not null;
         addButton.Click += (_, _) =>
@@ -404,14 +405,14 @@ internal sealed class TacticEditorScene : IScene
         for (var set = 0; set < PartyMember.TacticSetCount; set++)
         {
             var index = set;
-            var active = _party.ActiveTacticSet == set;
+            var active = _company.ActiveTacticSet == set;
             var button = TextButton($"{set + 1}", active ? Theme.Selected : Theme.Button, Theme.ButtonHover, bold: active);
             button.Width = 48;
             button.Click += (_, _) =>
             {
-                if (_party.ActiveTacticSet != index)
+                if (_company.ActiveTacticSet != index)
                 {
-                    _party.ActiveTacticSet = index;
+                    _company.ActiveTacticSet = index;
                     MarkChanged();
                 }
             };
@@ -450,7 +451,7 @@ internal sealed class TacticEditorScene : IScene
         header.Widgets.Add(Label("조건", 15, Theme.TextDim, width: 265));
         header.Widgets.Add(Label("값", 15, Theme.TextDim, width: ValueColumnWidth));
         header.Widgets.Add(Label("행동", 15, Theme.TextDim, width: 270));
-        header.Widgets.Add(Label($"전술 세트 {_party.ActiveTacticSet + 1} 편집 중", 15, Theme.Cover));
+        header.Widgets.Add(Label($"전술 세트 {_company.ActiveTacticSet + 1} 편집 중", 15, Theme.Cover));
         return header;
     }
 
@@ -484,11 +485,11 @@ internal sealed class TacticEditorScene : IScene
 
         // 행동: 쓸 수 있는 행동을 먼저, 잠긴 행동은 아래에 (고를 수 없음)
         var skills = member.Skills(_data);
-        bool Usable(ActionDefinition a) => a.IsUsableBy(member.Weapon, skills);
+        bool Usable(ActionDefinition a) => a.IsUsableBy(member.WeaponMastery(_data), skills);
         var actions = _data.Actions.Values.OrderBy(a => Usable(a) ? 0 : 1).ToList();
         var items = actions.Select(a => Usable(a)
             ? (ActionLabel(a), Theme.Text)
-            : ($"(잠김) {a.Name} — {LockReason(a, member.Weapon, skills)}", Theme.Enemy));
+            : ($"(잠김) {a.Name} — {LockReason(a, member.WeaponMastery(_data), skills)}", Theme.Enemy));
         var actionCombo = Combo(items, actions.FindIndex(a => a.Id == tactic.ActionId), 270);
         actionCombo.SelectedIndexChanged += (_, _) =>
         {
@@ -598,7 +599,7 @@ internal sealed class TacticEditorScene : IScene
         bar.Widgets.Add(encounterCombo);
 
         // 게임 데이터가 바뀌어 잠긴 행동이 든 전술이 있으면 고칠 때까지 전투를 막는다.
-        var hasLocked = _party.HasLockedTactics(_data);
+        var hasLocked = _company.HasLockedTactics(_data);
         var start = TextButton("전투 시험  ▶", Theme.Accent, Theme.AccentHover, bold: true);
         start.Width = 180;
         start.Enabled = !hasLocked;
@@ -651,36 +652,48 @@ internal sealed class TacticEditorScene : IScene
         return string.Join(", ", reasons);
     }
 
-    /// <summary>무기·방어구 계열 선택. 무기를 바꾸면 그 무기가 필요한 전술이 잠길 수 있다(빨간색으로 표시).</summary>
+    /// <summary>
+    /// 무기·방어구 선택: 지금 장착한 아이템과 창고에 있는 아이템. 고르면 창고에서 꺼내 끼고, 끼고 있던 것은 창고로 간다.
+    /// 무기 계열이 바뀌면 그 무기가 필요한 전술이 잠길 수 있다(빨간색으로 표시).
+    /// </summary>
     private Widget BuildEquipmentSelector(PartyMember member)
     {
         var row = new HorizontalStackPanel { Spacing = 8 };
         foreach (var (slot, label) in new[] { (EquipmentSlot.Weapon, "무기"), (EquipmentSlot.Armor, "방어구") })
         {
-            var options = _data.MasteriesFor(slot).ToList();
             var current = slot == EquipmentSlot.Weapon ? member.Weapon : member.Armor;
+            var options = _data.ItemsFor(slot)
+                .Where(i => i.Id == current || _company.StashCount(i.Id) > 0)
+                .ToList();
             row.Widgets.Add(Label(label, 17, Theme.Text, width: slot == EquipmentSlot.Weapon ? 48 : 60));
             var combo = Combo(
-                options.Select(m => ($"{m.Name}  (숙련 Lv {member.MasteryLevel(m.Id)})", Theme.Text)),
-                options.FindIndex(m => m.Id == current), 190);
+                options.Select(i => (EquipmentLabel(member, i), Theme.Text)),
+                options.FindIndex(i => i.Id == current), 280);
             combo.SelectedIndexChanged += (_, _) =>
             {
                 var chosen = options[combo.SelectedIndex ?? 0].Id;
-                if (slot == EquipmentSlot.Weapon)
+                if (chosen != current && _company.Equip(member.Id, chosen, _data))
                 {
-                    member.Weapon = chosen;
+                    MarkChanged();
                 }
                 else
                 {
-                    member.Armor = chosen;
+                    MarkDirty();
                 }
-
-                MarkChanged();
             };
             row.Widgets.Add(combo);
         }
 
         return row;
+    }
+
+    /// <summary>"낡은 검 · 검 Lv 3 · 창고 2"처럼 아이템, 계열 숙련, 창고 개수.</summary>
+    private string EquipmentLabel(PartyMember member, ItemDefinition item)
+    {
+        var mastery = _data.Masteries[item.Mastery];
+        var label = $"{item.Name} · {mastery.Name} Lv {member.MasteryLevel(mastery.Id)}";
+        var stored = _company.StashCount(item.Id);
+        return stored > 0 ? $"{label} · 창고 {stored}" : label;
     }
 
     /// <summary>배운 스킬을 데이터 순서대로 "활 숙련 4 · 정밀 사격 1"처럼 보여준다.</summary>

@@ -10,8 +10,9 @@ namespace Triangle.Core.Progress;
 /// <summary>
 /// 플레이어 파티의 유닛 한 명.
 /// - 전열과 전술을 편집한다. 전술은 세트 두 벌(<see cref="TacticSetCount"/>)을 저장하고,
-///   어느 세트로 싸울지는 파티가 정한다(<see cref="Party.ActiveTacticSet"/>).
-/// - 무기 계열 하나, 방어구 계열 하나를 장착한다.
+///   어느 세트로 싸울지는 회사가 정한다(<see cref="Company.ActiveTacticSet"/>).
+/// - 무기 아이템 하나, 방어구 아이템 하나를 장착한다. 아이템의 계열이 전투와 숙련을 정한다.
+///   장착과 해제는 회사 창고와 오간다(<see cref="Company.Equip"/>).
 /// - 장착한 계열로 싸우면 그 숙련 경험치가 쌓이고, 숙련 레벨 1당 그 트리 포인트 1점이 생긴다.
 ///   포인트로 그 트리의 패시브 스킬을 배운다 (되돌릴 수 없다).
 /// </summary>
@@ -58,11 +59,17 @@ public sealed class PartyMember
     public Stats Stats { get; }
     public Row Row { get; set; }
 
-    /// <summary>장착한 무기 계열 ID. 바꾸면 그 무기가 필요한 전술이 잠길 수 있다.</summary>
-    public string? Weapon { get; set; }
+    /// <summary>장착한 무기 아이템 ID. 계열이 바뀌면 그 무기가 필요한 전술이 잠길 수 있다.</summary>
+    public string? Weapon { get; internal set; }
 
-    /// <summary>장착한 방어구 계열 ID.</summary>
-    public string? Armor { get; set; }
+    /// <summary>장착한 방어구 아이템 ID.</summary>
+    public string? Armor { get; internal set; }
+
+    /// <summary>장착한 무기의 계열 ID (맨손이면 null).</summary>
+    public string? WeaponMastery(GameData data) => data.MasteryOf(Weapon);
+
+    /// <summary>장착한 방어구의 계열 ID (맨몸이면 null).</summary>
+    public string? ArmorMastery(GameData data) => data.MasteryOf(Armor);
 
     /// <summary>전술 세트들 (항상 <see cref="TacticSetCount"/>벌).</summary>
     public IReadOnlyList<TacticList> TacticSets => _tacticSets;
@@ -133,15 +140,17 @@ public sealed class PartyMember
     public IReadOnlyList<int> LockedTacticIndexes(GameData data, int tacticSet)
     {
         var skills = Skills(data);
+        var weapon = WeaponMastery(data);
         return _tacticSets[tacticSet]
             .Select((t, i) => (t, i))
-            .Where(x => !data.Actions.TryGetValue(x.t.ActionId, out var action) || !action.IsUsableBy(Weapon, skills))
+            .Where(x => !data.Actions.TryGetValue(x.t.ActionId, out var action) || !action.IsUsableBy(weapon, skills))
             .Select(x => x.i)
             .ToList();
     }
 
     public void ToggleRow() => Row = Row == Row.Front ? Row.Back : Row.Front;
 
+    /// <summary>전투 입력으로 바꾼다. 장비는 아이템에서 계열로 바꿔 넘긴다.</summary>
     public CombatantSetup ToCombatantSetup(GameData data, int tacticSet) =>
-        new(Id, Name, Stats, Row, Weapon, Armor, new Dictionary<string, int>(_skillLevels), _tacticSets[tacticSet].ToList());
+        new(Id, Name, Stats, Row, WeaponMastery(data), ArmorMastery(data), new Dictionary<string, int>(_skillLevels), _tacticSets[tacticSet].ToList());
 }

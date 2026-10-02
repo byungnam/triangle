@@ -1,0 +1,51 @@
+[
+  {
+    "id": "old_sword",
+    "name": "낡은 검",
+    "description": "계열의 기본 아이템. 가격은 임시.",
+    "mastery": "sword",
+    "price": 40
+  },
+  {
+    "id": "hunting_bow",
+    "name": "사냥용 활",
+    "description": "계열의 기본 아이템. 가격은 임시.",
+    "mastery": "bow",
+    "price": 40
+  },
+  {
+    "id": "apprentice_staff",
+    "name": "견습 지팡이",
+    "description": "계열의 기본 아이템. 가격은 임시.",
+    "mastery": "staff",
+    "price": 40
+  },
+  {
+    "id": "wooden_relic",
+    "name": "나무 성구",
+    "description": "계열의 기본 아이템. 가격은 임시.",
+    "mastery": "relic",
+    "price": 40
+  },
+  {
+    "id": "plate_armor",
+    "name": "판금 갑옷",
+    "description": "계열의 기본 아이템. 가격은 임시.",
+    "mastery": "plate",
+    "price": 60
+  },
+  {
+    "id": "leather_armor",
+    "name": "가죽 갑옷",
+    "description": "계열의 기본 아이템. 가격은 임시.",
+    "mastery": "leather",
+    "price": 40
+  },
+  {
+    "id": "cloth_robe",
+    "name": "천 로브",
+    "description": "계열의 기본 아이템. 가격은 임시.",
+    "mastery": "cloth",
+    "price": 30
+  }
+]

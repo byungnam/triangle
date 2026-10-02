@@ -44,6 +44,24 @@ internal static class DataValidation
         }
     }
 
+    /// <summary>장착한 아이템: 있는 아이템이고, 계열이 그 슬롯에 맞는지. null은 맨손·맨몸.</summary>
+    public static void ValidateItem(string? itemId, EquipmentSlot slot, string what, GameData data, List<string> errors)
+    {
+        if (itemId is null)
+        {
+            return;
+        }
+
+        if (!data.Items.TryGetValue(itemId, out var item))
+        {
+            errors.Add($"{what}: unknown item '{itemId}'");
+        }
+        else if (data.Masteries[item.Mastery].Slot != slot)
+        {
+            errors.Add($"{what}: '{itemId}' is {data.Masteries[item.Mastery].Slot}, not {slot}");
+        }
+    }
+
     /// <summary>요구/선행 조건: 있는 스킬을 가리키고 레벨이 1–5인지.</summary>
     public static void ValidateRequirements(
         IEnumerable<SkillRequirement> requirements, string at, IReadOnlyDictionary<string, SkillDefinition> skills, List<string> errors)

@@ -24,6 +24,11 @@ public sealed record SavedMember
     public IReadOnlyDictionary<string, int> SkillPoints { get; init; } = new Dictionary<string, int>();
 
     public IReadOnlyList<Tactic> Tactics { get; init; } = [];
+
+    public IReadOnlyList<TrainingQueueEntry> TrainingQueue { get; init; } = [];
+
+    /// <summary>큐가 비어 아직 넣지 않은 SP.</summary>
+    public int UnallocatedSp { get; init; }
 }
 
 /// <summary>세이브를 읽거나 검증하다 실패했다. 발견한 오류를 모두 담는다.</summary>
@@ -40,7 +45,7 @@ public sealed class SaveGameException(IReadOnlyList<string> errors)
 /// </summary>
 public static class SaveGame
 {
-    /// <summary>2: 직업 제거, 스킬 SP 추가 (2026-10-02). 1은 읽지 않는다.</summary>
+    /// <summary>2: 직업 제거, 스킬 SP·훈련 큐 추가 (2026-10-02). 1은 읽지 않는다.</summary>
     public const int CurrentVersion = 2;
 
     public static string Serialize(Party party)
@@ -56,6 +61,8 @@ public static class SaveGame
                 Row = m.Row,
                 SkillPoints = new SortedDictionary<string, int>(m.SkillPoints.ToDictionary()),
                 Tactics = m.Tactics.ToList(),
+                TrainingQueue = m.TrainingQueue.ToList(),
+                UnallocatedSp = m.UnallocatedSp,
             }).ToList(),
         };
         return JsonSerializer.Serialize(file, GameDataJson.Options);
@@ -81,7 +88,8 @@ public static class SaveGame
 
         Validate(file, data);
 
-        return new Party(file.Party.Select(m => new PartyMember(m.Id, m.Name, m.Stats, m.Row, m.SkillPoints, m.Tactics)));
+        return new Party(file.Party.Select(m =>
+            new PartyMember(m.Id, m.Name, m.Stats, m.Row, m.SkillPoints, m.Tactics, m.TrainingQueue, m.UnallocatedSp)));
     }
 
     private static void Validate(SaveFile file, GameData data)
@@ -126,7 +134,14 @@ public static class SaveGame
                     .Where(x => x.Level > 0)
                     .ToDictionary(x => x.Key, x => x.Level);
                 DataValidation.ValidateSkillLevels(levels, at, data.Skills, errors);
+
+                if (!Training.IsValidQueue(member.TrainingQueue, levels, data))
+                {
+                    errors.Add($"{at}: training queue is out of order or skips prerequisites");
+                }
             }
+
+            DataValidation.RequireNonNegative(member.UnallocatedSp, $"{at}: unallocatedSp", errors);
 
             foreach (var tactic in member.Tactics)
             {

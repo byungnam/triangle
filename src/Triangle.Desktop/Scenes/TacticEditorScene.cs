@@ -35,8 +35,10 @@ internal sealed class TacticEditorScene : IScene
     private readonly Rectangle _bounds;
     private readonly SaveStore _store;
     private readonly Action<string> _startCombat;
+    private readonly Action<PartyMember> _openTraining;
     private readonly Action _quit;
     private readonly MyraDesktop _desktop = new();
+    private readonly Widgets _widgets;
     private readonly List<ComboView> _combos = [];
 
     private int _selected;
@@ -49,15 +51,17 @@ internal sealed class TacticEditorScene : IScene
     /// <param name="notice">처음에 보여줄 안내 (세이브를 복구했다는 등).</param>
     public TacticEditorScene(
         Ui ui, GameData data, Party party, SaveStore store, Rectangle bounds,
-        Action<string> startCombat, Action quit, (string Text, Color Color)? notice = null)
+        Action<string> startCombat, Action<PartyMember> openTraining, Action quit, (string Text, Color Color)? notice = null)
     {
         _ui = ui;
+        _widgets = new Widgets(ui);
         _data = data;
         _party = party;
         _store = store;
         _bounds = bounds;
         _notice = notice;
         _startCombat = startCombat;
+        _openTraining = openTraining;
         _quit = quit;
         _encounterId = data.Encounters.Keys.First();
     }
@@ -65,6 +69,9 @@ internal sealed class TacticEditorScene : IScene
     private PartyMember Selected => _party.Members[_selected];
 
     public bool HasUnsavedChanges => _unsaved;
+
+    /// <summary>다른 화면(훈련, 전투 보상)에서 파티를 바꿨다.</summary>
+    public void NotifyPartyChanged() => MarkChanged();
 
     /// <summary>종료를 요청한다. 저장하지 않은 변경이 있으면 먼저 확인 창을 띄운다.</summary>
     public void RequestQuit()
@@ -309,7 +316,17 @@ internal sealed class TacticEditorScene : IScene
 
         var title = new HorizontalStackPanel { Spacing = 12 };
         title.Widgets.Add(Label(member.Name, 26, Theme.Text, bold: true));
+        var training = TextButton("스킬 훈련", Theme.Button, Theme.ButtonHover);
+        training.Click += (_, _) => _openTraining(member);
+        title.Widgets.Add(training);
         title.Widgets.Add(Label(SkillSummary(skills), 16, Theme.TextDim));
+        if (member.TrainingQueue.Count > 0 || member.UnallocatedSp > 0)
+        {
+            var queueText = member.TrainingQueue.Count > 0
+                ? $"훈련 중: {_data.Skills[member.TrainingQueue[0].SkillId].Name} Lv {member.TrainingQueue[0].Level}"
+                : $"미배정 SP {member.UnallocatedSp:N0}";
+            title.Widgets.Add(Label(queueText, 15, Theme.Cover));
+        }
         panel.Widgets.Add(title);
 
         var s = member.Stats;
@@ -516,45 +533,21 @@ internal sealed class TacticEditorScene : IScene
         return learned.Count == 0 ? "배운 스킬 없음" : string.Join(" · ", learned);
     }
 
-    private Label Label(string text, int size, Color color, bool bold = false, int? width = null) => new()
-    {
-        Text = text,
-        Font = bold ? _ui.BoldFont(size) : _ui.Font(size),
-        TextColor = color,
-        Width = width,
-        VerticalAlignment = VerticalAlignment.Center,
-    };
+    private Label Label(string text, int size, Color color, bool bold = false, int? width = null) =>
+        _widgets.Label(text, size, color, bold, width);
 
     private ComboView Combo(IEnumerable<string> items, int selectedIndex, int width) =>
         Combo(items.Select(i => (i, Theme.Text)), selectedIndex, width);
 
     private ComboView Combo(IEnumerable<(string Text, Color Color)> items, int selectedIndex, int width)
     {
-        var combo = new ComboView { Width = width, DropdownMaximumHeight = 320 };
-        foreach (var (text, color) in items)
-        {
-            combo.Widgets.Add(new Label
-            {
-                Text = text,
-                Font = _ui.Font(17),
-                TextColor = color,
-                Padding = new Thickness(8, 4),
-            });
-        }
-
-        combo.SelectedIndex = Math.Max(0, selectedIndex);
+        var combo = _widgets.Combo(items, selectedIndex, width);
         _combos.Add(combo);
         return combo;
     }
 
-    private Button TextButton(string text, Color background, Color hover, bool bold = false)
-    {
-        var label = Label(text, 17, Theme.Text, bold);
-        label.HorizontalAlignment = HorizontalAlignment.Center;
-        var button = StyledButton(label, background, hover);
-        button.Padding = new Thickness(12, 6);
-        return button;
-    }
+    private Button TextButton(string text, Color background, Color hover, bool bold = false) =>
+        _widgets.TextButton(text, background, hover, bold);
 
     private Button SmallButton(string text, bool enabled, Func<bool> action, int width = 36) =>
         SmallButton(text, enabled, () => { action(); }, width);
@@ -573,12 +566,6 @@ internal sealed class TacticEditorScene : IScene
         return button;
     }
 
-    private static Button StyledButton(Widget content, Color background, Color hover) => new()
-    {
-        Content = content,
-        Background = new SolidBrush(background),
-        OverBackground = new SolidBrush(hover),
-        PressedBackground = new SolidBrush(Theme.ButtonPressed),
-        DisabledBackground = new SolidBrush(Theme.BarBack),
-    };
+    private static Button StyledButton(Widget content, Color background, Color hover) =>
+        Widgets.StyledButton(content, background, hover);
 }

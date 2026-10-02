@@ -15,15 +15,25 @@ public sealed class PartyMember
 {
     private readonly List<Tactic> _tactics = [];
     private readonly Dictionary<string, int> _skillPoints;
+    private readonly List<TrainingQueueEntry> _trainingQueue;
 
     public PartyMember(
-        string id, string name, Stats stats, Row row, IReadOnlyDictionary<string, int> skillPoints, IEnumerable<Tactic> tactics)
+        string id,
+        string name,
+        Stats stats,
+        Row row,
+        IReadOnlyDictionary<string, int> skillPoints,
+        IEnumerable<Tactic> tactics,
+        IEnumerable<TrainingQueueEntry>? trainingQueue = null,
+        int unallocatedSp = 0)
     {
         Id = id;
         Name = name;
         Stats = stats;
         Row = row;
         _skillPoints = new Dictionary<string, int>(skillPoints);
+        _trainingQueue = trainingQueue?.ToList() ?? [];
+        UnallocatedSp = unallocatedSp;
         foreach (var tactic in tactics.OrderBy(t => t.Priority))
         {
             _tactics.Add(tactic);
@@ -41,6 +51,16 @@ public sealed class PartyMember
 
     /// <summary>스킬 ID별 누적 SP.</summary>
     public IReadOnlyDictionary<string, int> SkillPoints => _skillPoints;
+
+    /// <summary>훈련 큐. 받은 SP는 맨 앞부터 쌓인다. 조작은 <see cref="Training"/>으로 한다.</summary>
+    public IReadOnlyList<TrainingQueueEntry> TrainingQueue => _trainingQueue;
+
+    /// <summary>큐가 비어 있어 아직 스킬에 넣지 않은 SP (스탯 배율 적용 전).</summary>
+    public int UnallocatedSp { get; internal set; }
+
+    internal List<TrainingQueueEntry> MutableTrainingQueue => _trainingQueue;
+
+    internal void AddSkillPoints(string skillId, int sp) => _skillPoints[skillId] = _skillPoints.GetValueOrDefault(skillId) + sp;
 
     /// <summary>1레벨 이상인 스킬의 레벨.</summary>
     public IReadOnlyDictionary<string, int> SkillLevels(GameData data) =>

@@ -2,8 +2,10 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Myra;
 using Myra.Graphics2D.UI.Styles;
+using Triangle.Core.Combat;
 using Triangle.Core.Data;
 using Triangle.Core.Progress;
+using Triangle.Core.Skills;
 using Triangle.Desktop.Rendering;
 using Triangle.Desktop.Scenes;
 
@@ -85,7 +87,7 @@ public class TriangleGame : Game
         var store = new SaveStore(_options.SavePath ?? SaveStore.DefaultPath);
         var loaded = store.Load(_data, DemoParty.Create);
         _party = loaded.Party;
-        _editor = new TacticEditorScene(_ui, _data, _party, store, Bounds, StartCombat, ConfirmedExit, LoadNotice(loaded));
+        _editor = new TacticEditorScene(_ui, _data, _party, store, Bounds, StartCombat, OpenTraining, ConfirmedExit, LoadNotice(loaded));
 
         if (!_options.StartInCombat)
         {
@@ -111,7 +113,45 @@ public class TriangleGame : Game
     private CombatLogScene CreateCombat(string encounterId) =>
         new(_ui, _data, _party.ToCombatantSetups(_data), encounterId, seed: 1, Bounds, back: () => _scene = _editor);
 
-    private void StartCombat(string encounterId) => _scene = CreateCombat(encounterId);
+    /// <summary>전투를 시작하고 보상 SP를 파티 전원에게 준다 (다시 하기에는 주지 않는다).</summary>
+    private void StartCombat(string encounterId)
+    {
+        var combat = CreateCombat(encounterId);
+        combat.SetRewardLines(GrantReward(combat.Result.Outcome));
+        _editor.NotifyPartyChanged();
+        _scene = combat;
+    }
+
+    private IReadOnlyList<LogLine> GrantReward(CombatOutcome outcome)
+    {
+        var sp = TrainingRules.Default.RewardFor(outcome);
+        var lines = new List<LogLine> { new($"보상: 각자 SP {sp:N0}", Theme.Cover) };
+        foreach (var member in _party.Members)
+        {
+            var result = Training.Grant(member, sp, _data);
+            foreach (var up in result.LevelUps)
+            {
+                lines.Add(new LogLine($"{member.Name}: {_data.Skills[up.SkillId].Name} Lv {up.Level}", Theme.Heal));
+            }
+
+            if (member.TrainingQueue.Count > 0 && result.LevelUps.Count == 0)
+            {
+                var entry = member.TrainingQueue[0];
+                var skill = _data.Skills[entry.SkillId];
+                var left = SkillProgression.SpForLevel(skill.Rank, entry.Level) - member.SkillPoints.GetValueOrDefault(entry.SkillId);
+                lines.Add(new LogLine($"{member.Name}: {skill.Name} Lv {entry.Level} 훈련 중 (남은 SP {left:N0})", Theme.TextDim));
+            }
+            else if (member.TrainingQueue.Count == 0 && member.UnallocatedSp > 0)
+            {
+                lines.Add(new LogLine($"{member.Name}: 훈련 큐가 비어 미배정 SP {member.UnallocatedSp:N0}", Theme.TextDim));
+            }
+        }
+
+        return lines;
+    }
+
+    private void OpenTraining(PartyMember member) =>
+        _scene = new SkillTrainingScene(_ui, _data, member, Bounds, back: () => _scene = _editor, changed: _editor.NotifyPartyChanged);
 
     /// <summary>편집 화면이 종료를 확인했다 (저장했거나 버리기로 했다).</summary>
     private void ConfirmedExit()

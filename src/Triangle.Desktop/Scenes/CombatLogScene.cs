@@ -34,6 +34,8 @@ internal sealed class CombatLogScene : IScene
     private readonly string _encounterId;
     private readonly Rectangle _bounds;
     private readonly Action _back;
+    private readonly int _rewardSeed;
+    private IReadOnlyList<LogLine> _rewardLines = [];
 
     /// <summary>Side가 null이면 두 칸에 걸쳐 가운데에 그린다 (전투 시작/종료).</summary>
     private sealed record LogEntry(LogLine Line, CombatSide? Side, bool StartsBlock);
@@ -61,6 +63,7 @@ internal sealed class CombatLogScene : IScene
         _encounterId = encounterId;
         _bounds = bounds;
         _back = back;
+        _rewardSeed = seed;
         Start(seed);
     }
 
@@ -92,11 +95,17 @@ internal sealed class CombatLogScene : IScene
             _data.Actions.ToDictionary(a => a.Key, a => a.Value.Name));
 
         _log.Clear();
-        _log.Add(new LogEntry(new LogLine($"{Korean.WaGwa(EncounterName)}의 전투 시작!", Theme.Text), null, false));
+        _log.Add(new LogEntry(new LogLine($"{Korean.WaGwa(EncounterName)}의 전투 시작!", Theme.Text), null, true));
         _nextEvent = 0;
         _timer = 0;
         _blockStarting = false;
     }
+
+    /// <summary>처음 계산한 전투 결과 (보상 계산용).</summary>
+    public CombatResult Result => _result;
+
+    /// <summary>처음 전투의 로그 끝에 붙일 보상 줄. 다시 하기(R)에는 붙지 않는다.</summary>
+    public void SetRewardLines(IReadOnlyList<LogLine> lines) => _rewardLines = lines;
 
     public void RevealAll() => RevealLines(int.MaxValue);
 
@@ -153,10 +162,29 @@ internal sealed class CombatLogScene : IScene
             if (_formatter.Format(e) is { } line)
             {
                 CombatSide? side = e is CombatEnded ? null : _actingSide;
-                _log.Add(new LogEntry(line, side, _blockStarting));
+                _log.Add(new LogEntry(line, side, _blockStarting || side is null));
+                if (e is CombatEnded)
+                {
+                    AddRewardLines();
+                }
+
                 _blockStarting = false;
                 return;
             }
+        }
+    }
+
+    private void AddRewardLines()
+    {
+        if (_seed != _rewardSeed)
+        {
+            _log.Add(new LogEntry(new LogLine("다시 하기에는 보상이 없습니다", Theme.TextDim), null, true));
+            return;
+        }
+
+        for (var i = 0; i < _rewardLines.Count; i++)
+        {
+            _log.Add(new LogEntry(_rewardLines[i], null, i == 0));
         }
     }
 
@@ -326,7 +354,7 @@ internal sealed class CombatLogScene : IScene
                     CombatSide.Enemy => rightX + indent,
                     _ => mid - font.MeasureString(wrapped[i]).X / 2,
                 };
-                var gap = i == 0 && (entry.StartsBlock || entry.Side is null) ? BlockGap : 0;
+                var gap = i == 0 && entry.StartsBlock ? BlockGap : 0;
                 rows.Add((wrapped[i], entry.Line.Color, x, gap, entry.Side is null));
             }
         }

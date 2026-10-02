@@ -10,7 +10,8 @@ using Triangle.Desktop.Rendering;
 namespace Triangle.Desktop.Scenes;
 
 /// <summary>
-/// 전투를 미리 끝까지 계산한 뒤, 이벤트를 한 줄씩 재생하며 텍스트 로그와 HP를 보여준다.
+/// 끝까지 계산한 전투 결과를 받아, 이벤트를 한 줄씩 재생하며 텍스트 로그와 HP를 보여준다.
+/// 결과는 이미 확정되어 있으므로(원정에 반영하고 저장했다) 다시 하기는 없다.
 /// 로그는 두 칸이다. 행동한 쪽 칸(왼쪽 아군, 오른쪽 적)에 그 행동과 결과가 들어가고,
 /// 위에서 아래로 시간 순서를 유지한다.
 /// </summary>
@@ -31,11 +32,11 @@ internal sealed class CombatLogScene : IScene
 
     private readonly Ui _ui;
     private readonly GameData _data;
-    private readonly IReadOnlyList<CombatantSetup> _allySetups;
     private readonly string _encounterId;
+    private readonly string _title;
     private readonly Rectangle _bounds;
     private readonly Action _back;
-    private readonly int _rewardSeed;
+    private readonly string _backLabel;
     private IReadOnlyList<LogLine> _rewardLines = [];
 
     /// <summary>Side가 null이면 두 칸에 걸쳐 가운데에 그린다 (전투 시작/종료).</summary>
@@ -46,67 +47,52 @@ internal sealed class CombatLogScene : IScene
     private readonly List<UnitView> _enemies = [];
     private readonly Dictionary<string, UnitView> _units = [];
 
-    private CombatResult _result = null!;
-    private CombatLogFormatter _formatter = null!;
-    private int _seed;
+    private readonly CombatResult _result;
+    private readonly CombatLogFormatter _formatter;
     private int _nextEvent;
     private double _timer;
     private CombatSide _actingSide;
     private bool _blockStarting;
 
+    /// <param name="title">머리글 (예: "전투 2/3").</param>
     /// <param name="back">Esc/Backspace를 누르면 호출된다 (이전 화면으로).</param>
+    /// <param name="backLabel">도움말에 보여줄 이전 화면 이름.</param>
     public CombatLogScene(
-        Ui ui, GameData data, IReadOnlyList<CombatantSetup> allies, string encounterId, int seed, Rectangle bounds, Action back)
+        Ui ui, GameData data, CombatResult result, string encounterId, string title, Rectangle bounds, Action back, string backLabel)
     {
         _ui = ui;
         _data = data;
-        _allySetups = allies;
+        _result = result;
         _encounterId = encounterId;
+        _title = title;
         _bounds = bounds;
         _back = back;
-        _rewardSeed = seed;
-        Start(seed);
-    }
+        _backLabel = backLabel;
 
-    private bool Finished => _nextEvent >= _result.Events.Count;
-
-    private string EncounterName => _data.Encounters[_encounterId].Name;
-
-    public void Start(int seed)
-    {
-        _seed = seed;
-        var allies = _allySetups;
-        var enemies = _data.CreateEncounterTeam(_encounterId);
-        _result = CombatSimulator.Run(allies, enemies, _data.Catalog, seed);
-
-        _allies.Clear();
-        _enemies.Clear();
-        _units.Clear();
         foreach (var c in _result.Combatants)
         {
-            var view = new UnitView(c.Id, c.Side, c.Row, c.MaxHp, c.MaxMp);
+            var view = new UnitView(c.Id, c.Side, c.Row, c.MaxHp, c.MaxMp) { Hp = c.StartHp, Mp = c.StartMp };
             (c.Side == CombatSide.Ally ? _allies : _enemies).Add(view);
             _units[c.Id] = view;
         }
 
-        AssignDisplayNames(allies.Concat(enemies));
+        AssignDisplayNames(_result.Combatants);
 
         _formatter = new CombatLogFormatter(
             _units.ToDictionary(u => u.Key, u => u.Value.Name),
             _data.Actions.ToDictionary(a => a.Key, a => a.Value.Name),
             _data.Effects);
 
-        _log.Clear();
         _log.Add(new LogEntry(new LogLine($"{Korean.WaGwa(EncounterName)}의 전투 시작!", Theme.Text), null, true));
-        _nextEvent = 0;
-        _timer = 0;
-        _blockStarting = false;
     }
 
-    /// <summary>처음 계산한 전투 결과 (보상 계산용).</summary>
+    private bool Finished => _nextEvent >= _result.Events.Count;
+
+    private string EncounterName => _data.Encounters[_encounterId].Name;
+
     public CombatResult Result => _result;
 
-    /// <summary>처음 전투의 로그 끝에 붙일 보상 줄. 다시 하기(R)에는 붙지 않는다.</summary>
+    /// <summary>로그 끝에 붙일 결과 줄 (경험치, 전리품, 사망).</summary>
     public void SetRewardLines(IReadOnlyList<LogLine> lines) => _rewardLines = lines;
 
     public void RevealAll() => RevealLines(int.MaxValue);
@@ -124,12 +110,6 @@ internal sealed class CombatLogScene : IScene
         if (input.Pressed(Keys.Escape) || input.Pressed(Keys.Back))
         {
             _back();
-            return;
-        }
-
-        if (input.Pressed(Keys.R))
-        {
-            Start(_seed + 1);
             return;
         }
 
@@ -178,12 +158,6 @@ internal sealed class CombatLogScene : IScene
 
     private void AddRewardLines()
     {
-        if (_seed != _rewardSeed)
-        {
-            _log.Add(new LogEntry(new LogLine("다시 하기에는 보상이 없습니다", Theme.TextDim), null, true));
-            return;
-        }
-
         for (var i = 0; i < _rewardLines.Count; i++)
         {
             _log.Add(new LogEntry(_rewardLines[i], null, i == 0));
@@ -237,7 +211,7 @@ internal sealed class CombatLogScene : IScene
     }
 
     /// <summary>같은 진영에 같은 이름이 있으면 "훈련병 A", "훈련병 B"처럼 구분한다.</summary>
-    private void AssignDisplayNames(IEnumerable<CombatantSetup> setups)
+    private void AssignDisplayNames(IEnumerable<Combatant> setups)
     {
         foreach (var group in setups.GroupBy(s => (_units[s.Id].Side, s.Name)))
         {
@@ -273,7 +247,7 @@ internal sealed class CombatLogScene : IScene
 
     private void DrawHeader(SpriteBatch batch)
     {
-        var title = $"전투 기록 — {EncounterName}";
+        var title = $"{_title} — {EncounterName}";
         _ui.Text(batch, _ui.BoldFont(28), title, new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
 
         var status = Finished
@@ -286,7 +260,7 @@ internal sealed class CombatLogScene : IScene
             : ("진행 중", Theme.TextDim);
 
         var font = _ui.BoldFont(22);
-        var text = $"{status.Item1}   시드 {_seed}";
+        var text = status.Item1;
         var size = font.MeasureString(text);
         _ui.Text(batch, font, text, new Vector2(_bounds.Right - Margin - size.X, _bounds.Top + 24), status.Item2);
     }
@@ -438,7 +412,7 @@ internal sealed class CombatLogScene : IScene
 
     private void DrawFooter(SpriteBatch batch)
     {
-        const string help = "Space  끝까지 보기     R  다른 시드로 다시 전투     Esc  전술 편집으로";
+        var help = $"Space  끝까지 보기     Esc  {_backLabel}";
         _ui.Text(batch, _ui.Font(16), help, new Vector2(_bounds.Left + Margin, _bounds.Bottom - FooterHeight + 10), Theme.TextDim);
     }
 

@@ -100,13 +100,13 @@ public class PartyMemberTests
     }
 
     [Fact]
-    public void Party_rejects_unknown_tactic_set()
+    public void Company_rejects_unknown_tactic_set()
     {
-        var party = new Party([Member()]);
+        var company = new Company([Member()], ["m"], gold: 0, new Dictionary<string, int>(), activeTacticSet: 0, nextSeed: 0);
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => party.ActiveTacticSet = 2);
-        party.ActiveTacticSet = 1;
-        Assert.Equal(1, party.ActiveTacticSet);
+        Assert.Throws<ArgumentOutOfRangeException>(() => company.ActiveTacticSet = 2);
+        company.ActiveTacticSet = 1;
+        Assert.Equal(1, company.ActiveTacticSet);
     }
 
     [Fact]

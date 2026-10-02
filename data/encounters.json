@@ -226,5 +226,649 @@
         ]
       }
     ]
+  },
+  {
+    "id": "wild_dogs",
+    "name": "들개 무리",
+    "description": "초보. 약한 짐승 셋. 수치는 임시.",
+    "units": [
+      {
+        "id": "dog_1",
+        "name": "들개",
+        "row": "Front",
+        "stats": {
+          "str": 7,
+          "dex": 8,
+          "vital": 8,
+          "intel": 4,
+          "speed": 12
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "dog_2",
+        "name": "들개",
+        "row": "Front",
+        "stats": {
+          "str": 7,
+          "dex": 8,
+          "vital": 8,
+          "intel": 4,
+          "speed": 12
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "dog_3",
+        "name": "들개",
+        "row": "Front",
+        "stats": {
+          "str": 7,
+          "dex": 8,
+          "vital": 8,
+          "intel": 4,
+          "speed": 12
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "forest_bandits",
+    "name": "숲 도적",
+    "description": "초보. 도적 둘. 수치는 임시.",
+    "units": [
+      {
+        "id": "bandit_1",
+        "name": "도적",
+        "row": "Front",
+        "weapon": "sword",
+        "armor": "leather",
+        "stats": {
+          "str": 10,
+          "dex": 9,
+          "vital": 12,
+          "intel": 8,
+          "speed": 10
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "bandit_2",
+        "name": "도적",
+        "row": "Front",
+        "weapon": "sword",
+        "armor": "leather",
+        "stats": {
+          "str": 10,
+          "dex": 9,
+          "vital": 12,
+          "intel": 8,
+          "speed": 10
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "poachers",
+    "name": "밀렵꾼",
+    "description": "초보. 도적 하나와 궁수 하나. 수치는 임시.",
+    "units": [
+      {
+        "id": "poacher_1",
+        "name": "밀렵꾼",
+        "row": "Front",
+        "weapon": "sword",
+        "armor": "leather",
+        "stats": {
+          "str": 10,
+          "dex": 9,
+          "vital": 12,
+          "intel": 8,
+          "speed": 10
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "poacher_archer",
+        "name": "밀렵 궁수",
+        "row": "Back",
+        "weapon": "bow",
+        "armor": "leather",
+        "stats": {
+          "str": 8,
+          "dex": 10,
+          "vital": 10,
+          "intel": 12,
+          "speed": 10
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 15,
+            "actionId": "basic_attack"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "fire_arrow"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "deserters",
+    "name": "탈영병",
+    "description": "보통. 무장한 탈영병. 수치는 임시.",
+    "units": [
+      {
+        "id": "deserter_1",
+        "name": "탈영병",
+        "row": "Front",
+        "weapon": "sword",
+        "armor": "plate",
+        "stats": {
+          "str": 11,
+          "dex": 9,
+          "vital": 13,
+          "intel": 10,
+          "speed": 10
+        },
+        "skills": {
+          "swordsmanship": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "deserter_2",
+        "name": "탈영병",
+        "row": "Front",
+        "weapon": "sword",
+        "armor": "plate",
+        "stats": {
+          "str": 11,
+          "dex": 9,
+          "vital": 13,
+          "intel": 10,
+          "speed": 10
+        },
+        "skills": {
+          "swordsmanship": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "fort_archers",
+    "name": "요새 궁수대",
+    "description": "보통. 방패병 하나와 궁수 둘. 수치는 임시.",
+    "units": [
+      {
+        "id": "fort_guard",
+        "name": "방패병",
+        "row": "Front",
+        "weapon": "sword",
+        "armor": "plate",
+        "stats": {
+          "str": 11,
+          "dex": 9,
+          "vital": 15,
+          "intel": 10,
+          "speed": 10
+        },
+        "skills": {
+          "defense": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "fort_archer_1",
+        "name": "요새 궁수",
+        "row": "Back",
+        "weapon": "bow",
+        "armor": "leather",
+        "stats": {
+          "str": 8,
+          "dex": 11,
+          "vital": 11,
+          "intel": 14,
+          "speed": 11
+        },
+        "skills": {
+          "archery": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 15,
+            "actionId": "basic_attack"
+          },
+          {
+            "priority": 2,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "poison_arrow"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "fire_arrow"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "bandit_chief",
+    "name": "도적 두목",
+    "description": "보통. 두목과 부하 둘. 수치는 임시.",
+    "units": [
+      {
+        "id": "chief",
+        "name": "도적 두목",
+        "row": "Front",
+        "weapon": "sword",
+        "armor": "plate",
+        "stats": {
+          "str": 12,
+          "dex": 11,
+          "vital": 16,
+          "intel": 14,
+          "speed": 11
+        },
+        "skills": {
+          "swordsmanship": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 15,
+            "actionId": "basic_attack"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 2,
+            "actionId": "heavy_strike"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "chief_bandit_1",
+        "name": "도적",
+        "row": "Front",
+        "weapon": "sword",
+        "armor": "leather",
+        "stats": {
+          "str": 10,
+          "dex": 9,
+          "vital": 12,
+          "intel": 8,
+          "speed": 10
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "carthage_infantry",
+    "name": "카르타고 보병대",
+    "description": "어려움. 중보병 둘과 궁수 하나. 수치는 임시.",
+    "units": [
+      {
+        "id": "infantry_1",
+        "name": "카르타고 보병",
+        "row": "Front",
+        "weapon": "sword",
+        "armor": "plate",
+        "stats": {
+          "str": 9,
+          "dex": 9,
+          "vital": 10,
+          "intel": 9,
+          "speed": 10
+        },
+        "skills": {
+          "swordsmanship": 2,
+          "defense": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 15,
+            "actionId": "basic_attack"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "heavy_strike"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "infantry_2",
+        "name": "카르타고 보병",
+        "row": "Front",
+        "weapon": "sword",
+        "armor": "plate",
+        "stats": {
+          "str": 9,
+          "dex": 9,
+          "vital": 10,
+          "intel": 9,
+          "speed": 10
+        },
+        "skills": {
+          "swordsmanship": 2,
+          "defense": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 15,
+            "actionId": "basic_attack"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "heavy_strike"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "infantry_archer",
+        "name": "카르타고 궁수",
+        "row": "Back",
+        "weapon": "bow",
+        "armor": "leather",
+        "stats": {
+          "str": 7,
+          "dex": 8,
+          "vital": 8,
+          "intel": 10,
+          "speed": 9
+        },
+        "skills": {
+          "archery": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 15,
+            "actionId": "basic_attack"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "poison_arrow"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "fire_arrow"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "numidian_raiders",
+    "name": "누미디아 기병",
+    "description": "어려움. 빠른 기병 셋. 수치는 임시.",
+    "units": [
+      {
+        "id": "rider_1",
+        "name": "누미디아 기병",
+        "row": "Front",
+        "weapon": "sword",
+        "armor": "leather",
+        "stats": {
+          "str": 10,
+          "dex": 9,
+          "vital": 9,
+          "intel": 9,
+          "speed": 13
+        },
+        "skills": {
+          "mobility": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "rider_2",
+        "name": "누미디아 기병",
+        "row": "Front",
+        "weapon": "sword",
+        "armor": "leather",
+        "stats": {
+          "str": 10,
+          "dex": 9,
+          "vital": 9,
+          "intel": 9,
+          "speed": 13
+        },
+        "skills": {
+          "mobility": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "baal_priests",
+    "name": "바알 사제단",
+    "description": "어려움. 호위병, 주술사, 사제. 수치는 임시.",
+    "units": [
+      {
+        "id": "baal_guard",
+        "name": "신전 호위병",
+        "row": "Front",
+        "weapon": "sword",
+        "armor": "plate",
+        "stats": {
+          "str": 9,
+          "dex": 8,
+          "vital": 9,
+          "intel": 9,
+          "speed": 9
+        },
+        "skills": {
+          "defense": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "baal_mage",
+        "name": "바알 주술사",
+        "row": "Back",
+        "weapon": "staff",
+        "armor": "cloth",
+        "stats": {
+          "str": 6,
+          "dex": 8,
+          "vital": 8,
+          "intel": 13,
+          "speed": 9
+        },
+        "skills": {
+          "magic_control": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "basic_attack"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 2,
+            "actionId": "fireball"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "magic_bolt"
+          }
+        ]
+      },
+      {
+        "id": "baal_priest",
+        "name": "바알 사제",
+        "row": "Back",
+        "weapon": "relic",
+        "armor": "cloth",
+        "stats": {
+          "str": 6,
+          "dex": 8,
+          "vital": 8,
+          "intel": 11,
+          "speed": 9
+        },
+        "skills": {
+          "healing": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "AnyAllyHpAtMost",
+            "value": 50,
+            "actionId": "heal"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      }
+    ]
   }
 ]

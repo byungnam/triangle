@@ -24,8 +24,10 @@ public sealed class Combatant
 
         MaxHp = rules.MaxHp(setup.Stats, skills);
         MaxMp = rules.MaxMp(setup.Stats, skills);
-        Hp = MaxHp;
-        Mp = MaxMp;
+        StartHp = Math.Clamp(setup.StartHp ?? MaxHp, Math.Min(1, MaxHp), MaxHp);
+        StartMp = Math.Clamp(setup.StartMp ?? MaxMp, 0, MaxMp);
+        Hp = StartHp;
+        Mp = StartMp;
     }
 
     public string Id { get; }
@@ -42,6 +44,10 @@ public sealed class Combatant
 
     public int MaxHp { get; }
     public int MaxMp { get; }
+    /// <summary>전투를 시작한 HP·MP (원정에서는 이전 전투에서 이어진 값).</summary>
+    public int StartHp { get; }
+    public int StartMp { get; }
+
     public int Hp { get; internal set; }
     public int Mp { get; internal set; }
 

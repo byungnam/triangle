@@ -16,7 +16,7 @@ public enum LoadStatus
 
 /// <param name="BrokenFilePath">Recovered일 때 깨진 세이브를 옮겨 둔 경로.</param>
 /// <param name="Errors">Recovered일 때 세이브를 읽지 못한 이유.</param>
-public sealed record LoadResult(Party Party, LoadStatus Status, string? BrokenFilePath = null, IReadOnlyList<string>? Errors = null);
+public sealed record LoadResult(Company Company, LoadStatus Status, string? BrokenFilePath = null, IReadOnlyList<string>? Errors = null);
 
 /// <summary>세이브 파일 하나를 읽고 쓴다.</summary>
 public sealed class SaveStore(string path)
@@ -31,7 +31,7 @@ public sealed class SaveStore(string path)
     /// 세이브를 불러온다. 없으면 <paramref name="createNew"/>로 새로 시작한다.
     /// 깨져 있으면 덮어쓰지 않도록 옆에 보관한 뒤 새로 시작한다.
     /// </summary>
-    public LoadResult Load(GameData data, Func<Party> createNew)
+    public LoadResult Load(GameData data, Func<Company> createNew)
     {
         if (!File.Exists(Path))
         {
@@ -51,7 +51,7 @@ public sealed class SaveStore(string path)
     }
 
     /// <summary>임시 파일에 쓴 뒤 교체한다. 쓰는 도중에 꺼져도 기존 세이브는 남는다.</summary>
-    public void Save(Party party)
+    public void Save(Company company)
     {
         var directory = System.IO.Path.GetDirectoryName(Path);
         if (!string.IsNullOrEmpty(directory))
@@ -60,7 +60,7 @@ public sealed class SaveStore(string path)
         }
 
         var temp = Path + ".tmp";
-        File.WriteAllText(temp, SaveGame.Serialize(party));
+        File.WriteAllText(temp, SaveGame.Serialize(company));
         File.Move(temp, Path, overwrite: true);
     }
 

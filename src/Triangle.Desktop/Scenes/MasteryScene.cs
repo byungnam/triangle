@@ -46,7 +46,7 @@ internal sealed class MasteryScene : IScene
         _bounds = bounds;
         _back = back;
         _changed = changed;
-        _selected = member.Weapon ?? data.Masteries.Keys.First();
+        _selected = member.WeaponMastery(data) ?? data.Masteries.Keys.First();
     }
 
     public void Update(GameTime gameTime, Input input)
@@ -74,7 +74,7 @@ internal sealed class MasteryScene : IScene
 
         batch.Begin();
         _ui.Text(batch, _ui.BoldFont(28), $"숙련·패시브 — {_member.Name}", new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
-        var gear = $"장비: {Name(_member.Weapon)} / {Name(_member.Armor)}";
+        var gear = $"장비: {ItemName(_member.Weapon)} / {ItemName(_member.Armor)}";
         _ui.Text(batch, _ui.Font(16), gear, new Vector2(_bounds.Left + Margin, _bounds.Top + 58), Theme.TextDim);
 
         const string help = "장착한 장비로 싸우면 그 숙련이 오른다. 숙련 레벨 1당 포인트 1점. 배운 패시브는 되돌릴 수 없다.     Esc  전술 편집으로";
@@ -95,7 +95,9 @@ internal sealed class MasteryScene : IScene
         _bounds.Left + Margin * 2 + ListWidth, _bounds.Top + HeaderHeight,
         _bounds.Width - Margin * 3 - ListWidth, _bounds.Height - HeaderHeight - FooterHeight - 8);
 
-    private string Name(string? masteryId) => masteryId is null ? "없음" : _data.Masteries[masteryId].Name;
+    /// <summary>"낡은 검 (검)"처럼 아이템과 계열.</summary>
+    private string ItemName(string? itemId) =>
+        itemId is null ? "없음" : $"{_data.Items[itemId].Name} ({_data.Masteries[_data.Items[itemId].Mastery].Name})";
 
     // ── 위젯 트리 ──────────────────────────────────────────
 
@@ -150,7 +152,7 @@ internal sealed class MasteryScene : IScene
     {
         var level = _member.MasteryLevel(mastery.Id);
         var points = _member.PointsAvailable(mastery.Id, _data);
-        var equipped = mastery.Id == _member.Weapon || mastery.Id == _member.Armor;
+        var equipped = mastery.Id == _member.WeaponMastery(_data) || mastery.Id == _member.ArmorMastery(_data);
         var selected = mastery.Id == _selected;
 
         var content = new VerticalStackPanel { Spacing = 2 };

@@ -26,10 +26,15 @@ public class MasteryTests
         [ { "id": "strike", "name": "공격", "power": 10 },
           { "id": "shot", "name": "화살", "power": 10, "weapon": "bow" } ]
         """,
-        """[ { "id": "camp", "name": "야영지", "units": [ { "id": "e", "name": "적", "row": "Front", "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 } } ] } ]""");
+        """[ { "id": "camp", "name": "야영지", "units": [ { "id": "e", "name": "적", "row": "Front", "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 } } ] } ]""",
+        itemsJson: """
+        [ { "id": "short_bow", "name": "짧은 활", "mastery": "bow" },
+          { "id": "old_sword", "name": "낡은 검", "mastery": "sword" },
+          { "id": "plate_mail", "name": "판금 갑옷", "mastery": "plate" } ]
+        """);
 
-    private static PartyMember Member(Dictionary<string, int>? xp = null, Dictionary<string, int>? skills = null, string? weapon = "bow") =>
-        new("m", "멤버", new Stats(15, 15, 15, 15, 15), Row.Front, weapon, "plate", xp ?? [], skills ?? [], []);
+    private static PartyMember Member(Dictionary<string, int>? xp = null, Dictionary<string, int>? skills = null) =>
+        new("m", "멤버", new Stats(15, 15, 15, 15, 15), Row.Front, "short_bow", "plate_mail", xp ?? [], skills ?? [], []);
 
     [Theory]
     [InlineData(0, 0)]
@@ -90,12 +95,13 @@ public class MasteryTests
     [Fact]
     public void Changing_weapon_locks_weapon_tactics()
     {
-        var m = new PartyMember("m", "멤버", new Stats(15, 15, 15, 15, 15), Row.Front, "bow", null, new Dictionary<string, int>(), new Dictionary<string, int>(),
+        var m = new PartyMember("m", "멤버", new Stats(15, 15, 15, 15, 15), Row.Front, "short_bow", null, new Dictionary<string, int>(), new Dictionary<string, int>(),
             [[new Tactic(1, Condition.Always, 0, "shot"), new Tactic(2, Condition.Always, 0, "strike")]]);
 
         Assert.Empty(m.LockedTacticIndexes(Data, 0));
-        m.Weapon = "sword";
+        m.Weapon = "old_sword";
         Assert.Equal([0], m.LockedTacticIndexes(Data, 0));
+        Assert.Equal("sword", m.ToCombatantSetup(Data, 0).Weapon);
     }
 
     [Fact]

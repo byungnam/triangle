@@ -1,7 +1,10 @@
 using Triangle.Core.Actions;
 using Triangle.Core.Combat;
 using Triangle.Core.Effects;
+using Triangle.Core.Expeditions;
+using Triangle.Core.Items;
 using Triangle.Core.Masteries;
+using Triangle.Core.Progress;
 using Triangle.Core.Skills;
 
 namespace Triangle.Core.Data;
@@ -14,8 +17,14 @@ public sealed class GameData
         IReadOnlyDictionary<string, SkillDefinition> skills,
         IReadOnlyDictionary<string, ActionDefinition> actions,
         IReadOnlyDictionary<string, EffectDefinition> effects,
-        IReadOnlyDictionary<string, EncounterDefinition> encounters)
+        IReadOnlyDictionary<string, EncounterDefinition> encounters,
+        IReadOnlyDictionary<string, ItemDefinition> items,
+        IReadOnlyDictionary<string, ZoneDefinition> zones,
+        IReadOnlyDictionary<string, RecruitTemplate> recruits)
     {
+        Items = items;
+        Zones = zones;
+        Recruits = recruits;
         Effects = effects;
         Masteries = masteries;
         Skills = skills;
@@ -28,6 +37,24 @@ public sealed class GameData
     public IReadOnlyDictionary<string, MasteryDefinition> Masteries { get; }
 
     public IEnumerable<MasteryDefinition> MasteriesFor(EquipmentSlot slot) => Masteries.Values.Where(m => m.Slot == slot);
+
+    /// <summary>장비 아이템. 계열은 <see cref="ItemDefinition.Mastery"/>.</summary>
+    public IReadOnlyDictionary<string, ItemDefinition> Items { get; }
+
+    /// <summary>그 슬롯에 끼는 아이템 (데이터 순서).</summary>
+    public IEnumerable<ItemDefinition> ItemsFor(EquipmentSlot slot) => Items.Values.Where(i => Masteries[i.Mastery].Slot == slot);
+
+    /// <summary>아이템의 장비 계열. null이면 null(맨손·맨몸).</summary>
+    public string? MasteryOf(string? itemId) => itemId is null ? null : Items[itemId].Mastery;
+
+    /// <summary>그 계열의 기본 아이템 (데이터에서 처음 나오는 것). 없으면 null.</summary>
+    public ItemDefinition? BasicItemFor(string masteryId) => Items.Values.FirstOrDefault(i => i.Mastery == masteryId);
+
+    /// <summary>전투지역 (데이터 순서).</summary>
+    public IReadOnlyDictionary<string, ZoneDefinition> Zones { get; }
+
+    /// <summary>모집 후보 템플릿.</summary>
+    public IReadOnlyDictionary<string, RecruitTemplate> Recruits { get; }
 
     /// <summary>숙련 트리의 패시브 스킬.</summary>
     public IReadOnlyDictionary<string, SkillDefinition> Skills { get; }

@@ -434,6 +434,19 @@ public static class GameDataLoader
 
             DataValidation.RequirePercent(drop.Chance, $"{at}: chance of '{drop.ItemId}'", errors);
         }
+
+        if (r.EquipmentDrop is { } tierDrop)
+        {
+            DataValidation.RequirePercent(tierDrop.Chance, $"{at}: equipmentDrop chance", errors);
+            if (tierDrop.MinTier < 1 || tierDrop.MaxTier > ItemDefinition.MaxTier || tierDrop.MaxTier < tierDrop.MinTier)
+            {
+                errors.Add($"{at}: equipmentDrop tiers must be 1-{ItemDefinition.MaxTier} with min <= max, got {tierDrop.MinTier}-{tierDrop.MaxTier}");
+            }
+            else if (!items.Values.Any(i => i.IsEquipment && i.Tier >= tierDrop.MinTier && i.Tier <= tierDrop.MaxTier))
+            {
+                errors.Add($"{at}: no equipment in tiers {tierDrop.MinTier}-{tierDrop.MaxTier}");
+            }
+        }
     }
 
     private static void ValidateRecruit(

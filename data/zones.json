@@ -25,16 +25,12 @@
       "goldMin": 20,
       "goldMax": 40,
       "depthBonusPercent": 20,
-      "itemDrops": [
-        {
-          "itemId": "old_sword",
-          "chance": 10
-        },
-        {
-          "itemId": "leather_armor",
-          "chance": 10
-        }
-      ],
+      "itemDrops": [],
+      "equipmentDrop": {
+        "chance": 20,
+        "minTier": 1,
+        "maxTier": 1
+      },
       "clearBonusGold": 50
     }
   },
@@ -68,16 +64,12 @@
       "goldMin": 50,
       "goldMax": 80,
       "depthBonusPercent": 25,
-      "itemDrops": [
-        {
-          "itemId": "hunting_bow",
-          "chance": 15
-        },
-        {
-          "itemId": "plate_armor",
-          "chance": 10
-        }
-      ],
+      "itemDrops": [],
+      "equipmentDrop": {
+        "chance": 25,
+        "minTier": 1,
+        "maxTier": 2
+      },
       "clearBonusGold": 150
     }
   },
@@ -111,16 +103,12 @@
       "goldMin": 90,
       "goldMax": 140,
       "depthBonusPercent": 30,
-      "itemDrops": [
-        {
-          "itemId": "apprentice_staff",
-          "chance": 15
-        },
-        {
-          "itemId": "wooden_relic",
-          "chance": 15
-        }
-      ],
+      "itemDrops": [],
+      "equipmentDrop": {
+        "chance": 30,
+        "minTier": 2,
+        "maxTier": 3
+      },
       "clearBonusGold": 400
     }
   }

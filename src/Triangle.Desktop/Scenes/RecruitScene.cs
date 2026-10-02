@@ -128,7 +128,8 @@ internal sealed class RecruitScene : IScene
 
         var s = offer.Stats;
         var rules = CombatRules.Default;
-        var noSkills = new SkillSet(SkillSet.NoSkills, data.Skills);
+        // 신입은 패시브와 숙련이 없으므로 시작 장비의 기본 보너스만 더한다.
+        var noSkills = new SkillSet(SkillSet.NoSkills, data.Skills, template.Equipment.Values.SelectMany(id => data.Items[id].Bonuses).ToList());
         panel.Widgets.Add(_w.Label($"근력 {s.Str}   민첩 {s.Dex}   체력 {s.Vital}", 16, Theme.TextDim));
         panel.Widgets.Add(_w.Label($"지능 {s.Intel}   신속 {s.Speed}", 16, Theme.TextDim));
         panel.Widgets.Add(_w.Label($"HP {rules.MaxHp(s, noSkills)}   MP {rules.MaxMp(s, noSkills)}", 16, Theme.TextDim));

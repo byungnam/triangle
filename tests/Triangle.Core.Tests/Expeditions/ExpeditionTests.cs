@@ -24,7 +24,10 @@ public class ExpeditionTests
           { "id": "old_shield", "name": "낡은 방패", "slot": "OffHand", "mastery": "sword" },
           { "id": "plate_helm", "name": "판금 투구", "slot": "Head", "mastery": "plate" },
           { "id": "plate_armor", "name": "판금 갑옷", "slot": "Body", "mastery": "plate" },
-          { "id": "plate_boots", "name": "판금 장화", "slot": "Feet", "mastery": "plate" } ]
+          { "id": "plate_boots", "name": "판금 장화", "slot": "Feet", "mastery": "plate" },
+          { "id": "steel_sword", "name": "강철 검", "slot": "MainHand", "mastery": "sword", "tier": 2 },
+          { "id": "steel_helm", "name": "강철 투구", "slot": "Head", "mastery": "plate", "tier": 2 },
+          { "id": "ore", "name": "광석", "slot": "Material" } ]
         """;
 
     private static readonly GameData Data = GameDataLoader.Parse(
@@ -49,6 +52,8 @@ public class ExpeditionTests
             "encounters": [ { "encounterId": "dummy", "weight": 1 } ], "rewards": { "goldMin": 5, "goldMax": 5 } },
           { "id": "grave100", "name": "깊은 묘지", "maxBattles": 3, "permadeath": true, "equipmentDestroyChance": 100,
             "encounters": [ { "encounterId": "dummy", "weight": 1 } ] },
+          { "id": "vault", "name": "보물고", "maxBattles": 3, "encounters": [ { "encounterId": "dummy", "weight": 1 } ],
+            "rewards": { "equipmentDrop": { "chance": 100, "minTier": 2, "maxTier": 2 } } },
           { "id": "arena", "name": "투기장", "maxBattles": 3, "encounters": [ { "encounterId": "brute", "weight": 1 } ] } ]
         """,
         recruitsJson: """
@@ -271,6 +276,24 @@ public class ExpeditionTests
         var result = ExpeditionRules.Fight(company, Data);
         Assert.Equal(CombatOutcome.Draw, result.Outcome);
         Assert.Equal(ExpeditionEnd.ForcedReturn, ExpeditionRules.ApplyResult(company, Data, result)!.End);
+    }
+
+    [Fact]
+    public void Equipment_drops_come_from_the_zone_tier_range()
+    {
+        var seen = new HashSet<string>();
+        for (var seed = 0; seed < 40; seed++)
+        {
+            var company = new Company([Member("a")], ["a"], 0, new Dictionary<string, int>(), 0, seed);
+            ExpeditionRules.Start(company, Data, "vault");
+            ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("a", 50, 5)));
+            var drop = Assert.Single(company.Expedition!.LastBattle!.Drops);
+            Assert.Equal(2, Data.Items[drop].Tier);
+            seen.Add(drop);
+        }
+
+        // T2 장비 둘 다 나온다 (재료와 T1은 나오지 않는다).
+        Assert.Equal(new HashSet<string> { "steel_sword", "steel_helm" }, seen);
     }
 
     [Fact]

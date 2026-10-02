@@ -123,7 +123,7 @@ internal sealed class ExpeditionScene : IScene
         foreach (var state in Expedition.Members)
         {
             var member = Company.Member(state.Id);
-            var skills = member.Skills(_session.Data);
+            var skills = member.CombatSkills(_session.Data);
             var (maxHp, maxMp) = (rules.MaxHp(member.Stats, skills), rules.MaxMp(member.Stats, skills));
             var name = state.Down ? $"{member.Name} (쓰러짐)" : member.Name;
             _ui.Text(batch, _ui.BoldFont(19), name, new Vector2(x, y), state.Down ? Theme.Death : Theme.Ally);

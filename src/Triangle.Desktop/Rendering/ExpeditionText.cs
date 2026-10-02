@@ -14,14 +14,21 @@ internal static class ExpeditionText
         _ => ("무승부", Theme.TextDim),
     };
 
-    /// <summary>"낡은 검 2, 판금 갑옷"처럼 아이템 목록.</summary>
+    /// <summary>"T1 낡은 검 2, T2 강철 판금 갑옷"처럼 아이템 목록 (장비는 티어를 붙인다).</summary>
     public static string Items(GameData data, IEnumerable<string> itemIds) =>
         string.Join(", ", itemIds.GroupBy(id => id).Select(g => g.Count() == 1 ? Name(data, g.Key) : $"{Name(data, g.Key)} {g.Count()}"));
 
     public static string Items(GameData data, IReadOnlyDictionary<string, int> counts) =>
         string.Join(", ", counts.Select(p => p.Value == 1 ? Name(data, p.Key) : $"{Name(data, p.Key)} {p.Value}"));
 
-    private static string Name(GameData data, string itemId) => data.Items[itemId].Name;
+    private static string Name(GameData data, string itemId) => ItemText.ShortName(data.Items[itemId]);
+
+    /// <summary>"주무기 T1 낡은 검, 몸통 T1 판금 갑옷"처럼 부위를 붙인 장비 목록 (부위 순서).</summary>
+    public static string Gear(GameData data, IEnumerable<string> itemIds) =>
+        string.Join(", ", itemIds
+            .Select(id => data.Items[id])
+            .OrderBy(i => i.Slot)
+            .Select(i => $"{ItemText.SlotLabel(i.Slot)} {ItemText.ShortName(i)}"));
 
     /// <summary>전투 하나의 결과: 경험치, 전리품, 쓰러짐, 사망, 장비 파괴.</summary>
     public static IReadOnlyList<LogLine> Battle(GameData data, BattleReport report)
@@ -59,12 +66,12 @@ internal static class ExpeditionText
 
         if (report.Destroyed.Count > 0)
         {
-            lines.Add(new LogLine($"파괴된 장비: {Items(data, report.Destroyed)}", Theme.Enemy));
+            lines.Add(new LogLine($"파괴된 장비: {Gear(data, report.Destroyed)}", Theme.Enemy));
         }
 
         if (report.Recovered.Count > 0)
         {
-            lines.Add(new LogLine($"회수한 장비: {Items(data, report.Recovered)}", Theme.Cover));
+            lines.Add(new LogLine($"회수한 장비: {Gear(data, report.Recovered)}", Theme.Cover));
         }
 
         return lines;

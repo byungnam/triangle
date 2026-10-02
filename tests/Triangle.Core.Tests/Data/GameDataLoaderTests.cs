@@ -105,6 +105,57 @@ public class GameDataLoaderTests
     }
 
     [Fact]
+    public void Shipped_items_have_four_tiers_whose_requirements_follow_the_tree()
+    {
+        var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
+        var core = new Dictionary<string, string>
+        {
+            ["sword"] = "swordsmanship", ["bow"] = "archery", ["staff"] = "magic_control", ["relic"] = "healing",
+            ["plate"] = "defense", ["leather"] = "mobility", ["cloth"] = "meditation",
+        };
+
+        foreach (var line in data.Items.Values.Where(i => i.IsEquipment).GroupBy(i => (i.Slot, i.Mastery, T1: i.Tier == 1)).Where(g => g.Key.T1))
+        {
+            // 계열·부위마다 T1이 있고, 같은 계열·부위에 T1~T4가 모두 있다.
+            var tiers = data.Items.Values.Where(i => i.Slot == line.Key.Slot && i.Mastery == line.Key.Mastery).Select(i => i.Tier).Distinct().Order();
+            Assert.Equal([1, 2, 3, 4], tiers);
+        }
+
+        foreach (var item in data.Items.Values.Where(i => i.IsEquipment))
+        {
+            var key = core[item.Mastery!];
+            var levels = item.Requirements.ToDictionary(r => r.SkillId, r => r.Level);
+            switch (item.Tier)
+            {
+                case 1:
+                    Assert.Empty(levels);
+                    break;
+                case 2:
+                    Assert.Equal(new Dictionary<string, int> { [key] = 1 }, levels);
+                    break;
+                case 3:
+                    Assert.Equal(new Dictionary<string, int> { [key] = 3 }, levels);
+                    break;
+                default:
+                    Assert.Equal(5, levels[key]);
+                    Assert.Single(levels, p => p.Key != key && data.Skills[p.Key].Mastery == item.Mastery);
+                    break;
+            }
+
+            // 티어가 오를수록 보너스가 커진다.
+            if (item.Tier > 1)
+            {
+                var lower = data.Items.Values.Single(i => i.Slot == item.Slot && i.Mastery == item.Mastery && i.Tier == item.Tier - 1);
+                Assert.True(item.Bonuses.Sum(b => b.Percent) > lower.Bonuses.Sum(b => b.Percent), $"{item.Id} should beat {lower.Id}");
+                Assert.True(item.Price > lower.Price);
+            }
+        }
+
+        // 지역 드롭에는 T4가 없다 (제작으로만 얻는다).
+        Assert.All(data.Zones.Values, z => Assert.True(z.Rewards.EquipmentDrop is null || z.Rewards.EquipmentDrop.MaxTier < 4));
+    }
+
+    [Fact]
     public void Starting_company_fights_every_encounter_of_every_zone_to_the_end()
     {
         var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
@@ -128,7 +179,10 @@ public class GameDataLoaderTests
         const string zones = """
             [ { "id": "z", "name": "지역", "maxBattles": 0, "equipmentDestroyChance": 120,
                 "encounters": [ { "encounterId": "ghost", "weight": 0 } ],
-                "rewards": { "goldMin": 10, "goldMax": 5, "itemDrops": [ { "itemId": "ghost_item", "chance": 101 } ] } },
+                "rewards": { "goldMin": 10, "goldMax": 5, "itemDrops": [ { "itemId": "ghost_item", "chance": 101 } ],
+                             "equipmentDrop": { "chance": 50, "minTier": 3, "maxTier": 2 } } },
+              { "id": "z2", "name": "지역", "maxBattles": 1, "encounters": [ { "encounterId": "camp", "weight": 1 } ],
+                "rewards": { "equipmentDrop": { "chance": 50, "minTier": 4, "maxTier": 4 } } },
               { "id": "empty", "name": "빈 지역", "maxBattles": 1, "encounters": [] } ]
             """;
         const string recruits = """
@@ -160,6 +214,8 @@ public class GameDataLoaderTests
         Assert.Contains("zones.json 'z': drops unknown item 'ghost_item'", errors);
         Assert.Contains("zones.json 'z': chance of 'ghost_item' must be 0-100, got 101", errors);
         Assert.Contains("zones.json 'empty': needs at least one encounter", errors);
+        Assert.Contains("zones.json 'z': equipmentDrop tiers must be 1-4 with min <= max, got 3-2", errors);
+        Assert.Contains("zones.json 'z2': no equipment in tiers 4-4", errors);
         Assert.Contains("recruits.json 'r': needs at least one name", errors);
         Assert.Contains("recruits.json 'r': statsMax must be at least statsMin for every stat", errors);
         Assert.Contains("recruits.json 'r': price must not be negative, got -1", errors);

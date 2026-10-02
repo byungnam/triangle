@@ -47,6 +47,10 @@ public sealed class GameData
     /// <summary>아이템의 계열. null이면 null.</summary>
     public string? MasteryOf(string? itemId) => itemId is null ? null : Items[itemId].Mastery;
 
+    /// <summary>티어 범위의 장비 (재료 제외, 데이터 순서).</summary>
+    public IReadOnlyList<ItemDefinition> EquipmentInTiers(int minTier, int maxTier) =>
+        Items.Values.Where(i => i.IsEquipment && i.Tier >= minTier && i.Tier <= maxTier).ToList();
+
     /// <summary>그 행동을 행동 칸 후보로 가진 아이템 (데이터 순서).</summary>
     public IEnumerable<ItemDefinition> ItemsGranting(string actionId) =>
         Items.Values.Where(i => i.Abilities.Any(a => a.Options.Contains(actionId)));

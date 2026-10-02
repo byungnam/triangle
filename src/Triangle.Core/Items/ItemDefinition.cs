@@ -1,3 +1,4 @@
+using Triangle.Core.Combat;
 using Triangle.Core.Skills;
 
 namespace Triangle.Core.Items;
@@ -12,6 +13,9 @@ namespace Triangle.Core.Items;
 public sealed record ItemDefinition
 {
     public const int MaxTier = 4;
+
+    /// <summary>숙련 아이템 파워 (Albion): 아이템 계열의 숙련 레벨 1당 그 아이템 보너스 +2% (상대값, 임시).</summary>
+    public const int PowerPercentPerMasteryLevel = 2;
 
     public required string Id { get; init; }
     public required string Name { get; init; }
@@ -43,6 +47,16 @@ public sealed record ItemDefinition
     public IReadOnlyList<AbilitySlot> Abilities { get; init; } = [];
 
     public bool IsEquipment => Slot.IsEquipment();
+
+    /// <summary>
+    /// 계열 숙련 레벨에 따른 보너스 (숙련 아이템 파워). 각 보너스 × (100 + 레벨 × 2) / 100, 사사오입.
+    /// 같은 아이템도 숙련이 높으면 조금 더 강하다.
+    /// </summary>
+    public IReadOnlyList<ItemBonus> BonusesAt(int masteryLevel)
+    {
+        var power = 100 + Math.Max(0, masteryLevel) * PowerPercentPerMasteryLevel;
+        return Bonuses.Select(b => b with { Percent = Ratio.ApplyPercent(b.Percent, power) }).ToList();
+    }
 
     /// <summary>각 칸의 첫 옵션 (처음 끼었을 때의 선택).</summary>
     public IReadOnlyList<string> DefaultChoices => Abilities.Select(a => a.Options[0]).ToList();

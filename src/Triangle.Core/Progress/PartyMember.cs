@@ -133,9 +133,9 @@ public sealed class PartyMember
     public IReadOnlySet<string> GrantedActions(GameData data) =>
         WornItems(data).SelectMany(w => ChosenAbilities(w.Slot, data)).ToHashSet();
 
-    /// <summary>착용 중인 아이템의 보너스.</summary>
+    /// <summary>착용 중인 아이템의 보너스 (숙련 아이템 파워 반영).</summary>
     public IReadOnlyList<ItemBonus> ItemBonuses(GameData data) =>
-        WornItems(data).SelectMany(w => w.Item.Bonuses).ToList();
+        WornItems(data).SelectMany(w => w.Item.BonusesAt(MasteryLevel(w.Item.Mastery!))).ToList();
 
     /// <summary>주무기의 계열 ID (맨손이거나 착용 불가면 null).</summary>
     public string? WeaponMastery(GameData data) =>

@@ -17,8 +17,13 @@ internal static class ItemText
     };
 
     /// <summary>"방어 +10%, 최대 HP +5%"처럼 아이템 보너스.</summary>
-    public static string Bonuses(ItemDefinition item, GameData data) =>
-        string.Join(", ", item.Bonuses.Select(b => SkillText.BonusLabel(b.Kind, b.Percent, b.Tag, data)));
+    public static string Bonuses(ItemDefinition item, GameData data) => Bonuses(item.Bonuses, data);
+
+    public static string Bonuses(IEnumerable<ItemBonus> bonuses, GameData data) =>
+        string.Join(", ", bonuses.Select(b => SkillText.BonusLabel(b.Kind, b.Percent, b.Tag, data)));
+
+    /// <summary>"T2 강철 검"처럼 티어를 붙인 이름. 재료는 이름만.</summary>
+    public static string ShortName(ItemDefinition item) => item.IsEquipment ? $"T{item.Tier} {item.Name}" : item.Name;
 
     /// <summary>"T1 판금 갑옷 (판금, 두손)"처럼 티어, 이름, 계열.</summary>
     public static string Title(ItemDefinition item, GameData data)

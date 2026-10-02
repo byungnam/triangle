@@ -666,7 +666,7 @@ internal sealed class TacticEditorScene : IScene
             }
             else if (item.Abilities.Count == 0)
             {
-                row.Widgets.Add(Label(ItemText.Bonuses(item, _data), 15, Theme.TextDim));
+                row.Widgets.Add(Label(ItemText.Bonuses(item.BonusesAt(member.MasteryLevel(item.Mastery!)), _data), 15, Theme.TextDim));
             }
         }
 

@@ -1,5 +1,6 @@
 using Triangle.Core.Data;
 using Triangle.Core.Items;
+using Triangle.Core.Masteries;
 using Triangle.Core.Progress;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
@@ -145,6 +146,21 @@ public class EquipmentTests
         Assert.Equal("sword", setup.Weapon);
         Assert.Equal(new HashSet<string> { "slash" }, setup.GrantedActions);
         Assert.Equal(15, company.Member("a").CombatSkills(Data).Bonus(BonusKind.DefensePercent));
+    }
+
+    [Fact]
+    public void Mastery_level_raises_item_bonuses_by_two_percent_per_level()
+    {
+        var company = NewCompany("helm");
+        company.Equip("a", "helm", Data);
+        var member = company.Member("a");
+        member.AddMasteryXp("sword", MasteryProgression.XpForLevel(5));
+        member.AddMasteryXp("plate", MasteryProgression.XpForLevel(25));
+
+        // 방패(검 Lv5): 10 × 110% = 11. 투구(판금 Lv25): 5 × 150% = 7.5 → 8, 3 × 150% = 4.5 → 5.
+        Assert.Equal(
+            [new ItemBonus(BonusKind.DefensePercent, 11), new ItemBonus(BonusKind.DefensePercent, 8), new ItemBonus(BonusKind.MaxHpPercent, 5)],
+            member.ItemBonuses(Data));
     }
 
     [Fact]

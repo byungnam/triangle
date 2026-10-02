@@ -48,6 +48,8 @@ internal sealed class TacticEditorScene : IScene
     private bool _unsaved;
     private (string Text, Color Color)? _notice;
     private Window? _quitDialog;
+    private Button? _saveButton;
+    private Label? _statusLabel;
 
     /// <param name="notice">처음에 보여줄 안내 (세이브를 복구했다는 등).</param>
     public TacticEditorScene(
@@ -167,6 +169,26 @@ internal sealed class TacticEditorScene : IScene
     private void MarkDirty() => _dirty = true;
 
     /// <summary>파티가 바뀌었다. 저장 전까지 "저장하지 않은 변경"으로 표시한다.</summary>
+    /// <summary>
+    /// 화면을 다시 만들지 않고 "저장하지 않은 변경" 표시만 갱신한다 (값 입력칸에서 입력 중일 때).
+    /// </summary>
+    private void MarkChangedInPlace()
+    {
+        _unsaved = true;
+        _notice = null;
+        if (_saveButton is not null)
+        {
+            _saveButton.Background = new SolidBrush(Theme.Accent);
+            _saveButton.OverBackground = new SolidBrush(Theme.AccentHover);
+        }
+
+        if (_statusLabel is not null && !_party.HasLockedTactics(_data))
+        {
+            _statusLabel.Text = "저장하지 않은 변경이 있습니다";
+            _statusLabel.TextColor = Theme.Cover;
+        }
+    }
+
     private void MarkChanged()
     {
         _unsaved = true;
@@ -425,9 +447,9 @@ internal sealed class TacticEditorScene : IScene
     {
         var header = new HorizontalStackPanel { Spacing = 8 };
         header.Widgets.Add(Label("순위", 15, Theme.TextDim, width: 40));
-        header.Widgets.Add(Label("조건", 15, Theme.TextDim, width: 230));
-        header.Widgets.Add(Label("값", 15, Theme.TextDim, width: 120));
-        header.Widgets.Add(Label("행동", 15, Theme.TextDim, width: 300));
+        header.Widgets.Add(Label("조건", 15, Theme.TextDim, width: 265));
+        header.Widgets.Add(Label("값", 15, Theme.TextDim, width: ValueColumnWidth));
+        header.Widgets.Add(Label("행동", 15, Theme.TextDim, width: 270));
         header.Widgets.Add(Label($"전술 세트 {_party.ActiveTacticSet + 1} 편집 중", 15, Theme.Cover));
         return header;
     }
@@ -437,36 +459,28 @@ internal sealed class TacticEditorScene : IScene
         var tactic = TacticsOf(member)[index];
         var row = new HorizontalStackPanel { Spacing = 8 };
 
+        // 값 입력은 화면을 다시 만들지 않고 바로 반영하므로, 핸들러에서는 항상 현재 전술을 다시 읽는다.
+        Tactic Current() => TacticsOf(member)[index];
+
         row.Widgets.Add(Label($"{tactic.Priority}", 18, Theme.Text, width: 40));
 
         // 조건
         var conditions = TacticText.Conditions;
-        var conditionCombo = Combo(conditions.Select(TacticText.ConditionLabel), conditions.ToList().IndexOf(tactic.Condition), 230);
+        var conditionCombo = Combo(conditions.Select(TacticText.ConditionLabel), conditions.ToList().IndexOf(tactic.Condition), 265);
         conditionCombo.SelectedIndexChanged += (_, _) =>
         {
+            var current = Current();
             var next = conditions[conditionCombo.SelectedIndex ?? 0];
-            var value = TacticText.ValueAfterConditionChange(tactic.Condition, next, tactic.Value);
-            TacticsOf(member).Replace(index, next, value, tactic.ActionId);
+            var value = TacticText.ValueAfterConditionChange(current.Condition, next, current.Value);
+            TacticsOf(member).Replace(index, next, value, current.ActionId);
             MarkChanged();
         };
         row.Widgets.Add(conditionCombo);
 
         // 값
-        if (TacticText.HasValue(tactic.Condition))
-        {
-            var values = TacticText.ValueOptions(tactic.Condition, tactic.Value);
-            var valueCombo = Combo(values.Select(v => TacticText.ValueLabel(tactic.Condition, v)), values.ToList().IndexOf(tactic.Value), 120);
-            valueCombo.SelectedIndexChanged += (_, _) =>
-            {
-                TacticsOf(member).Replace(index, tactic.Condition, values[valueCombo.SelectedIndex ?? 0], tactic.ActionId);
-                MarkChanged();
-            };
-            row.Widgets.Add(valueCombo);
-        }
-        else
-        {
-            row.Widgets.Add(Label("—", 17, Theme.TextDim, width: 120));
-        }
+        row.Widgets.Add(TacticText.HasValue(tactic.Condition)
+            ? BuildValueInput(member, index)
+            : Label("—", 17, Theme.TextDim, width: ValueColumnWidth));
 
         // 행동: 쓸 수 있는 행동을 먼저, 잠긴 행동은 아래에 (고를 수 없음)
         var skills = member.Skills(_data);
@@ -475,13 +489,14 @@ internal sealed class TacticEditorScene : IScene
         var items = actions.Select(a => Usable(a)
             ? (ActionLabel(a), Theme.Text)
             : ($"(잠김) {a.Name} — {LockReason(a, member.Weapon, skills)}", Theme.Enemy));
-        var actionCombo = Combo(items, actions.FindIndex(a => a.Id == tactic.ActionId), 300);
+        var actionCombo = Combo(items, actions.FindIndex(a => a.Id == tactic.ActionId), 270);
         actionCombo.SelectedIndexChanged += (_, _) =>
         {
             var chosen = actions[actionCombo.SelectedIndex ?? 0];
             if (Usable(chosen))
             {
-                TacticsOf(member).Replace(index, tactic.Condition, tactic.Value, chosen.Id);
+                var current = Current();
+                TacticsOf(member).Replace(index, current.Condition, current.Value, chosen.Id);
                 MarkChanged();
             }
             else
@@ -497,6 +512,74 @@ internal sealed class TacticEditorScene : IScene
         row.Widgets.Add(SmallButton("삭제", true, () => TacticsOf(member).Remove(index), width: 56));
 
         return row;
+    }
+
+    private const int ValueColumnWidth = 150;
+
+    /// <summary>
+    /// 값 입력칸. 정수만 입력할 수 있다(수치 조건은 음수도).
+    /// 백분율은 0–100, 턴 주기는 1 이상, 횟수·턴은 0 이상을 검사하고, 수치 조건은 검사하지 않는다.
+    /// 올바른 값은 바로 반영하고(화면은 다시 만들지 않는다 — 입력칸 포커스를 지키려고),
+    /// 잘못된 값은 빨간색으로 표시하고 반영하지 않는다.
+    /// </summary>
+    private Widget BuildValueInput(PartyMember member, int index)
+    {
+        var tactic = TacticsOf(member)[index];
+        var group = new HorizontalStackPanel { Spacing = 6, Width = ValueColumnWidth };
+
+        var box = new TextBox
+        {
+            Text = tactic.Value.ToString(),
+            Width = 64,
+            Font = _ui.Font(17),
+            TextColor = Theme.Text,
+            FocusedTextColor = Theme.Text,
+            Background = new SolidBrush(Theme.BarBack),
+            Padding = new Thickness(6, 3),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var hint = Label(TacticText.Unit(tactic.Condition), 15, Theme.TextDim);
+
+        var allowNegative = tactic.Condition.IsAmount();
+        box.ValueChanging += (_, e) =>
+        {
+            var text = e.NewValue ?? "";
+            var digits = allowNegative && text.StartsWith('-') ? text[1..] : text;
+            if (text.Length > 9 || !digits.All(char.IsAsciiDigit))
+            {
+                e.Cancel = true;
+            }
+        };
+
+        box.TextChangedByUser += (_, _) =>
+        {
+            var current = TacticsOf(member)[index];
+            var error = int.TryParse(box.Text, out var value)
+                ? TacticText.ValidationError(current.Condition, value)
+                : "숫자만";
+            if (error is not null)
+            {
+                box.TextColor = Theme.Enemy;
+                box.FocusedTextColor = Theme.Enemy;
+                hint.Text = error;
+                hint.TextColor = Theme.Enemy;
+                return;
+            }
+
+            box.TextColor = Theme.Text;
+            box.FocusedTextColor = Theme.Text;
+            hint.Text = TacticText.Unit(current.Condition);
+            hint.TextColor = Theme.TextDim;
+            if (value != current.Value)
+            {
+                TacticsOf(member).Replace(index, current.Condition, value, current.ActionId);
+                MarkChangedInPlace();
+            }
+        };
+
+        group.Widgets.Add(box);
+        group.Widgets.Add(hint);
+        return group;
     }
 
     private Widget BuildCombatBar()
@@ -523,12 +606,14 @@ internal sealed class TacticEditorScene : IScene
         bar.Widgets.Add(start);
 
         var save = TextButton("저장", _unsaved ? Theme.Accent : Theme.Button, _unsaved ? Theme.AccentHover : Theme.ButtonHover);
+        _saveButton = save;
         save.Width = 100;
         save.Click += (_, _) => Save();
         bar.Widgets.Add(save);
-        bar.Widgets.Add(hasLocked
+        _statusLabel = hasLocked
             ? Label("잠긴 행동이 든 전술을 고쳐야 전투할 수 있습니다", 16, Theme.Enemy)
-            : Label(_unsaved ? "저장하지 않은 변경이 있습니다" : "", 16, Theme.Cover));
+            : Label(_unsaved ? "저장하지 않은 변경이 있습니다" : "", 16, Theme.Cover);
+        bar.Widgets.Add(_statusLabel);
 
         return bar;
     }

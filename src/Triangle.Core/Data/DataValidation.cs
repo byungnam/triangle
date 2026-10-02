@@ -93,12 +93,15 @@ internal static class DataValidation
         {
             case Condition.Always:
                 break;
-            case >= Condition.SelfHpAtLeast and <= Condition.AllyAverageMpAtMost:
+            case var c when c.IsPercent():
                 if (tactic.Value is < 0 or > 100)
                 {
                     errors.Add($"{at}: {tactic.Condition} value must be a percent 0-100, got {tactic.Value}");
                 }
 
+                break;
+            case var c when c.IsAmount():
+                // 실제 HP·MP 수치: 범위 제한이 없다.
                 break;
             case Condition.EveryNthTurn:
                 if (tactic.Value <= 0)

@@ -297,6 +297,7 @@ public sealed class CombatSimulator
     private bool ConditionHolds(Combatant actor, int tacticIndex, Tactic tactic)
     {
         var percent = tactic.Value;
+        var amount = tactic.Value;
         var allies = Living(actor.Side).ToList();
 
         int Hp(Combatant c) => Ratio.CompareToPercent(c.Hp, c.MaxHp, percent);
@@ -328,6 +329,22 @@ public sealed class CombatSimulator
             Condition.UntilTurn => actor.TurnCount <= tactic.Value,
             Condition.OnTurn => actor.TurnCount == tactic.Value,
             Condition.EveryNthTurn => tactic.Value > 0 && actor.TurnCount % tactic.Value == 0,
+
+            Condition.SelfHpAmountAtLeast => actor.Hp >= amount,
+            Condition.SelfHpAmountAtMost => actor.Hp <= amount,
+            Condition.SelfMpAmountAtLeast => actor.Mp >= amount,
+            Condition.SelfMpAmountAtMost => actor.Mp <= amount,
+
+            Condition.AnyAllyHpAmountAtLeast => allies.Any(a => a.Hp >= amount),
+            Condition.AnyAllyHpAmountAtMost => allies.Any(a => a.Hp <= amount),
+            Condition.AnyAllyMpAmountAtLeast => allies.Any(a => a.Mp >= amount),
+            Condition.AnyAllyMpAmountAtMost => allies.Any(a => a.Mp <= amount),
+
+            // 평균 ≷ 값 ⇔ 합계 ≷ 값 × 인원 (정수 비교)
+            Condition.AllyAverageHpAmountAtLeast => allies.Sum(a => (long)a.Hp) >= (long)amount * allies.Count,
+            Condition.AllyAverageHpAmountAtMost => allies.Sum(a => (long)a.Hp) <= (long)amount * allies.Count,
+            Condition.AllyAverageMpAmountAtLeast => allies.Sum(a => (long)a.Mp) >= (long)amount * allies.Count,
+            Condition.AllyAverageMpAmountAtMost => allies.Sum(a => (long)a.Mp) <= (long)amount * allies.Count,
 
             _ => throw new InvalidOperationException($"Unknown condition {tactic.Condition}."),
         };

@@ -2,82 +2,90 @@ using Triangle.Core.Tactics;
 
 namespace Triangle.Desktop.Rendering;
 
-/// <summary>전술 조건과 값의 화면 표시, 값 선택지.</summary>
+/// <summary>전술 조건과 값의 화면 표시, 기본값, 입력 검증.</summary>
 internal static class TacticText
 {
-    public static readonly IReadOnlyList<Condition> Conditions = Enum.GetValues<Condition>();
+    /// <summary>드롭다운 순서: 같은 대상끼리 %와 수치를 나란히 둔다.</summary>
+    public static readonly IReadOnlyList<Condition> Conditions =
+    [
+        Condition.Always,
+        Condition.SelfHpAtLeast, Condition.SelfHpAtMost, Condition.SelfHpAmountAtLeast, Condition.SelfHpAmountAtMost,
+        Condition.SelfMpAtLeast, Condition.SelfMpAtMost, Condition.SelfMpAmountAtLeast, Condition.SelfMpAmountAtMost,
+        Condition.AnyAllyHpAtLeast, Condition.AnyAllyHpAtMost, Condition.AnyAllyHpAmountAtLeast, Condition.AnyAllyHpAmountAtMost,
+        Condition.AnyAllyMpAtLeast, Condition.AnyAllyMpAtMost, Condition.AnyAllyMpAmountAtLeast, Condition.AnyAllyMpAmountAtMost,
+        Condition.AllyAverageHpAtLeast, Condition.AllyAverageHpAtMost, Condition.AllyAverageHpAmountAtLeast, Condition.AllyAverageHpAmountAtMost,
+        Condition.AllyAverageMpAtLeast, Condition.AllyAverageMpAtMost, Condition.AllyAverageMpAmountAtLeast, Condition.AllyAverageMpAmountAtMost,
+        Condition.MaxUses, Condition.FromTurn, Condition.UntilTurn, Condition.OnTurn, Condition.EveryNthTurn,
+    ];
 
     public static string ConditionLabel(Condition condition) => condition switch
     {
         Condition.Always => "항상",
-        Condition.SelfHpAtLeast => "자신 HP 이상",
-        Condition.SelfHpAtMost => "자신 HP 이하",
-        Condition.SelfMpAtLeast => "자신 MP 이상",
-        Condition.SelfMpAtMost => "자신 MP 이하",
-        Condition.AnyAllyHpAtLeast => "아군 누군가 HP 이상",
-        Condition.AnyAllyHpAtMost => "아군 누군가 HP 이하",
-        Condition.AnyAllyMpAtLeast => "아군 누군가 MP 이상",
-        Condition.AnyAllyMpAtMost => "아군 누군가 MP 이하",
-        Condition.AllyAverageHpAtLeast => "아군 평균 HP 이상",
-        Condition.AllyAverageHpAtMost => "아군 평균 HP 이하",
-        Condition.AllyAverageMpAtLeast => "아군 평균 MP 이상",
-        Condition.AllyAverageMpAtMost => "아군 평균 MP 이하",
         Condition.MaxUses => "최대 사용 횟수",
         Condition.FromTurn => "지정 턴부터",
         Condition.UntilTurn => "지정 턴까지",
         Condition.OnTurn => "지정 턴에만",
         Condition.EveryNthTurn => "턴 주기",
-        _ => condition.ToString(),
+        _ => $"{Subject(condition)} {(IsHp(condition) ? "HP" : "MP")} {(IsAtLeast(condition) ? "이상" : "이하")} ({(condition.IsAmount() ? "수치" : "%")})",
     };
 
     public static bool HasValue(Condition condition) => condition != Condition.Always;
 
-    public static bool IsPercent(Condition condition) =>
-        condition is >= Condition.SelfHpAtLeast and <= Condition.AllyAverageMpAtMost;
-
-    public static string ValueLabel(Condition condition, int value) => condition switch
+    /// <summary>입력칸 옆에 붙는 단위.</summary>
+    public static string Unit(Condition condition) => condition switch
     {
-        _ when IsPercent(condition) => $"{value}%",
-        Condition.MaxUses => $"{value}회",
-        Condition.EveryNthTurn => $"{value}턴마다",
+        _ when condition.IsPercent() => "%",
+        _ when condition.IsAmount() => IsHp(condition) ? "HP" : "MP",
+        Condition.MaxUses => "회",
+        Condition.EveryNthTurn => "턴마다",
         Condition.Always => "",
-        _ => $"{value}턴",
+        _ => "번째 턴",
     };
 
-    /// <summary>값 선택지. 현재 값이 선택지에 없으면(데이터에서 직접 넣은 값 등) 끼워 넣는다.</summary>
-    public static IReadOnlyList<int> ValueOptions(Condition condition, int current)
+    /// <summary>
+    /// 입력한 값이 이 조건에 맞지 않으면 이유, 맞으면 null.
+    /// 백분율은 0–100, 턴 주기는 1 이상, 횟수·턴은 0 이상. 수치 조건은 검증하지 않는다.
+    /// </summary>
+    public static string? ValidationError(Condition condition, int value) => condition switch
     {
-        var options = IsPercent(condition)
-            ? Enumerable.Range(0, 11).Select(i => i * 10).ToList()
-            : Enumerable.Range(1, 10).ToList();
-
-        if (!options.Contains(current))
-        {
-            options.Add(current);
-            options.Sort();
-        }
-
-        return options;
-    }
+        _ when condition.IsPercent() => value is < 0 or > 100 ? "0~100만" : null,
+        _ when condition.IsAmount() => null,
+        Condition.EveryNthTurn => value < 1 ? "1 이상만" : null,
+        Condition.Always => null,
+        _ => value < 0 ? "0 이상만" : null,
+    };
 
     public static int DefaultValue(Condition condition) => condition switch
     {
         Condition.Always => 0,
-        _ when IsPercent(condition) => 50,
+        _ when condition.IsPercent() => 50,
+        _ when condition.IsAmount() => IsHp(condition) ? 300 : 50,
         Condition.EveryNthTurn => 2,
         _ => 1,
     };
 
-    /// <summary>조건을 바꿀 때 값의 종류(%, 횟수, 턴)가 같으면 값을 유지한다.</summary>
+    /// <summary>조건을 바꿀 때 값의 종류(%, HP 수치, MP 수치, 횟수, 턴)가 같으면 값을 유지한다.</summary>
     public static int ValueAfterConditionChange(Condition from, Condition to, int value) =>
         Kind(from) == Kind(to) ? value : DefaultValue(to);
 
-    private static int Kind(Condition condition) => condition switch
+    private static string Kind(Condition condition) => condition switch
     {
-        Condition.Always => 0,
-        _ when IsPercent(condition) => 1,
-        Condition.MaxUses => 2,
-        Condition.EveryNthTurn => 3,
-        _ => 4,
+        Condition.Always => "none",
+        _ when condition.IsPercent() => "percent",
+        _ when condition.IsAmount() => IsHp(condition) ? "hp" : "mp",
+        Condition.MaxUses => "uses",
+        Condition.EveryNthTurn => "period",
+        _ => "turn",
     };
+
+    private static string Subject(Condition condition) => condition.ToString() switch
+    {
+        var n when n.StartsWith("Self") => "자신",
+        var n when n.StartsWith("AnyAlly") => "아군 누군가",
+        _ => "아군 평균",
+    };
+
+    private static bool IsHp(Condition condition) => condition.ToString().Contains("Hp");
+
+    private static bool IsAtLeast(Condition condition) => condition.ToString().EndsWith("AtLeast");
 }

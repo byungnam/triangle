@@ -127,9 +127,25 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 
 ### 화면
 
-- 간단한 씬 스택(`SceneManager.Push/Pop`)으로 관리한다.
+- 화면이 늘어나면 간단한 씬 스택(`SceneManager.Push/Pop`)으로 관리한다. 지금은 `IScene` 하나를 `TriangleGame`이 들고 있다.
 - 레거시 화면 흐름을 기준으로 한다: 타이틀 → 로스터(팀/유닛) → 유닛 상세 → 스탯 배분 / 전술 편집 → 전투 준비 → 전투 재생 → 결과.
-- UI 라이브러리: MonoGame에는 UI가 없다. 후보는 **Gum**(MonoGame 공식 튜토리얼에서 사용)과 Myra. 아니면 직접 만든다. 스캐폴딩 단계에서 정한다.
+- UI 라이브러리: MonoGame에는 UI가 없다. 후보는 **Gum**(MonoGame 공식 튜토리얼에서 사용)과 Myra다. 입력 위젯(전술 편집 등)이 필요해질 때 정한다. 지금은 사각형과 글자를 직접 그린다(`Rendering/Ui.cs`).
+- **한글 글꼴**: SpriteFont는 한글 11,172자를 미리 구워야 해서 쓰지 않는다. FontStashSharp로 TTF에서 필요한 글자만 그때그때 그린다. 글꼴은 나눔고딕(OFL)이며 `src/Triangle.Desktop/Fonts/`에 라이선스와 함께 들어 있다.
+
+#### 첫 화면: 전투 기록 (`Scenes/CombatLogScene.cs`, 2026-10-02)
+
+- 시연용 아군 4명(`DemoParty`)과 `training` 적 팀의 전투를 미리 끝까지 계산한다. 그다음 이벤트를 0.35초에 한 줄씩 재생한다.
+  - 턴 시작처럼 줄이 없는 이벤트는 기다리지 않고 바로 넘긴다.
+- 왼쪽은 아군, 오른쪽은 적 팀 패널이다. 전위/후위로 나눠 HP·MP 막대를 보여주고, 행동 중인 유닛을 강조한다. 가운데는 로그다.
+- **로그는 두 칸이다.** 왼쪽 칸은 아군, 오른쪽 칸은 적의 행동이다.
+  - 행동 한 번(스킬 사용 줄 + 피해·엄호·회복·사망 결과 줄)이 한 묶음으로 행동한 쪽 칸에 들어간다.
+  - 위에서 아래로 시간 순서를 유지한다. 반대편 칸은 그만큼 비워 두므로 양쪽 행동이 지그재그로 보인다.
+  - 전투 시작/종료 줄은 두 칸에 걸쳐 가운데에 둔다.
+  - 칸 폭에 맞춰 문장을 짧게 쓰고(예: "훈련병 A에게 78 피해 (HP 72)"), 그래도 넘치면 공백 단위로 줄을 바꾼다.
+- 로그 문장은 `CombatLogFormatter`가 만든다. 조사(이/가, 을/를, 은/는, 와/과)는 받침에 맞춰 붙인다. 같은 진영에 같은 이름이 있으면 "훈련병 A/B"로 구분한다.
+- 키: Space는 끝까지 보기, R은 다른 시드로 다시 전투, Esc는 종료.
+- 데이터를 읽지 못하면 `ErrorScene`이 검증 오류 목록을 보여준다.
+- `--screenshot <경로> [줄 수]`로 실행하면 화면을 PNG로 저장하고 종료한다(확인용). 줄 수를 주면 로그를 그만큼 진행한 중간 화면을, 없으면 끝난 화면을 찍는다.
 
 ### 게임 데이터 (`Triangle.Core/Data/`)
 
@@ -156,7 +172,8 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 | 엔진 | MonoGame DesktopGL 3.8.5.1 | csproj는 `3.8.*`, MGCB 도구는 `.config/dotnet-tools.json`에서 3.8.5.1로 고정 |
 | 테스트 | xUnit 2.9 | |
 | 데이터 · 세이브 | JSON (System.Text.Json) | .NET 기본 기능이라 추가 패키지가 없다. 게임, 편집기, 테스트가 같은 설정(`GameDataJson.Options`)을 쓴다. 세이브는 예정 |
-| 콘텐츠 | MonoGame Content Builder (MGCB) | |
+| 콘텐츠 | MonoGame Content Builder (MGCB) | 아직 쓰는 콘텐츠가 없다 |
+| 글자 | FontStashSharp.MonoGame 1.6 + 나눔고딕 (OFL) | 한글을 필요한 글자만 동적으로 그린다 |
 
 ## 미결정 (→ [legacy/rewrite-notes.md](legacy/rewrite-notes.md#리라이트-전에-결정할-것))
 
@@ -165,5 +182,5 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 - 직업과 스킬 목록, 밸런스 수치
 - 1차 범위에 넣을 시스템 (효과, 경험치, 아이템, 부활 등)
 - 테마 유지 여부
-- UI 라이브러리
+- UI 라이브러리 (입력 위젯이 필요해질 때)
 - 데이터 편집기의 형태 (MonoGame + ImGui, Avalonia 등)

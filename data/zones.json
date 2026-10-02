@@ -70,7 +70,7 @@
       },
       {
         "encounterId": "training",
-        "weight": 1
+        "weight": 2
       }
     ],
     "rewards": {
@@ -122,7 +122,7 @@
       },
       {
         "encounterId": "elite",
-        "weight": 1
+        "weight": 2
       }
     ],
     "rewards": {

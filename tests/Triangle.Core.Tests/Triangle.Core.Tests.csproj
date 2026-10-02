@@ -19,4 +19,9 @@
     <ProjectReference Include="..\..\src\Triangle.Core\Triangle.Core.csproj" />
   </ItemGroup>
 
+  <!-- 저장소의 실제 데이터 파일도 검증한다 -->
+  <ItemGroup>
+    <None Include="..\..\data\**\*.json" Link="data\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

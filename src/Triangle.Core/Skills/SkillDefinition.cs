@@ -46,6 +46,9 @@ public sealed record SkillDefinition
     public required string Id { get; init; }
     public required string Name { get; init; }
 
+    /// <summary>편집기용 메모. 게임 규칙에는 영향이 없다.</summary>
+    public string? Description { get; init; }
+
     public int HpCost { get; init; }
     public int MpCost { get; init; }
 

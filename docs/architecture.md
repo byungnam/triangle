@@ -9,6 +9,7 @@
 | 전술 구조 | 레거시와 같이 `우선순위 · 조건 · 값 · 행동`. **전술에는 대상 지정 칸이 없다.** | 2026-10-02 |
 | 대상 선택 | **스킬마다 대상 우선순위 규칙을 가진다.** 플레이어가 특정 대상을 직접 지정할 수 없게 해서, 전위/후위 배치가 전략의 중심이 되도록 한다. | 2026-10-02 |
 | 진형 | 전위/후위 2줄. 아래 [진형 규칙](#진형-규칙) 참고 | 2026-10-02 |
+| 데이터 형식 | 게임 데이터와 세이브 모두 **JSON** (System.Text.Json). 데이터는 별도 편집기 도구로 수정한다 | 2026-10-02 |
 
 레거시 분석은 [legacy/](legacy/README.md)에 있다.
 
@@ -16,12 +17,14 @@
 
 1. **게임 규칙은 MonoGame에 의존하지 않는다.** 전투, 전술, 육성 규칙은 순수 C# 라이브러리(`Triangle.Core`)에 둔다. 단위 테스트를 할 수 있고, 나중에 모바일이나 다른 표현 방식으로 옮기기도 쉬워진다.
 2. **전투는 결정적이다.** 같은 입력과 같은 시드면 항상 같은 결과가 나온다. 전투 엔진은 화면을 직접 건드리지 않고 **이벤트 목록**만 출력한다. 화면은 그 이벤트를 재생한다. 텍스트 로그로 보여줄지 애니메이션으로 보여줄지는 나중에 바꿀 수 있다.
-3. **데이터 주도.** 직업, 스킬, 적 팀, 밸런스 수치는 코드가 아니라 데이터 파일(JSON)에 둔다. 레거시의 `Skills.xml` + UnitManager 역할을 대신한다.
+3. **데이터 주도.** 직업, 스킬, 적 팀, 밸런스 수치는 코드가 아니라 데이터 파일(JSON)에 둔다. 데이터는 별도 편집기 도구로 수정한다. 레거시의 `Skills.xml` + UnitManager 역할을 대신한다.
+   - 편집기가 파일을 다시 쓰므로 주석은 남지 않는다. 메모가 필요하면 `description` 같은 필드에 둔다.
+   - 저장할 때 들여쓰기와 필드 순서를 고정해서 git diff를 깔끔하게 유지한다.
 4. **ID는 문자열 키.** `"basic_attack"`, `"soldier"`처럼 쓰고, 레거시처럼 enum 순서값에 의존하지 않는다.
 
 ## 솔루션 구조
 
-스캐폴딩 완료 (2026-10-02). 하위 폴더(Units/, Scenes/ 등)와 `data/`는 구현하면서 만든다.
+스캐폴딩 완료 (2026-10-02). 아직 없는 폴더(Progress/, Scenes/ 등)는 구현하면서 만든다.
 
 ```
 triangle/
@@ -35,13 +38,14 @@ triangle/
 │  │  ├─ Skills/                #   스킬 정의 (효과, 비용, 대상 규칙)
 │  │  ├─ Data/                  #   JSON 정의 로더 (직업, 스킬, 적 팀)
 │  │  └─ Progress/              #   로스터, 팀 편성, 세이브 데이터 모델
+│  ├─ Triangle.Editor/          # (예정) 데이터 편집기 도구. Triangle.Core의 정의 클래스를 그대로 사용
 │  └─ Triangle.Desktop/         # MonoGame DesktopGL 실행 프로젝트
 │     ├─ Scenes/                #   타이틀, 로스터, 유닛 상세, 전술 편집, 전투, 결과
 │     ├─ UI/                    #   공용 위젯/레이아웃
 │     ├─ Rendering/             #   전투 이벤트 재생기
 │     ├─ Content/               #   MonoGame Content Pipeline (폰트, 텍스처)
 │     └─ Program.cs, TriangleGame.cs
-├─ data/                        # (예정) 게임 데이터 JSON (빌드 시 출력 폴더로 복사)
+├─ data/                        # 게임 데이터 JSON (빌드 시 Desktop·테스트 출력의 data/로 복사)
 │  ├─ classes.json
 │  ├─ skills.json
 │  └─ encounters.json
@@ -54,7 +58,8 @@ triangle/
 
 ```
 Triangle.Desktop ──► Triangle.Core ◄── Triangle.Core.Tests
-        │
+        │                 ▲
+        │                 └── Triangle.Editor (예정)
         └──► MonoGame.Framework.DesktopGL
 ```
 
@@ -126,6 +131,18 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 - 레거시 화면 흐름을 기준으로 한다: 타이틀 → 로스터(팀/유닛) → 유닛 상세 → 스탯 배분 / 전술 편집 → 전투 준비 → 전투 재생 → 결과.
 - UI 라이브러리: MonoGame에는 UI가 없다. 후보는 **Gum**(MonoGame 공식 튜토리얼에서 사용)과 Myra. 아니면 직접 만든다. 스캐폴딩 단계에서 정한다.
 
+### 게임 데이터 (`Triangle.Core/Data/`)
+
+- `GameDataLoader.LoadDirectory("data")`가 `classes.json`, `skills.json`, `encounters.json`을 읽어 검증한 `GameData`를 돌려준다.
+- 적 팀 유닛은 직업을 ID로 참조한다. `GameData.CreateEncounterTeam(id)`가 전투 입력으로 바꿔 준다.
+- JSON 규칙: 속성 이름은 camelCase, enum은 문자열(`"FrontFirst"`), 생략한 선택 속성은 기본값을 쓴다.
+- 검증은 멈추지 않고 오류를 모두 모아서 `GameDataException` 하나로 알려준다. 항목마다 파일, 줄 번호, ID가 붙는다.
+  - 형식: 잘못된 JSON, 모르는 속성(오타), 필수 속성 누락, 잘못된 enum 값, 숫자로 쓴 enum
+  - 참조: 중복 ID, 없는 직업이나 스킬 참조
+  - 범위: 음수 비용·위력·스탯, HP/MP 조건 값이 0–100 밖, `EveryNthTurn` 값 ≤ 0
+- 저장소의 `data/` 파일 자체도 테스트에서 검증한다. 모든 적 팀이 실제로 전투를 끝까지 치르는지까지 확인한다.
+- 현재 데이터는 레거시 값을 참고한 **임시 수치**다(`description`에 표시).
+
 ### 저장
 
 - 로컬 JSON 세이브 파일. 위치는 OS별 사용자 데이터 폴더(`Environment.SpecialFolder.ApplicationData/Triangle/`).
@@ -138,7 +155,7 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 | 언어/런타임 | C# / .NET 10 (LTS) | MonoGame 템플릿 기본값은 net9.0이었지만 net10.0으로 올렸고 빌드도 확인함 |
 | 엔진 | MonoGame DesktopGL 3.8.5.1 | csproj는 `3.8.*`, MGCB 도구는 `.config/dotnet-tools.json`에서 3.8.5.1로 고정 |
 | 테스트 | xUnit 2.9 | |
-| 데이터 | System.Text.Json | (예정) |
+| 데이터 · 세이브 | JSON (System.Text.Json) | .NET 기본 기능이라 추가 패키지가 없다. 게임, 편집기, 테스트가 같은 설정(`GameDataJson.Options`)을 쓴다. 세이브는 예정 |
 | 콘텐츠 | MonoGame Content Builder (MGCB) | |
 
 ## 미결정 (→ [legacy/rewrite-notes.md](legacy/rewrite-notes.md#리라이트-전에-결정할-것))
@@ -149,3 +166,4 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 - 1차 범위에 넣을 시스템 (효과, 경험치, 아이템, 부활 등)
 - 테마 유지 여부
 - UI 라이브러리
+- 데이터 편집기의 형태 (MonoGame + ImGui, Avalonia 등)

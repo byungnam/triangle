@@ -1,0 +1,40 @@
+[
+  {
+    "id": "training",
+    "name": "훈련 부대",
+    "description": "테스트용 적 팀",
+    "units": [
+      {
+        "id": "training_soldier_1",
+        "name": "훈련병",
+        "classId": "soldier",
+        "stats": { "str": 13, "dex": 13, "vital": 23, "intel": 20, "speed": 12 },
+        "row": "Front",
+        "tactics": [
+          { "priority": 1, "condition": "Always", "value": 0, "skillId": "basic_attack" }
+        ]
+      },
+      {
+        "id": "training_soldier_2",
+        "name": "훈련병",
+        "classId": "soldier",
+        "stats": { "str": 12, "dex": 14, "vital": 22, "intel": 20, "speed": 13 },
+        "row": "Front",
+        "tactics": [
+          { "priority": 1, "condition": "Always", "value": 0, "skillId": "basic_attack" }
+        ]
+      },
+      {
+        "id": "training_priest",
+        "name": "견습 사제",
+        "classId": "priest",
+        "stats": { "str": 10, "dex": 11, "vital": 20, "intel": 25, "speed": 11 },
+        "row": "Back",
+        "tactics": [
+          { "priority": 1, "condition": "AnyAllyHpAtMost", "value": 50, "skillId": "heal" },
+          { "priority": 2, "condition": "Always", "value": 0, "skillId": "fire_arrow" }
+        ]
+      }
+    ]
+  }
+]

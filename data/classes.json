@@ -1,0 +1,20 @@
+[
+  {
+    "id": "soldier",
+    "name": "병사",
+    "speedPercent": 110,
+    "description": "임시. 속도 계수는 레거시 SOLDIER 값"
+  },
+  {
+    "id": "mage",
+    "name": "마법사",
+    "speedPercent": 90,
+    "description": "임시. 속도 계수는 레거시 MAGE 값"
+  },
+  {
+    "id": "priest",
+    "name": "사제",
+    "speedPercent": 110,
+    "description": "임시. 속도 계수는 레거시 PRIEST 값"
+  }
+]

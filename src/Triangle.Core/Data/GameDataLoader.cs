@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Triangle.Core.Actions;
+using Triangle.Core.Effects;
 using Triangle.Core.Masteries;
 using Triangle.Core.Skills;
 
@@ -14,6 +15,7 @@ public static class GameDataLoader
     public const string MasteriesFile = "masteries.json";
     public const string SkillsFile = "skills.json";
     public const string ActionsFile = "actions.json";
+    public const string EffectsFile = "effects.json";
     public const string EncountersFile = "encounters.json";
 
     public static GameData LoadDirectory(string directory)
@@ -37,22 +39,24 @@ public static class GameDataLoader
         var masteries = Read(MasteriesFile);
         var skills = Read(SkillsFile);
         var actions = Read(ActionsFile);
+        var effects = Read(EffectsFile);
         var encounters = Read(EncountersFile);
         if (errors.Count > 0)
         {
             throw new GameDataException(errors);
         }
 
-        return Parse(masteries!, skills!, actions!, encounters!);
+        return Parse(masteries!, skills!, actions!, encounters!, effects!);
     }
 
-    public static GameData Parse(string masteriesJson, string skillsJson, string actionsJson, string encountersJson)
+    public static GameData Parse(string masteriesJson, string skillsJson, string actionsJson, string encountersJson, string effectsJson = "[]")
     {
         var errors = new List<string>();
 
         var masteries = Deserialize<MasteryDefinition>(masteriesJson, MasteriesFile, errors);
         var skills = Deserialize<SkillDefinition>(skillsJson, SkillsFile, errors);
         var actions = Deserialize<ActionDefinition>(actionsJson, ActionsFile, errors);
+        var effects = Deserialize<EffectDefinition>(effectsJson, EffectsFile, errors);
         var encounters = Deserialize<EncounterDefinition>(encountersJson, EncountersFile, errors);
 
         // 형식 오류가 있으면 참조 검증은 의미가 없다.
@@ -64,6 +68,17 @@ public static class GameDataLoader
         var masteryMap = ToMap(masteries!, m => m.Id, MasteriesFile, errors);
         var skillMap = ToMap(skills!, s => s.Id, SkillsFile, errors);
         var actionMap = ToMap(actions!, a => a.Id, ActionsFile, errors);
+        var effectMap = ToMap(effects!, e => e.Id, EffectsFile, errors);
+
+        foreach (var effect in effects!)
+        {
+            DataValidation.RequireText(effect.Id, $"{EffectsFile}: id", errors);
+            DataValidation.RequireText(effect.Name, $"{EffectsFile} '{effect.Id}': name", errors);
+            if (effect.TickHpPercent is < -100 or > 100)
+            {
+                errors.Add($"{EffectsFile} '{effect.Id}': tickHpPercent must be -100..100, got {effect.TickHpPercent}");
+            }
+        }
         var encounterMap = ToMap(encounters!, e => e.Id, EncountersFile, errors);
 
         foreach (var m in masteries!)
@@ -82,6 +97,18 @@ public static class GameDataLoader
         foreach (var a in actions!)
         {
             ValidateAction(a, masteryMap, skillMap, errors);
+            foreach (var applied in a.Applies)
+            {
+                if (!effectMap.ContainsKey(applied.EffectId))
+                {
+                    errors.Add($"{ActionsFile} '{a.Id}': applies unknown effect '{applied.EffectId}'");
+                }
+
+                if (applied.Duration < 1)
+                {
+                    errors.Add($"{ActionsFile} '{a.Id}': duration of '{applied.EffectId}' must be at least 1, got {applied.Duration}");
+                }
+            }
         }
 
         foreach (var e in encounters!)
@@ -94,7 +121,7 @@ public static class GameDataLoader
             throw new GameDataException(errors);
         }
 
-        return new GameData(masteryMap, skillMap, actionMap, encounterMap);
+        return new GameData(masteryMap, skillMap, actionMap, effectMap, encounterMap);
     }
 
     private static List<T>? Deserialize<T>(string json, string fileName, List<string> errors)

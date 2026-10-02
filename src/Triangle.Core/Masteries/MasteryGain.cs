@@ -39,7 +39,7 @@ public static class MasteryGain
     /// 아군 유닛마다:
     /// 무기 = 행동 횟수 × XpPerAction + 준 피해·회복 / AmountPerXp + 결과,
     /// 방어구 = 받은 피해 / DamageTakenPerXp + 결과.
-    /// 피해·회복은 바로 앞의 ActionUsed를 한 유닛이 준 것으로 본다.
+    /// 피해·회복은 바로 앞의 ActionUsed를 한 유닛이 준 것으로 본다. 지속 피해는 받은 피해로만 센다.
     /// </summary>
     public static IReadOnlyList<MasteryXp> ForAllies(CombatResult result, MasteryRules? rules = null)
     {
@@ -67,6 +67,10 @@ public static class MasteryGain
                     break;
                 case Healed h when actor is not null:
                     dealt[actor] = dealt.GetValueOrDefault(actor) + h.Amount;
+                    break;
+                case EffectTicked { HpChange: < 0 } t:
+                    // 지속 피해는 받은 쪽 방어구 숙련에만 친다 (건 쪽을 따로 추적하지 않는다).
+                    taken[t.TargetId] = taken.GetValueOrDefault(t.TargetId) - t.HpChange;
                     break;
                 case TurnStarted or Waited:
                     actor = null;

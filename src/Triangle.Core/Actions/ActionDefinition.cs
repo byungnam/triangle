@@ -1,3 +1,4 @@
+using Triangle.Core.Effects;
 using Triangle.Core.Skills;
 
 namespace Triangle.Core.Actions;
@@ -6,6 +7,12 @@ public enum ActionEffect
 {
     Damage,
     Heal,
+
+    /// <summary>MP 회복 (위력 × 지능 보정, 최대 MP까지).</summary>
+    RestoreMp,
+
+    /// <summary>피해·회복 없이 효과만 건다.</summary>
+    None,
 }
 
 /// <summary>물리는 Str로 강해지고 Def로 경감된다. 마법은 Intel로 강해지고 MDef로 경감된다.</summary>
@@ -28,6 +35,9 @@ public enum TargetRule
     FrontFirst,
     BackFirst,
     LowestHpRatio,
+
+    /// <summary>이 행동이 거는 첫 효과가 아직 없는 대상을 우선 (무작위). 모두 있으면 아무나.</summary>
+    WithoutEffectFirst,
 }
 
 public enum RowRestriction
@@ -72,6 +82,9 @@ public sealed record ActionDefinition
 
     /// <summary>이 행동을 쓰려면 필요한 스킬 레벨.</summary>
     public IReadOnlyList<SkillRequirement> Requirements { get; init; } = [];
+
+    /// <summary>대상에게 거는 효과 (피해·회복 뒤, 대상이 살아 있으면).</summary>
+    public IReadOnlyList<EffectApplication> Applies { get; init; } = [];
 
     /// <summary>필요한 무기 계열 (masteries.json의 무기 ID). null이면 어떤 무기로든 쓸 수 있다.</summary>
     public string? Weapon { get; init; }

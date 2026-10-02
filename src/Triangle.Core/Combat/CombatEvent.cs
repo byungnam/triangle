@@ -31,4 +31,14 @@ public sealed record Healed(string TargetId, int Amount, int HpAfter) : CombatEv
 
 public sealed record Died(string UnitId) : CombatEvent;
 
+public sealed record MpRestored(string TargetId, int Amount, int MpAfter) : CombatEvent;
+
+/// <param name="Refreshed">이미 걸려 있던 효과의 지속시간을 새로 시작했다.</param>
+public sealed record EffectApplied(string TargetId, string EffectId, int Duration, bool Refreshed) : CombatEvent;
+
+/// <summary>턴 시작의 지속 피해·회복. <paramref name="HpChange"/>가 음수면 피해.</summary>
+public sealed record EffectTicked(string TargetId, string EffectId, int HpChange, int HpAfter) : CombatEvent;
+
+public sealed record EffectExpired(string TargetId, string EffectId) : CombatEvent;
+
 public sealed record CombatEnded(CombatOutcome Outcome) : CombatEvent;

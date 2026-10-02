@@ -1,4 +1,5 @@
 using Triangle.Core.Actions;
+using Triangle.Core.Effects;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
@@ -97,6 +98,11 @@ public sealed class CombatSimulator
                 {
                     throw new ArgumentException($"Combatant '{setup.Id}' cannot use locked action '{tactic.ActionId}'.");
                 }
+
+                foreach (var applied in action.Applies.Where(a => !catalog.Effects.ContainsKey(a.EffectId)))
+                {
+                    throw new ArgumentException($"Action '{action.Id}' applies unknown effect '{applied.EffectId}'.");
+                }
             }
         }
     }
@@ -111,6 +117,18 @@ public sealed class CombatSimulator
 
             actor.TurnCount++;
             _events.Add(new TurnStarted(action, actor.Id, actor.NextActionTime));
+
+            // 지속 피해·회복은 턴 시작에 들어간다. 지속 피해로 쓰러지면 행동하지 못한다.
+            TickEffects(actor);
+            if (!actor.IsAlive)
+            {
+                if (CheckOutcome() is { } afterTick)
+                {
+                    return Finish(afterTick, action);
+                }
+
+                continue;
+            }
 
             var (plan, waited) = ChooseAction(actor);
             if (plan is not null)
@@ -127,6 +145,7 @@ public sealed class CombatSimulator
                 return Finish(outcome, action);
             }
 
+            EndTurnEffects(actor);
             actor.NextActionTime += ActionDelay(actor, plan?.Action);
             actor.TieBreak = _nextTieBreak++;
         }
@@ -160,13 +179,81 @@ public sealed class CombatSimulator
     {
         var speed = Math.Max(1, c.Stats.Speed);
         var baseDelay = _rules.TimeConstant / speed;
-        var reduction = Reduction(c.Skills.Bonus(BonusKind.DelayReductionPercent, used?.BonusTags(c.Weapon)));
+        var reduction = SignedReduction(
+            c.Skills.Bonus(BonusKind.DelayReductionPercent, used?.BonusTags(c.Weapon))
+            + c.EffectModifier(EffectModifierKind.DelayReductionPercent));
         var delay = (long)baseDelay * (100 - reduction) / 100;
         return Math.Max(1, delay);
     }
 
     /// <summary>감소 보너스를 0 ~ 상한 사이로 자른다.</summary>
     private int Reduction(int percent) => Math.Clamp(percent, 0, _rules.MaxReductionPercent);
+
+    /// <summary>디버프로 음수가 될 수 있는 감소(대기, 받는 피해). 최대 2배(−100%)까지 늘어난다.</summary>
+    private int SignedReduction(int percent) => Math.Clamp(percent, -100, _rules.MaxReductionPercent);
+
+    // ── 효과 ───────────────────────────────────────────────
+
+    private void TickEffects(Combatant unit)
+    {
+        foreach (var effect in unit.Effects.ToList())
+        {
+            var percent = effect.Definition.TickHpPercent;
+            if (percent == 0)
+            {
+                continue;
+            }
+
+            var amount = Math.Max(1, Ratio.ApplyPercent(unit.MaxHp, Math.Abs(percent)));
+            var change = percent < 0 ? -Math.Min(unit.Hp, amount) : Math.Min(unit.MaxHp - unit.Hp, amount);
+            unit.Hp += change;
+            _events.Add(new EffectTicked(unit.Id, effect.Definition.Id, change, unit.Hp));
+            if (!unit.IsAlive)
+            {
+                Die(unit);
+                return;
+            }
+        }
+    }
+
+    /// <summary>턴이 끝나면 남은 횟수를 줄이고, 다 된 효과를 지운다.</summary>
+    private void EndTurnEffects(Combatant unit)
+    {
+        foreach (var effect in unit.Effects.ToList())
+        {
+            if (--effect.Remaining <= 0)
+            {
+                unit.Effects.Remove(effect);
+                _events.Add(new EffectExpired(unit.Id, effect.Definition.Id));
+            }
+        }
+    }
+
+    private void ApplyEffects(ActionDefinition action, Combatant target)
+    {
+        foreach (var application in action.Applies)
+        {
+            var definition = _catalog.Effects[application.EffectId];
+            var existing = target.Effects.FirstOrDefault(e => e.Definition.Id == definition.Id);
+            if (existing is not null)
+            {
+                existing.Remaining = application.Duration;
+            }
+            else
+            {
+                target.Effects.Add(new ActiveEffect(definition, application.Duration));
+            }
+
+            _events.Add(new EffectApplied(target.Id, definition.Id, application.Duration, existing is not null));
+        }
+    }
+
+    /// <summary>쓰러지면 효과는 모두 사라진다 (부활이 없으므로 따로 기록하지 않는다).</summary>
+    private void Die(Combatant unit)
+    {
+        unit.Effects.Clear();
+        _events.Add(new Died(unit.Id));
+    }
 
     // ── 전술 ───────────────────────────────────────────────
 
@@ -279,10 +366,14 @@ public sealed class CombatSimulator
             .ToList();
     }
 
-    private Combatant PickOne(IReadOnlyList<Combatant> candidates, TargetRule rule)
+    private Combatant PickOne(IReadOnlyList<Combatant> candidates, ActionDefinition action)
     {
-        switch (rule)
+        switch (action.Rule)
         {
+            case TargetRule.WithoutEffectFirst when action.Applies.Count > 0:
+                var effectId = action.Applies[0].EffectId;
+                var without = candidates.Where(c => c.Effects.All(e => e.Definition.Id != effectId)).ToList();
+                return PickRandom(without.Count > 0 ? without : candidates);
             case TargetRule.FrontFirst:
                 return PickRandom(PreferRow(candidates, Row.Front));
             case TargetRule.BackFirst:
@@ -315,7 +406,7 @@ public sealed class CombatSimulator
 
         IReadOnlyList<Combatant> targets = action.Scope == TargetScope.All
             ? plan.Targets
-            : [ApplyCover(action, PickOne(plan.Targets, action.Rule))];
+            : [ApplyCover(action, PickOne(plan.Targets, action))];
 
         foreach (var target in targets)
         {
@@ -352,9 +443,16 @@ public sealed class CombatSimulator
                 _events.Add(new Damaged(target.Id, amount, target.Hp));
                 if (!target.IsAlive)
                 {
-                    _events.Add(new Died(target.Id));
+                    Die(target);
                 }
 
+                break;
+            }
+            case ActionEffect.RestoreMp:
+            {
+                var amount = Math.Min(target.MaxMp - target.Mp, Scaled(action.Power, actor.Stats.Intel));
+                target.Mp += amount;
+                _events.Add(new MpRestored(target.Id, amount, target.Mp));
                 break;
             }
             case ActionEffect.Heal:
@@ -368,10 +466,15 @@ public sealed class CombatSimulator
                 break;
             }
         }
+
+        if (target.IsAlive)
+        {
+            ApplyEffects(action, target);
+        }
     }
 
     /// <summary>
-    /// 위력 × 스탯 보정 × 위력 보너스 → 방어 경감 → 받는 피해 감소.
+    /// 위력 × 스탯 보정 × (스킬·효과 위력 보너스) → (효과 반영) 방어 경감 → 받는 피해 감소(스킬·효과).
     /// 각 단계에서 사사오입한다.
     /// </summary>
     private int DamageAmount(Combatant actor, ActionDefinition action, Combatant target)
@@ -380,9 +483,14 @@ public sealed class CombatSimulator
             ? (actor.Stats.Str, target.Defense)
             : (actor.Stats.Intel, target.MagicDefense);
 
-        var raw = Ratio.ApplyPercent(Scaled(action.Power, attackStat), 100 + actor.Skills.Bonus(BonusKind.PowerPercent, action.BonusTags(actor.Weapon)));
-        var mitigated = Ratio.DivideRounded((long)raw * 100, 100 + (long)defense * _rules.DefenseReductionPercentPerPoint);
-        return Ratio.ApplyPercent(mitigated, 100 - Reduction(target.Skills.Bonus(BonusKind.DamageTakenReductionPercent)));
+        var powerBonus = actor.Skills.Bonus(BonusKind.PowerPercent, action.BonusTags(actor.Weapon))
+            + actor.EffectModifier(EffectModifierKind.PowerPercent);
+        var raw = Ratio.ApplyPercent(Scaled(action.Power, attackStat), Math.Max(0, 100 + powerBonus));
+        var effectiveDefense = Ratio.ApplyPercent(defense, Math.Max(0, 100 + target.EffectModifier(EffectModifierKind.DefensePercent)));
+        var mitigated = Ratio.DivideRounded((long)raw * 100, 100 + (long)effectiveDefense * _rules.DefenseReductionPercentPerPoint);
+        var taken = target.Skills.Bonus(BonusKind.DamageTakenReductionPercent)
+            + target.EffectModifier(EffectModifierKind.DamageTakenReductionPercent);
+        return Ratio.ApplyPercent(mitigated, 100 - SignedReduction(taken));
     }
 
     private int Scaled(int power, int stat) =>

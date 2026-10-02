@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
+using Triangle.Core.Effects;
 using Triangle.Core.Units;
 using Triangle.Desktop.Rendering;
 
@@ -92,7 +93,8 @@ internal sealed class CombatLogScene : IScene
 
         _formatter = new CombatLogFormatter(
             _units.ToDictionary(u => u.Key, u => u.Value.Name),
-            _data.Actions.ToDictionary(a => a.Key, a => a.Value.Name));
+            _data.Actions.ToDictionary(a => a.Key, a => a.Value.Name),
+            _data.Effects);
 
         _log.Clear();
         _log.Add(new LogEntry(new LogLine($"{Korean.WaGwa(EncounterName)}의 전투 시작!", Theme.Text), null, true));
@@ -209,6 +211,21 @@ internal sealed class CombatLogScene : IScene
             case Healed h:
                 _units[h.TargetId].Hp = h.HpAfter;
                 break;
+            case MpRestored m:
+                _units[m.TargetId].Mp = m.MpAfter;
+                break;
+            case EffectTicked t:
+                _units[t.TargetId].Hp = t.HpAfter;
+                break;
+            case EffectApplied a when !_units[a.TargetId].Effects.Contains(a.EffectId):
+                _units[a.TargetId].Effects.Add(a.EffectId);
+                break;
+            case EffectExpired x:
+                _units[x.TargetId].Effects.Remove(x.EffectId);
+                break;
+            case Died d:
+                _units[d.UnitId].Effects.Clear();
+                break;
             case CombatEnded:
                 foreach (var u in _units.Values)
                 {
@@ -308,6 +325,18 @@ internal sealed class CombatLogScene : IScene
         }
 
         _ui.Text(batch, _ui.BoldFont(18), alive ? unit.Name : $"{unit.Name} (쓰러짐)", new Vector2(area.X, area.Y), nameColor);
+
+        // 걸려 있는 효과는 이름 줄 오른쪽에 (버프는 노랑, 디버프는 빨강).
+        var effectFont = _ui.Font(14);
+        var x = (float)area.Right;
+        foreach (var effectId in unit.Effects.AsEnumerable().Reverse())
+        {
+            var effect = _data.Effects[effectId];
+            var size = effectFont.MeasureString(effect.Name);
+            x -= size.X;
+            _ui.Text(batch, effectFont, effect.Name, new Vector2(x, area.Y + 3), effect.Kind == EffectKind.Buff ? Theme.Cover : Theme.Enemy);
+            x -= 8;
+        }
 
         var hpLow = unit.Hp * 4 <= unit.MaxHp;
         var hpBar = new Rectangle(area.X, area.Y + 26, area.Width, 12);
@@ -424,5 +453,6 @@ internal sealed class CombatLogScene : IScene
         public int Hp { get; set; } = maxHp;
         public int Mp { get; set; } = maxMp;
         public bool Acting { get; set; }
+        public List<string> Effects { get; } = [];
     }
 }

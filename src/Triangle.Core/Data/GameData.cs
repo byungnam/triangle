@@ -1,5 +1,6 @@
 using Triangle.Core.Actions;
 using Triangle.Core.Combat;
+using Triangle.Core.Effects;
 using Triangle.Core.Masteries;
 using Triangle.Core.Skills;
 
@@ -12,13 +13,15 @@ public sealed class GameData
         IReadOnlyDictionary<string, MasteryDefinition> masteries,
         IReadOnlyDictionary<string, SkillDefinition> skills,
         IReadOnlyDictionary<string, ActionDefinition> actions,
+        IReadOnlyDictionary<string, EffectDefinition> effects,
         IReadOnlyDictionary<string, EncounterDefinition> encounters)
     {
+        Effects = effects;
         Masteries = masteries;
         Skills = skills;
         Actions = actions;
         Encounters = encounters;
-        Catalog = new CombatCatalog(actions, skills);
+        Catalog = new CombatCatalog(actions, skills) { Effects = effects };
     }
 
     /// <summary>장비 계열이자 숙련 트리.</summary>
@@ -28,6 +31,9 @@ public sealed class GameData
 
     /// <summary>숙련 트리의 패시브 스킬.</summary>
     public IReadOnlyDictionary<string, SkillDefinition> Skills { get; }
+
+    /// <summary>버프·디버프·지속 피해·지속 회복.</summary>
+    public IReadOnlyDictionary<string, EffectDefinition> Effects { get; }
 
     /// <summary>전술에서 쓰는 행동.</summary>
     public IReadOnlyDictionary<string, ActionDefinition> Actions { get; }

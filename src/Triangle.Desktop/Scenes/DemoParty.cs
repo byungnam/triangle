@@ -32,16 +32,18 @@ internal static class DemoParty
             new Dictionary<string, int> { ["bow"] = Xp(9), ["leather"] = Xp(1) },
             new Dictionary<string, int> { ["archery"] = 4, ["precision_shooting"] = 1, ["rapid_fire"] = 1, ["mobility"] = 1 },
             [
-                new Tactic(1, Condition.EveryNthTurn, 2, "snipe"),
-                new Tactic(2, Condition.Always, 0, "fire_arrow"),
+                new Tactic(1, Condition.OnTurn, 1, "poison_arrow"),
+                new Tactic(2, Condition.EveryNthTurn, 2, "snipe"),
+                new Tactic(3, Condition.Always, 0, "fire_arrow"),
             ]),
 
         new PartyMember("ally_julia", "율리아", new Stats(10, 11, 21, 24, 12), Row.Back, "relic", "cloth",
             new Dictionary<string, int> { ["relic"] = Xp(2), ["cloth"] = Xp(1) },
             new Dictionary<string, int> { ["healing"] = 2, ["meditation"] = 1 },
             [
-                new Tactic(1, Condition.AnyAllyHpAtMost, 60, "heal"),
-                new Tactic(2, Condition.Always, 0, "basic_attack"),
+                new Tactic(1, Condition.OnTurn, 1, "bless"),
+                new Tactic(2, Condition.AnyAllyHpAtMost, 60, "heal"),
+                new Tactic(3, Condition.Always, 0, "basic_attack"),
             ]),
     ]);
 }

@@ -239,8 +239,9 @@ public class GameDataLoaderTests
 
             var errors = Assert.Throws<GameDataException>(() => GameDataLoader.LoadDirectory(dir)).Errors;
 
-            Assert.Equal(2, errors.Count);
+            Assert.Equal(3, errors.Count);
             Assert.Contains(errors, e => e.StartsWith("actions.json: cannot read"));
+            Assert.Contains(errors, e => e.StartsWith("effects.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("encounters.json: cannot read"));
         }
         finally

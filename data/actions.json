@@ -124,5 +124,172 @@
       }
     ],
     "weapon": "relic"
+  },
+  {
+    "id": "bless",
+    "name": "축복",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Ally",
+    "rule": "WithoutEffectFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "healing",
+        "level": 2
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "blessed",
+        "duration": 3
+      }
+    ],
+    "weapon": "relic"
+  },
+  {
+    "id": "weaken",
+    "name": "약화",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "None",
+    "damageType": "Magical",
+    "power": 0,
+    "side": "Enemy",
+    "rule": "WithoutEffectFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "magic_control",
+        "level": 3
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "weakened",
+        "duration": 3
+      }
+    ],
+    "weapon": "staff"
+  },
+  {
+    "id": "poison_arrow",
+    "name": "독화살",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 40,
+    "side": "Enemy",
+    "rule": "WithoutEffectFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "archery",
+        "level": 2
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "poisoned",
+        "duration": 3
+      }
+    ],
+    "weapon": "bow"
+  },
+  {
+    "id": "fireball",
+    "name": "화염구",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 70,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "magic_control",
+        "level": 2
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "burning",
+        "duration": 2
+      }
+    ],
+    "weapon": "staff"
+  },
+  {
+    "id": "regen",
+    "name": "재생",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Ally",
+    "rule": "LowestHpRatio",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "healing",
+        "level": 2
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "regenerating",
+        "duration": 3
+      }
+    ],
+    "weapon": "relic"
+  },
+  {
+    "id": "focus",
+    "name": "정신 집중",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "RestoreMp",
+    "damageType": "Physical",
+    "power": 30,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "meditation",
+        "level": 2
+      }
+    ]
   }
 ]

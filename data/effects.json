@@ -1,0 +1,47 @@
+[
+  {
+    "id": "blessed",
+    "name": "축복",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20
+      }
+    ]
+  },
+  {
+    "id": "weakened",
+    "name": "약화",
+    "description": "임시 수치",
+    "kind": "Debuff",
+    "modifiers": [
+      {
+        "kind": "DefensePercent",
+        "percent": -30
+      }
+    ]
+  },
+  {
+    "id": "poisoned",
+    "name": "독",
+    "description": "임시 수치",
+    "kind": "Debuff",
+    "tickHpPercent": -4
+  },
+  {
+    "id": "burning",
+    "name": "화상",
+    "description": "임시 수치",
+    "kind": "Debuff",
+    "tickHpPercent": -5
+  },
+  {
+    "id": "regenerating",
+    "name": "재생",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "tickHpPercent": 5
+  }
+]

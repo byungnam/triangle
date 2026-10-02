@@ -53,6 +53,14 @@ public sealed class Combatant
     /// <summary>이 유닛이 지금까지 받은 턴 수 (현재 턴 포함, 1부터).</summary>
     public int TurnCount { get; internal set; }
 
+    /// <summary>걸려 있는 효과 (적용된 순서).</summary>
+    internal List<ActiveEffect> Effects { get; } = [];
+
+    public IEnumerable<(string EffectId, int Remaining)> ActiveEffects => Effects.Select(e => (e.Definition.Id, e.Remaining));
+
+    internal int EffectModifier(Triangle.Core.Effects.EffectModifierKind kind) =>
+        Effects.Sum(e => e.Definition.Modifiers.Where(m => m.Kind == kind).Sum(m => m.Percent));
+
     internal long NextActionTime { get; set; }
     internal long TieBreak { get; set; }
 

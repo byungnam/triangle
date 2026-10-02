@@ -39,6 +39,7 @@ triangle/
 │  │  ├─ Tactics/               #   Tactic, Condition, TargetSelector, 평가기
 │  │  ├─ Combat/                #   CombatSimulator, ATB 타임라인, CombatEvent
 │  │  ├─ Masteries/             #   장비 계열·숙련 정의, 숙련 레벨 표, 전투에서 얻는 숙련 경험치
+│  │  ├─ Effects/               #   버프·디버프·지속 피해·회복 정의
 │  │  ├─ Skills/                #   패시브 스킬 정의, 보너스 합계(SkillSet)
 │  │  ├─ Actions/               #   행동 정의 (효과, 비용, 대상 규칙, 태그, 요구 스킬)
 │  │  ├─ Data/                  #   JSON 정의 로더 (스킬, 행동, 적 팀)
@@ -54,6 +55,7 @@ triangle/
 │  ├─ masteries.json
 │  ├─ skills.json
 │  ├─ actions.json
+│  ├─ effects.json
 │  └─ encounters.json
 ├─ tests/
 │  └─ Triangle.Core.Tests/      # xUnit — 전투/전술 규칙 테스트
@@ -149,7 +151,28 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
     - "배우기" 버튼, 선행이나 포인트가 모자라면 그 이유
   - 무기 계열이면 그 무기로 쓰는 행동과, 행동별로 쓸 수 있는지(요구)도 보여준다.
 - 전투 보상이나 배우기로 바뀐 내용은 "저장하지 않은 변경"이 된다. 저장은 편집 화면에서 한다.
-- 계획 중: 효과(버프·디버프, 지속 피해·회복, MP 회복).
+
+### 효과 (`Effects/`, `effects.json`, 2026-10-02)
+
+- 효과는 **버프/디버프**로 나뉘고, 보정치와 매 턴 HP 변화를 가진다.
+  - 보정치(정수 %, 음수 가능): 주는 피해, 방어, 행동 뒤 대기 감소(음수면 둔화), 받는 피해 감소(음수면 취약)
+  - 매 턴 HP 변화: 최대 HP 대비 %. 음수는 지속 피해, 양수는 지속 회복이고 최대 HP를 넘지 않는다.
+- 행동의 `applies`로 대상에게 건다(피해·회복 뒤, 대상이 살아 있으면).
+  - 효과 종류 `None`은 효과만 건다. `RestoreMp`는 MP를 회복한다(위력 × 지능 보정, 최대 MP까지).
+- **지속시간은 효과를 받은 유닛의 행동 횟수**로 센다.
+  - 턴이 시작될 때 지속 피해·회복이 들어가고, 턴이 끝날 때 남은 횟수가 1 준다.
+  - 그래서 3턴짜리는 행동 3번 동안 유지되고, 지속 피해도 3번 들어간다.
+- 같은 효과가 다시 걸리면 지속시간만 새로 시작한다(중첩 없음).
+- 지속 피해로 쓰러지면 그 턴은 행동하지 못하고, 그 자리에서 승패가 날 수 있다. 쓰러지면 효과는 모두 사라진다(부활 없음).
+- 감소 계열은 디버프로 음수가 될 수 있다. 하한 −100%(대기·받는 피해 최대 2배), 상한 90%다.
+- 대상 규칙 `WithoutEffectFirst`: 행동이 거는 첫 효과가 아직 없는 대상을 우선 고른다. 버프를 같은 아군에게 반복해서 거는 낭비를 줄인다.
+- 지속 피해는 숙련 경험치에서 받은 쪽의 방어구 숙련(받은 피해)으로만 센다. 건 쪽은 추적하지 않는다.
+- 이벤트: `EffectApplied`(갱신 여부 포함), `EffectTicked`, `EffectExpired`, `MpRestored`.
+- 화면:
+  - 전투 로그: "훈련병 A에게 독 (3턴)", "훈련병 A 독으로 26 피해", "…의 축복 효과가 끝났다"
+  - 팀 패널: 유닛 이름 줄 오른쪽에 걸린 효과 이름(버프 노랑, 디버프 빨강)
+  - 숙련 화면: 그 트리로 열리는 "관련 행동"(예: 천 트리 → 정신 집중)
+- 임시 데이터: 효과 5개(축복, 약화, 독, 화상, 재생), 행동 6개(축복, 약화, 독화살, 화염구, 재생, 정신 집중)
 
 ### 진형 규칙
 
@@ -220,7 +243,7 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
 
 ### 게임 데이터 (`Triangle.Core/Data/`)
 
-- `GameDataLoader.LoadDirectory("data")`가 `masteries.json`(장비 계열·숙련), `skills.json`(패시브 스킬), `actions.json`(행동), `encounters.json`을 읽어 검증한 `GameData`를 돌려준다.
+- `GameDataLoader.LoadDirectory("data")`가 `masteries.json`(장비 계열·숙련), `skills.json`(패시브 스킬), `actions.json`(행동), `effects.json`(효과), `encounters.json`을 읽어 검증한 `GameData`를 돌려준다.
 - 적 팀 유닛은 장비와 스킬 레벨을 바로 가진다(성장하지 않는다). `GameData.CreateEncounterTeam(id)`가 전투 입력으로 바꿔 준다.
 - JSON 규칙: 속성 이름은 camelCase, enum은 문자열(`"FrontFirst"`), 생략한 선택 속성은 기본값을 쓴다.
 - 검증은 멈추지 않고 오류를 모두 모아서 `GameDataException` 하나로 알려준다. 항목마다 파일, 줄 번호, ID가 붙는다.

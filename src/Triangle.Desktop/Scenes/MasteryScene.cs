@@ -204,17 +204,23 @@ internal sealed class MasteryScene : IScene
             panel.Widgets.Add(BuildSkillRow(skill));
         }
 
-        if (mastery.Slot == EquipmentSlot.Weapon)
+        // 이 무기로 쓰는 행동, 또는 이 트리의 스킬로 열리는 행동.
+        var treeSkills = skills.Select(s => s.Id).ToHashSet();
+        var related = _data.Actions.Values
+            .Where(a => a.Weapon == mastery.Id || a.Requirements.Any(r => treeSkills.Contains(r.SkillId)))
+            .ToList();
+        if (related.Count > 0)
         {
             panel.Widgets.Add(new Panel { Height = 8 });
-            panel.Widgets.Add(_w.Label($"{Korean.EuroRo(mastery.Name)} 쓰는 행동", 17, Theme.Ally, bold: true));
+            panel.Widgets.Add(_w.Label("관련 행동", 17, Theme.Ally, bold: true));
             var set = _member.Skills(_data);
-            foreach (var action in _data.Actions.Values.Where(a => a.Weapon == mastery.Id))
+            foreach (var action in related)
             {
                 var missing = set.Missing(action.Requirements);
+                var weapon = action.Weapon is null ? "무기 무관" : $"{_data.Masteries[action.Weapon].Name} 필요";
                 var text = missing.Count == 0
-                    ? $"{action.Name} — 배움"
-                    : $"{action.Name} — {string.Join(", ", missing.Select(m => $"{_data.Skills[m.SkillId].Name} {m.Level}"))} 필요";
+                    ? $"{action.Name} ({weapon}) — 배움"
+                    : $"{action.Name} ({weapon}) — {string.Join(", ", missing.Select(m => $"{_data.Skills[m.SkillId].Name} {m.Level}"))} 필요";
                 panel.Widgets.Add(_w.Label(text, 15, missing.Count == 0 ? Theme.Heal : Theme.TextDim));
             }
         }

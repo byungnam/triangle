@@ -19,7 +19,8 @@ using Triangle.Desktop.Rendering;
 namespace Triangle.Desktop.Scenes;
 
 /// <summary>
-/// 파티 유닛의 전열과 전술을 편집하고, 바로 전투로 시험한다.
+/// 캐릭터의 장비, 전열, 전술을 편집한다. 마을에서는 로스터 전원을, 원정 중에는 출전 멤버만 보여준다.
+/// 원정 중에는 전술(세트 선택 포함)과 전열만 바꿀 수 있다: 장비는 잠그고, 숙련·패시브와 저장 버튼은 숨긴다.
 /// 위젯은 Myra로 그린다. 편집할 때마다 위젯 트리를 다시 만든다(화면이 작아서 충분히 빠르다).
 /// </summary>
 internal sealed class TacticEditorScene : IScene
@@ -32,89 +33,57 @@ internal sealed class TacticEditorScene : IScene
     private const int MaxTactics = 10;
 
     private readonly Ui _ui;
+    private readonly GameSession _session;
     private readonly GameData _data;
     private readonly Company _company;
     private readonly Rectangle _bounds;
-    private readonly SaveStore _store;
-    private readonly Action<string> _startCombat;
     private readonly Action<PartyMember> _openTraining;
-    private readonly Action _quit;
+    private readonly Action _back;
     private readonly MyraDesktop _desktop = new();
     private readonly Widgets _widgets;
     private readonly List<ComboView> _combos = [];
 
     private int _selected;
-    private string _encounterId;
     private bool _dirty = true;
-    private bool _unsaved;
-    private (string Text, Color Color)? _notice;
-    private Window? _quitDialog;
     private Button? _saveButton;
     private Label? _statusLabel;
 
-    /// <param name="notice">처음에 보여줄 안내 (세이브를 복구했다는 등).</param>
-    public TacticEditorScene(
-        Ui ui, GameData data, Company company, SaveStore store, Rectangle bounds,
-        Action<string> startCombat, Action<PartyMember> openTraining, Action quit, (string Text, Color Color)? notice = null)
+    /// <param name="back">Esc나 "돌아가기"를 누르면 호출된다 (마을이나 원정 화면으로).</param>
+    public TacticEditorScene(Ui ui, GameSession session, Rectangle bounds, Action<PartyMember> openTraining, Action back)
     {
         _ui = ui;
         _widgets = new Widgets(ui);
-        _data = data;
-        _company = company;
-        _store = store;
+        _session = session;
+        _data = session.Data;
+        _company = session.Company;
         _bounds = bounds;
-        _notice = notice;
-        _startCombat = startCombat;
         _openTraining = openTraining;
-        _quit = quit;
-        _encounterId = data.Encounters.Keys.First();
+        _back = back;
     }
 
-    private PartyMember Selected => _company.Roster[_selected];
+    private bool OnExpedition => _company.OnExpedition;
+
+    /// <summary>왼쪽 목록의 캐릭터: 마을에서는 로스터 전원, 원정 중에는 출전 멤버.</summary>
+    private IReadOnlyList<PartyMember> Members => OnExpedition ? _company.LineupMembers : _company.Roster;
+
+    private PartyMember Selected => Members[Math.Min(_selected, Members.Count - 1)];
 
     /// <summary>지금 고른 세트의 전술 (편집도 전투도 이 세트로 한다).</summary>
     private TacticList TacticsOf(PartyMember member) => member.TacticSets[_company.ActiveTacticSet];
 
-    public bool HasUnsavedChanges => _unsaved;
-
-    /// <summary>다른 화면(훈련, 전투 보상)에서 파티를 바꿨다.</summary>
-    public void NotifyPartyChanged() => MarkChanged();
-
-    /// <summary>종료를 요청한다. 저장하지 않은 변경이 있으면 먼저 확인 창을 띄운다.</summary>
-    public void RequestQuit()
-    {
-        if (_unsaved)
-        {
-            ShowQuitDialog();
-        }
-        else
-        {
-            _quit();
-        }
-    }
+    /// <summary>다른 화면에서 돌아왔다. 목록과 값을 다시 그린다.</summary>
+    public void Refresh() => MarkDirty();
 
     public void Update(GameTime gameTime, Input input)
     {
-        // 확인 창이 떠 있으면 Esc는 취소다. 창을 띄운 Esc가 바로 창을 닫지 않도록
-        // Myra의 CloseKey 대신 여기서 처리한다 (Pressed는 새로 누른 순간만 참).
-        if (_quitDialog is not null)
-        {
-            if (input.Pressed(Keys.Escape))
-            {
-                _quitDialog.Close();
-            }
-
-            return;
-        }
-
         // 드롭다운이 열려 있을 때의 Esc는 드롭다운을 닫는 데 쓴다.
         if (input.Pressed(Keys.Escape) && !_combos.Any(c => c.IsExpanded))
         {
-            RequestQuit();
+            _back();
             return;
         }
 
-        if (input.Pressed(Keys.S) && input.IsDown(Keys.LeftControl, Keys.RightControl))
+        if (!OnExpedition && input.Pressed(Keys.S) && input.IsDown(Keys.LeftControl, Keys.RightControl))
         {
             Save();
         }
@@ -129,19 +98,21 @@ internal sealed class TacticEditorScene : IScene
 
     public void Draw(SpriteBatch batch)
     {
-        // 확인 창이 떠 있는 동안에는 트리를 갈아끼우지 않는다 (창이 함께 사라지지 않도록).
-        if (_dirty && _quitDialog is null)
+        if (_dirty)
         {
             Rebuild();
             _dirty = false;
         }
 
         batch.Begin();
-        _ui.Text(batch, _ui.BoldFont(28), "전술 편집", new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
-        const string help = "조건이 참인 첫 전술을 쓴다. 대상은 행동이 정한다.     Ctrl+S  저장     Esc  종료";
+        var title = OnExpedition ? "전술 편집 — 원정 중 (전술과 전열만 바꿀 수 있습니다)" : "전술 편집";
+        _ui.Text(batch, _ui.BoldFont(28), title, new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
+        var help = OnExpedition
+            ? "조건이 참인 첫 전술을 쓴다. 대상은 행동이 정한다.     Esc  원정으로"
+            : "조건이 참인 첫 전술을 쓴다. 대상은 행동이 정한다.     Ctrl+S  저장     Esc  마을로";
         _ui.Text(batch, _ui.Font(16), help, new Vector2(_bounds.Left + Margin, _bounds.Bottom - FooterHeight + 10), Theme.TextDim);
 
-        if (_notice is { } notice)
+        if (_session.Notice is { } notice)
         {
             var font = _ui.Font(16);
             var width = font.MeasureString(notice.Text).X;
@@ -169,14 +140,12 @@ internal sealed class TacticEditorScene : IScene
 
     private void MarkDirty() => _dirty = true;
 
-    /// <summary>파티가 바뀌었다. 저장 전까지 "저장하지 않은 변경"으로 표시한다.</summary>
     /// <summary>
     /// 화면을 다시 만들지 않고 "저장하지 않은 변경" 표시만 갱신한다 (값 입력칸에서 입력 중일 때).
     /// </summary>
     private void MarkChangedInPlace()
     {
-        _unsaved = true;
-        _notice = null;
+        _session.MarkChanged();
         if (_saveButton is not null)
         {
             _saveButton.Background = new SolidBrush(Theme.Accent);
@@ -185,88 +154,25 @@ internal sealed class TacticEditorScene : IScene
 
         if (_statusLabel is not null && !_company.HasLockedTactics(_data))
         {
-            _statusLabel.Text = "저장하지 않은 변경이 있습니다";
+            _statusLabel.Text = StatusText;
             _statusLabel.TextColor = Theme.Cover;
         }
     }
 
     private void MarkChanged()
     {
-        _unsaved = true;
-        _notice = null;
+        _session.MarkChanged();
         MarkDirty();
     }
 
-    private bool Save()
+    private void Save()
     {
-        var saved = false;
-        try
-        {
-            _store.Save(_company);
-            _unsaved = false;
-            saved = true;
-            _notice = ($"저장했습니다 ({DateTime.Now:HH:mm:ss})", Theme.Heal);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            _notice = ($"저장하지 못했습니다: {e.Message}", Theme.Enemy);
-        }
-
+        _session.Save();
         MarkDirty();
-        return saved;
     }
 
-    private void ShowQuitDialog()
-    {
-        if (_quitDialog is not null)
-        {
-            return;
-        }
-
-        var content = new VerticalStackPanel { Spacing = 20, Padding = new Thickness(24, 16) };
-        content.Widgets.Add(Label("저장하지 않은 변경이 있습니다. 저장할까요?", 18, Theme.Text));
-
-        var buttons = new HorizontalStackPanel { Spacing = 10, HorizontalAlignment = HorizontalAlignment.Right };
-        var saveAndQuit = TextButton("저장하고 종료", Theme.Accent, Theme.AccentHover, bold: true);
-        var discard = TextButton("저장하지 않고 종료", Theme.Button, Theme.ButtonHover);
-        var cancel = TextButton("취소", Theme.Button, Theme.ButtonHover);
-        buttons.Widgets.Add(saveAndQuit);
-        buttons.Widgets.Add(discard);
-        buttons.Widgets.Add(cancel);
-        content.Widgets.Add(buttons);
-
-        var window = new Window
-        {
-            Title = "종료",
-            TitleFont = _ui.BoldFont(18),
-            TitleTextColor = Theme.Text,
-            Content = content,
-            Background = new SolidBrush(Theme.Panel),
-            Border = new SolidBrush(Theme.PanelBorder),
-            BorderThickness = new Thickness(1),
-            CloseKey = null,
-        };
-
-        saveAndQuit.Click += (_, _) =>
-        {
-            // 저장에 실패하면 종료하지 않고 창을 닫아 오류 안내를 보여준다.
-            window.Close();
-            if (Save())
-            {
-                _quit();
-            }
-        };
-        discard.Click += (_, _) =>
-        {
-            window.Close();
-            _quit();
-        };
-        cancel.Click += (_, _) => window.Close();
-        window.Closed += (_, _) => _quitDialog = null;
-
-        _quitDialog = window;
-        window.ShowModal(_desktop);
-    }
+    /// <summary>잠긴 전술이 없을 때의 상태 줄. 원정 중에는 다음 전투 전에 자동 저장된다.</summary>
+    private string StatusText => !_session.Unsaved ? "" : OnExpedition ? "바꾼 전술은 다음 전투에 쓰입니다" : "저장하지 않은 변경이 있습니다";
 
     // ── 위젯 트리 ──────────────────────────────────────────
 
@@ -286,7 +192,7 @@ internal sealed class TacticEditorScene : IScene
         editor.Top = memberArea.Y;
         root.Widgets.Add(editor);
 
-        var combatBar = BuildCombatBar();
+        var combatBar = BuildBottomBar();
         combatBar.Left = memberArea.X - 16;
         combatBar.Top = _bounds.Bottom - FooterHeight - CombatBarHeight + 8;
         root.Widgets.Add(combatBar);
@@ -303,18 +209,20 @@ internal sealed class TacticEditorScene : IScene
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
         };
-        list.Widgets.Add(Label("로스터", 20, Theme.Ally, bold: true));
+        list.Widgets.Add(Label(OnExpedition ? "출전 멤버" : "로스터", 20, Theme.Ally, bold: true));
         list.Widgets.Add(BuildTacticSetSelector());
 
-        for (var i = 0; i < _company.Roster.Count; i++)
+        for (var i = 0; i < Members.Count; i++)
         {
-            var member = _company.Roster[i];
+            var member = Members[i];
             var index = i;
-            var selected = i == _selected;
+            var selected = member == Selected;
 
             var content = new VerticalStackPanel { Spacing = 4 };
             content.Widgets.Add(Label(member.Name, 20, selected ? Theme.Text : Theme.Ally, bold: true));
-            content.Widgets.Add(Label($"{RowLabel(member.Row)} · 전술 {TacticsOf(member).Count}개", 15, Theme.TextDim));
+            var state = _company.Expedition?.MemberState(member.Id) is { Down: true } ? " · 쓰러짐"
+                : !OnExpedition && _company.IsInLineup(member.Id) ? " · 출전" : "";
+            content.Widgets.Add(Label($"{RowLabel(member.Row)} · 전술 {TacticsOf(member).Count}개{state}", 15, Theme.TextDim));
             if (member.LockedTacticIndexes(_data, _company.ActiveTacticSet).Count is > 0 and var locked)
             {
                 content.Widgets.Add(Label($"잠긴 전술 {locked}개", 15, Theme.Enemy));
@@ -344,9 +252,13 @@ internal sealed class TacticEditorScene : IScene
 
         var title = new HorizontalStackPanel { Spacing = 12 };
         title.Widgets.Add(Label(member.Name, 26, Theme.Text, bold: true));
-        var training = TextButton("숙련·패시브", Theme.Button, Theme.ButtonHover);
-        training.Click += (_, _) => _openTraining(member);
-        title.Widgets.Add(training);
+        if (!OnExpedition)
+        {
+            var training = TextButton("숙련·패시브", Theme.Button, Theme.ButtonHover);
+            training.Click += (_, _) => _openTraining(member);
+            title.Widgets.Add(training);
+        }
+
         title.Widgets.Add(Label(SkillSummary(skills), 16, Theme.TextDim));
         panel.Widgets.Add(title);
 
@@ -583,7 +495,7 @@ internal sealed class TacticEditorScene : IScene
         return group;
     }
 
-    private Widget BuildCombatBar()
+    private Widget BuildBottomBar()
     {
         var bar = new HorizontalStackPanel
         {
@@ -591,29 +503,29 @@ internal sealed class TacticEditorScene : IScene
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
         };
-        bar.Widgets.Add(Label("상대", 18, Theme.Text));
 
-        var encounters = _data.Encounters.Values.ToList();
-        var encounterCombo = Combo(encounters.Select(e => e.Name), encounters.FindIndex(e => e.Id == _encounterId), 220);
-        encounterCombo.SelectedIndexChanged += (_, _) => _encounterId = encounters[encounterCombo.SelectedIndex ?? 0].Id;
-        bar.Widgets.Add(encounterCombo);
+        var back = TextButton(OnExpedition ? "원정으로" : "마을로", Theme.Accent, Theme.AccentHover, bold: true);
+        back.Width = 140;
+        back.Click += (_, _) => _back();
+        bar.Widgets.Add(back);
 
-        // 게임 데이터가 바뀌어 잠긴 행동이 든 전술이 있으면 고칠 때까지 전투를 막는다.
-        var hasLocked = _company.HasLockedTactics(_data);
-        var start = TextButton("전투 시험  ▶", Theme.Accent, Theme.AccentHover, bold: true);
-        start.Width = 180;
-        start.Enabled = !hasLocked;
-        start.Click += (_, _) => _startCombat(_encounterId);
-        bar.Widgets.Add(start);
+        if (!OnExpedition)
+        {
+            var save = TextButton("저장", _session.Unsaved ? Theme.Accent : Theme.Button, _session.Unsaved ? Theme.AccentHover : Theme.ButtonHover);
+            _saveButton = save;
+            save.Width = 100;
+            save.Click += (_, _) => Save();
+            bar.Widgets.Add(save);
+        }
+        else
+        {
+            _saveButton = null;
+        }
 
-        var save = TextButton("저장", _unsaved ? Theme.Accent : Theme.Button, _unsaved ? Theme.AccentHover : Theme.ButtonHover);
-        _saveButton = save;
-        save.Width = 100;
-        save.Click += (_, _) => Save();
-        bar.Widgets.Add(save);
-        _statusLabel = hasLocked
+        // 게임 데이터나 장비가 바뀌어 잠긴 행동이 든 전술이 있으면 고칠 때까지 출정·전투를 막는다.
+        _statusLabel = _company.HasLockedTactics(_data)
             ? Label("잠긴 행동이 든 전술을 고쳐야 전투할 수 있습니다", 16, Theme.Enemy)
-            : Label(_unsaved ? "저장하지 않은 변경이 있습니다" : "", 16, Theme.Cover);
+            : Label(StatusText, 16, Theme.Cover);
         bar.Widgets.Add(_statusLabel);
 
         return bar;
@@ -666,9 +578,16 @@ internal sealed class TacticEditorScene : IScene
                 .Where(i => i.Id == current || _company.StashCount(i.Id) > 0)
                 .ToList();
             row.Widgets.Add(Label(label, 17, Theme.Text, width: slot == EquipmentSlot.Weapon ? 48 : 60));
+            if (options.Count == 0)
+            {
+                row.Widgets.Add(Label("없음 (창고에 맞는 아이템이 없다)", 16, Theme.TextDim, width: 280));
+                continue;
+            }
+
             var combo = Combo(
                 options.Select(i => (EquipmentLabel(member, i), Theme.Text)),
                 options.FindIndex(i => i.Id == current), 280);
+            combo.Enabled = !OnExpedition;
             combo.SelectedIndexChanged += (_, _) =>
             {
                 var chosen = options[combo.SelectedIndex ?? 0].Id;

@@ -1537,7 +1537,7 @@
   {
     "id": "ancient_shard",
     "name": "고대 파편",
-    "description": "T4 제작 재료. 카르타고 전선에서만 나온다.",
+    "description": "T4 제작 재료. 재의 왕도에서만 나온다.",
     "slot": "Material",
     "price": 30
   }

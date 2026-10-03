@@ -81,7 +81,7 @@ internal sealed class CraftScene : IScene
 
         _ui.Panel(batch, ListArea);
 
-        const string help = "재료는 전투지역에서 떨어진다. 고대 파편은 카르타고 전선에서만 나온다. 만든 장비는 창고로 간다.     Esc  마을로";
+        const string help = "재료는 전투지역에서 떨어진다. 고대 파편은 재의 왕도에서만 나온다. 만든 장비는 창고로 간다.     Esc  마을로";
         _ui.Text(batch, _ui.Font(16), help, new Vector2(_bounds.Left + Margin, _bounds.Bottom - FooterHeight + 10), Theme.TextDim);
         if (_session.Notice is { } notice)
         {

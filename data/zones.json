@@ -100,8 +100,8 @@
     }
   },
   {
-    "id": "carthage_front",
-    "name": "카르타고 전선",
+    "id": "ashen_capital",
+    "name": "재의 왕도",
     "description": "어려움 지역. 영구 사망, 장비 파괴 60%. 수치는 임시.",
     "difficulty": 3,
     "maxBattles": 5,
@@ -109,15 +109,15 @@
     "equipmentDestroyChance": 60,
     "encounters": [
       {
-        "encounterId": "carthage_infantry",
+        "encounterId": "dead_infantry",
         "weight": 3
       },
       {
-        "encounterId": "numidian_raiders",
+        "encounterId": "wraith_riders",
         "weight": 3
       },
       {
-        "encounterId": "baal_priests",
+        "encounterId": "black_sun_cult",
         "weight": 2
       },
       {

@@ -51,13 +51,13 @@ public sealed class SaveGameTests : IDisposable
     {
         PartyMember[] roster =
         [
-            new("a", "율리아", new Stats(10, 11, 21, 24, 12), Row.Back, TestGear.Of("wooden_relic", "cloth_robe"),
+            new("a", "이졸데", new Stats(10, 11, 21, 24, 12), Row.Back, TestGear.Of("wooden_relic", "cloth_robe"),
                 new Dictionary<EquipmentSlot, IReadOnlyList<string>> { [EquipmentSlot.MainHand] = ["smite"] },
                 new Dictionary<string, int> { ["relic"] = MasteryProgression.XpForLevel(3) + 40, ["cloth"] = 120 },
                 new Dictionary<string, int> { ["healing"] = 2 },
                 [[new Tactic(1, Condition.AnyAllyHpAtMost, 50, "smite"), new Tactic(2, Condition.Always, 0, "strike")],
                  [new Tactic(1, Condition.Always, 0, "strike")]]),
-            new("b", "마르쿠스", new Stats(15, 12, 25, 20, 13), Row.Front, TestGear.Of("old_sword"), null,
+            new("b", "고드릭", new Stats(15, 12, 25, 20, 13), Row.Front, TestGear.Of("old_sword"), null,
                 new Dictionary<string, int>(), new Dictionary<string, int>(), []),
             new("c", "후보", new Stats(9, 9, 9, 9, 9), Row.Front, TestGear.Of(), null,
                 new Dictionary<string, int>(), new Dictionary<string, int>(), []),
@@ -112,7 +112,7 @@ public sealed class SaveGameTests : IDisposable
         Assert.Contains("\"version\": 6", json);
         Assert.Contains("\"roster\"", json);
         Assert.DoesNotContain("\"party\"", json);
-        Assert.Contains("\"name\": \"율리아\"", json);
+        Assert.Contains("\"name\": \"이졸데\"", json);
         Assert.Contains("\"MainHand\": \"wooden_relic\"", json);
         Assert.Contains("\"abilityChoices\"", json);
         Assert.DoesNotContain("\"weapon\"", json);

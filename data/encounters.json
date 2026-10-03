@@ -595,13 +595,13 @@
     ]
   },
   {
-    "id": "carthage_infantry",
-    "name": "카르타고 보병대",
-    "description": "어려움. 중보병 둘과 궁수 하나. 수치는 임시.",
+    "id": "dead_infantry",
+    "name": "망자 보병대",
+    "description": "어려움. 되살아난 중보병 둘과 궁수 하나. 수치는 임시.",
     "units": [
       {
-        "id": "infantry_1",
-        "name": "카르타고 보병",
+        "id": "dead_infantry_1",
+        "name": "망자 보병",
         "row": "Front",
         "weapon": "sword",
         "armor": "plate",
@@ -638,8 +638,8 @@
         ]
       },
       {
-        "id": "infantry_2",
-        "name": "카르타고 보병",
+        "id": "dead_infantry_2",
+        "name": "망자 보병",
         "row": "Front",
         "weapon": "sword",
         "armor": "plate",
@@ -676,8 +676,8 @@
         ]
       },
       {
-        "id": "infantry_archer",
-        "name": "카르타고 궁수",
+        "id": "dead_archer",
+        "name": "망자 궁수",
         "row": "Back",
         "weapon": "bow",
         "armor": "leather",
@@ -715,13 +715,13 @@
     ]
   },
   {
-    "id": "numidian_raiders",
-    "name": "누미디아 기병",
-    "description": "어려움. 빠른 기병 셋. 수치는 임시.",
+    "id": "wraith_riders",
+    "name": "망령 기수",
+    "description": "어려움. 빠른 망령 기수 둘. 수치는 임시.",
     "units": [
       {
-        "id": "rider_1",
-        "name": "누미디아 기병",
+        "id": "wraith_rider_1",
+        "name": "망령 기수",
         "row": "Front",
         "weapon": "sword",
         "armor": "leather",
@@ -745,8 +745,8 @@
         ]
       },
       {
-        "id": "rider_2",
-        "name": "누미디아 기병",
+        "id": "wraith_rider_2",
+        "name": "망령 기수",
         "row": "Front",
         "weapon": "sword",
         "armor": "leather",
@@ -772,13 +772,13 @@
     ]
   },
   {
-    "id": "baal_priests",
-    "name": "바알 사제단",
-    "description": "어려움. 호위병, 주술사, 사제. 수치는 임시.",
+    "id": "black_sun_cult",
+    "name": "검은 태양 교단",
+    "description": "어려움. 교단의 호위병, 주술사, 사제. 수치는 임시.",
     "units": [
       {
-        "id": "baal_guard",
-        "name": "신전 호위병",
+        "id": "cult_guard",
+        "name": "교단 호위병",
         "row": "Front",
         "weapon": "sword",
         "armor": "plate",
@@ -802,8 +802,8 @@
         ]
       },
       {
-        "id": "baal_mage",
-        "name": "바알 주술사",
+        "id": "cult_mage",
+        "name": "교단 주술사",
         "row": "Back",
         "weapon": "staff",
         "armor": "cloth",
@@ -839,8 +839,8 @@
         ]
       },
       {
-        "id": "baal_priest",
-        "name": "바알 사제",
+        "id": "cult_priest",
+        "name": "교단 사제",
         "row": "Back",
         "weapon": "relic",
         "armor": "cloth",

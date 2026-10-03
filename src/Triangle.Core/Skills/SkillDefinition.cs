@@ -20,6 +20,9 @@ public enum BonusKind
 
     /// <summary>받는 피해 감소.</summary>
     DamageTakenReductionPercent,
+
+    /// <summary>방어(물리·마법) 증가. 주로 방어구가 준다.</summary>
+    DefensePercent,
 }
 
 /// <param name="Level">1–5.</param>

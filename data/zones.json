@@ -27,14 +27,23 @@
       "depthBonusPercent": 20,
       "itemDrops": [
         {
-          "itemId": "old_sword",
+          "itemId": "iron_scrap",
           "chance": 10
         },
         {
-          "itemId": "leather_armor",
+          "itemId": "tough_leather",
+          "chance": 10
+        },
+        {
+          "itemId": "mana_thread",
           "chance": 10
         }
       ],
+      "equipmentDrop": {
+        "chance": 20,
+        "minTier": 1,
+        "maxTier": 1
+      },
       "clearBonusGold": 50
     }
   },
@@ -61,7 +70,7 @@
       },
       {
         "encounterId": "training",
-        "weight": 1
+        "weight": 2
       }
     ],
     "rewards": {
@@ -70,14 +79,23 @@
       "depthBonusPercent": 25,
       "itemDrops": [
         {
-          "itemId": "hunting_bow",
-          "chance": 15
+          "itemId": "iron_scrap",
+          "chance": 25
         },
         {
-          "itemId": "plate_armor",
-          "chance": 10
+          "itemId": "tough_leather",
+          "chance": 25
+        },
+        {
+          "itemId": "mana_thread",
+          "chance": 25
         }
       ],
+      "equipmentDrop": {
+        "chance": 25,
+        "minTier": 1,
+        "maxTier": 2
+      },
       "clearBonusGold": 150
     }
   },
@@ -104,7 +122,7 @@
       },
       {
         "encounterId": "elite",
-        "weight": 1
+        "weight": 2
       }
     ],
     "rewards": {
@@ -113,14 +131,27 @@
       "depthBonusPercent": 30,
       "itemDrops": [
         {
-          "itemId": "apprentice_staff",
-          "chance": 15
+          "itemId": "iron_scrap",
+          "chance": 30
         },
         {
-          "itemId": "wooden_relic",
+          "itemId": "tough_leather",
+          "chance": 30
+        },
+        {
+          "itemId": "mana_thread",
+          "chance": 30
+        },
+        {
+          "itemId": "ancient_shard",
           "chance": 15
         }
       ],
+      "equipmentDrop": {
+        "chance": 30,
+        "minTier": 2,
+        "maxTier": 3
+      },
       "clearBonusGold": 400
     }
   }

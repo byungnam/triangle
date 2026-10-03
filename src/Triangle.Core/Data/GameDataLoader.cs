@@ -23,6 +23,7 @@ public static class GameDataLoader
     public const string ItemsFile = "items.json";
     public const string ZonesFile = "zones.json";
     public const string RecruitsFile = "recruits.json";
+    public const string RecipesFile = "recipes.json";
 
     public static GameData LoadDirectory(string directory)
     {
@@ -50,16 +51,17 @@ public static class GameDataLoader
         var items = Read(ItemsFile);
         var zones = Read(ZonesFile);
         var recruits = Read(RecruitsFile);
+        var recipes = Read(RecipesFile);
         if (errors.Count > 0)
         {
             throw new GameDataException(errors);
         }
 
-        return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, recruits!);
+        return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, recruits!, recipes!);
     }
 
     public static GameData Parse(string masteriesJson, string skillsJson, string actionsJson, string encountersJson, string effectsJson = "[]",
-        string itemsJson = "[]", string zonesJson = "[]", string recruitsJson = "[]")
+        string itemsJson = "[]", string zonesJson = "[]", string recruitsJson = "[]", string recipesJson = "[]")
     {
         var errors = new List<string>();
 
@@ -71,6 +73,7 @@ public static class GameDataLoader
         var items = Deserialize<ItemDefinition>(itemsJson, ItemsFile, errors);
         var zones = Deserialize<ZoneDefinition>(zonesJson, ZonesFile, errors);
         var recruits = Deserialize<RecruitTemplate>(recruitsJson, RecruitsFile, errors);
+        var recipes = Deserialize<RecipeDefinition>(recipesJson, RecipesFile, errors);
 
         // 형식 오류가 있으면 참조 검증은 의미가 없다.
         if (errors.Count > 0)
@@ -96,6 +99,14 @@ public static class GameDataLoader
         var itemMap = ToMap(items!, i => i.Id, ItemsFile, errors);
         var zoneMap = ToMap(zones!, z => z.Id, ZonesFile, errors);
         var recruitMap = ToMap(recruits!, r => r.Id, RecruitsFile, errors);
+        var recipeMap = new Dictionary<string, RecipeDefinition>();
+        foreach (var recipe in recipes!)
+        {
+            if (!recipeMap.TryAdd(recipe.Result ?? "", recipe))
+            {
+                errors.Add($"{RecipesFile}: more than one recipe for '{recipe.Result}'");
+            }
+        }
 
         foreach (var m in masteries!)
         {
@@ -112,7 +123,7 @@ public static class GameDataLoader
 
         foreach (var a in actions!)
         {
-            ValidateAction(a, masteryMap, skillMap, errors);
+            ValidateAction(a, skillMap, errors);
             foreach (var applied in a.Applies)
             {
                 if (!effectMap.ContainsKey(applied.EffectId))
@@ -134,14 +145,7 @@ public static class GameDataLoader
 
         foreach (var item in items!)
         {
-            var at = $"{ItemsFile} '{item.Id}'";
-            DataValidation.RequireText(item.Id, $"{ItemsFile}: id", errors);
-            DataValidation.RequireText(item.Name, $"{at}: name", errors);
-            DataValidation.RequireNonNegative(item.Price, $"{at}: price", errors);
-            if (!masteryMap.ContainsKey(item.Mastery))
-            {
-                errors.Add($"{at}: unknown mastery '{item.Mastery}'");
-            }
+            ValidateItem(item, masteryMap, skillMap, actionMap, errors);
         }
 
         foreach (var zone in zones!)
@@ -151,7 +155,12 @@ public static class GameDataLoader
 
         foreach (var recruit in recruits!)
         {
-            ValidateRecruit(recruit, masteryMap, skillMap, actionMap, itemMap, errors);
+            ValidateRecruit(recruit, skillMap, actionMap, itemMap, errors);
+        }
+
+        foreach (var recipe in recipes)
+        {
+            ValidateRecipe(recipe, itemMap, errors);
         }
 
         if (errors.Count > 0)
@@ -159,7 +168,7 @@ public static class GameDataLoader
             throw new GameDataException(errors);
         }
 
-        return new GameData(masteryMap, skillMap, actionMap, effectMap, encounterMap, itemMap, zoneMap, recruitMap);
+        return new GameData(masteryMap, skillMap, actionMap, effectMap, encounterMap, itemMap, zoneMap, recruitMap, recipeMap);
     }
 
     private static List<T>? Deserialize<T>(string json, string fileName, List<string> errors)
@@ -263,7 +272,6 @@ public static class GameDataLoader
 
     private static void ValidateAction(
         ActionDefinition a,
-        IReadOnlyDictionary<string, MasteryDefinition> masteries,
         IReadOnlyDictionary<string, SkillDefinition> skills,
         List<string> errors)
     {
@@ -274,7 +282,117 @@ public static class GameDataLoader
         DataValidation.RequireNonNegative(a.MpCost, $"{at}: mpCost", errors);
         DataValidation.RequireNonNegative(a.Power, $"{at}: power", errors);
         DataValidation.ValidateRequirements(a.Requirements, $"{at} requirement", skills, errors);
-        DataValidation.RequireSlot(a.Weapon, EquipmentSlot.Weapon, $"{at}: weapon", masteries, errors);
+    }
+
+    private static void ValidateItem(
+        ItemDefinition item,
+        IReadOnlyDictionary<string, MasteryDefinition> masteries,
+        IReadOnlyDictionary<string, SkillDefinition> skills,
+        IReadOnlyDictionary<string, ActionDefinition> actions,
+        List<string> errors)
+    {
+        var at = $"{ItemsFile} '{item.Id}'";
+        DataValidation.RequireText(item.Id, $"{ItemsFile}: id", errors);
+        DataValidation.RequireText(item.Name, $"{at}: name", errors);
+        DataValidation.RequireNonNegative(item.Price, $"{at}: price", errors);
+        if (item.Tier is < 1 or > ItemDefinition.MaxTier)
+        {
+            errors.Add($"{at}: tier must be 1-{ItemDefinition.MaxTier}, got {item.Tier}");
+        }
+
+        DataValidation.ValidateRequirements(item.Requirements, $"{at} requirement", skills, errors);
+
+        if (!item.IsEquipment)
+        {
+            if (item.Mastery is not null || item.TwoHanded || item.Bonuses.Count > 0 || item.Abilities.Count > 0 || item.Requirements.Count > 0)
+            {
+                errors.Add($"{at}: a material has no mastery, twoHanded, requirements, bonuses or abilities");
+            }
+
+            return;
+        }
+
+        if (item.Mastery is null)
+        {
+            errors.Add($"{at}: equipment needs a mastery");
+        }
+        else
+        {
+            DataValidation.RequireKind(item.Mastery, item.Slot.IsWeapon() ? MasteryKind.Weapon : MasteryKind.Armor, $"{at}: mastery", masteries, errors);
+        }
+
+        if (item.TwoHanded && item.Slot != EquipmentSlot.MainHand)
+        {
+            errors.Add($"{at}: only a main-hand item can be twoHanded");
+        }
+
+        for (var i = 0; i < item.Abilities.Count; i++)
+        {
+            var options = item.Abilities[i].Options;
+            if (options.Count == 0)
+            {
+                errors.Add($"{at}: ability {i + 1} needs at least one option");
+            }
+
+            foreach (var option in options)
+            {
+                if (!actions.TryGetValue(option, out var action))
+                {
+                    errors.Add($"{at}: ability {i + 1} has unknown action '{option}'");
+                }
+                else if (action.Universal)
+                {
+                    errors.Add($"{at}: ability {i + 1} offers universal action '{option}'");
+                }
+            }
+
+            foreach (var duplicate in options.GroupBy(o => o).Where(g => g.Count() > 1))
+            {
+                errors.Add($"{at}: ability {i + 1} lists '{duplicate.Key}' more than once");
+            }
+        }
+    }
+
+    private static void ValidateRecipe(RecipeDefinition recipe, IReadOnlyDictionary<string, ItemDefinition> items, List<string> errors)
+    {
+        var at = $"{RecipesFile} '{recipe.Result}'";
+        if (!items.TryGetValue(recipe.Result ?? "", out var result))
+        {
+            errors.Add($"{at}: unknown result item");
+        }
+        else if (!result.IsEquipment)
+        {
+            errors.Add($"{at}: result must be equipment, got {result.Slot}");
+        }
+
+        DataValidation.RequireNonNegative(recipe.Gold, $"{at}: gold", errors);
+        var materials = recipe.Materials ?? [];
+        if (materials.Count == 0)
+        {
+            errors.Add($"{at}: needs at least one material");
+        }
+
+        foreach (var material in materials)
+        {
+            if (!items.TryGetValue(material.ItemId ?? "", out var item))
+            {
+                errors.Add($"{at}: unknown material '{material.ItemId}'");
+            }
+            else if (item.IsEquipment)
+            {
+                errors.Add($"{at}: '{material.ItemId}' is not a material");
+            }
+
+            if (material.Count < 1)
+            {
+                errors.Add($"{at}: count of '{material.ItemId}' must be at least 1, got {material.Count}");
+            }
+        }
+
+        foreach (var duplicate in materials.GroupBy(m => m.ItemId).Where(g => g.Count() > 1))
+        {
+            errors.Add($"{at}: lists material '{duplicate.Key}' more than once");
+        }
     }
 
     private static void ValidateEncounter(
@@ -311,13 +429,9 @@ public static class GameDataLoader
             {
                 var tacticAt = $"{unitAt} tactic {tactic.Priority}";
                 DataValidation.ValidateTactic(tactic, tacticAt, actions, errors);
+                // 적은 아이템이 없다: 행동은 스킬 요구만 본다.
                 if (actions.TryGetValue(tactic.ActionId, out var action))
                 {
-                    if (action.Weapon is not null && action.Weapon != unit.Weapon)
-                    {
-                        errors.Add($"{tacticAt}: '{tactic.ActionId}' needs weapon '{action.Weapon}'");
-                    }
-
                     foreach (var missing in set.Missing(action.Requirements))
                     {
                         errors.Add($"{tacticAt}: '{tactic.ActionId}' needs '{missing.SkillId}' level {missing.Level}");
@@ -378,11 +492,23 @@ public static class GameDataLoader
 
             DataValidation.RequirePercent(drop.Chance, $"{at}: chance of '{drop.ItemId}'", errors);
         }
+
+        if (r.EquipmentDrop is { } tierDrop)
+        {
+            DataValidation.RequirePercent(tierDrop.Chance, $"{at}: equipmentDrop chance", errors);
+            if (tierDrop.MinTier < 1 || tierDrop.MaxTier > ItemDefinition.MaxTier || tierDrop.MaxTier < tierDrop.MinTier)
+            {
+                errors.Add($"{at}: equipmentDrop tiers must be 1-{ItemDefinition.MaxTier} with min <= max, got {tierDrop.MinTier}-{tierDrop.MaxTier}");
+            }
+            else if (!items.Values.Any(i => i.IsEquipment && i.Tier >= tierDrop.MinTier && i.Tier <= tierDrop.MaxTier))
+            {
+                errors.Add($"{at}: no equipment in tiers {tierDrop.MinTier}-{tierDrop.MaxTier}");
+            }
+        }
     }
 
     private static void ValidateRecruit(
         RecruitTemplate r,
-        IReadOnlyDictionary<string, MasteryDefinition> masteries,
         IReadOnlyDictionary<string, SkillDefinition> skills,
         IReadOnlyDictionary<string, ActionDefinition> actions,
         IReadOnlyDictionary<string, ItemDefinition> items,
@@ -409,16 +535,27 @@ public static class GameDataLoader
         }
 
         DataValidation.RequireNonNegative(r.Price, $"{at}: price", errors);
-        DataValidation.ValidateItem(r.Weapon, EquipmentSlot.Weapon, $"{at}: weapon", items, masteries, errors);
-        DataValidation.ValidateItem(r.Armor, EquipmentSlot.Armor, $"{at}: armor", items, masteries, errors);
+        DataValidation.ValidateEquipped(r.Equipment, $"{at}: equipment", items, errors);
 
-        // 신입은 패시브가 없으므로 요구 스킬이 없는 행동만, 무기 계열이 맞는 행동만 쓸 수 있다.
-        var weapon = r.Weapon is not null && items.TryGetValue(r.Weapon, out var item) ? item.Mastery : null;
+        // 신입은 패시브가 없으므로 요구 스킬이 없는 장비와 행동만, 시작 장비의 첫 옵션이나 공용 행동만 쓸 수 있다.
+        var noSkills = new SkillSet(SkillSet.NoSkills, skills);
+        var equipped = r.Equipment.Values.Where(items.ContainsKey).Select(id => items[id]).ToList();
+        foreach (var item in equipped.Where(i => !noSkills.Meets(i.Requirements)))
+        {
+            errors.Add($"{at}: a new recruit cannot wear '{item.Id}'");
+        }
+
+        if (r.Equipment.ContainsKey(EquipmentSlot.OffHand) && equipped.Any(i => i.TwoHanded))
+        {
+            errors.Add($"{at}: an off-hand item cannot be worn with a two-handed weapon");
+        }
+
+        var granted = equipped.SelectMany(i => i.DefaultChoices).ToHashSet();
         foreach (var tactic in r.Tactics)
         {
             var tacticAt = $"{at} tactic {tactic.Priority}";
             DataValidation.ValidateTactic(tactic, tacticAt, actions, errors);
-            if (actions.TryGetValue(tactic.ActionId, out var action) && !action.IsUsableBy(weapon, new SkillSet(SkillSet.NoSkills, skills)))
+            if (actions.TryGetValue(tactic.ActionId, out var action) && !action.IsUsableBy(granted, noSkills))
             {
                 errors.Add($"{tacticAt}: a new recruit cannot use '{tactic.ActionId}'");
             }

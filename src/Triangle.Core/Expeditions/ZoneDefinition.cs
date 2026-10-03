@@ -42,8 +42,11 @@ public sealed record ZoneRewards
     /// <summary>깊이 보너스 (%): n번째 전투(0부터)의 골드에 n × 이 값 %를 더한다.</summary>
     public int DepthBonusPercent { get; init; }
 
-    /// <summary>전투에서 이길 때마다 아이템별로 따로 굴린다.</summary>
+    /// <summary>전투에서 이길 때마다 아이템별로 따로 굴린다 (정해진 아이템, 주로 재료).</summary>
     public IReadOnlyList<ItemDrop> ItemDrops { get; init; } = [];
+
+    /// <summary>전투에서 이길 때마다 한 번 굴리는 장비 드롭. 티어 범위의 장비 중 하나가 균등하게 나온다.</summary>
+    public TierDrop? EquipmentDrop { get; init; }
 
     /// <summary>마지막 전투에서 이기면 더 받는 골드.</summary>
     public int ClearBonusGold { get; init; }
@@ -51,3 +54,8 @@ public sealed record ZoneRewards
 
 /// <param name="Chance">떨어질 확률 (%).</param>
 public sealed record ItemDrop(string ItemId, int Chance);
+
+/// <param name="Chance">떨어질 확률 (%).</param>
+/// <param name="MinTier">나오는 장비의 최소 티어 (1–4).</param>
+/// <param name="MaxTier">최대 티어 (최소 이상).</param>
+public sealed record TierDrop(int Chance, int MinTier, int MaxTier);

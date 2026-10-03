@@ -1,4 +1,5 @@
 using Triangle.Core.Data;
+using Triangle.Core.Items;
 using Triangle.Core.Progress;
 using Triangle.Core.Units;
 
@@ -8,21 +9,21 @@ public class CompanyTests
 {
     private static readonly GameData Data = GameDataLoader.Parse(
         """
-        [ { "id": "sword", "name": "검", "slot": "Weapon" },
-          { "id": "bow", "name": "활", "slot": "Weapon" },
-          { "id": "plate", "name": "판금", "slot": "Armor" } ]
+        [ { "id": "sword", "name": "검", "kind": "Weapon" },
+          { "id": "bow", "name": "활", "kind": "Weapon" },
+          { "id": "plate", "name": "판금", "kind": "Armor" } ]
         """,
         "[]",
         """[ { "id": "strike", "name": "공격", "power": 10 } ]""",
         """[ { "id": "camp", "name": "야영지", "units": [ { "id": "e", "name": "적", "row": "Front", "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 } } ] } ]""",
         itemsJson: """
-        [ { "id": "old_sword", "name": "낡은 검", "mastery": "sword" },
-          { "id": "hunting_bow", "name": "사냥용 활", "mastery": "bow" },
-          { "id": "plate_armor", "name": "판금 갑옷", "mastery": "plate" } ]
+        [ { "id": "old_sword", "name": "낡은 검", "slot": "MainHand", "mastery": "sword" },
+          { "id": "hunting_bow", "name": "사냥용 활", "slot": "MainHand", "mastery": "bow" },
+          { "id": "plate_armor", "name": "판금 갑옷", "slot": "Body", "mastery": "plate" } ]
         """);
 
     private static PartyMember Member(string id, string? weapon = "old_sword", string? armor = null) =>
-        new(id, id, new Stats(10, 10, 10, 10, 10), Row.Front, weapon, armor, new Dictionary<string, int>(), new Dictionary<string, int>(), []);
+        new(id, id, new Stats(10, 10, 10, 10, 10), Row.Front, TestGear.Of(weapon, armor), null, new Dictionary<string, int>(), new Dictionary<string, int>(), []);
 
     private static Company Company(params PartyMember[] roster) =>
         new(roster, roster.Take(1).Select(m => m.Id), gold: 0, new Dictionary<string, int>(), activeTacticSet: 0, nextSeed: 5);
@@ -38,7 +39,7 @@ public class CompanyTests
         Assert.True(company.Equip("a", "plate_armor", Data));
 
         var member = company.Member("a");
-        Assert.Equal(("hunting_bow", "plate_armor"), (member.Weapon, member.Armor));
+        Assert.Equal(("hunting_bow", "plate_armor"), (member.ItemIn(EquipmentSlot.MainHand), member.ItemIn(EquipmentSlot.Body)));
         Assert.Equal(1, company.StashCount("old_sword"));
         Assert.Equal(0, company.StashCount("hunting_bow"));
         Assert.Equal(1, company.StashCount("plate_armor"));
@@ -53,7 +54,7 @@ public class CompanyTests
 
         Assert.False(company.Equip("a", "hunting_bow", Data));
         Assert.True(company.Equip("a", "old_sword", Data)); // 이미 낀 아이템
-        Assert.Equal("old_sword", company.Member("a").Weapon);
+        Assert.Equal("old_sword", company.Member("a").ItemIn(EquipmentSlot.MainHand));
         Assert.Empty(company.Stash);
     }
 

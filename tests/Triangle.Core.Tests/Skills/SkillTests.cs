@@ -1,5 +1,6 @@
 using Triangle.Core.Actions;
 using Triangle.Core.Combat;
+using Triangle.Core.Items;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
@@ -34,7 +35,7 @@ public class SkillTests
     {
         Id = "locked", Name = "Locked", Power = 10, Requirements = [new SkillRequirement("archery", 3)],
     };
-    private static readonly ActionDefinition BowOnly = new() { Id = "bow_only", Name = "BowOnly", Power = 10, Weapon = "bow" };
+    private static readonly ActionDefinition BowOnly = new() { Id = "bow_only", Name = "BowOnly", Power = 10 };
 
     private static readonly CombatCatalog Catalog = new(
         new[] { Shot, Punch, Costly, Mend, Locked, BowOnly }.ToDictionary(a => a.Id), Skills);
@@ -137,15 +138,51 @@ public class SkillTests
     }
 
     [Fact]
-    public void Weapon_bonus_tags_apply_to_generic_actions_and_weapon_gates_actions()
+    public void Weapon_bonus_tags_apply_to_generic_actions_and_granted_actions_gate_actions()
     {
         // 활을 들면 기본 공격(태그 없음)에도 "활 위력" 보너스가 붙는다.
         var armed = Run(Unit("a", Levels(("archery", 4)), weapon: "bow", tactics: Always("punch")), Unit("e", str: 0, vital: 100));
         Assert.Equal(18, armed.Events.OfType<Damaged>().First().Amount);
 
-        Assert.Throws<ArgumentException>(() => Run(Unit("a", weapon: "sword", tactics: Always("bow_only")), Unit("e")));
-        var ok = Run(Unit("a", weapon: "bow", tactics: Always("bow_only")), Unit("e"), maxActions: 2);
+        // 아이템에서 고른 행동만 쓸 수 있다 (GrantedActions가 null이면 적처럼 제한이 없다).
+        var notGranted = Unit("a", weapon: "bow", tactics: Always("bow_only")) with { GrantedActions = new HashSet<string> { "shot" } };
+        Assert.Throws<ArgumentException>(() => Run(notGranted, Unit("e")));
+        var granted = notGranted with { GrantedActions = new HashSet<string> { "bow_only" } };
+        var ok = Run(granted, Unit("e"), maxActions: 2);
         Assert.Contains(ok.Events, e => e is ActionUsed { ActionId: "bow_only" });
+
+        // 공용 행동은 고르지 않아도 쓴다.
+        var catalog = Catalog with { Actions = Catalog.Actions.Values.Select(a => a.Id == "punch" ? a with { Universal = true } : a).ToDictionary(a => a.Id) };
+        var universal = Unit("a", tactics: Always("punch")) with { GrantedActions = new HashSet<string>() };
+        Assert.IsType<CombatEnded>(CombatSimulator.Run([universal], [Unit("e")], catalog, seed: 1, new CombatRules { MaxActions = 2 }).Events[^1]);
+    }
+
+    [Fact]
+    public void Item_bonuses_add_to_skill_bonuses()
+    {
+        // 아이템 위력 +20%는 활 숙련 4(활 태그 +20%)를 활로 쓴 것과 같다.
+        var skill = Run(Unit("a", Levels(("archery", 4)), weapon: "bow", tactics: Always("punch")), Unit("e", str: 0, vital: 100));
+        var item = Run(Unit("a", tactics: Always("punch")) with { ItemBonuses = [new ItemBonus(BonusKind.PowerPercent, 20)] }, Unit("e", str: 0, vital: 100));
+        Assert.Equal(skill.Events.OfType<Damaged>().First().Amount, item.Events.OfType<Damaged>().First().Amount);
+
+        // 최대 HP %.
+        var sturdy = Run(Unit("a") with { ItemBonuses = [new ItemBonus(BonusKind.MaxHpPercent, 20)] }, Unit("e"), maxActions: 1);
+        Assert.Equal(20 * 28 * 120 / 100, sturdy.Combatants.Single(c => c.Id == "a").MaxHp);
+    }
+
+    [Fact]
+    public void Defense_percent_from_armor_reduces_damage_taken()
+    {
+        int Taken(int defensePercent)
+        {
+            var target = Unit("e", str: 20, vital: 100) with { ItemBonuses = [new ItemBonus(BonusKind.DefensePercent, defensePercent)] };
+            return Run(Unit("a", str: 30, tactics: Always("punch")), target, maxActions: 2)
+                .Events.OfType<Damaged>().First(d => d.TargetId == "e").Amount;
+        }
+
+        // 방어 20 → 40: 피해 × 100 / (100 + 방어 × 2).
+        Assert.True(Taken(100) < Taken(0));
+        Assert.Equal(Ratio.DivideRounded((long)Taken(0) * 140, 180), Taken(100));
     }
 
     [Fact]

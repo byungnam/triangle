@@ -1,3 +1,4 @@
+using Triangle.Core.Items;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
 
@@ -5,7 +6,7 @@ namespace Triangle.Core.Progress;
 
 /// <summary>
 /// 모집 후보 템플릿 (예: 신입 검사). 원정이 끝날 때마다 템플릿에서 후보를 굴린다.
-/// 신입은 숙련 0, 패시브 없이 시작하므로 전술은 스킬이 필요 없는 행동만 쓸 수 있다.
+/// 신입은 숙련 0, 패시브 없이 시작하므로 전술은 스킬이 필요 없고 시작 장비의 첫 옵션이나 공용인 행동만 쓸 수 있다.
 /// </summary>
 public sealed record RecruitTemplate
 {
@@ -25,9 +26,8 @@ public sealed record RecruitTemplate
 
     public required Row Row { get; init; }
 
-    /// <summary>시작 장비 아이템 ID. 고용할 때 새로 생긴다(창고에서 빼지 않는다).</summary>
-    public string? Weapon { get; init; }
-    public string? Armor { get; init; }
+    /// <summary>부위별 시작 장비 아이템 ID. 고용할 때 새로 생긴다(창고에서 빼지 않는다). 행동 칸은 첫 옵션.</summary>
+    public IReadOnlyDictionary<EquipmentSlot, string> Equipment { get; init; } = new Dictionary<EquipmentSlot, string>();
 
     /// <summary>기본 전술. 두 세트 모두 이 전술로 시작한다.</summary>
     public IReadOnlyList<Tactic> Tactics { get; init; } = [];

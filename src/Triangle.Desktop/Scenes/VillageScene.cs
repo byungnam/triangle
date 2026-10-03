@@ -30,6 +30,8 @@ internal sealed class VillageScene : IScene
     private readonly Rectangle _bounds;
     private readonly Action _openEditor;
     private readonly Action _openRecruit;
+    private readonly Action _openShop;
+    private readonly Action _openCraft;
     private readonly Action<string> _depart;
     private readonly Action _quit;
     private readonly MyraDesktop _desktop = new();
@@ -41,7 +43,7 @@ internal sealed class VillageScene : IScene
     /// <param name="depart">출정 (지역 ID). 부르기 전에 출정할 수 있는지 확인한다.</param>
     /// <param name="quit">종료가 확인되었다 (저장했거나 버리기로 했다).</param>
     public VillageScene(
-        Ui ui, GameSession session, Rectangle bounds, Action openEditor, Action openRecruit, Action<string> depart, Action quit)
+        Ui ui, GameSession session, Rectangle bounds, Action openEditor, Action openRecruit, Action openShop, Action openCraft, Action<string> depart, Action quit)
     {
         _ui = ui;
         _w = new Widgets(ui);
@@ -49,6 +51,8 @@ internal sealed class VillageScene : IScene
         _bounds = bounds;
         _openEditor = openEditor;
         _openRecruit = openRecruit;
+        _openShop = openShop;
+        _openCraft = openCraft;
         _depart = depart;
         _quit = quit;
         _zoneId = session.Data.Zones.Values.OrderBy(z => z.Difficulty).First().Id;
@@ -216,7 +220,7 @@ internal sealed class VillageScene : IScene
         var row = new HorizontalStackPanel { Spacing = 10 };
         var text = new VerticalStackPanel { Spacing = 2, Width = width - 100 };
         text.Widgets.Add(Label($"{member.Name}  ·  {(member.Row == Row.Front ? "전위" : "후위")}", 18, Theme.Text, bold: true));
-        text.Widgets.Add(Label($"{ItemName(member.Weapon)} / {ItemName(member.Armor)}", 15, Theme.TextDim));
+        text.Widgets.Add(Label(ItemText.Gear(member.Equipment, _session.Data), 15, Theme.TextDim));
         row.Widgets.Add(text);
 
         var button = TextButton(action, Theme.Button, Theme.ButtonHover);
@@ -233,7 +237,6 @@ internal sealed class VillageScene : IScene
         return row;
     }
 
-    private string ItemName(string? itemId) => itemId is null ? "없음" : _session.Data.Items[itemId].Name;
 
     /// <summary>전투지역 목록 (난이도순). 고른 지역으로 출정한다. 영구 사망 지역은 빨간 경고를 단다.</summary>
     private Widget BuildZones(Rectangle area)
@@ -292,9 +295,19 @@ internal sealed class VillageScene : IScene
         recruit.Click += (_, _) => _openRecruit();
         bar.Widgets.Add(recruit);
 
+        var shop = TextButton("상점·창고", Theme.Button, Theme.ButtonHover);
+        shop.Width = 130;
+        shop.Click += (_, _) => _openShop();
+        bar.Widgets.Add(shop);
+
+        var craft = TextButton("제작", Theme.Button, Theme.ButtonHover);
+        craft.Width = 100;
+        craft.Click += (_, _) => _openCraft();
+        bar.Widgets.Add(craft);
+
         var why = ExpeditionRules.WhyCannotStart(Company, _session.Data, _zoneId);
         var depart = TextButton($"{Korean.EuroRo(_session.Data.Zones[_zoneId].Name)} 출정  ▶", Theme.Accent, Theme.AccentHover, bold: true);
-        depart.Width = 300;
+        depart.Width = 280;
         depart.Enabled = why is null;
         depart.Click += (_, _) => _depart(_zoneId);
         bar.Widgets.Add(depart);

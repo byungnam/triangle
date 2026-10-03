@@ -32,8 +32,13 @@
       "speed": 13
     },
     "row": "Front",
-    "weapon": "old_sword",
-    "armor": "plate_armor",
+    "equipment": {
+      "MainHand": "old_sword",
+      "OffHand": "wooden_shield",
+      "Head": "plate_helm",
+      "Body": "plate_armor",
+      "Feet": "plate_boots"
+    },
     "tactics": [
       {
         "priority": 1,
@@ -77,8 +82,12 @@
       "speed": 14
     },
     "row": "Back",
-    "weapon": "hunting_bow",
-    "armor": "leather_armor",
+    "equipment": {
+      "MainHand": "hunting_bow",
+      "Head": "leather_cap",
+      "Body": "leather_armor",
+      "Feet": "leather_boots"
+    },
     "tactics": [
       {
         "priority": 1,
@@ -128,8 +137,12 @@
       "speed": 13
     },
     "row": "Back",
-    "weapon": "apprentice_staff",
-    "armor": "cloth_robe",
+    "equipment": {
+      "MainHand": "apprentice_staff",
+      "Head": "cloth_hood",
+      "Body": "cloth_robe",
+      "Feet": "cloth_shoes"
+    },
     "tactics": [
       {
         "priority": 1,
@@ -179,8 +192,13 @@
       "speed": 12
     },
     "row": "Back",
-    "weapon": "wooden_relic",
-    "armor": "cloth_robe",
+    "equipment": {
+      "MainHand": "wooden_relic",
+      "OffHand": "holy_token",
+      "Head": "cloth_hood",
+      "Body": "cloth_robe",
+      "Feet": "cloth_shoes"
+    },
     "tactics": [
       {
         "priority": 1,

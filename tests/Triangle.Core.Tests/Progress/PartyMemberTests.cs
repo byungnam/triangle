@@ -7,7 +7,7 @@ namespace Triangle.Core.Tests.Progress;
 public class PartyMemberTests
 {
     private static PartyMember Member(params Tactic[] tactics) =>
-        new("m", "멤버", new Stats(10, 10, 20, 10, 10), Row.Front, null, null, new Dictionary<string, int>(), new Dictionary<string, int>(), [tactics]);
+        new("m", "멤버", new Stats(10, 10, 20, 10, 10), Row.Front, TestGear.Of(), null, new Dictionary<string, int>(), new Dictionary<string, int>(), [tactics]);
 
     private static string[] Skills(PartyMember m) => m.TacticSets[0].Select(t => t.ActionId).ToArray();
 

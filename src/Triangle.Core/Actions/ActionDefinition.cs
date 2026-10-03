@@ -53,7 +53,11 @@ public enum TargetScope
     All,
 }
 
-/// <summary>전술에서 쓰는 행동 (기본 공격, 화살, 치료 등). 필요한 무기를 들고 요구 스킬 레벨을 채워야 쓸 수 있다.</summary>
+/// <summary>
+/// 전술에서 쓰는 행동 (기본 공격, 화살, 치료 등). 쓸 수 있으려면 둘 다 채워야 한다:
+/// - 장착한 아이템의 행동 칸에서 고른 행동이거나, 누구나 쓰는 공용 행동(<see cref="Universal"/>)이다.
+/// - 요구 스킬 레벨(<see cref="Requirements"/>)을 채운다.
+/// </summary>
 public sealed record ActionDefinition
 {
     public required string Id { get; init; }
@@ -86,11 +90,17 @@ public sealed record ActionDefinition
     /// <summary>대상에게 거는 효과 (피해·회복 뒤, 대상이 살아 있으면).</summary>
     public IReadOnlyList<EffectApplication> Applies { get; init; } = [];
 
-    /// <summary>필요한 무기 계열 (masteries.json의 무기 ID). null이면 어떤 무기로든 쓸 수 있다.</summary>
-    public string? Weapon { get; init; }
+    /// <summary>참이면 아이템 없이 누구나 쓴다 (예: 기본 공격). 거짓이면 아이템 행동 칸에서 골라야 한다.</summary>
+    public bool Universal { get; init; }
 
-    /// <summary>장착한 무기와 스킬 레벨로 이 행동을 쓸 수 있는가.</summary>
-    public bool IsUsableBy(string? weapon, SkillSet skills) => (Weapon is null || Weapon == weapon) && skills.Meets(Requirements);
+    /// <summary>
+    /// 고른 행동과 스킬 레벨로 이 행동을 쓸 수 있는가.
+    /// <paramref name="granted"/>가 null이면 아이템 제한이 없다 (적 유닛).
+    /// </summary>
+    public bool IsUsableBy(IReadOnlySet<string>? granted, SkillSet skills) => IsGranted(granted) && skills.Meets(Requirements);
+
+    /// <summary>공용 행동이거나 고른 행동인가 (스킬 요구는 따로 본다).</summary>
+    public bool IsGranted(IReadOnlySet<string>? granted) => Universal || granted is null || granted.Contains(Id);
 
     /// <summary>
     /// 스킬 보너스를 고를 때 쓰는 태그: 행동의 태그 + 장착한 무기 계열.

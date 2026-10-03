@@ -20,7 +20,9 @@ namespace Triangle.Desktop.Scenes;
 
 /// <summary>
 /// 캐릭터의 장비, 전열, 전술을 편집한다. 마을에서는 로스터 전원을, 원정 중에는 출전 멤버만 보여준다.
-/// 원정 중에는 전술(세트 선택 포함)과 전열만 바꿀 수 있다: 장비는 잠그고, 숙련·패시브와 저장 버튼은 숨긴다.
+/// 장비 패널: 부위 5개마다 아이템 드롭다운(장착 + 창고)과 해제 버튼, 그 아래 행동 칸별 옵션 드롭다운.
+/// 착용 조건을 못 채운 아이템은 빨간색이고, 두손 무기를 끼면 보조 칸을 쓸 수 없다.
+/// 원정 중에는 전술(세트 선택 포함)과 전열만 바꿀 수 있다: 장비와 행동 칸은 잠그고, 숙련·패시브와 저장 버튼은 숨긴다.
 /// 위젯은 Myra로 그린다. 편집할 때마다 위젯 트리를 다시 만든다(화면이 작아서 충분히 빠르다).
 /// </summary>
 internal sealed class TacticEditorScene : IScene
@@ -152,7 +154,7 @@ internal sealed class TacticEditorScene : IScene
             _saveButton.OverBackground = new SolidBrush(Theme.AccentHover);
         }
 
-        if (_statusLabel is not null && !_company.HasLockedTactics(_data))
+        if (_statusLabel is not null && _company.WhyLineupCannotFight(_data) is null)
         {
             _statusLabel.Text = StatusText;
             _statusLabel.TextColor = Theme.Cover;
@@ -228,6 +230,11 @@ internal sealed class TacticEditorScene : IScene
                 content.Widgets.Add(Label($"잠긴 전술 {locked}개", 15, Theme.Enemy));
             }
 
+            if (member.UnwearableSlots(_data).Count is > 0 and var unwearable)
+            {
+                content.Widgets.Add(Label($"착용 불가 장비 {unwearable}개", 15, Theme.Enemy));
+            }
+
             var button = StyledButton(content, selected ? Theme.Selected : Theme.Panel, Theme.ButtonHover);
             button.Width = PartyWidth;
             button.Padding = new Thickness(14, 10);
@@ -247,8 +254,9 @@ internal sealed class TacticEditorScene : IScene
         var member = Selected;
         var rules = CombatRules.Default;
         var skills = member.Skills(_data);
+        var combatSkills = member.CombatSkills(_data);
 
-        var panel = new VerticalStackPanel { Spacing = 12, Width = area.Width, Height = area.Height };
+        var panel = new VerticalStackPanel { Spacing = 10, Width = area.Width, Height = area.Height };
 
         var title = new HorizontalStackPanel { Spacing = 12 };
         title.Widgets.Add(Label(member.Name, 26, Theme.Text, bold: true));
@@ -262,15 +270,16 @@ internal sealed class TacticEditorScene : IScene
         title.Widgets.Add(Label(SkillSummary(skills), 16, Theme.TextDim));
         panel.Widgets.Add(title);
 
-        panel.Widgets.Add(BuildEquipmentSelector(member));
+        panel.Widgets.Add(BuildEquipmentPanel(member));
 
         var s = member.Stats;
-        panel.Widgets.Add(Label(
+        var stats = new HorizontalStackPanel { Spacing = 24 };
+        stats.Widgets.Add(Label(
             $"근력 {s.Str}   민첩 {s.Dex}   체력 {s.Vital}   지능 {s.Intel}   신속 {s.Speed}" +
-            $"        HP {rules.MaxHp(s, skills)}   MP {rules.MaxMp(s, skills)}",
+            $"     HP {rules.MaxHp(s, combatSkills)}   MP {rules.MaxMp(s, combatSkills)}",
             16, Theme.TextDim));
-
-        panel.Widgets.Add(BuildRowSelector(member));
+        stats.Widgets.Add(BuildRowSelector(member));
+        panel.Widgets.Add(stats);
         panel.Widgets.Add(new HorizontalSeparator());
         panel.Widgets.Add(BuildTacticHeader());
 
@@ -286,7 +295,7 @@ internal sealed class TacticEditorScene : IScene
         }
 
         // 새 전술은 쓸 수 있는 첫 행동으로 시작한다.
-        var firstUsable = _data.Actions.Values.FirstOrDefault(a => a.IsUsableBy(member.WeaponMastery(_data), skills));
+        var firstUsable = _data.Actions.Values.FirstOrDefault(a => a.IsUsableBy(member.GrantedActions(_data), skills));
         var addButton = TextButton("+ 전술 추가", Theme.Button, Theme.ButtonHover);
         addButton.Enabled = TacticsOf(member).Count < MaxTactics && firstUsable is not null;
         addButton.Click += (_, _) =>
@@ -337,7 +346,7 @@ internal sealed class TacticEditorScene : IScene
     private Widget BuildRowSelector(PartyMember member)
     {
         var row = new HorizontalStackPanel { Spacing = 8 };
-        row.Widgets.Add(Label("전열", 17, Theme.Text, width: 48));
+        row.Widgets.Add(Label("전열", 17, Theme.Text, width: 40));
 
         foreach (var option in new[] { Row.Front, Row.Back })
         {
@@ -352,7 +361,6 @@ internal sealed class TacticEditorScene : IScene
             row.Widgets.Add(button);
         }
 
-        row.Widgets.Add(Label("   후위를 노린 단일 공격은 살아있는 전위가 대신 받는다.", 15, Theme.TextDim));
         return row;
     }
 
@@ -397,11 +405,12 @@ internal sealed class TacticEditorScene : IScene
 
         // 행동: 쓸 수 있는 행동을 먼저, 잠긴 행동은 아래에 (고를 수 없음)
         var skills = member.Skills(_data);
-        bool Usable(ActionDefinition a) => a.IsUsableBy(member.WeaponMastery(_data), skills);
+        var granted = member.GrantedActions(_data);
+        bool Usable(ActionDefinition a) => a.IsUsableBy(granted, skills);
         var actions = _data.Actions.Values.OrderBy(a => Usable(a) ? 0 : 1).ToList();
         var items = actions.Select(a => Usable(a)
             ? (ActionLabel(a), Theme.Text)
-            : ($"(잠김) {a.Name} — {LockReason(a, member.WeaponMastery(_data), skills)}", Theme.Enemy));
+            : ($"(잠김) {a.Name} — {LockReason(a, granted, skills)}", Theme.Enemy));
         var actionCombo = Combo(items, actions.FindIndex(a => a.Id == tactic.ActionId), 270);
         actionCombo.SelectedIndexChanged += (_, _) =>
         {
@@ -522,9 +531,9 @@ internal sealed class TacticEditorScene : IScene
             _saveButton = null;
         }
 
-        // 게임 데이터나 장비가 바뀌어 잠긴 행동이 든 전술이 있으면 고칠 때까지 출정·전투를 막는다.
-        _statusLabel = _company.HasLockedTactics(_data)
-            ? Label("잠긴 행동이 든 전술을 고쳐야 전투할 수 있습니다", 16, Theme.Enemy)
+        // 게임 데이터나 장비가 바뀌어 잠긴 전술이나 착용 불가 장비가 있으면 고칠 때까지 출정·전투를 막는다.
+        _statusLabel = _company.WhyLineupCannotFight(_data) is { } blocked
+            ? Label($"{blocked} (전투할 수 없습니다)", 16, Theme.Enemy)
             : Label(StatusText, 16, Theme.Cover);
         bar.Widgets.Add(_statusLabel);
 
@@ -551,68 +560,154 @@ internal sealed class TacticEditorScene : IScene
         return cost.Count == 0 ? action.Name : $"{action.Name} ({string.Join(", ", cost)})";
     }
 
-    /// <summary>행동을 못 쓰는 이유, 예: "활 필요, 정밀 사격 1".</summary>
-    private string LockReason(ActionDefinition action, string? weapon, SkillSet skills)
+    /// <summary>행동을 못 쓰는 이유, 예: "사냥용 활에서 선택, 정밀 사격 1".</summary>
+    private string LockReason(ActionDefinition action, IReadOnlySet<string> granted, SkillSet skills)
     {
         var reasons = new List<string>();
-        if (action.Weapon is not null && action.Weapon != weapon)
+        if (!action.IsGranted(granted))
         {
-            reasons.Add($"{_data.Masteries[action.Weapon].Name} 필요");
+            var items = _data.ItemsGranting(action.Id).Select(i => i.Name).Distinct().Take(2).ToList();
+            reasons.Add(items.Count == 0 ? "쓸 수 있는 장비 없음" : $"{string.Join("·", items)}에서 선택");
         }
 
         reasons.AddRange(skills.Missing(action.Requirements).Select(r => $"{_data.Skills[r.SkillId].Name} {r.Level}"));
         return string.Join(", ", reasons);
     }
 
+    private const int SlotLabelWidth = 52;
+    private const int ItemComboWidth = 300;
+    private const int AbilityComboWidth = 150;
+
     /// <summary>
-    /// 무기·방어구 선택: 지금 장착한 아이템과 창고에 있는 아이템. 고르면 창고에서 꺼내 끼고, 끼고 있던 것은 창고로 간다.
-    /// 무기 계열이 바뀌면 그 무기가 필요한 전술이 잠길 수 있다(빨간색으로 표시).
+    /// 장비 패널: 부위마다 한 줄. 아이템 드롭다운(비우기 + 장착 + 창고), 해제 버튼, 행동 칸별 옵션 드롭다운,
+    /// 착용 불가면 그 이유. 고르면 창고에서 꺼내 끼고, 끼고 있던 것은 창고로 간다.
+    /// 행동 칸이나 아이템을 바꾸면 그 행동을 쓰는 전술이 잠길 수 있다(빨간색으로 표시).
     /// </summary>
-    private Widget BuildEquipmentSelector(PartyMember member)
+    private Widget BuildEquipmentPanel(PartyMember member)
+    {
+        var panel = new VerticalStackPanel { Spacing = 4 };
+        foreach (var slot in EquipmentSlots.All)
+        {
+            panel.Widgets.Add(BuildSlotRow(member, slot));
+        }
+
+        return panel;
+    }
+
+    private Widget BuildSlotRow(PartyMember member, EquipmentSlot slot)
     {
         var row = new HorizontalStackPanel { Spacing = 8 };
-        foreach (var (slot, label) in new[] { (EquipmentSlot.Weapon, "무기"), (EquipmentSlot.Armor, "방어구") })
+        row.Widgets.Add(Label(ItemText.SlotLabel(slot), 16, Theme.Text, width: SlotLabelWidth));
+
+        var current = member.ItemIn(slot);
+        var blockedByTwoHanded = slot == EquipmentSlot.OffHand && current is null
+            && member.ItemIn(EquipmentSlot.MainHand) is { } main && _data.Items[main].TwoHanded;
+        if (blockedByTwoHanded)
         {
-            var current = slot == EquipmentSlot.Weapon ? member.Weapon : member.Armor;
-            var options = _data.ItemsFor(slot)
-                .Where(i => i.Id == current || _company.StashCount(i.Id) > 0)
-                .ToList();
-            row.Widgets.Add(Label(label, 17, Theme.Text, width: slot == EquipmentSlot.Weapon ? 48 : 60));
-            if (options.Count == 0)
+            row.Widgets.Add(Label("두손 무기를 들고 있어 쓸 수 없음", 15, Theme.TextDim, width: ItemComboWidth));
+            return row;
+        }
+
+        // 0번은 "비어 있음". 장착한 아이템과 창고의 같은 부위 아이템 (데이터 순서).
+        var options = _data.ItemsFor(slot).Where(i => i.Id == current || _company.StashCount(i.Id) > 0).ToList();
+        var labels = new List<(string, Color)> { ("(비어 있음)", Theme.TextDim) };
+        labels.AddRange(options.Select(i => (EquipmentLabel(member, i), CanWear(member, i) ? Theme.Text : Theme.Enemy)));
+        var combo = Combo(labels, current is null ? 0 : options.FindIndex(i => i.Id == current) + 1, ItemComboWidth);
+        combo.Enabled = !OnExpedition && options.Count > 0;
+        combo.SelectedIndexChanged += (_, _) =>
+        {
+            var index = combo.SelectedIndex ?? 0;
+            var chosen = index == 0 ? null : options[index - 1].Id;
+            if (chosen == current)
             {
-                row.Widgets.Add(Label("없음 (창고에 맞는 아이템이 없다)", 16, Theme.TextDim, width: 280));
-                continue;
+                return;
             }
 
-            var combo = Combo(
-                options.Select(i => (EquipmentLabel(member, i), Theme.Text)),
-                options.FindIndex(i => i.Id == current), 280);
-            combo.Enabled = !OnExpedition;
-            combo.SelectedIndexChanged += (_, _) =>
+            if (chosen is null ? _company.Unequip(member.Id, slot, _data) : _company.Equip(member.Id, chosen, _data))
             {
-                var chosen = options[combo.SelectedIndex ?? 0].Id;
-                if (chosen != current && _company.Equip(member.Id, chosen, _data))
-                {
-                    MarkChanged();
-                }
-                else
-                {
-                    MarkDirty();
-                }
-            };
-            row.Widgets.Add(combo);
+                MarkChanged();
+                return;
+            }
+
+            if (chosen is not null && _company.WhyCannotEquip(member.Id, chosen, _data) is { } reason)
+            {
+                _session.Notice = ($"{_data.Items[chosen].Name}: {reason}", Theme.Enemy);
+            }
+
+            MarkDirty(); // 끼지 못했다. 원래 선택으로 되돌린다.
+        };
+        row.Widgets.Add(combo);
+
+        var unequip = TextButton("해제", Theme.Button, Theme.ButtonHover);
+        unequip.Width = 56;
+        unequip.Padding = new Thickness(0, 4);
+        unequip.Enabled = !OnExpedition && current is not null;
+        unequip.Click += (_, _) =>
+        {
+            if (_company.Unequip(member.Id, slot, _data))
+            {
+                MarkChanged();
+            }
+        };
+        row.Widgets.Add(unequip);
+
+        if (current is not null)
+        {
+            var item = _data.Items[current];
+            var chosen = member.ChosenAbilities(slot, _data);
+            for (var i = 0; i < item.Abilities.Count; i++)
+            {
+                row.Widgets.Add(BuildAbilityCombo(member, slot, i, item.Abilities[i], chosen[i]));
+            }
+
+            if (member.WhyCannotWear(slot, _data) is { } why)
+            {
+                row.Widgets.Add(Label($"착용 불가 — {why}", 15, Theme.Enemy));
+            }
+            else if (item.Abilities.Count == 0)
+            {
+                row.Widgets.Add(Label(ItemText.Bonuses(item.BonusesAt(member.MasteryLevel(item.Mastery!)), _data), 15, Theme.TextDim));
+            }
         }
 
         return row;
     }
 
-    /// <summary>"낡은 검 · 검 Lv 3 · 창고 2"처럼 아이템, 계열 숙련, 창고 개수.</summary>
+    /// <summary>행동 칸 하나의 옵션 드롭다운. 요구 스킬이 모자란 옵션은 빨간색이다(골라도 전술에는 못 쓴다).</summary>
+    private Widget BuildAbilityCombo(PartyMember member, EquipmentSlot slot, int index, AbilitySlot ability, string chosen)
+    {
+        var skills = member.Skills(_data);
+        var options = ability.Options.Select(id => _data.Actions[id]).ToList();
+        var combo = Combo(
+            options.Select(a => (a.Name, skills.Meets(a.Requirements) ? Theme.Text : Theme.Enemy)),
+            ability.Options.ToList().IndexOf(chosen),
+            AbilityComboWidth);
+        combo.Enabled = !OnExpedition && options.Count > 1;
+        combo.SelectedIndexChanged += (_, _) =>
+        {
+            var next = options[combo.SelectedIndex ?? 0].Id;
+            if (next != chosen && _company.ChooseAbility(member.Id, slot, index, next, _data))
+            {
+                MarkChanged();
+            }
+        };
+        return combo;
+    }
+
+    private bool CanWear(PartyMember member, ItemDefinition item) => member.Skills(_data).Meets(item.Requirements);
+
+    /// <summary>"T1 낡은 검 · 검 Lv 3 · 창고 2"처럼 티어, 아이템, 계열 숙련, 창고 개수, 모자란 요구.</summary>
     private string EquipmentLabel(PartyMember member, ItemDefinition item)
     {
-        var mastery = _data.Masteries[item.Mastery];
-        var label = $"{item.Name} · {mastery.Name} Lv {member.MasteryLevel(mastery.Id)}";
+        var mastery = _data.Masteries[item.Mastery!];
+        var label = $"T{item.Tier} {item.Name} · {mastery.Name} Lv {member.MasteryLevel(mastery.Id)}";
         var stored = _company.StashCount(item.Id);
-        return stored > 0 ? $"{label} · 창고 {stored}" : label;
+        if (stored > 0)
+        {
+            label += $" · 창고 {stored}";
+        }
+
+        return CanWear(member, item) ? label : $"{label} · {ItemText.Requirements(item, _data)}";
     }
 
     /// <summary>배운 스킬을 데이터 순서대로 "활 숙련 4 · 정밀 사격 1"처럼 보여준다.</summary>

@@ -14,7 +14,7 @@ namespace Triangle.Core.Combat;
 /// 행동 후 TimeConstant / speed 만큼(스킬의 대기 감소 적용) 뒤로 밀린다.
 /// 턴이 오면 전술을 우선순위 순으로 훑어 조건이 참인 첫 전술의 행동을 쓴다.
 /// 그 행동의 비용을 낼 수 없거나 대상이 없으면 턴을 잃는다.
-/// 스킬은 패시브 보너스(위력, 회복, MP 소모, 대기, 최대 HP/MP, 받는 피해)로만 작용한다.
+/// 스킬과 장비는 패시브 보너스(위력, 회복, MP 소모, 대기, 최대 HP/MP, 받는 피해, 방어)로만 작용한다.
 /// </remarks>
 public sealed class CombatSimulator
 {
@@ -37,8 +37,8 @@ public sealed class CombatSimulator
         _random = new Random(seed);
         _combatants =
         [
-            .. allies.Select(s => new Combatant(s, CombatSide.Ally, rules, new SkillSet(s.Skills, catalog.Skills))),
-            .. enemies.Select(s => new Combatant(s, CombatSide.Enemy, rules, new SkillSet(s.Skills, catalog.Skills))),
+            .. allies.Select(s => new Combatant(s, CombatSide.Ally, rules, new SkillSet(s.Skills, catalog.Skills, s.ItemBonuses))),
+            .. enemies.Select(s => new Combatant(s, CombatSide.Enemy, rules, new SkillSet(s.Skills, catalog.Skills, s.ItemBonuses))),
         ];
 
         // 모두 시각 0에서 시작하므로 첫 행동 순서는 무작위로 정한다.
@@ -94,7 +94,7 @@ public sealed class CombatSimulator
                     throw new ArgumentException($"Combatant '{setup.Id}' uses unknown action '{tactic.ActionId}'.");
                 }
 
-                if (!action.IsUsableBy(setup.Weapon, skills))
+                if (!action.IsUsableBy(setup.GrantedActions, skills))
                 {
                     throw new ArgumentException($"Combatant '{setup.Id}' cannot use locked action '{tactic.ActionId}'.");
                 }
@@ -491,7 +491,7 @@ public sealed class CombatSimulator
     }
 
     /// <summary>
-    /// 위력 × 스탯 보정 × (스킬·효과 위력 보너스) → (효과 반영) 방어 경감 → 받는 피해 감소(스킬·효과).
+    /// 위력 × 스탯 보정 × (스킬·장비·효과 위력 보너스) → (장비·효과 반영) 방어 경감 → 받는 피해 감소(스킬·효과).
     /// 각 단계에서 사사오입한다.
     /// </summary>
     private int DamageAmount(Combatant actor, ActionDefinition action, Combatant target)
@@ -503,7 +503,8 @@ public sealed class CombatSimulator
         var powerBonus = actor.Skills.Bonus(BonusKind.PowerPercent, action.BonusTags(actor.Weapon))
             + actor.EffectModifier(EffectModifierKind.PowerPercent);
         var raw = Ratio.ApplyPercent(Scaled(action.Power, attackStat), Math.Max(0, 100 + powerBonus));
-        var effectiveDefense = Ratio.ApplyPercent(defense, Math.Max(0, 100 + target.EffectModifier(EffectModifierKind.DefensePercent)));
+        var effectiveDefense = Ratio.ApplyPercent(
+            defense, Math.Max(0, 100 + target.Skills.Bonus(BonusKind.DefensePercent) + target.EffectModifier(EffectModifierKind.DefensePercent)));
         var mitigated = Ratio.DivideRounded((long)raw * 100, 100 + (long)effectiveDefense * _rules.DefenseReductionPercentPerPoint);
         var taken = target.Skills.Bonus(BonusKind.DamageTakenReductionPercent)
             + target.EffectModifier(EffectModifierKind.DamageTakenReductionPercent);

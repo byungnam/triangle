@@ -20,8 +20,10 @@ public sealed class GameData
         IReadOnlyDictionary<string, EncounterDefinition> encounters,
         IReadOnlyDictionary<string, ItemDefinition> items,
         IReadOnlyDictionary<string, ZoneDefinition> zones,
-        IReadOnlyDictionary<string, RecruitTemplate> recruits)
+        IReadOnlyDictionary<string, RecruitTemplate> recruits,
+        IReadOnlyDictionary<string, RecipeDefinition>? recipes = null)
     {
+        Recipes = recipes ?? new Dictionary<string, RecipeDefinition>();
         Items = items;
         Zones = zones;
         Recruits = recruits;
@@ -36,19 +38,27 @@ public sealed class GameData
     /// <summary>장비 계열이자 숙련 트리.</summary>
     public IReadOnlyDictionary<string, MasteryDefinition> Masteries { get; }
 
-    public IEnumerable<MasteryDefinition> MasteriesFor(EquipmentSlot slot) => Masteries.Values.Where(m => m.Slot == slot);
+    public IEnumerable<MasteryDefinition> MasteriesOf(MasteryKind kind) => Masteries.Values.Where(m => m.Kind == kind);
 
-    /// <summary>장비 아이템. 계열은 <see cref="ItemDefinition.Mastery"/>.</summary>
+    /// <summary>아이템 (장비와 재료).</summary>
     public IReadOnlyDictionary<string, ItemDefinition> Items { get; }
 
-    /// <summary>그 슬롯에 끼는 아이템 (데이터 순서).</summary>
-    public IEnumerable<ItemDefinition> ItemsFor(EquipmentSlot slot) => Items.Values.Where(i => Masteries[i.Mastery].Slot == slot);
+    /// <summary>그 부위에 끼는 아이템 (데이터 순서).</summary>
+    public IEnumerable<ItemDefinition> ItemsFor(EquipmentSlot slot) => Items.Values.Where(i => i.Slot == slot);
 
-    /// <summary>아이템의 장비 계열. null이면 null(맨손·맨몸).</summary>
+    /// <summary>아이템의 계열. null이면 null.</summary>
     public string? MasteryOf(string? itemId) => itemId is null ? null : Items[itemId].Mastery;
 
-    /// <summary>그 계열의 기본 아이템 (데이터에서 처음 나오는 것). 없으면 null.</summary>
-    public ItemDefinition? BasicItemFor(string masteryId) => Items.Values.FirstOrDefault(i => i.Mastery == masteryId);
+    /// <summary>티어 범위의 장비 (재료 제외, 데이터 순서).</summary>
+    public IReadOnlyList<ItemDefinition> EquipmentInTiers(int minTier, int maxTier) =>
+        Items.Values.Where(i => i.IsEquipment && i.Tier >= minTier && i.Tier <= maxTier).ToList();
+
+    /// <summary>그 행동을 행동 칸 후보로 가진 아이템 (데이터 순서).</summary>
+    public IEnumerable<ItemDefinition> ItemsGranting(string actionId) =>
+        Items.Values.Where(i => i.Abilities.Any(a => a.Options.Contains(actionId)));
+
+    /// <summary>제작법 (결과 아이템 ID → 제작법, 데이터 순서).</summary>
+    public IReadOnlyDictionary<string, RecipeDefinition> Recipes { get; }
 
     /// <summary>전투지역 (데이터 순서).</summary>
     public IReadOnlyDictionary<string, ZoneDefinition> Zones { get; }

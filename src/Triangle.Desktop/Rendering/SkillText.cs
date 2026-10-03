@@ -11,11 +11,13 @@ internal static class SkillText
         tag is null ? "" : (data.Masteries.TryGetValue(tag, out var m) ? m.Name : tag) + " ";
 
     /// <summary>레벨당 보너스, 예: "활 위력 +5%". 감소는 일반 하이픈을 쓴다(글꼴에 − 기호가 없다).</summary>
-    public static string BonusLabel(SkillBonus bonus, GameData data)
+    public static string BonusLabel(SkillBonus bonus, GameData data) => BonusLabel(bonus.Kind, bonus.PercentPerLevel, bonus.Tag, data);
+
+    /// <summary>보너스 하나, 예: "방어 +10%".</summary>
+    public static string BonusLabel(BonusKind kind, int p, string? tagId, GameData data)
     {
-        var tag = TagLabel(bonus.Tag, data);
-        var p = bonus.PercentPerLevel;
-        return bonus.Kind switch
+        var tag = TagLabel(tagId, data);
+        return kind switch
         {
             BonusKind.PowerPercent => $"{tag}위력 +{p}%",
             BonusKind.HealPercent => $"회복량 +{p}%",
@@ -24,7 +26,8 @@ internal static class SkillText
             BonusKind.MaxHpPercent => $"최대 HP +{p}%",
             BonusKind.MaxMpPercent => $"최대 MP +{p}%",
             BonusKind.DamageTakenReductionPercent => $"받는 피해 -{p}%",
-            _ => bonus.Kind.ToString(),
+            BonusKind.DefensePercent => $"방어 +{p}%",
+            _ => kind.ToString(),
         };
     }
 

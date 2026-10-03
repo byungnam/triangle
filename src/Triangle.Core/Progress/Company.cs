@@ -1,21 +1,21 @@
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
 using Triangle.Core.Expeditions;
-using Triangle.Core.Masteries;
+using Triangle.Core.Items;
 
 namespace Triangle.Core.Progress;
 
 /// <summary>
 /// 플레이어의 용병 회사. 세이브 데이터가 이 모델을 저장한다.
 /// - 로스터: 보유한 캐릭터 모두. 출전 명단은 그중 최대 <see cref="MaxLineup"/>명이다.
-/// - 골드와 창고(아이템 ID별 개수). 장착과 해제는 창고와 오간다.
+/// - 골드와 창고(아이템 ID별 개수, 재료 포함). 장착과 해제는 창고와 오간다.
 /// - 모집 후보와 진행 중인 원정. 원정 중에는 명단, 장비, 모집을 바꿀 수 없다(전술과 전열만 바꾼다).
 /// </summary>
 public sealed class Company
 {
     public const int MaxLineup = 5;
 
-    /// <summary>새 게임과 v4 세이브 변환 때 주는 골드 (임시 수치).</summary>
+    /// <summary>새 게임에 주는 골드 (임시 수치).</summary>
     public const int StartingGold = 300;
 
     private readonly List<PartyMember> _roster;
@@ -152,43 +152,182 @@ public sealed class Company
     }
 
     /// <summary>
-    /// 창고의 아이템을 장착한다. 슬롯은 아이템의 계열이 정하고, 끼고 있던 아이템은 창고로 돌아간다.
-    /// 이미 낀 아이템이면 아무것도 하지 않고 true. 창고에 없거나 원정 중이면 false.
+    /// 창고의 아이템을 장착할 수 없는 이유. null이면 장착할 수 있다.
+    /// 원정 중, 창고에 없음, 장비가 아님, 착용 조건(패시브 레벨) 미달, 두손 무기를 낀 채 보조.
+    /// </summary>
+    public string? WhyCannotEquip(string memberId, string itemId, GameData data)
+    {
+        if (OnExpedition)
+        {
+            return "원정 중에는 장비를 바꿀 수 없습니다";
+        }
+
+        if (!data.Items.TryGetValue(itemId, out var item) || !item.IsEquipment)
+        {
+            return "장비가 아닙니다";
+        }
+
+        var member = Member(memberId);
+        if (member.ItemIn(item.Slot) == itemId)
+        {
+            return null;
+        }
+
+        if (StashCount(itemId) == 0)
+        {
+            return "창고에 없습니다";
+        }
+
+        var missing = member.Skills(data).Missing(item.Requirements);
+        if (missing.Count > 0)
+        {
+            return "요구: " + string.Join(", ", missing.Select(r => $"{data.Skills[r.SkillId].Name} Lv{r.Level}"));
+        }
+
+        if (item.Slot == EquipmentSlot.OffHand && member.ItemIn(EquipmentSlot.MainHand) is { } main && data.Items[main].TwoHanded)
+        {
+            return "두손 무기를 들고 있습니다";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 창고의 아이템을 그 부위에 장착한다. 끼고 있던 아이템은 창고로 돌아가고, 행동 칸은 첫 옵션으로 고른다.
+    /// 두손 무기를 끼면 보조도 창고로 돌아간다. 이미 낀 아이템이면 아무것도 하지 않고 true.
+    /// 장착할 수 없으면(<see cref="WhyCannotEquip"/>) false.
     /// </summary>
     public bool Equip(string memberId, string itemId, GameData data)
     {
-        if (OnExpedition)
+        if (WhyCannotEquip(memberId, itemId, data) is not null)
         {
             return false;
         }
 
         var member = Member(memberId);
-        var slot = data.Masteries[data.Items[itemId].Mastery].Slot;
-        var current = slot == EquipmentSlot.Weapon ? member.Weapon : member.Armor;
-        if (current == itemId)
+        var item = data.Items[itemId];
+        if (member.ItemIn(item.Slot) == itemId)
         {
             return true;
         }
 
-        if (!TakeFromStash(itemId))
+        TakeFromStash(itemId);
+        Unequip(memberId, item.Slot, data);
+        if (item.TwoHanded)
+        {
+            Unequip(memberId, EquipmentSlot.OffHand, data);
+        }
+
+        member.SetItem(item.Slot, itemId, data);
+        return true;
+    }
+
+    /// <summary>그 부위의 아이템을 빼서 창고에 넣는다. 원정 중이거나 비어 있으면 false.</summary>
+    public bool Unequip(string memberId, EquipmentSlot slot, GameData data)
+    {
+        var member = Member(memberId);
+        if (OnExpedition || member.ItemIn(slot) is not { } current)
         {
             return false;
         }
 
-        if (current is not null)
+        member.SetItem(slot, null, data);
+        AddToStash(current);
+        return true;
+    }
+
+    /// <summary>
+    /// 그 부위 아이템의 행동 칸 하나에서 후보를 고른다. 원정 중이거나, 아이템이 없거나, 칸·후보가 아니면 false.
+    /// 고르지 않게 된 행동이 든 전술은 잠긴다.
+    /// </summary>
+    public bool ChooseAbility(string memberId, EquipmentSlot slot, int abilityIndex, string optionId, GameData data) =>
+        !OnExpedition && Member(memberId).SetAbility(slot, abilityIndex, optionId, data);
+
+    /// <summary>상점에서 살 수 없는 이유. null이면 살 수 있다. 원정 중, 상점에 없는 아이템, 골드 부족.</summary>
+    public string? WhyCannotBuy(string itemId, GameData data)
+    {
+        if (OnExpedition)
         {
-            AddToStash(current);
+            return "원정 중에는 상점을 쓸 수 없습니다";
         }
 
-        if (slot == EquipmentSlot.Weapon)
+        if (!data.Items.TryGetValue(itemId, out var item) || !Shop.Sells(item))
         {
-            member.Weapon = itemId;
-        }
-        else
-        {
-            member.Armor = itemId;
+            return "상점에서 팔지 않습니다";
         }
 
+        return Gold < item.Price ? "골드가 모자랍니다" : null;
+    }
+
+    /// <summary>정가에 사서 창고에 넣는다. 살 수 없으면(<see cref="WhyCannotBuy"/>) false.</summary>
+    public bool Buy(string itemId, GameData data)
+    {
+        if (WhyCannotBuy(itemId, data) is not null)
+        {
+            return false;
+        }
+
+        Gold -= data.Items[itemId].Price;
+        AddToStash(itemId);
+        return true;
+    }
+
+    /// <summary>창고의 아이템 하나를 판다(<see cref="Shop.SellPrice"/>). 원정 중이거나 창고에 없으면 false.</summary>
+    public bool Sell(string itemId, GameData data)
+    {
+        if (OnExpedition || !data.Items.TryGetValue(itemId, out var item) || !TakeFromStash(itemId))
+        {
+            return false;
+        }
+
+        Gold += Shop.SellPrice(item);
+        return true;
+    }
+
+    /// <summary>
+    /// 그 장비를 제작할 수 없는 이유. null이면 만들 수 있다.
+    /// 원정 중, 제작법 없음, 재료 부족("재료가 모자랍니다: 철 조각 2/6"), 골드 부족.
+    /// </summary>
+    public string? WhyCannotCraft(string resultId, GameData data)
+    {
+        if (OnExpedition)
+        {
+            return "원정 중에는 제작할 수 없습니다";
+        }
+
+        if (!data.Recipes.TryGetValue(resultId, out var recipe))
+        {
+            return "제작법이 없습니다";
+        }
+
+        var missing = recipe.Materials.Where(m => StashCount(m.ItemId) < m.Count).ToList();
+        if (missing.Count > 0)
+        {
+            return "재료가 모자랍니다: " + string.Join(", ", missing.Select(m => $"{data.Items[m.ItemId].Name} {StashCount(m.ItemId)}/{m.Count}"));
+        }
+
+        return Gold < recipe.Gold ? "골드가 모자랍니다" : null;
+    }
+
+    /// <summary>재료와 골드를 내고 장비를 만들어 창고에 넣는다. 만들 수 없으면(<see cref="WhyCannotCraft"/>) false.</summary>
+    public bool Craft(string resultId, GameData data)
+    {
+        if (WhyCannotCraft(resultId, data) is not null)
+        {
+            return false;
+        }
+
+        var recipe = data.Recipes[resultId];
+        foreach (var material in recipe.Materials)
+        {
+            for (var i = 0; i < material.Count; i++)
+            {
+                TakeFromStash(material.ItemId);
+            }
+        }
+
+        Gold -= recipe.Gold;
+        AddToStash(resultId);
         return true;
     }
 
@@ -242,7 +381,7 @@ public sealed class Company
         Gold -= HirePrice(offerIndex);
         _recruitOffers.RemoveAt(offerIndex);
         var member = new PartyMember(
-            id, offer.Name, offer.Stats, template.Row, template.Weapon, template.Armor,
+            id, offer.Name, offer.Stats, template.Row, template.Equipment, null,
             new Dictionary<string, int>(), new Dictionary<string, int>(), [template.Tactics, template.Tactics]);
         _roster.Add(member);
         AddToLineup(id);
@@ -261,4 +400,13 @@ public sealed class Company
 
     /// <summary>출전 멤버 중 지금 세트에 잠긴 전술이 있는 멤버가 있는가 (있으면 전투를 시작할 수 없다).</summary>
     public bool HasLockedTactics(GameData data) => LineupMembers.Any(m => m.LockedTacticIndexes(data, ActiveTacticSet).Count > 0);
+
+    /// <summary>출전 멤버 중 착용 불가 장비를 낀 멤버가 있는가 (있으면 전투를 시작할 수 없다).</summary>
+    public bool HasUnwearableEquipment(GameData data) => LineupMembers.Any(m => m.UnwearableSlots(data).Count > 0);
+
+    /// <summary>출전 명단이 싸울 수 없는 이유 (잠긴 전술, 착용 불가 장비). null이면 싸울 수 있다.</summary>
+    public string? WhyLineupCannotFight(GameData data) =>
+        HasUnwearableEquipment(data) ? "착용할 수 없는 장비를 바꿔야 합니다"
+        : HasLockedTactics(data) ? "잠긴 전술을 고쳐야 합니다"
+        : null;
 }

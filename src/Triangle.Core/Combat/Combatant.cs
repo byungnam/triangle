@@ -16,6 +16,7 @@ public sealed class Combatant
         Skills = skills;
         Weapon = setup.Weapon;
         Armor = setup.Armor;
+        ArmorMasteries = setup.ArmorMasteries;
         Stats = setup.Stats;
         Row = setup.Row;
         Side = side;
@@ -35,6 +36,10 @@ public sealed class Combatant
     public SkillSet Skills { get; }
     public string? Weapon { get; }
     public string? Armor { get; }
+
+    /// <summary>입은 방어구 부위별 재질 계열.</summary>
+    public IReadOnlyList<string> ArmorMasteries { get; }
+
     public Stats Stats { get; }
     public Row Row { get; }
     public CombatSide Side { get; }

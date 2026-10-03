@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using Myra.Graphics2D;
 using Myra.Graphics2D.UI;
 using Triangle.Core.Data;
+using Triangle.Core.Items;
 using Triangle.Core.Masteries;
 using Triangle.Core.Progress;
 using Triangle.Core.Skills;
@@ -74,7 +75,7 @@ internal sealed class MasteryScene : IScene
 
         batch.Begin();
         _ui.Text(batch, _ui.BoldFont(28), $"숙련·패시브 — {_member.Name}", new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
-        var gear = $"장비: {ItemName(_member.Weapon)} / {ItemName(_member.Armor)}";
+        var gear = $"장비: {ItemText.Gear(_member.Equipment, _data)}";
         _ui.Text(batch, _ui.Font(16), gear, new Vector2(_bounds.Left + Margin, _bounds.Top + 58), Theme.TextDim);
 
         const string help = "장착한 장비로 싸우면 그 숙련이 오른다. 숙련 레벨 1당 포인트 1점. 배운 패시브는 되돌릴 수 없다.     Esc  전술 편집으로";
@@ -95,9 +96,9 @@ internal sealed class MasteryScene : IScene
         _bounds.Left + Margin * 2 + ListWidth, _bounds.Top + HeaderHeight,
         _bounds.Width - Margin * 3 - ListWidth, _bounds.Height - HeaderHeight - FooterHeight - 8);
 
-    /// <summary>"낡은 검 (검)"처럼 아이템과 계열.</summary>
-    private string ItemName(string? itemId) =>
-        itemId is null ? "없음" : $"{_data.Items[itemId].Name} ({_data.Masteries[_data.Items[itemId].Mastery].Name})";
+    /// <summary>그 계열의 아이템 중 행동 칸에 그 행동이 있는 것.</summary>
+    private IEnumerable<ItemDefinition> ItemsOf(string masteryId, string actionId) =>
+        _data.ItemsGranting(actionId).Where(i => i.Mastery == masteryId);
 
     // ── 위젯 트리 ──────────────────────────────────────────
 
@@ -136,10 +137,10 @@ internal sealed class MasteryScene : IScene
             VerticalAlignment = VerticalAlignment.Top,
         };
 
-        foreach (var (slot, label) in new[] { (EquipmentSlot.Weapon, "무기"), (EquipmentSlot.Armor, "방어구") })
+        foreach (var (kind, label) in new[] { (MasteryKind.Weapon, "무기"), (MasteryKind.Armor, "방어구") })
         {
             list.Widgets.Add(_w.Label(label, 17, Theme.Ally, bold: true));
-            foreach (var mastery in _data.MasteriesFor(slot))
+            foreach (var mastery in _data.MasteriesOf(kind))
             {
                 list.Widgets.Add(BuildMasteryButton(mastery));
             }
@@ -206,10 +207,10 @@ internal sealed class MasteryScene : IScene
             panel.Widgets.Add(BuildSkillRow(skill));
         }
 
-        // 이 무기로 쓰는 행동, 또는 이 트리의 스킬로 열리는 행동.
+        // 이 계열 아이템이 주는 행동, 또는 이 트리의 스킬로 열리는 행동.
         var treeSkills = skills.Select(s => s.Id).ToHashSet();
         var related = _data.Actions.Values
-            .Where(a => a.Weapon == mastery.Id || a.Requirements.Any(r => treeSkills.Contains(r.SkillId)))
+            .Where(a => ItemsOf(mastery.Id, a.Id).Any() || a.Requirements.Any(r => treeSkills.Contains(r.SkillId)))
             .ToList();
         if (related.Count > 0)
         {
@@ -219,7 +220,7 @@ internal sealed class MasteryScene : IScene
             foreach (var action in related)
             {
                 var missing = set.Missing(action.Requirements);
-                var weapon = action.Weapon is null ? "무기 무관" : $"{_data.Masteries[action.Weapon].Name} 필요";
+                var weapon = action.Universal ? "공용" : $"{string.Join(", ", _data.ItemsGranting(action.Id).Select(i => i.Name).Distinct())}에서 선택";
                 var text = missing.Count == 0
                     ? $"{action.Name} ({weapon}) — 배움"
                     : $"{action.Name} ({weapon}) — {string.Join(", ", missing.Select(m => $"{_data.Skills[m.SkillId].Name} {m.Level}"))} 필요";

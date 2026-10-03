@@ -11,7 +11,7 @@ public class RecruitmentTests
     private static readonly GameData Data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
 
     private static Company NewCompany(int gold) =>
-        new([new PartyMember("a", "A", new Stats(10, 10, 20, 10, 10), Row.Front, null, null,
+        new([new PartyMember("a", "A", new Stats(10, 10, 20, 10, 10), Row.Front, TestGear.Of(), null,
                 new Dictionary<string, int>(), new Dictionary<string, int>(), [])],
             ["a"], gold, new Dictionary<string, int>(), activeTacticSet: 0, nextSeed: 9);
 
@@ -46,7 +46,7 @@ public class RecruitmentTests
         Assert.Equal(1000 - offer.Price, company.Gold);
         Assert.Equal(2, company.RecruitOffers.Count);
         Assert.Equal((offer.Name, offer.Stats, template.Row), (hired.Name, hired.Stats, template.Row));
-        Assert.Equal((template.Weapon, template.Armor), (hired.Weapon, hired.Armor));
+        Assert.Equal(template.Equipment, hired.Equipment);
         Assert.Empty(company.Stash); // 창고에서 빼지 않는다
         Assert.Empty(hired.MasteryXp);
         Assert.Empty(hired.SkillLevels);
@@ -89,7 +89,7 @@ public class RecruitmentTests
     {
         foreach (var template in Data.Recruits.Values)
         {
-            var member = new PartyMember("r", "r", template.StatsMin, template.Row, template.Weapon, template.Armor,
+            var member = new PartyMember("r", "r", template.StatsMin, template.Row, template.Equipment, null,
                 new Dictionary<string, int>(), new Dictionary<string, int>(), [template.Tactics]);
             Assert.Empty(member.LockedTacticIndexes(Data, 0));
             Assert.Contains(template.Tactics, t => t.Condition == Condition.Always);

@@ -282,7 +282,7 @@
   {
     "id": "first_aid",
     "name": "응급 처치",
-    "description": "임시 수치. 공용 자기 회복: 턴과 MP를 써서 자기 HP를 채운다",
+    "description": "임시 수치. 방패의 행동: 턴과 MP를 써서 자기 HP를 채운다",
     "hpCost": 0,
     "mpCost": 15,
     "effect": "Heal",
@@ -294,7 +294,6 @@
     "scope": "Single",
     "ignoresCover": false,
     "tags": [],
-    "requirements": [],
-    "universal": true
+    "requirements": []
   }
 ]

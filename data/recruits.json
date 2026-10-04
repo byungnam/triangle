@@ -97,18 +97,12 @@
     "tactics": [
       {
         "priority": 1,
-        "condition": "SelfHpAtMost",
-        "value": 30,
-        "actionId": "first_aid"
-      },
-      {
-        "priority": 2,
         "condition": "SelfMpAtMost",
         "value": 20,
         "actionId": "focus"
       },
       {
-        "priority": 3,
+        "priority": 2,
         "condition": "Always",
         "value": 0,
         "actionId": "fire_arrow"
@@ -158,18 +152,12 @@
     "tactics": [
       {
         "priority": 1,
-        "condition": "SelfHpAtMost",
-        "value": 30,
-        "actionId": "first_aid"
-      },
-      {
-        "priority": 2,
         "condition": "SelfMpAtMost",
         "value": 20,
         "actionId": "focus"
       },
       {
-        "priority": 3,
+        "priority": 2,
         "condition": "Always",
         "value": 0,
         "actionId": "magic_bolt"
@@ -220,12 +208,6 @@
     "tactics": [
       {
         "priority": 1,
-        "condition": "SelfHpAtMost",
-        "value": 30,
-        "actionId": "first_aid"
-      },
-      {
-        "priority": 2,
         "condition": "Always",
         "value": 0,
         "actionId": "basic_attack"

@@ -231,7 +231,7 @@ public class GameDataLoaderTests
     public void Rejects_bad_zones_and_recruit_templates()
     {
         const string zones = """
-            [ { "id": "z", "name": "지역", "maxBattles": 0, "equipmentDestroyChance": 120,
+            [ { "id": "z", "name": "지역", "maxBattles": 0,
                 "encounters": [ { "encounterId": "ghost", "weight": 0 } ],
                 "rewards": { "goldMin": 10, "goldMax": 5, "itemDrops": [ { "itemId": "ghost_item", "chance": 101 } ],
                              "equipmentDrop": { "chance": 50, "minTier": 3, "maxTier": 2 } } },
@@ -261,7 +261,6 @@ public class GameDataLoaderTests
             Masteries, Skills, Actions, Encounters(), itemsJson: items, zonesJson: zones, recruitsJson: recruits)).Errors;
 
         Assert.Contains("zones.json 'z': maxBattles must be at least 1, got 0", errors);
-        Assert.Contains("zones.json 'z': equipmentDestroyChance must be 0-100, got 120", errors);
         Assert.Contains("zones.json 'z': unknown encounter 'ghost'", errors);
         Assert.Contains("zones.json 'z': weight of 'ghost' must be at least 1, got 0", errors);
         Assert.Contains("zones.json 'z': goldMax 5 is less than goldMin 10", errors);

@@ -105,7 +105,7 @@ internal sealed class ExpeditionScene : IScene
         _ui.Text(batch, font, progress, new Vector2(x, _bounds.Top + 24), Theme.Text);
 
         var (badge, color) = Zone.Permadeath
-            ? ($"영구 사망 · 장비 파괴 {Zone.EquipmentDestroyChance}%", Theme.Enemy)
+            ? ($"영구 사망 · 장비 파괴 {ExpeditionRules.EquipmentDestroyChance}%", Theme.Enemy)
             : ("사망 페널티 없음", Theme.Heal);
         var badgeFont = _ui.Font(17);
         _ui.Text(batch, badgeFont, badge, new Vector2(x - 24 - badgeFont.MeasureString(badge).X, _bounds.Top + 28), color);

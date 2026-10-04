@@ -21,9 +21,6 @@ public sealed record ZoneDefinition
     /// <summary>참이면 쓰러진 캐릭터가 로스터에서 삭제된다. 거짓이면 원정이 끝날 때 회복한다.</summary>
     public bool Permadeath { get; init; }
 
-    /// <summary>영구 사망 때 장착 아이템이 하나씩 파괴될 확률 (%). 남은 아이템은 들고 있는 전리품이 된다.</summary>
-    public int EquipmentDestroyChance { get; init; }
-
     public required IReadOnlyList<ZoneEncounter> Encounters { get; init; }
 
     public ZoneRewards Rewards { get; init; } = new();

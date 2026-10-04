@@ -20,6 +20,9 @@ public static class ExpeditionRules
     private const int LootStream = 2;
     private const int DeathStream = 3;
 
+    /// <summary>영구 사망 때 쓰러진 멤버의 장착 아이템이 각각 파괴될 확률 (%). 모든 지역에서 같다.</summary>
+    public const int EquipmentDestroyChance = 50;
+
     /// <summary>출정할 수 없는 이유. null이면 출정할 수 있다.</summary>
     public static string? WhyCannotStart(Company company, GameData data, string zoneId)
     {
@@ -103,7 +106,7 @@ public static class ExpeditionRules
     /// 전투 결과를 반영한다. 원정이 끝났으면 그 요약을, 계속할 수 있으면 null을 돌려준다.
     /// - HP·MP를 갱신하고 쓰러진 멤버를 표시한다. 숙련 경험치는 바로 준다.
     /// - 이기면 전리품(골드, 정해진 아이템, 티어 범위의 장비)을 굴려 들고 있는 전리품에 더한다. 마지막 전투면 클리어 보너스를 받고 끝난다.
-    /// - 영구 사망 지역이면 쓰러진 멤버를 로스터에서 삭제한다. 장착 아이템(최대 5개)은 하나씩 확률로 파괴되고, 남은 것은 들고 간다.
+    /// - 영구 사망 지역이면 쓰러진 멤버를 로스터에서 삭제한다. 장착 아이템(최대 5개)은 각각 따로 <see cref="EquipmentDestroyChance"/> 확률로 파괴되고, 남은 것은 들고 간다.
     /// - 지면(전멸) 전리품을 잃고 끝난다. 무승부는 강제 귀환이다(전리품 확정).
     /// </summary>
     public static ExpeditionSummary? ApplyResult(Company company, GameData data, CombatResult result)
@@ -152,7 +155,7 @@ public static class ExpeditionRules
             {
                 foreach (var item in EquipmentSlots.All.Select(member.ItemIn).OfType<string>())
                 {
-                    (random.Next(100) < zone.EquipmentDestroyChance ? destroyed : recovered).Add(item);
+                    (random.Next(100) < EquipmentDestroyChance ? destroyed : recovered).Add(item);
                 }
 
                 company.RemoveMember(member.Id);

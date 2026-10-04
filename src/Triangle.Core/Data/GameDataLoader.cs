@@ -455,7 +455,6 @@ public static class GameDataLoader
             errors.Add($"{at}: maxBattles must be at least 1, got {z.MaxBattles}");
         }
 
-        DataValidation.RequirePercent(z.EquipmentDestroyChance, $"{at}: equipmentDestroyChance", errors);
         if (z.Encounters.Count == 0)
         {
             errors.Add($"{at}: needs at least one encounter");

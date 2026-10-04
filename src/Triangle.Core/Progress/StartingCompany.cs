@@ -57,32 +57,38 @@ public static class StartingCompany
     private static List<PartyMember> Members() =>
     [
         // 전위 탱커: 받는 피해를 줄이고(방어 기술) 최대 HP를 늘린다(체력 단련). 공격은 기본 공격뿐이다.
+        // HP가 35% 이하면 응급 처치로 버틴다.
         new PartyMember("ally_godric", "고드릭", new Stats(15, 12, 26, 20, 12), Row.Front, Gear("old_sword", "plate", offHand: "wooden_shield"), null,
             new Dictionary<string, int> { ["plate"] = Xp(4) },
             new Dictionary<string, int> { ["defense"] = 2, ["endurance"] = 1 },
             [
-                [T(1, Condition.Always, 0, "basic_attack")],
+                [
+                    T(1, Condition.SelfHpAtMost, 35, "first_aid"),
+                    T(2, Condition.Always, 0, "basic_attack"),
+                ],
                 [T(1, Condition.Always, 0, "basic_attack")],
             ]),
 
-        // 후위 궁수: 첫 턴과 4턴마다 독화살(없는 적 우선), 그 외 화살. MP가 15% 이하면 기본 공격으로 아낀다.
+        // 후위 궁수: 첫 턴과 4턴마다 독화살(없는 적 우선), 그 외 화살. HP가 30% 이하면 응급 처치,
+        // MP가 15% 이하면 정신 집중으로 채운다.
         new PartyMember("ally_elsbeth", "엘스베트", new Stats(10, 14, 20, 24, 13), Row.Back, Gear("hunting_bow", "leather"), null,
             new Dictionary<string, int> { ["bow"] = Xp(2) },
             new Dictionary<string, int> { ["archery"] = 2 },
             [
                 // 세트 1
                 [
-                    T(1, Condition.SelfMpAtMost, 15, "basic_attack"),
-                    T(2, Condition.OnTurn, 1, "poison_arrow"),
-                    T(3, Condition.EveryNthTurn, 4, "poison_arrow"),
-                    T(4, Condition.Always, 0, "fire_arrow"),
+                    T(1, Condition.SelfHpAtMost, 30, "first_aid"),
+                    T(2, Condition.SelfMpAtMost, 15, "focus"),
+                    T(3, Condition.OnTurn, 1, "poison_arrow"),
+                    T(4, Condition.EveryNthTurn, 4, "poison_arrow"),
+                    T(5, Condition.Always, 0, "fire_arrow"),
                 ],
                 // 세트 2: 기본 전술
                 [T(1, Condition.Always, 0, "fire_arrow")],
             ]),
 
         // 후위 마법사: 화염구(지속 피해)를 주로 쓰고, 싸움이 길어지면 4턴마다 약화를 건다.
-        // MP가 25% 이하면 정신 집중으로 채운다. 첫 턴 약화는 짧은 전투에서 MP와 턴만 써서 뺐다.
+        // HP가 30% 이하면 응급 처치, MP가 25% 이하면 정신 집중으로 채운다. 첫 턴 약화는 짧은 전투에서 MP와 턴만 써서 뺐다.
         new PartyMember("ally_morwen", "모르웬", new Stats(9, 11, 19, 27, 12), Row.Back, Gear("apprentice_staff", "cloth"),
             new Dictionary<EquipmentSlot, IReadOnlyList<string>> { [EquipmentSlot.MainHand] = ["fireball", "weaken"] },
             new Dictionary<string, int> { ["staff"] = Xp(3), ["cloth"] = Xp(2) },
@@ -90,9 +96,10 @@ public static class StartingCompany
             [
                 // 세트 1
                 [
-                    T(1, Condition.SelfMpAtMost, 25, "focus"),
-                    T(2, Condition.EveryNthTurn, 4, "weaken"),
-                    T(3, Condition.Always, 0, "fireball"),
+                    T(1, Condition.SelfHpAtMost, 30, "first_aid"),
+                    T(2, Condition.SelfMpAtMost, 25, "focus"),
+                    T(3, Condition.EveryNthTurn, 4, "weaken"),
+                    T(4, Condition.Always, 0, "fireball"),
                 ],
                 // 세트 2: 기본 전술 (행동 칸에서 화염구를 골랐으므로 마력탄 대신 화염구)
                 [T(1, Condition.Always, 0, "fireball")],

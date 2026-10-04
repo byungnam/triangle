@@ -264,7 +264,7 @@
   {
     "id": "focus",
     "name": "정신 집중",
-    "description": "임시 수치",
+    "description": "임시 수치. 공용 자기 회복: 턴을 써서 자기 MP를 채운다",
     "hpCost": 0,
     "mpCost": 0,
     "effect": "RestoreMp",
@@ -276,12 +276,25 @@
     "scope": "Single",
     "ignoresCover": false,
     "tags": [],
-    "requirements": [
-      {
-        "skillId": "meditation",
-        "level": 2
-      }
-    ],
+    "requirements": [],
+    "universal": true
+  },
+  {
+    "id": "first_aid",
+    "name": "응급 처치",
+    "description": "임시 수치. 공용 자기 회복: 턴과 MP를 써서 자기 HP를 채운다",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "Heal",
+    "damageType": "Magical",
+    "power": 30,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
     "universal": true
   }
 ]

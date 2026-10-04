@@ -50,11 +50,11 @@
   {
     "id": "abandoned_fort",
     "name": "버려진 요새",
-    "description": "보통 지역. 영구 사망, 장비 파괴 30%. 수치는 임시.",
+    "description": "보통 지역. 영구 사망, 장비 파괴 50%. 수치는 임시.",
     "difficulty": 2,
     "maxBattles": 4,
     "permadeath": true,
-    "equipmentDestroyChance": 30,
+    "equipmentDestroyChance": 50,
     "encounters": [
       {
         "encounterId": "deserters",

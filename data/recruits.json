@@ -42,6 +42,12 @@
     "tactics": [
       {
         "priority": 1,
+        "condition": "SelfHpAtMost",
+        "value": 30,
+        "actionId": "first_aid"
+      },
+      {
+        "priority": 2,
         "condition": "Always",
         "value": 0,
         "actionId": "basic_attack"
@@ -93,7 +99,7 @@
         "priority": 1,
         "condition": "SelfMpAtMost",
         "value": 20,
-        "actionId": "basic_attack"
+        "actionId": "focus"
       },
       {
         "priority": 2,
@@ -148,7 +154,7 @@
         "priority": 1,
         "condition": "SelfMpAtMost",
         "value": 20,
-        "actionId": "basic_attack"
+        "actionId": "focus"
       },
       {
         "priority": 2,

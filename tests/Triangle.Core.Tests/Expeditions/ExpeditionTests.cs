@@ -48,10 +48,8 @@ public class ExpeditionTests
                          "itemDrops": [ { "itemId": "plate_armor", "chance": 100 } ] } },
           { "id": "mixed", "name": "갈림길", "maxBattles": 3,
             "encounters": [ { "encounterId": "dummy", "weight": 1 }, { "encounterId": "wall", "weight": 3 } ] },
-          { "id": "grave0", "name": "묘지", "maxBattles": 3, "permadeath": true, "equipmentDestroyChance": 0,
+          { "id": "grave", "name": "묘지", "maxBattles": 3, "permadeath": true,
             "encounters": [ { "encounterId": "dummy", "weight": 1 } ], "rewards": { "goldMin": 5, "goldMax": 5 } },
-          { "id": "grave100", "name": "깊은 묘지", "maxBattles": 3, "permadeath": true, "equipmentDestroyChance": 100,
-            "encounters": [ { "encounterId": "dummy", "weight": 1 } ] },
           { "id": "vault", "name": "보물고", "maxBattles": 3, "encounters": [ { "encounterId": "dummy", "weight": 1 } ],
             "rewards": { "equipmentDrop": { "chance": 100, "minTier": 2, "maxTier": 2 } } },
           { "id": "arena", "name": "투기장", "maxBattles": 3, "encounters": [ { "encounterId": "brute", "weight": 1 } ] } ]
@@ -297,10 +295,10 @@ public class ExpeditionTests
     }
 
     [Fact]
-    public void Permadeath_deletes_the_fallen_and_recovers_their_gear_when_nothing_breaks()
+    public void Permadeath_deletes_the_fallen_and_rolls_each_piece_of_their_gear()
     {
         var company = NewCompany();
-        ExpeditionRules.Start(company, Data, "grave0");
+        ExpeditionRules.Start(company, Data, "grave");
 
         ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("a", 0, 0), ("b", 50, 5)));
 
@@ -310,60 +308,42 @@ public class ExpeditionTests
         Assert.Equal(["b"], expedition.Members.Select(m => m.Id));
         var report = expedition.LastBattle!;
         Assert.Equal(["A"], report.Deaths);
-        Assert.Empty(report.Destroyed);
-        Assert.Equal(FullGearItems, report.Recovered);
+        // 아이템마다 파괴 아니면 회수, 둘 중 하나다.
+        Assert.Equal(FullGearItems.Order(), report.Destroyed.Concat(report.Recovered).Order());
 
         var summary = ExpeditionRules.Return(company, Data);
 
         Assert.Equal(["A"], summary.Deaths);
-        Assert.All(FullGearItems, item => Assert.Equal(1, company.StashCount(item)));
+        Assert.All(report.Recovered, item => Assert.Equal(1, company.StashCount(item)));
+        Assert.All(report.Destroyed, item => Assert.Equal(0, company.StashCount(item)));
     }
 
     [Fact]
-    public void Permadeath_destroys_gear_by_chance()
+    public void Destroy_chance_is_the_same_constant_rolled_per_item_with_the_expedition_seed()
     {
-        var company = NewCompany();
-        ExpeditionRules.Start(company, Data, "grave100");
-
-        ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("a", 0, 0), ("b", 50, 5)));
-
-        var report = company.Expedition!.LastBattle!;
-        Assert.Equal(FullGearItems, report.Destroyed);
-        Assert.Empty(report.Recovered);
-        Assert.Empty(company.Expedition.CarriedItems);
-    }
-
-    [Fact]
-    public void Destroy_chance_is_rolled_with_the_expedition_seed()
-    {
-        // 30%로 굴린 결과는 시드가 같으면 같고, 여러 시드에 걸쳐 대략 30%다.
-        var zone = Data.Zones["grave0"] with { Id = "grave30", EquipmentDestroyChance = 30 };
-        var data = GameDataLoader.Parse(
-            """[ { "id": "sword", "name": "검", "kind": "Weapon" }, { "id": "plate", "name": "판금", "kind": "Armor" } ]""",
-            "[]",
-            """[ { "id": "strike", "name": "공격", "power": 10, "universal": true } ]""",
-            "[ " + Enemy("dummy", 1, 1, attacks: false) + " ]",
-            itemsJson: ItemsJson,
-            zonesJson: System.Text.Json.JsonSerializer.Serialize(new[] { zone }, GameDataJson.Options));
-
+        // 결과는 시드가 같으면 같고, 여러 시드에 걸쳐 아이템마다 대략 상수 확률(50%)로 파괴된다.
         IReadOnlyList<string> Destroyed(int seed)
         {
             var company = new Company([Member("a"), Member("b")], ["a", "b"], 0, new Dictionary<string, int>(), 0, seed);
-            ExpeditionRules.Start(company, data, "grave30");
-            ExpeditionRules.ApplyResult(company, data, Result(CombatOutcome.Victory, company, ("a", 0, 0), ("b", 50, 5)));
+            ExpeditionRules.Start(company, Data, "grave");
+            ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("a", 0, 0), ("b", 50, 5)));
             return company.Expedition!.LastBattle!.Destroyed;
         }
 
         Assert.Equal(Destroyed(3), Destroyed(3));
-        var total = Enumerable.Range(0, 500).Sum(seed => Destroyed(seed).Count);
-        Assert.InRange(total * 100 / (500 * FullGearItems.Length), 25, 35);
+        var counts = Enumerable.Range(0, 500).Select(seed => Destroyed(seed).Count).ToList();
+        var percent = counts.Sum() * 100 / (500 * FullGearItems.Length);
+        Assert.InRange(percent, ExpeditionRules.EquipmentDestroyChance - 5, ExpeditionRules.EquipmentDestroyChance + 5);
+        // 독립적으로 굴리므로 전부 파괴와 전부 회수가 모두 나온다.
+        Assert.Contains(FullGearItems.Length, counts);
+        Assert.Contains(0, counts);
     }
 
     [Fact]
     public void Permadeath_wipe_deletes_everyone_and_the_cheapest_recruit_becomes_free()
     {
         var company = NewCompany(gold: 30);
-        ExpeditionRules.Start(company, Data, "grave0");
+        ExpeditionRules.Start(company, Data, "grave");
         ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("a", 50, 5), ("b", 50, 5)));
 
         var summary = ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Defeat, company, ("a", 0, 0), ("b", 0, 0)));

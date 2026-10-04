@@ -6,7 +6,6 @@
     "difficulty": 1,
     "maxBattles": 3,
     "permadeath": false,
-    "equipmentDestroyChance": 0,
     "encounters": [
       {
         "encounterId": "wild_dogs",
@@ -50,11 +49,10 @@
   {
     "id": "abandoned_fort",
     "name": "버려진 요새",
-    "description": "보통 지역. 영구 사망, 장비 파괴 50%. 수치는 임시.",
+    "description": "보통 지역. 영구 사망. 수치는 임시.",
     "difficulty": 2,
     "maxBattles": 4,
     "permadeath": true,
-    "equipmentDestroyChance": 50,
     "encounters": [
       {
         "encounterId": "deserters",
@@ -102,11 +100,10 @@
   {
     "id": "ashen_capital",
     "name": "재의 왕도",
-    "description": "어려움 지역. 영구 사망, 장비 파괴 60%. 수치는 임시.",
+    "description": "어려움 지역. 영구 사망. 수치는 임시.",
     "difficulty": 3,
     "maxBattles": 5,
     "permadeath": true,
-    "equipmentDestroyChance": 60,
     "encounters": [
       {
         "encounterId": "dead_infantry",

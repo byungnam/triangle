@@ -251,7 +251,7 @@ internal sealed class VillageScene : IScene
             content.Widgets.Add(Label(zone.Name, 20, selected ? Theme.Text : Theme.Ally, bold: true));
             content.Widgets.Add(Label($"난이도 {zone.Difficulty} · 전투 {zone.MaxBattles}회", 15, Theme.TextDim));
             content.Widgets.Add(zone.Permadeath
-                ? Label($"영구 사망: 쓰러지면 캐릭터를 잃고, 장비가 {zone.EquipmentDestroyChance}% 확률로 파괴됩니다", 15, Theme.Enemy)
+                ? Label($"영구 사망: 쓰러지면 캐릭터를 잃고, 장비가 {ExpeditionRules.EquipmentDestroyChance}% 확률로 파괴됩니다", 15, Theme.Enemy)
                 : Label("사망 페널티 없음: 쓰러져도 원정이 끝나면 회복합니다", 15, Theme.Heal));
             if (zone.Description is { } description)
             {

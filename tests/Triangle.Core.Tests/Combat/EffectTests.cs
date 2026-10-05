@@ -221,13 +221,15 @@ public class EffectTests
             "[]",
             """
             [ { "id": "a", "name": "A", "applies": [ { "effectId": "ghost", "duration": 2 } ] },
-              { "id": "b", "name": "B", "applies": [ { "effectId": "poison", "duration": 0 } ] } ]
+              { "id": "b", "name": "B", "applies": [ { "effectId": "poison", "duration": 0 } ] },
+              { "id": "c", "name": "C", "delayPercent": 0 } ]
             """,
             """[ { "id": "camp", "name": "야영지", "units": [ { "id": "e", "name": "적", "row": "Front", "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 } } ] } ]""",
             """[ { "id": "poison", "name": "독", "tickHpPercent": -4 }, { "id": "bad", "name": "과함", "tickHpPercent": -150 } ]""")).Errors;
 
         Assert.Contains("actions.json 'a': applies unknown effect 'ghost'", errors);
         Assert.Contains("actions.json 'b': duration of 'poison' must be at least 1, got 0", errors);
+        Assert.Contains("actions.json 'c': delayPercent must be at least 1, got 0", errors);
         Assert.Contains("effects.json 'bad': tickHpPercent must be -100..100, got -150", errors);
     }
 }

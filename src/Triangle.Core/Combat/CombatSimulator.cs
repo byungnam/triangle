@@ -174,7 +174,10 @@ public sealed class CombatSimulator
         return null;
     }
 
-    /// <summary>행동 뒤 대기. 대기 감소 보너스는 태그 없는 것(전체 속도)과 방금 쓴 행동의 태그 것을 더한다.</summary>
+    /// <summary>
+    /// 행동 뒤 대기. 방금 쓴 행동의 대기 배율을 먼저 곱하고, 대기 감소 보너스는 태그 없는 것(전체 속도)과
+    /// 방금 쓴 행동의 태그 것을 더한다. 행동하지 못한 턴은 배율 없이 기본 대기다.
+    /// </summary>
     private long ActionDelay(Combatant c, ActionDefinition? used)
     {
         var speed = Math.Max(1, c.Stats.Speed);
@@ -182,7 +185,8 @@ public sealed class CombatSimulator
         var reduction = SignedReduction(
             c.Skills.Bonus(BonusKind.DelayReductionPercent, used?.BonusTags(c.Weapon))
             + c.EffectModifier(EffectModifierKind.DelayReductionPercent));
-        var delay = (long)baseDelay * (100 - reduction) / 100;
+        var delayPercent = used?.DelayPercent ?? ActionDefinition.DefaultDelayPercent;
+        var delay = (long)baseDelay * delayPercent / 100 * (100 - reduction) / 100;
         return Math.Max(1, delay);
     }
 

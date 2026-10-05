@@ -81,6 +81,14 @@ public sealed record ActionDefinition
     /// <summary>참이면 후위를 노릴 때 전위의 엄호를 받지 않는다.</summary>
     public bool IgnoresCover { get; init; }
 
+    /// <summary>
+    /// 이 행동 뒤 대기의 배율(%). 기본 100은 보정 없음, 150이면 1.5배로 느리고 70이면 빠르다.
+    /// 대기 감소 보너스·효과는 이 배율을 곱한 뒤에 적용한다.
+    /// </summary>
+    public int DelayPercent { get; init; } = DefaultDelayPercent;
+
+    public const int DefaultDelayPercent = 100;
+
     /// <summary>스킬 보너스가 어떤 행동에 적용되는지 정하는 분류. 장착한 무기 계열도 자동으로 더해진다.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];
 

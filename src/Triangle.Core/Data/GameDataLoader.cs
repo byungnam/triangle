@@ -281,6 +281,11 @@ public static class GameDataLoader
         DataValidation.RequireNonNegative(a.HpCost, $"{at}: hpCost", errors);
         DataValidation.RequireNonNegative(a.MpCost, $"{at}: mpCost", errors);
         DataValidation.RequireNonNegative(a.Power, $"{at}: power", errors);
+        if (a.DelayPercent < 1)
+        {
+            errors.Add($"{at}: delayPercent must be at least 1, got {a.DelayPercent}");
+        }
+
         DataValidation.ValidateRequirements(a.Requirements, $"{at} requirement", skills, errors);
     }
 

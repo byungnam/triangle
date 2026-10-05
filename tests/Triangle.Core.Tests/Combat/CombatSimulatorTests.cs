@@ -35,7 +35,7 @@ public class CombatSimulatorTests
 
     private static readonly ActionDefinition Expensive = Strike with { Id = "expensive", MpCost = 100_000 };
 
-    private static readonly ActionDefinition SlowStrike = Strike with { Id = "slow_strike", DelayPercent = 200 };
+    private static readonly ActionDefinition SlowStrike = Strike with { Id = "slow_strike", Delay = 2000 };
 
     private static readonly Dictionary<string, ActionDefinition> Actions =
         new[] { Strike, Snipe, PiercingSnipe, Sweep, Heal, FrontOnlyStrike, Expensive, SlowStrike }.ToDictionary(s => s.Id);
@@ -85,7 +85,7 @@ public class CombatSimulatorTests
     }
 
     [Fact]
-    public void Action_delay_percent_scales_the_wait_after_that_action()
+    public void Action_delay_replaces_the_base_wait_after_that_action()
     {
         var result = Run(
             [Unit("heavy", vital: 1000, tactics: [Always("slow_strike")])],

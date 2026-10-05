@@ -11,7 +11,7 @@ namespace Triangle.Core.Combat;
 /// </summary>
 /// <remarks>
 /// 행동 순서는 ATB 방식이다. 다음 행동 시각이 가장 이른 유닛이 행동하고,
-/// 행동 후 TimeConstant / speed 만큼(스킬의 대기 감소 적용) 뒤로 밀린다.
+/// 행동 후 (행동의 delay, 없으면 TimeConstant) / speed 만큼(스킬의 대기 감소 적용) 뒤로 밀린다.
 /// 턴이 오면 전술을 우선순위 순으로 훑어 조건이 참인 첫 전술의 행동을 쓴다.
 /// 그 행동의 비용을 낼 수 없거나 대상이 없으면 턴을 잃는다.
 /// 스킬과 장비는 패시브 보너스(위력, 회복, MP 소모, 대기, 최대 HP/MP, 받는 피해, 방어)로만 작용한다.
@@ -175,18 +175,17 @@ public sealed class CombatSimulator
     }
 
     /// <summary>
-    /// 행동 뒤 대기. 방금 쓴 행동의 대기 배율을 먼저 곱하고, 대기 감소 보너스는 태그 없는 것(전체 속도)과
-    /// 방금 쓴 행동의 태그 것을 더한다. 행동하지 못한 턴은 배율 없이 기본 대기다.
+    /// 행동 뒤 대기. 방금 쓴 행동의 대기 수치(없으면 TimeConstant)를 속도로 나누고, 대기 감소 보너스는
+    /// 태그 없는 것(전체 속도)과 방금 쓴 행동의 태그 것을 더한다. 행동하지 못한 턴은 기본 대기다.
     /// </summary>
     private long ActionDelay(Combatant c, ActionDefinition? used)
     {
         var speed = Math.Max(1, c.Stats.Speed);
-        var baseDelay = _rules.TimeConstant / speed;
+        var baseDelay = (used?.Delay ?? _rules.TimeConstant) / speed;
         var reduction = SignedReduction(
             c.Skills.Bonus(BonusKind.DelayReductionPercent, used?.BonusTags(c.Weapon))
             + c.EffectModifier(EffectModifierKind.DelayReductionPercent));
-        var delayPercent = used?.DelayPercent ?? ActionDefinition.DefaultDelayPercent;
-        var delay = (long)baseDelay * delayPercent / 100 * (100 - reduction) / 100;
+        var delay = (long)baseDelay * (100 - reduction) / 100;
         return Math.Max(1, delay);
     }
 

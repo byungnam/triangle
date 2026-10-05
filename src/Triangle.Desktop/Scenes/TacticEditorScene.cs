@@ -557,9 +557,9 @@ internal sealed class TacticEditorScene : IScene
             cost.Add($"HP {action.HpCost}");
         }
 
-        if (action.DelayPercent != ActionDefinition.DefaultDelayPercent)
+        if (action.Delay is { } delay)
         {
-            cost.Add($"대기 {action.DelayPercent}%");
+            cost.Add($"대기 {delay}");
         }
 
         return cost.Count == 0 ? action.Name : $"{action.Name} ({string.Join(", ", cost)})";

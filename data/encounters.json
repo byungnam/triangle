@@ -805,8 +805,9 @@
         "id": "cult_mage",
         "name": "교단 주술사",
         "row": "Back",
-        "weapon": "staff",
+        "weapon": "fire",
         "armor": "cloth",
+        "powerMultiplierPercent": 200,
         "stats": {
           "str": 6,
           "dex": 8,
@@ -815,7 +816,7 @@
           "speed": 9
         },
         "skills": {
-          "magic_control": 2
+          "pyromancy": 2
         },
         "tactics": [
           {
@@ -834,7 +835,7 @@
             "priority": 3,
             "condition": "Always",
             "value": 0,
-            "actionId": "magic_bolt"
+            "actionId": "ember"
           }
         ]
       },

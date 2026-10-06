@@ -35,6 +35,110 @@
     ]
   },
   {
+    "id": "spearmanship",
+    "name": "창술",
+    "description": "임시 수치",
+    "mastery": "spear",
+    "rank": 1,
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percentPerLevel": 5,
+        "tag": "spear"
+      }
+    ]
+  },
+  {
+    "id": "long_reach",
+    "name": "긴 자루",
+    "description": "임시 수치",
+    "mastery": "spear",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "spearmanship",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "DelayReductionPercent",
+        "percentPerLevel": 4,
+        "tag": "spear"
+      }
+    ]
+  },
+  {
+    "id": "axemanship",
+    "name": "도끼술",
+    "description": "임시 수치",
+    "mastery": "axe",
+    "rank": 1,
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percentPerLevel": 5,
+        "tag": "axe"
+      }
+    ]
+  },
+  {
+    "id": "ferocity",
+    "name": "광포",
+    "description": "임시 수치",
+    "mastery": "axe",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "axemanship",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MaxHpPercent",
+        "percentPerLevel": 4
+      }
+    ]
+  },
+  {
+    "id": "mace_mastery",
+    "name": "둔기술",
+    "description": "임시 수치",
+    "mastery": "mace",
+    "rank": 1,
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percentPerLevel": 5,
+        "tag": "mace"
+      }
+    ]
+  },
+  {
+    "id": "heavy_hand",
+    "name": "묵직한 손",
+    "description": "임시 수치",
+    "mastery": "mace",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "mace_mastery",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MpCostReductionPercent",
+        "percentPerLevel": 5,
+        "tag": "mace"
+      }
+    ]
+  },
+  {
     "id": "archery",
     "name": "활 숙련",
     "description": "임시 수치",
@@ -90,29 +194,99 @@
     ]
   },
   {
-    "id": "magic_control",
-    "name": "마력 제어",
+    "id": "crossbow_mastery",
+    "name": "석궁술",
     "description": "임시 수치",
-    "mastery": "staff",
+    "mastery": "crossbow",
     "rank": 1,
     "prerequisites": [],
     "bonuses": [
       {
         "kind": "PowerPercent",
         "percentPerLevel": 5,
-        "tag": "staff"
+        "tag": "crossbow"
       }
     ]
   },
   {
-    "id": "mana_efficiency",
-    "name": "마나 효율",
+    "id": "reloading",
+    "name": "장전 숙달",
     "description": "임시 수치",
-    "mastery": "staff",
+    "mastery": "crossbow",
     "rank": 2,
     "prerequisites": [
       {
-        "skillId": "magic_control",
+        "skillId": "crossbow_mastery",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "DelayReductionPercent",
+        "percentPerLevel": 4,
+        "tag": "crossbow"
+      }
+    ]
+  },
+  {
+    "id": "slinging",
+    "name": "투석술",
+    "description": "임시 수치",
+    "mastery": "sling",
+    "rank": 1,
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percentPerLevel": 5,
+        "tag": "sling"
+      }
+    ]
+  },
+  {
+    "id": "quick_throw",
+    "name": "빠른 투척",
+    "description": "임시 수치",
+    "mastery": "sling",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "slinging",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "DelayReductionPercent",
+        "percentPerLevel": 4,
+        "tag": "sling"
+      }
+    ]
+  },
+  {
+    "id": "gunnery",
+    "name": "화약 다루기",
+    "description": "임시 수치",
+    "mastery": "firearm",
+    "rank": 1,
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percentPerLevel": 5,
+        "tag": "firearm"
+      }
+    ]
+  },
+  {
+    "id": "steady_aim",
+    "name": "침착한 조준",
+    "description": "임시 수치",
+    "mastery": "firearm",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "gunnery",
         "level": 2
       }
     ],
@@ -120,7 +294,169 @@
       {
         "kind": "MpCostReductionPercent",
         "percentPerLevel": 5,
-        "tag": "staff"
+        "tag": "firearm"
+      }
+    ]
+  },
+  {
+    "id": "pyromancy",
+    "name": "화염 마법",
+    "description": "임시 수치",
+    "mastery": "fire",
+    "rank": 1,
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percentPerLevel": 5,
+        "tag": "fire"
+      }
+    ]
+  },
+  {
+    "id": "fire_efficiency",
+    "name": "화염 절약",
+    "description": "임시 수치",
+    "mastery": "fire",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "pyromancy",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MpCostReductionPercent",
+        "percentPerLevel": 5,
+        "tag": "fire"
+      }
+    ]
+  },
+  {
+    "id": "fire_communion",
+    "name": "화염 교감",
+    "description": "임시 수치. Lv1 하급, Lv3 중급, Lv5 상급 화염 정령 소환이 열리고, 레벨마다 정령 능력치 +10%",
+    "mastery": "fire",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "pyromancy",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MaxMpPercent",
+        "percentPerLevel": 3
+      }
+    ]
+  },
+  {
+    "id": "cryomancy",
+    "name": "냉기 마법",
+    "description": "임시 수치",
+    "mastery": "frost",
+    "rank": 1,
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percentPerLevel": 5,
+        "tag": "frost"
+      }
+    ]
+  },
+  {
+    "id": "frost_efficiency",
+    "name": "냉기 절약",
+    "description": "임시 수치",
+    "mastery": "frost",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "cryomancy",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MpCostReductionPercent",
+        "percentPerLevel": 5,
+        "tag": "frost"
+      }
+    ]
+  },
+  {
+    "id": "frost_communion",
+    "name": "냉기 교감",
+    "description": "임시 수치. Lv1 하급, Lv3 중급, Lv5 상급 냉기 정령 소환이 열리고, 레벨마다 정령 능력치 +10%",
+    "mastery": "frost",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "cryomancy",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MaxMpPercent",
+        "percentPerLevel": 3
+      }
+    ]
+  },
+  {
+    "id": "electromancy",
+    "name": "전기 마법",
+    "description": "임시 수치",
+    "mastery": "lightning",
+    "rank": 1,
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percentPerLevel": 5,
+        "tag": "lightning"
+      }
+    ]
+  },
+  {
+    "id": "lightning_efficiency",
+    "name": "전기 절약",
+    "description": "임시 수치",
+    "mastery": "lightning",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "electromancy",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MpCostReductionPercent",
+        "percentPerLevel": 5,
+        "tag": "lightning"
+      }
+    ]
+  },
+  {
+    "id": "lightning_communion",
+    "name": "전기 교감",
+    "description": "임시 수치. Lv1 하급, Lv3 중급, Lv5 상급 전기 정령 소환이 열리고, 레벨마다 정령 능력치 +10%",
+    "mastery": "lightning",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "electromancy",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MaxMpPercent",
+        "percentPerLevel": 3
       }
     ]
   },
@@ -155,6 +491,73 @@
         "kind": "PowerPercent",
         "percentPerLevel": 5,
         "tag": "relic"
+      }
+    ]
+  },
+  {
+    "id": "shield_mastery",
+    "name": "방패술",
+    "description": "임시 수치",
+    "mastery": "shield",
+    "rank": 1,
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "DefensePercent",
+        "percentPerLevel": 3
+      }
+    ]
+  },
+  {
+    "id": "shield_training",
+    "name": "방패 단련",
+    "description": "임시 수치",
+    "mastery": "shield",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "shield_mastery",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percentPerLevel": 2
+      }
+    ]
+  },
+  {
+    "id": "tome_study",
+    "name": "비전 연구",
+    "description": "임시 수치",
+    "mastery": "tome",
+    "rank": 1,
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "MaxMpPercent",
+        "percentPerLevel": 4
+      }
+    ]
+  },
+  {
+    "id": "inscription",
+    "name": "주문 각인",
+    "description": "임시 수치",
+    "mastery": "tome",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "tome_study",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MpCostReductionPercent",
+        "percentPerLevel": 3,
+        "tag": "spell"
       }
     ]
   },

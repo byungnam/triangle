@@ -104,8 +104,10 @@ public static class SaveGame
     /// 5: 회사 (로스터, 출전 명단, 골드, 창고, 모집 후보, 진행 중인 원정), 장비는 아이템 ID (2026-10-02).
     /// 6: 부위 5개 장비(equipment)와 행동 칸 선택(abilityChoices) (2026-10-02).
     ///    버전 5는 무기를 주무기로, 방어구를 몸통으로 옮기고 행동 칸은 첫 옵션으로 고른다. 그 이전은 읽지 않는다.
+    /// 7: 무기 세분화로 지팡이 계열이 원소 계열이 됨 (2026-10-06). 버전 6의 staff 경험치는 fire로,
+    ///    magic_control은 pyromancy로 옮기고 mana_efficiency는 지운다(포인트는 돌려받는다).
     /// </summary>
-    public const int CurrentVersion = 6;
+    public const int CurrentVersion = 7;
 
     private const int OldestReadableVersion = 5;
 
@@ -180,6 +182,11 @@ public static class SaveGame
             file = ConvertFromVersion5(file);
         }
 
+        if (file.Version == 6)
+        {
+            file = ConvertFromVersion6(file);
+        }
+
         Validate(file, data);
 
         var saved = file.Expedition;
@@ -243,8 +250,39 @@ public static class SaveGame
 
         return file with
         {
-            Version = CurrentVersion,
+            Version = 6,
             Roster = file.Roster.Select(m => m with { Equipment = ToEquipment(m), Weapon = null, Armor = null }).ToList(),
+        };
+    }
+
+    /// <summary>버전 6 → 7: 사라진 숙련·스킬 ID를 새 ID로 옮긴다. 행동 칸 선택은 맞지 않으면 첫 옵션으로 본다.</summary>
+    private static SaveFile ConvertFromVersion6(SaveFile file)
+    {
+        static Dictionary<string, int> Rename(IReadOnlyDictionary<string, int> values, IReadOnlyDictionary<string, string?> renames)
+        {
+            var result = new Dictionary<string, int>();
+            foreach (var (id, value) in values)
+            {
+                var newId = renames.TryGetValue(id, out var renamed) ? renamed : id;
+                if (newId is not null)
+                {
+                    result[newId] = result.GetValueOrDefault(newId) + value;
+                }
+            }
+
+            return result;
+        }
+
+        var masteries = new Dictionary<string, string?> { ["staff"] = "fire" };
+        var skills = new Dictionary<string, string?> { ["magic_control"] = "pyromancy", ["mana_efficiency"] = null };
+        return file with
+        {
+            Version = CurrentVersion,
+            Roster = file.Roster.Select(m => m with
+            {
+                MasteryXp = Rename(m.MasteryXp, masteries),
+                SkillLevels = Rename(m.SkillLevels, skills),
+            }).ToList(),
         };
     }
 

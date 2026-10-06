@@ -85,20 +85,20 @@ public static class StartingCompany
                 [T(1, Condition.Always, 0, "fire_arrow")],
             ]),
 
-        // 후위 마법사: 화염구(지속 피해)를 주로 쓰고, 싸움이 길어지면 4턴마다 약화를 건다.
-        // MP가 25% 이하면 정신 집중으로 채운다. 첫 턴 약화는 짧은 전투에서 MP와 턴만 써서 뺐다.
+        // 후위 화염 마법사: 화염구(지속 피해)를 주로 쓰고, 4턴마다 재의 폭풍으로 적 전체를 태운다.
+        // MP가 25% 이하면 정신 집중으로 채운다.
         new PartyMember("ally_morwen", "모르웬", new Stats(9, 11, 19, 27, 12), Row.Back, Gear("apprentice_staff", "cloth"),
-            new Dictionary<EquipmentSlot, IReadOnlyList<string>> { [EquipmentSlot.MainHand] = ["fireball", "weaken"] },
-            new Dictionary<string, int> { ["staff"] = Xp(3), ["cloth"] = Xp(2) },
-            new Dictionary<string, int> { ["magic_control"] = 3, ["meditation"] = 2 },
+            new Dictionary<EquipmentSlot, IReadOnlyList<string>> { [EquipmentSlot.MainHand] = ["fireball", "ash_storm"] },
+            new Dictionary<string, int> { ["fire"] = Xp(3), ["cloth"] = Xp(2) },
+            new Dictionary<string, int> { ["pyromancy"] = 3, ["meditation"] = 2 },
             [
                 // 세트 1
                 [
                     T(1, Condition.SelfMpAtMost, 25, "focus"),
-                    T(2, Condition.EveryNthTurn, 4, "weaken"),
+                    T(2, Condition.EveryNthTurn, 4, "ash_storm"),
                     T(3, Condition.Always, 0, "fireball"),
                 ],
-                // 세트 2: 기본 전술 (행동 칸에서 화염구를 골랐으므로 마력탄 대신 화염구)
+                // 세트 2: 기본 전술
                 [T(1, Condition.Always, 0, "fireball")],
             ]),
     ];

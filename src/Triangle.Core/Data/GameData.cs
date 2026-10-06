@@ -89,7 +89,10 @@ public sealed class GameData
         }
 
         return encounter.Units
-            .Select(u => new CombatantSetup(u.Id, u.Name, u.Stats, u.Row, u.Weapon, u.Armor, u.Skills, u.Tactics))
+            .Select(u => new CombatantSetup(u.Id, u.Name, u.Stats, u.Row, u.Weapon, u.Armor, u.Skills, u.Tactics)
+            {
+                PowerMultiplierPercent = u.PowerMultiplierPercent,
+            })
             .ToList();
     }
 }

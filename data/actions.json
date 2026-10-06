@@ -18,6 +18,24 @@
     "universal": true
   },
   {
+    "id": "focus",
+    "name": "정신 집중",
+    "description": "임시 수치. 공용 자기 회복: 턴을 써서 자기 MP를 채운다",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "RestoreMp",
+    "damageType": "Physical",
+    "power": 30,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "universal": true
+  },
+  {
     "id": "heavy_strike",
     "name": "강타",
     "description": "임시 수치",
@@ -40,6 +58,708 @@
     ]
   },
   {
+    "id": "duel_stance",
+    "name": "결투 자세",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "dueling",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "disarm",
+    "name": "무장 해제",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 45,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "disarmed",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "double_slash",
+    "name": "연속 베기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 35,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "flurry",
+        "level": 1
+      }
+    ],
+    "hits": 2
+  },
+  {
+    "id": "greatsword_sweep",
+    "name": "대검 휘두르기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 50,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "FrontOnly",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "cleave_down",
+    "name": "내려찍기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 30,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 110,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "swordsmanship",
+        "level": 2
+      }
+    ],
+    "delay": 1500
+  },
+  {
+    "id": "blood_whirl",
+    "name": "피의 회전",
+    "description": "임시 수치",
+    "hpCost": 20,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 70,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "FrontOnly",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "delay": 1300
+  },
+  {
+    "id": "execute",
+    "name": "처형",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 70,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "flurry",
+        "level": 1
+      }
+    ],
+    "missingHpBonusPercent": 100
+  },
+  {
+    "id": "pierce",
+    "name": "꿰뚫기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 60,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "spearmanship",
+        "level": 1
+      }
+    ]
+  },
+  {
+    "id": "javelin",
+    "name": "투창",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 50,
+    "side": "Enemy",
+    "rule": "BackFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "harrying_thrust",
+    "name": "견제 찌르기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 40,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "slowed",
+        "duration": 2
+      }
+    ],
+    "delay": 800
+  },
+  {
+    "id": "shaft_strike",
+    "name": "창대 후려치기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 35,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "enfeebled",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "spear_brace",
+    "name": "창 세우기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "braced",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "spear_phalanx",
+    "name": "장창 진형",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Ally",
+    "rule": "Random",
+    "rows": "FrontOnly",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "phalanx",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "spear_sweep",
+    "name": "창 휩쓸기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 45,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "FrontOnly",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "hook_pull",
+    "name": "갈고리 당기기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 40,
+    "side": "Enemy",
+    "rule": "BackFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "spearmanship",
+        "level": 2
+      }
+    ],
+    "moveTo": "Front"
+  },
+  {
+    "id": "bleeding_cut",
+    "name": "출혈 베기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 40,
+    "side": "Enemy",
+    "rule": "WithoutEffectFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "bleeding",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "open_wound",
+    "name": "상처 벌리기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 45,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "axemanship",
+        "level": 2
+      }
+    ],
+    "bonusAgainst": {
+      "effectId": "bleeding",
+      "percent": 100
+    }
+  },
+  {
+    "id": "axe_throw",
+    "name": "도끼 투척",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 45,
+    "side": "Enemy",
+    "rule": "BackFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "bleeding",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "blood_scent",
+    "name": "피 냄새",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "blood_scent",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "berserk",
+    "name": "피의 광분",
+    "description": "임시 수치",
+    "hpCost": 20,
+    "mpCost": 0,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "berserk",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "reckless_blow",
+    "name": "무모한 일격",
+    "description": "임시 수치",
+    "hpCost": 25,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 120,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "axemanship",
+        "level": 2
+      }
+    ],
+    "delay": 1500
+  },
+  {
+    "id": "whirlwind",
+    "name": "회전 베기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 55,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "FrontOnly",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "armor_cleave",
+    "name": "갑옷 쪼개기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 40,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "FrontOnly",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "ferocity",
+        "level": 1
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "sundered",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "bone_crusher",
+    "name": "뼈 부수기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 50,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "sundered",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "weaken",
+    "name": "약화",
+    "description": "임시 수치. 한손둔기로 옮겼다(2026-10-06)",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 40,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "mace_mastery",
+        "level": 2
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "weakened",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "heavy_blow",
+    "name": "둔중한 일격",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 40,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "slowed",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "skull_bash",
+    "name": "머리 치기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 45,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "heavy_hand",
+        "level": 1
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "stunned",
+        "duration": 1
+      }
+    ]
+  },
+  {
+    "id": "quake_slam",
+    "name": "지진 강타",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 40,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "FrontOnly",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "slowed",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "crush",
+    "name": "분쇄",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 30,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 100,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "mace_mastery",
+        "level": 2
+      }
+    ],
+    "delay": 1500
+  },
+  {
+    "id": "knockback",
+    "name": "밀쳐내기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 50,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "FrontOnly",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "moveTo": "Back"
+  },
+  {
+    "id": "earth_tremor",
+    "name": "대지 울림",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 30,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "heavy_hand",
+        "level": 1
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "enfeebled",
+        "duration": 2
+      }
+    ]
+  },
+  {
     "id": "fire_arrow",
     "name": "화살",
     "description": "임시 수치",
@@ -55,6 +775,81 @@
     "ignoresCover": false,
     "tags": [],
     "requirements": []
+  },
+  {
+    "id": "harass_shot",
+    "name": "견제 사격",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 5,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 30,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "slowed",
+        "duration": 2
+      }
+    ],
+    "delay": 700
+  },
+  {
+    "id": "poison_arrow",
+    "name": "독화살",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 40,
+    "side": "Enemy",
+    "rule": "WithoutEffectFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "archery",
+        "level": 2
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "poisoned",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "rapid_volley",
+    "name": "속사",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 25,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "rapid_fire",
+        "level": 1
+      }
+    ],
+    "hits": 3
   },
   {
     "id": "snipe",
@@ -83,14 +878,82 @@
     ]
   },
   {
-    "id": "magic_bolt",
-    "name": "마력탄",
+    "id": "take_aim",
+    "name": "조준",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "aiming",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "arrow_rain",
+    "name": "화살비",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 35,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "archery",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "id": "mark_prey",
+    "name": "사냥감 표시",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Enemy",
+    "rule": "WithoutEffectFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "marked",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "bolt_shot",
+    "name": "볼트 사격",
     "description": "임시 수치",
     "hpCost": 0,
     "mpCost": 10,
     "effect": "Damage",
-    "damageType": "Magical",
-    "power": 60,
+    "damageType": "Physical",
+    "power": 75,
     "side": "Enemy",
     "rule": "Random",
     "rows": "Any",
@@ -98,6 +961,715 @@
     "ignoresCover": false,
     "tags": [],
     "requirements": []
+  },
+  {
+    "id": "piercing_bolt",
+    "name": "관통 볼트",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 70,
+    "side": "Enemy",
+    "rule": "BackFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "crossbow_mastery",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "id": "armor_piercer",
+    "name": "갑옷 뚫기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 55,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "weakened",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "barbed_bolt",
+    "name": "미늘 볼트",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 50,
+    "side": "Enemy",
+    "rule": "WithoutEffectFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "bleeding",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "heavy_bolt",
+    "name": "중볼트",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 110,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "delay": 1500
+  },
+  {
+    "id": "siege_bolt",
+    "name": "공성 볼트",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 40,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 150,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "reloading",
+        "level": 1
+      }
+    ],
+    "delay": 2000
+  },
+  {
+    "id": "scatter_bolt",
+    "name": "산탄 볼트",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 40,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "emplace",
+    "name": "거치",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "emplaced",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "sling_stone",
+    "name": "돌팔매",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 45,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "delay": 800
+  },
+  {
+    "id": "lead_shot",
+    "name": "납 탄환",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 5,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 55,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "stone_hail",
+    "name": "돌 세례",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 25,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "FrontOnly",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "headshot",
+    "name": "머리 맞히기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 30,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "quick_throw",
+        "level": 1
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "stunned",
+        "duration": 1
+      }
+    ]
+  },
+  {
+    "id": "volley",
+    "name": "일제 사격",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 30,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 120,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "delay": 1500
+  },
+  {
+    "id": "true_aim",
+    "name": "정조준",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 30,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 100,
+    "side": "Enemy",
+    "rule": "BackFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "gunnery",
+        "level": 2
+      }
+    ],
+    "delay": 1500
+  },
+  {
+    "id": "reload",
+    "name": "장전",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "RestoreMp",
+    "damageType": "Physical",
+    "power": 30,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "bayonet",
+    "name": "총검 찌르기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 60,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "FrontOnly",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "bombard",
+    "name": "포격",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 40,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 55,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "delay": 1700
+  },
+  {
+    "id": "line_breaker",
+    "name": "진형 파괴탄",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 30,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 40,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "FrontOnly",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "gunnery",
+        "level": 2
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "broken_line",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "thunderclap",
+    "name": "굉음",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "slowed",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "point_blank",
+    "name": "근접 발사",
+    "description": "임시 수치",
+    "hpCost": 10,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 90,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "FrontOnly",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "delay": 1300
+  },
+  {
+    "id": "ember",
+    "name": "불씨",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 5,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 20,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "fire",
+      "spell"
+    ],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "burning",
+        "duration": 2
+      }
+    ],
+    "delay": 800
+  },
+  {
+    "id": "fireball",
+    "name": "화염구",
+    "description": "임시 수치. 마법봉 기준 위력 (지팡이는 2배)",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 35,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "fire",
+      "spell"
+    ],
+    "requirements": [
+      {
+        "skillId": "pyromancy",
+        "level": 2
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "burning",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "ash_storm",
+    "name": "재의 폭풍",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 35,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 20,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [
+      "fire",
+      "spell"
+    ],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "burning",
+        "duration": 1
+      }
+    ]
+  },
+  {
+    "id": "flame_pillar",
+    "name": "화염 기둥",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 35,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 55,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "fire",
+      "spell"
+    ],
+    "requirements": [
+      {
+        "skillId": "fire_efficiency",
+        "level": 1
+      }
+    ],
+    "delay": 1400
+  },
+  {
+    "id": "frost_bolt",
+    "name": "서리 화살",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 22,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "frost",
+      "spell"
+    ],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "slowed",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "ice_lance",
+    "name": "얼음 창",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 45,
+    "side": "Enemy",
+    "rule": "BackFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [
+      "frost",
+      "spell"
+    ],
+    "requirements": [
+      {
+        "skillId": "cryomancy",
+        "level": 2
+      }
+    ]
+  },
+  {
+    "id": "blizzard",
+    "name": "눈보라",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 35,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 18,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [
+      "frost",
+      "spell"
+    ],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "slowed",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "deep_freeze",
+    "name": "빙결",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 20,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "frost",
+      "spell"
+    ],
+    "requirements": [
+      {
+        "skillId": "frost_efficiency",
+        "level": 1
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "stunned",
+        "duration": 1
+      }
+    ]
+  },
+  {
+    "id": "static_shock",
+    "name": "정전기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 5,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 15,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "lightning",
+      "spell"
+    ],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "slowed",
+        "duration": 2
+      }
+    ],
+    "delay": 700
+  },
+  {
+    "id": "shock",
+    "name": "전격",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 28,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [
+      "lightning",
+      "spell"
+    ],
+    "requirements": [],
+    "delay": 800
+  },
+  {
+    "id": "chain_lightning",
+    "name": "연쇄 번개",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 25,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "lightning",
+      "spell"
+    ],
+    "requirements": [
+      {
+        "skillId": "electromancy",
+        "level": 2
+      }
+    ],
+    "extraTargets": 2
+  },
+  {
+    "id": "thunderbolt",
+    "name": "낙뢰",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 40,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 65,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "lightning",
+      "spell"
+    ],
+    "requirements": [
+      {
+        "skillId": "lightning_efficiency",
+        "level": 1
+      }
+    ],
+    "delay": 1500
   },
   {
     "id": "heal",
@@ -117,6 +1689,261 @@
     "requirements": [
       {
         "skillId": "healing",
+        "level": 1
+      }
+    ]
+  },
+  {
+    "id": "greater_heal",
+    "name": "큰 치유",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 35,
+    "effect": "Heal",
+    "damageType": "Magical",
+    "power": 70,
+    "side": "Ally",
+    "rule": "LowestHpRatio",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "healing",
+        "level": 2
+      }
+    ],
+    "delay": 1300
+  },
+  {
+    "id": "light_of_prayer",
+    "name": "기도의 빛",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 35,
+    "effect": "Heal",
+    "damageType": "Magical",
+    "power": 20,
+    "side": "Ally",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "holy_magic",
+        "level": 1
+      }
+    ]
+  },
+  {
+    "id": "life_share",
+    "name": "생명 나눔",
+    "description": "임시 수치",
+    "hpCost": 20,
+    "mpCost": 0,
+    "effect": "Heal",
+    "damageType": "Magical",
+    "power": 50,
+    "side": "Ally",
+    "rule": "LowestHpRatio",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "regen",
+    "name": "재생",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Ally",
+    "rule": "LowestHpRatio",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "healing",
+        "level": 2
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "regenerating",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "wave_of_renewal",
+    "name": "재생의 물결",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 40,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Ally",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "holy_magic",
+        "level": 1
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "regenerating",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "dawn_grace",
+    "name": "새벽의 은총",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Ally",
+    "rule": "LowestHpRatio",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "dawn_grace",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "purify",
+    "name": "정화",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Ally",
+    "rule": "WithDebuffFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "removesDebuffs": true
+  },
+  {
+    "id": "guard",
+    "name": "수호",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Ally",
+    "rule": "LowestHpRatio",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "guarded",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "sanctuary",
+    "name": "신성 방벽",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 35,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Ally",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "healing",
+        "level": 2
+      }
+    ],
+    "applies": [
+      {
+        "effectId": "sanctuary",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "martyrdom",
+    "name": "순교",
+    "description": "임시 수치",
+    "hpCost": 15,
+    "mpCost": 10,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Ally",
+    "rule": "LowestHpRatio",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "martyrdom",
+        "duration": 1
+      }
+    ]
+  },
+  {
+    "id": "holy_shield",
+    "name": "보호막",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "Shield",
+    "damageType": "Magical",
+    "power": 40,
+    "side": "Ally",
+    "rule": "LowestHpRatio",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [
+      {
+        "skillId": "holy_magic",
         "level": 1
       }
     ]
@@ -150,92 +1977,59 @@
     ]
   },
   {
-    "id": "weaken",
-    "name": "약화",
+    "id": "haste",
+    "name": "가속",
     "description": "임시 수치",
     "hpCost": 0,
     "mpCost": 20,
     "effect": "None",
-    "damageType": "Magical",
-    "power": 0,
-    "side": "Enemy",
-    "rule": "WithoutEffectFirst",
-    "rows": "Any",
-    "scope": "Single",
-    "ignoresCover": false,
-    "tags": [],
-    "requirements": [
-      {
-        "skillId": "magic_control",
-        "level": 3
-      }
-    ],
-    "applies": [
-      {
-        "effectId": "weakened",
-        "duration": 3
-      }
-    ]
-  },
-  {
-    "id": "poison_arrow",
-    "name": "독화살",
-    "description": "임시 수치",
-    "hpCost": 0,
-    "mpCost": 15,
-    "effect": "Damage",
     "damageType": "Physical",
-    "power": 40,
-    "side": "Enemy",
+    "power": 0,
+    "side": "Ally",
     "rule": "WithoutEffectFirst",
     "rows": "Any",
     "scope": "Single",
     "ignoresCover": false,
     "tags": [],
-    "requirements": [
-      {
-        "skillId": "archery",
-        "level": 2
-      }
-    ],
+    "requirements": [],
     "applies": [
       {
-        "effectId": "poisoned",
+        "effectId": "hasted",
         "duration": 3
       }
     ]
   },
   {
-    "id": "fireball",
-    "name": "화염구",
+    "id": "hymn",
+    "name": "성가",
     "description": "임시 수치",
     "hpCost": 0,
-    "mpCost": 20,
-    "effect": "Damage",
-    "damageType": "Magical",
-    "power": 70,
-    "side": "Enemy",
+    "mpCost": 30,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Ally",
     "rule": "Random",
     "rows": "Any",
-    "scope": "Single",
+    "scope": "All",
     "ignoresCover": false,
     "tags": [],
     "requirements": [
       {
-        "skillId": "magic_control",
-        "level": 2
+        "skillId": "holy_magic",
+        "level": 1
       }
     ],
     "applies": [
       {
-        "effectId": "burning",
-        "duration": 2
+        "effectId": "inspired",
+        "duration": 3
       }
     ]
   },
   {
-    "id": "regen",
-    "name": "재생",
+    "id": "resolve",
+    "name": "결의",
     "description": "임시 수치",
     "hpCost": 0,
     "mpCost": 15,
@@ -243,41 +2037,18 @@
     "damageType": "Physical",
     "power": 0,
     "side": "Ally",
-    "rule": "LowestHpRatio",
-    "rows": "Any",
-    "scope": "Single",
-    "ignoresCover": false,
-    "tags": [],
-    "requirements": [
-      {
-        "skillId": "healing",
-        "level": 2
-      }
-    ],
-    "applies": [
-      {
-        "effectId": "regenerating",
-        "duration": 3
-      }
-    ]
-  },
-  {
-    "id": "focus",
-    "name": "정신 집중",
-    "description": "임시 수치. 공용 자기 회복: 턴을 써서 자기 MP를 채운다",
-    "hpCost": 0,
-    "mpCost": 0,
-    "effect": "RestoreMp",
-    "damageType": "Physical",
-    "power": 30,
-    "side": "Self",
-    "rule": "Random",
+    "rule": "WithoutEffectFirst",
     "rows": "Any",
     "scope": "Single",
     "ignoresCover": false,
     "tags": [],
     "requirements": [],
-    "universal": true
+    "applies": [
+      {
+        "effectId": "resolute",
+        "duration": 3
+      }
+    ]
   },
   {
     "id": "first_aid",
@@ -295,5 +2066,912 @@
     "ignoresCover": false,
     "tags": [],
     "requirements": []
+  },
+  {
+    "id": "shield_wall",
+    "name": "방패 벽",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "shield_wall",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "shield_bash",
+    "name": "방패 밀치기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 40,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "pushBack": 3000
+  },
+  {
+    "id": "oath_of_protection",
+    "name": "수호의 맹세",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Ally",
+    "rule": "LowestHpRatio",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "guarded",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "deep_breath",
+    "name": "깊은 호흡",
+    "description": "임시 수치",
+    "hpCost": 10,
+    "mpCost": 0,
+    "effect": "RestoreMp",
+    "damageType": "Physical",
+    "power": 45,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "spell_amplify",
+    "name": "주문 증폭",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "empowered",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "mana_barrier",
+    "name": "마력 방벽",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "mana_barrier",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "magic_bolt",
+    "name": "마력탄",
+    "description": "임시 수치. 마법책으로 옮겼다(2026-10-06)",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 30,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "spell"
+    ],
+    "requirements": []
+  },
+  {
+    "id": "mana_gift",
+    "name": "마력 나눔",
+    "description": "임시 수치",
+    "hpCost": 10,
+    "mpCost": 0,
+    "effect": "RestoreMp",
+    "damageType": "Physical",
+    "power": 25,
+    "side": "Ally",
+    "rule": "LowestMpRatio",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "mana_burn",
+    "name": "마력 소각",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 30,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "mpDamage": 20
+  },
+  {
+    "id": "prayer_of_protection",
+    "name": "수호의 기도",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Ally",
+    "rule": "WithoutEffectFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "resolute",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "vigil",
+    "name": "경야",
+    "description": "임시 수치",
+    "hpCost": 15,
+    "mpCost": 0,
+    "effect": "RestoreMp",
+    "damageType": "Physical",
+    "power": 10,
+    "side": "Ally",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "brace",
+    "name": "버티기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "braced",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "war_cry",
+    "name": "전투의 함성",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Ally",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "rallied",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "provoke",
+    "name": "도발",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "taunting",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "charge",
+    "name": "돌진",
+    "description": "임시 수치",
+    "hpCost": 10,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 70,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "hide",
+    "name": "은신 자세",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "evasive",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "throwing_knife",
+    "name": "투척 단검",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 5,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 40,
+    "side": "Enemy",
+    "rule": "BackFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "hamstring",
+    "name": "발목 베기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 35,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "slowed",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "fleet_foot",
+    "name": "날랜 발",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "hasted",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "arcane_haste",
+    "name": "비전 가속",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 15,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "hasted",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "arcane_ward",
+    "name": "비전 보호막",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "Shield",
+    "damageType": "Magical",
+    "power": 40,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "mana_overload",
+    "name": "마력 폭주",
+    "description": "임시 수치",
+    "hpCost": 20,
+    "mpCost": 20,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 90,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "step_back",
+    "name": "물러서기",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 5,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "moveTo": "Back"
+  },
+  {
+    "id": "spirit_ember",
+    "name": "정령의 불씨",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 30,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "burning",
+        "duration": 2
+      }
+    ],
+    "summonOnly": true
+  },
+  {
+    "id": "summon_fire_lesser",
+    "name": "하급 화염 정령 소환",
+    "description": "임시 수치. 하급: 정령 자신의 행동 4번 동안 남는다",
+    "hpCost": 0,
+    "mpCost": 30,
+    "effect": "Summon",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "fire"
+    ],
+    "requirements": [
+      {
+        "skillId": "fire_communion",
+        "level": 1
+      }
+    ],
+    "delay": 1500,
+    "weapon": "fire",
+    "summon": {
+      "name": "하급 화염 정령",
+      "row": "Back",
+      "stats": {
+        "str": 4,
+        "dex": 4,
+        "vital": 8,
+        "intel": 10,
+        "speed": 10
+      },
+      "actionId": "spirit_ember",
+      "statSkill": "fire_communion",
+      "statPercentPerLevel": 10,
+      "duration": 4
+    }
+  },
+  {
+    "id": "summon_fire_middle",
+    "name": "중급 화염 정령 소환",
+    "description": "임시 수치. 중급: 정령 자신의 행동 6번 동안 남는다",
+    "hpCost": 0,
+    "mpCost": 50,
+    "effect": "Summon",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "fire"
+    ],
+    "requirements": [
+      {
+        "skillId": "fire_communion",
+        "level": 3
+      }
+    ],
+    "delay": 1500,
+    "weapon": "fire",
+    "summon": {
+      "name": "중급 화염 정령",
+      "row": "Back",
+      "stats": {
+        "str": 6,
+        "dex": 6,
+        "vital": 14,
+        "intel": 16,
+        "speed": 11
+      },
+      "actionId": "spirit_ember",
+      "statSkill": "fire_communion",
+      "statPercentPerLevel": 10,
+      "duration": 6
+    }
+  },
+  {
+    "id": "summon_fire_greater",
+    "name": "상급 화염 정령 소환",
+    "description": "임시 수치. 상급: 영창 3번(영창마다 MP), 전투당 한 번, 전투 끝까지 남는다",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "Summon",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "fire"
+    ],
+    "requirements": [
+      {
+        "skillId": "fire_communion",
+        "level": 5
+      }
+    ],
+    "delay": 1500,
+    "weapon": "fire",
+    "summon": {
+      "name": "상급 화염 정령",
+      "row": "Back",
+      "stats": {
+        "str": 10,
+        "dex": 10,
+        "vital": 30,
+        "intel": 32,
+        "speed": 12
+      },
+      "actionId": "spirit_ember",
+      "statSkill": "fire_communion",
+      "statPercentPerLevel": 10
+    },
+    "chant": 3,
+    "oncePerBattle": true
+  },
+  {
+    "id": "spirit_frost_touch",
+    "name": "서리 손길",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 20,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "slowed",
+        "duration": 2
+      }
+    ],
+    "summonOnly": true
+  },
+  {
+    "id": "summon_frost_lesser",
+    "name": "하급 냉기 정령 소환",
+    "description": "임시 수치. 하급: 정령 자신의 행동 4번 동안 남는다",
+    "hpCost": 0,
+    "mpCost": 30,
+    "effect": "Summon",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "frost"
+    ],
+    "requirements": [
+      {
+        "skillId": "frost_communion",
+        "level": 1
+      }
+    ],
+    "delay": 1500,
+    "weapon": "frost",
+    "summon": {
+      "name": "하급 냉기 정령",
+      "row": "Front",
+      "stats": {
+        "str": 8,
+        "dex": 6,
+        "vital": 16,
+        "intel": 6,
+        "speed": 8
+      },
+      "actionId": "spirit_frost_touch",
+      "statSkill": "frost_communion",
+      "statPercentPerLevel": 10,
+      "duration": 4
+    }
+  },
+  {
+    "id": "summon_frost_middle",
+    "name": "중급 냉기 정령 소환",
+    "description": "임시 수치. 중급: 정령 자신의 행동 6번 동안 남는다",
+    "hpCost": 0,
+    "mpCost": 50,
+    "effect": "Summon",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "frost"
+    ],
+    "requirements": [
+      {
+        "skillId": "frost_communion",
+        "level": 3
+      }
+    ],
+    "delay": 1500,
+    "weapon": "frost",
+    "summon": {
+      "name": "중급 냉기 정령",
+      "row": "Front",
+      "stats": {
+        "str": 12,
+        "dex": 9,
+        "vital": 26,
+        "intel": 9,
+        "speed": 9
+      },
+      "actionId": "spirit_frost_touch",
+      "statSkill": "frost_communion",
+      "statPercentPerLevel": 10,
+      "duration": 6
+    }
+  },
+  {
+    "id": "summon_frost_greater",
+    "name": "상급 냉기 정령 소환",
+    "description": "임시 수치. 상급: 영창 3번(영창마다 MP), 전투당 한 번, 전투 끝까지 남는다",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "Summon",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "frost"
+    ],
+    "requirements": [
+      {
+        "skillId": "frost_communion",
+        "level": 5
+      }
+    ],
+    "delay": 1500,
+    "weapon": "frost",
+    "summon": {
+      "name": "상급 냉기 정령",
+      "row": "Front",
+      "stats": {
+        "str": 20,
+        "dex": 15,
+        "vital": 55,
+        "intel": 16,
+        "speed": 10
+      },
+      "actionId": "spirit_frost_touch",
+      "statSkill": "frost_communion",
+      "statPercentPerLevel": 10
+    },
+    "chant": 3,
+    "oncePerBattle": true
+  },
+  {
+    "id": "spirit_spark",
+    "name": "정령의 전격",
+    "description": "임시 수치",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 25,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [],
+    "requirements": [],
+    "delay": 600,
+    "summonOnly": true
+  },
+  {
+    "id": "summon_lightning_lesser",
+    "name": "하급 전기 정령 소환",
+    "description": "임시 수치. 하급: 정령 자신의 행동 4번 동안 남는다",
+    "hpCost": 0,
+    "mpCost": 30,
+    "effect": "Summon",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "lightning"
+    ],
+    "requirements": [
+      {
+        "skillId": "lightning_communion",
+        "level": 1
+      }
+    ],
+    "delay": 1500,
+    "weapon": "lightning",
+    "summon": {
+      "name": "하급 전기 정령",
+      "row": "Back",
+      "stats": {
+        "str": 4,
+        "dex": 8,
+        "vital": 8,
+        "intel": 8,
+        "speed": 16
+      },
+      "actionId": "spirit_spark",
+      "statSkill": "lightning_communion",
+      "statPercentPerLevel": 10,
+      "duration": 4
+    }
+  },
+  {
+    "id": "summon_lightning_middle",
+    "name": "중급 전기 정령 소환",
+    "description": "임시 수치. 중급: 정령 자신의 행동 6번 동안 남는다",
+    "hpCost": 0,
+    "mpCost": 50,
+    "effect": "Summon",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "lightning"
+    ],
+    "requirements": [
+      {
+        "skillId": "lightning_communion",
+        "level": 3
+      }
+    ],
+    "delay": 1500,
+    "weapon": "lightning",
+    "summon": {
+      "name": "중급 전기 정령",
+      "row": "Back",
+      "stats": {
+        "str": 6,
+        "dex": 12,
+        "vital": 13,
+        "intel": 13,
+        "speed": 20
+      },
+      "actionId": "spirit_spark",
+      "statSkill": "lightning_communion",
+      "statPercentPerLevel": 10,
+      "duration": 6
+    }
+  },
+  {
+    "id": "summon_lightning_greater",
+    "name": "상급 전기 정령 소환",
+    "description": "임시 수치. 상급: 영창 3번(영창마다 MP), 전투당 한 번, 전투 끝까지 남는다",
+    "hpCost": 0,
+    "mpCost": 25,
+    "effect": "Summon",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "lightning"
+    ],
+    "requirements": [
+      {
+        "skillId": "lightning_communion",
+        "level": 5
+      }
+    ],
+    "delay": 1500,
+    "weapon": "lightning",
+    "summon": {
+      "name": "상급 전기 정령",
+      "row": "Back",
+      "stats": {
+        "str": 10,
+        "dex": 18,
+        "vital": 26,
+        "intel": 24,
+        "speed": 26
+      },
+      "actionId": "spirit_spark",
+      "statSkill": "lightning_communion",
+      "statPercentPerLevel": 10
+    },
+    "chant": 3,
+    "oncePerBattle": true
   }
 ]

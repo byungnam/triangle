@@ -3,25 +3,85 @@
     "id": "sword",
     "name": "검",
     "kind": "Weapon",
-    "description": "근접 무기"
+    "description": "한손검·양손검"
+  },
+  {
+    "id": "spear",
+    "name": "창",
+    "kind": "Weapon",
+    "description": "한손창·양손창"
+  },
+  {
+    "id": "axe",
+    "name": "도끼",
+    "kind": "Weapon",
+    "description": "한손도끼·양손도끼"
+  },
+  {
+    "id": "mace",
+    "name": "둔기",
+    "kind": "Weapon",
+    "description": "한손둔기·양손둔기"
   },
   {
     "id": "bow",
     "name": "활",
     "kind": "Weapon",
-    "description": "원거리 물리"
+    "description": "단궁·장궁"
   },
   {
-    "id": "staff",
-    "name": "지팡이",
+    "id": "crossbow",
+    "name": "석궁",
     "kind": "Weapon",
-    "description": "마법 공격"
+    "description": "석궁·쇠뇌"
+  },
+  {
+    "id": "sling",
+    "name": "투석",
+    "kind": "Weapon",
+    "description": "슬링"
+  },
+  {
+    "id": "firearm",
+    "name": "화기",
+    "kind": "Weapon",
+    "description": "머스킷·핸드캐논"
+  },
+  {
+    "id": "fire",
+    "name": "화염",
+    "kind": "Weapon",
+    "description": "화염 마법봉·지팡이"
+  },
+  {
+    "id": "frost",
+    "name": "냉기",
+    "kind": "Weapon",
+    "description": "냉기 마법봉·지팡이"
+  },
+  {
+    "id": "lightning",
+    "name": "전기",
+    "kind": "Weapon",
+    "description": "전기 마법봉·지팡이"
   },
   {
     "id": "relic",
-    "name": "성구",
+    "name": "신성",
     "kind": "Weapon",
-    "description": "회복과 신성"
+    "description": "힐러 마법봉 4종, 성물"
+  },
+  {
+    "id": "shield",
+    "name": "방패",
+    "kind": "Weapon",
+    "description": "보조: 한손 근접·슬링과 함께"
+  },
+  {
+    "id": "tome",
+    "name": "마법책",
+    "kind": "Weapon",
+    "description": "보조: 마법봉과 함께"
   },
   {
     "id": "plate",

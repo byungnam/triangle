@@ -2,7 +2,8 @@
   {
     "id": "old_sword",
     "name": "낡은 검",
-    "description": "T1. 수치는 임시.",
+    "type": "한손검",
+    "description": "T1. 임시 수치.",
     "slot": "MainHand",
     "mastery": "sword",
     "tier": 1,
@@ -17,7 +18,14 @@
     "abilities": [
       {
         "options": [
-          "heavy_strike"
+          "heavy_strike",
+          "duel_stance"
+        ]
+      },
+      {
+        "options": [
+          "disarm",
+          "double_slash"
         ]
       }
     ]
@@ -25,7 +33,8 @@
   {
     "id": "steel_sword",
     "name": "강철 검",
-    "description": "T2. 수치는 임시.",
+    "type": "한손검",
+    "description": "T2. 임시 수치.",
     "slot": "MainHand",
     "mastery": "sword",
     "tier": 2,
@@ -46,7 +55,14 @@
     "abilities": [
       {
         "options": [
-          "heavy_strike"
+          "heavy_strike",
+          "duel_stance"
+        ]
+      },
+      {
+        "options": [
+          "disarm",
+          "double_slash"
         ]
       }
     ]
@@ -54,7 +70,8 @@
   {
     "id": "knight_sword",
     "name": "기사의 검",
-    "description": "T3. 수치는 임시.",
+    "type": "한손검",
+    "description": "T3. 임시 수치.",
     "slot": "MainHand",
     "mastery": "sword",
     "tier": 3,
@@ -75,7 +92,14 @@
     "abilities": [
       {
         "options": [
-          "heavy_strike"
+          "heavy_strike",
+          "duel_stance"
+        ]
+      },
+      {
+        "options": [
+          "disarm",
+          "double_slash"
         ]
       }
     ]
@@ -83,7 +107,8 @@
   {
     "id": "master_sword",
     "name": "명검",
-    "description": "T4. 수치는 임시.",
+    "type": "한손검",
+    "description": "T4. 임시 수치.",
     "slot": "MainHand",
     "mastery": "sword",
     "tier": 4,
@@ -108,7 +133,1052 @@
     "abilities": [
       {
         "options": [
-          "heavy_strike"
+          "heavy_strike",
+          "duel_stance"
+        ]
+      },
+      {
+        "options": [
+          "disarm",
+          "double_slash"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "old_greatsword",
+    "name": "낡은 대검",
+    "type": "양손검",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "sword",
+    "twoHanded": true,
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "sword"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "greatsword_sweep",
+          "cleave_down"
+        ]
+      },
+      {
+        "options": [
+          "blood_whirl",
+          "execute"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "steel_greatsword",
+    "name": "강철 대검",
+    "type": "양손검",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "sword",
+    "twoHanded": true,
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "swordsmanship",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "sword"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "greatsword_sweep",
+          "cleave_down"
+        ]
+      },
+      {
+        "options": [
+          "blood_whirl",
+          "execute"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "knight_greatsword",
+    "name": "기사의 대검",
+    "type": "양손검",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "sword",
+    "twoHanded": true,
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "swordsmanship",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "sword"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "greatsword_sweep",
+          "cleave_down"
+        ]
+      },
+      {
+        "options": [
+          "blood_whirl",
+          "execute"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "master_greatsword",
+    "name": "명장의 대검",
+    "type": "양손검",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "sword",
+    "twoHanded": true,
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "swordsmanship",
+        "level": 5
+      },
+      {
+        "skillId": "flurry",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "sword"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "greatsword_sweep",
+          "cleave_down"
+        ]
+      },
+      {
+        "options": [
+          "blood_whirl",
+          "execute"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "old_spear",
+    "name": "낡은 창",
+    "type": "한손창",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "spear",
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "spear"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "pierce",
+          "javelin"
+        ]
+      },
+      {
+        "options": [
+          "harrying_thrust",
+          "shaft_strike"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "steel_spear",
+    "name": "강철 창",
+    "type": "한손창",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "spear",
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "spearmanship",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "spear"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "pierce",
+          "javelin"
+        ]
+      },
+      {
+        "options": [
+          "harrying_thrust",
+          "shaft_strike"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "knight_spear",
+    "name": "기사의 창",
+    "type": "한손창",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "spear",
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "spearmanship",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "spear"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "pierce",
+          "javelin"
+        ]
+      },
+      {
+        "options": [
+          "harrying_thrust",
+          "shaft_strike"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "master_spear",
+    "name": "명장의 창",
+    "type": "한손창",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "spear",
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "spearmanship",
+        "level": 5
+      },
+      {
+        "skillId": "long_reach",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "spear"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "pierce",
+          "javelin"
+        ]
+      },
+      {
+        "options": [
+          "harrying_thrust",
+          "shaft_strike"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "old_halberd",
+    "name": "낡은 미늘창",
+    "type": "양손창",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "spear",
+    "twoHanded": true,
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "spear"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "spear_brace",
+          "spear_phalanx"
+        ]
+      },
+      {
+        "options": [
+          "spear_sweep",
+          "hook_pull"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "steel_halberd",
+    "name": "강철 미늘창",
+    "type": "양손창",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "spear",
+    "twoHanded": true,
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "spearmanship",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "spear"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "spear_brace",
+          "spear_phalanx"
+        ]
+      },
+      {
+        "options": [
+          "spear_sweep",
+          "hook_pull"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "knight_halberd",
+    "name": "기사의 미늘창",
+    "type": "양손창",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "spear",
+    "twoHanded": true,
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "spearmanship",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "spear"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "spear_brace",
+          "spear_phalanx"
+        ]
+      },
+      {
+        "options": [
+          "spear_sweep",
+          "hook_pull"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "master_halberd",
+    "name": "명장의 미늘창",
+    "type": "양손창",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "spear",
+    "twoHanded": true,
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "spearmanship",
+        "level": 5
+      },
+      {
+        "skillId": "long_reach",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "spear"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "spear_brace",
+          "spear_phalanx"
+        ]
+      },
+      {
+        "options": [
+          "spear_sweep",
+          "hook_pull"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "old_hatchet",
+    "name": "낡은 손도끼",
+    "type": "한손도끼",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "axe",
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "axe"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bleeding_cut",
+          "open_wound"
+        ]
+      },
+      {
+        "options": [
+          "axe_throw",
+          "blood_scent"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "steel_hatchet",
+    "name": "강철 손도끼",
+    "type": "한손도끼",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "axe",
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "axemanship",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "axe"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bleeding_cut",
+          "open_wound"
+        ]
+      },
+      {
+        "options": [
+          "axe_throw",
+          "blood_scent"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "knight_hatchet",
+    "name": "기사의 손도끼",
+    "type": "한손도끼",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "axe",
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "axemanship",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "axe"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bleeding_cut",
+          "open_wound"
+        ]
+      },
+      {
+        "options": [
+          "axe_throw",
+          "blood_scent"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "master_hatchet",
+    "name": "명장의 손도끼",
+    "type": "한손도끼",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "axe",
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "axemanship",
+        "level": 5
+      },
+      {
+        "skillId": "ferocity",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "axe"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bleeding_cut",
+          "open_wound"
+        ]
+      },
+      {
+        "options": [
+          "axe_throw",
+          "blood_scent"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "old_greataxe",
+    "name": "낡은 큰도끼",
+    "type": "양손도끼",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "axe",
+    "twoHanded": true,
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "axe"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "berserk",
+          "reckless_blow"
+        ]
+      },
+      {
+        "options": [
+          "whirlwind",
+          "armor_cleave"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "steel_greataxe",
+    "name": "강철 큰도끼",
+    "type": "양손도끼",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "axe",
+    "twoHanded": true,
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "axemanship",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "axe"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "berserk",
+          "reckless_blow"
+        ]
+      },
+      {
+        "options": [
+          "whirlwind",
+          "armor_cleave"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "knight_greataxe",
+    "name": "기사의 큰도끼",
+    "type": "양손도끼",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "axe",
+    "twoHanded": true,
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "axemanship",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "axe"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "berserk",
+          "reckless_blow"
+        ]
+      },
+      {
+        "options": [
+          "whirlwind",
+          "armor_cleave"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "master_greataxe",
+    "name": "명장의 큰도끼",
+    "type": "양손도끼",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "axe",
+    "twoHanded": true,
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "axemanship",
+        "level": 5
+      },
+      {
+        "skillId": "ferocity",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "axe"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "berserk",
+          "reckless_blow"
+        ]
+      },
+      {
+        "options": [
+          "whirlwind",
+          "armor_cleave"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "old_mace",
+    "name": "낡은 철퇴",
+    "type": "한손둔기",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "mace",
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "mace"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bone_crusher",
+          "weaken"
+        ]
+      },
+      {
+        "options": [
+          "heavy_blow",
+          "skull_bash"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "steel_mace",
+    "name": "강철 철퇴",
+    "type": "한손둔기",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "mace",
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "mace_mastery",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "mace"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bone_crusher",
+          "weaken"
+        ]
+      },
+      {
+        "options": [
+          "heavy_blow",
+          "skull_bash"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "knight_mace",
+    "name": "기사의 철퇴",
+    "type": "한손둔기",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "mace",
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "mace_mastery",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "mace"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bone_crusher",
+          "weaken"
+        ]
+      },
+      {
+        "options": [
+          "heavy_blow",
+          "skull_bash"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "master_mace",
+    "name": "명장의 철퇴",
+    "type": "한손둔기",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "mace",
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "mace_mastery",
+        "level": 5
+      },
+      {
+        "skillId": "heavy_hand",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "mace"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bone_crusher",
+          "weaken"
+        ]
+      },
+      {
+        "options": [
+          "heavy_blow",
+          "skull_bash"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "old_warhammer",
+    "name": "낡은 전쟁 망치",
+    "type": "양손둔기",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "mace",
+    "twoHanded": true,
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "mace"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "quake_slam",
+          "crush"
+        ]
+      },
+      {
+        "options": [
+          "knockback",
+          "earth_tremor"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "steel_warhammer",
+    "name": "강철 전쟁 망치",
+    "type": "양손둔기",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "mace",
+    "twoHanded": true,
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "mace_mastery",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "mace"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "quake_slam",
+          "crush"
+        ]
+      },
+      {
+        "options": [
+          "knockback",
+          "earth_tremor"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "knight_warhammer",
+    "name": "기사의 전쟁 망치",
+    "type": "양손둔기",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "mace",
+    "twoHanded": true,
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "mace_mastery",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "mace"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "quake_slam",
+          "crush"
+        ]
+      },
+      {
+        "options": [
+          "knockback",
+          "earth_tremor"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "master_warhammer",
+    "name": "명장의 전쟁 망치",
+    "type": "양손둔기",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "mace",
+    "twoHanded": true,
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "mace_mastery",
+        "level": 5
+      },
+      {
+        "skillId": "heavy_hand",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "mace"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "quake_slam",
+          "crush"
+        ]
+      },
+      {
+        "options": [
+          "knockback",
+          "earth_tremor"
         ]
       }
     ]
@@ -116,7 +1186,8 @@
   {
     "id": "hunting_bow",
     "name": "사냥용 활",
-    "description": "T1. 수치는 임시.",
+    "type": "단궁",
+    "description": "T1. 임시 수치.",
     "slot": "MainHand",
     "mastery": "bow",
     "twoHanded": true,
@@ -133,12 +1204,13 @@
       {
         "options": [
           "fire_arrow",
-          "snipe"
+          "harass_shot"
         ]
       },
       {
         "options": [
-          "poison_arrow"
+          "poison_arrow",
+          "rapid_volley"
         ]
       }
     ]
@@ -146,7 +1218,8 @@
   {
     "id": "composite_bow",
     "name": "복합궁",
-    "description": "T2. 수치는 임시.",
+    "type": "단궁",
+    "description": "T2. 임시 수치.",
     "slot": "MainHand",
     "mastery": "bow",
     "twoHanded": true,
@@ -169,20 +1242,22 @@
       {
         "options": [
           "fire_arrow",
-          "snipe"
+          "harass_shot"
         ]
       },
       {
         "options": [
-          "poison_arrow"
+          "poison_arrow",
+          "rapid_volley"
         ]
       }
     ]
   },
   {
-    "id": "long_bow",
-    "name": "장궁",
-    "description": "T3. 수치는 임시.",
+    "id": "scout_bow",
+    "name": "정찰병의 단궁",
+    "type": "단궁",
+    "description": "T3. 임시 수치.",
     "slot": "MainHand",
     "mastery": "bow",
     "twoHanded": true,
@@ -205,20 +1280,22 @@
       {
         "options": [
           "fire_arrow",
-          "snipe"
+          "harass_shot"
         ]
       },
       {
         "options": [
-          "poison_arrow"
+          "poison_arrow",
+          "rapid_volley"
         ]
       }
     ]
   },
   {
-    "id": "master_bow",
-    "name": "명궁",
-    "description": "T4. 수치는 임시.",
+    "id": "shadow_bow",
+    "name": "그림자 단궁",
+    "type": "단궁",
+    "description": "T4. 임시 수치.",
     "slot": "MainHand",
     "mastery": "bow",
     "twoHanded": true,
@@ -245,22 +1322,24 @@
       {
         "options": [
           "fire_arrow",
-          "snipe"
+          "harass_shot"
         ]
       },
       {
         "options": [
-          "poison_arrow"
+          "poison_arrow",
+          "rapid_volley"
         ]
       }
     ]
   },
   {
-    "id": "apprentice_staff",
-    "name": "견습 지팡이",
-    "description": "T1. 수치는 임시.",
+    "id": "yew_longbow",
+    "name": "주목 장궁",
+    "type": "장궁",
+    "description": "T1. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "staff",
+    "mastery": "bow",
     "twoHanded": true,
     "tier": 1,
     "price": 40,
@@ -268,35 +1347,37 @@
       {
         "kind": "PowerPercent",
         "percent": 5,
-        "tag": "staff"
+        "tag": "bow"
       }
     ],
     "abilities": [
       {
         "options": [
-          "magic_bolt",
-          "fireball"
+          "snipe",
+          "take_aim"
         ]
       },
       {
         "options": [
-          "weaken"
+          "arrow_rain",
+          "mark_prey"
         ]
       }
     ]
   },
   {
-    "id": "mage_staff",
-    "name": "마법사 지팡이",
-    "description": "T2. 수치는 임시.",
+    "id": "war_longbow",
+    "name": "전쟁 장궁",
+    "type": "장궁",
+    "description": "T2. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "staff",
+    "mastery": "bow",
     "twoHanded": true,
     "tier": 2,
     "price": 120,
     "requirements": [
       {
-        "skillId": "magic_control",
+        "skillId": "archery",
         "level": 1
       }
     ],
@@ -304,35 +1385,37 @@
       {
         "kind": "PowerPercent",
         "percent": 10,
-        "tag": "staff"
+        "tag": "bow"
       }
     ],
     "abilities": [
       {
         "options": [
-          "magic_bolt",
-          "fireball"
+          "snipe",
+          "take_aim"
         ]
       },
       {
         "options": [
-          "weaken"
+          "arrow_rain",
+          "mark_prey"
         ]
       }
     ]
   },
   {
-    "id": "sage_staff",
-    "name": "현자의 지팡이",
-    "description": "T3. 수치는 임시.",
+    "id": "long_bow",
+    "name": "궁수대 장궁",
+    "type": "장궁",
+    "description": "T3. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "staff",
+    "mastery": "bow",
     "twoHanded": true,
     "tier": 3,
     "price": 320,
     "requirements": [
       {
-        "skillId": "magic_control",
+        "skillId": "archery",
         "level": 3
       }
     ],
@@ -340,39 +1423,41 @@
       {
         "kind": "PowerPercent",
         "percent": 15,
-        "tag": "staff"
+        "tag": "bow"
       }
     ],
     "abilities": [
       {
         "options": [
-          "magic_bolt",
-          "fireball"
+          "snipe",
+          "take_aim"
         ]
       },
       {
         "options": [
-          "weaken"
+          "arrow_rain",
+          "mark_prey"
         ]
       }
     ]
   },
   {
-    "id": "archmage_staff",
-    "name": "대마법사의 지팡이",
-    "description": "T4. 수치는 임시.",
+    "id": "master_bow",
+    "name": "명궁",
+    "type": "장궁",
+    "description": "T4. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "staff",
+    "mastery": "bow",
     "twoHanded": true,
     "tier": 4,
     "price": 800,
     "requirements": [
       {
-        "skillId": "magic_control",
+        "skillId": "archery",
         "level": 5
       },
       {
-        "skillId": "mana_efficiency",
+        "skillId": "rapid_fire",
         "level": 1
       }
     ],
@@ -380,27 +1465,1687 @@
       {
         "kind": "PowerPercent",
         "percent": 20,
-        "tag": "staff"
+        "tag": "bow"
       }
     ],
     "abilities": [
       {
         "options": [
-          "magic_bolt",
+          "snipe",
+          "take_aim"
+        ]
+      },
+      {
+        "options": [
+          "arrow_rain",
+          "mark_prey"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "old_crossbow",
+    "name": "낡은 석궁",
+    "type": "석궁",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "crossbow",
+    "twoHanded": true,
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "crossbow"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bolt_shot",
+          "piercing_bolt"
+        ]
+      },
+      {
+        "options": [
+          "armor_piercer",
+          "barbed_bolt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "steel_crossbow",
+    "name": "강철 석궁",
+    "type": "석궁",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "crossbow",
+    "twoHanded": true,
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "crossbow_mastery",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "crossbow"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bolt_shot",
+          "piercing_bolt"
+        ]
+      },
+      {
+        "options": [
+          "armor_piercer",
+          "barbed_bolt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "knight_crossbow",
+    "name": "기사의 석궁",
+    "type": "석궁",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "crossbow",
+    "twoHanded": true,
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "crossbow_mastery",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "crossbow"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bolt_shot",
+          "piercing_bolt"
+        ]
+      },
+      {
+        "options": [
+          "armor_piercer",
+          "barbed_bolt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "master_crossbow",
+    "name": "명장의 석궁",
+    "type": "석궁",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "crossbow",
+    "twoHanded": true,
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "crossbow_mastery",
+        "level": 5
+      },
+      {
+        "skillId": "reloading",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "crossbow"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bolt_shot",
+          "piercing_bolt"
+        ]
+      },
+      {
+        "options": [
+          "armor_piercer",
+          "barbed_bolt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "wooden_arbalest",
+    "name": "나무 쇠뇌",
+    "type": "쇠뇌",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "crossbow",
+    "twoHanded": true,
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "crossbow"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "heavy_bolt",
+          "siege_bolt"
+        ]
+      },
+      {
+        "options": [
+          "scatter_bolt",
+          "emplace"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "steel_arbalest",
+    "name": "강철 쇠뇌",
+    "type": "쇠뇌",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "crossbow",
+    "twoHanded": true,
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "crossbow_mastery",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "crossbow"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "heavy_bolt",
+          "siege_bolt"
+        ]
+      },
+      {
+        "options": [
+          "scatter_bolt",
+          "emplace"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "siege_arbalest",
+    "name": "공성 쇠뇌",
+    "type": "쇠뇌",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "crossbow",
+    "twoHanded": true,
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "crossbow_mastery",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "crossbow"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "heavy_bolt",
+          "siege_bolt"
+        ]
+      },
+      {
+        "options": [
+          "scatter_bolt",
+          "emplace"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "master_arbalest",
+    "name": "명장의 쇠뇌",
+    "type": "쇠뇌",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "crossbow",
+    "twoHanded": true,
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "crossbow_mastery",
+        "level": 5
+      },
+      {
+        "skillId": "reloading",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "crossbow"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "heavy_bolt",
+          "siege_bolt"
+        ]
+      },
+      {
+        "options": [
+          "scatter_bolt",
+          "emplace"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "leather_sling",
+    "name": "가죽 투석끈",
+    "type": "슬링",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "sling",
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "sling"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "sling_stone",
+          "lead_shot"
+        ]
+      },
+      {
+        "options": [
+          "stone_hail",
+          "headshot"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "tough_sling",
+    "name": "질긴 투석끈",
+    "type": "슬링",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "sling",
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "slinging",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "sling"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "sling_stone",
+          "lead_shot"
+        ]
+      },
+      {
+        "options": [
+          "stone_hail",
+          "headshot"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "veteran_sling",
+    "name": "노련한 투석끈",
+    "type": "슬링",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "sling",
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "slinging",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "sling"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "sling_stone",
+          "lead_shot"
+        ]
+      },
+      {
+        "options": [
+          "stone_hail",
+          "headshot"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "master_sling",
+    "name": "명장의 투석끈",
+    "type": "슬링",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "sling",
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "slinging",
+        "level": 5
+      },
+      {
+        "skillId": "quick_throw",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "sling"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "sling_stone",
+          "lead_shot"
+        ]
+      },
+      {
+        "options": [
+          "stone_hail",
+          "headshot"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "matchlock",
+    "name": "화승총",
+    "type": "머스킷",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "firearm",
+    "twoHanded": true,
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "firearm"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "volley",
+          "true_aim"
+        ]
+      },
+      {
+        "options": [
+          "reload",
+          "bayonet"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "steel_musket",
+    "name": "강철 머스킷",
+    "type": "머스킷",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "firearm",
+    "twoHanded": true,
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "gunnery",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "firearm"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "volley",
+          "true_aim"
+        ]
+      },
+      {
+        "options": [
+          "reload",
+          "bayonet"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "guard_musket",
+    "name": "근위대 머스킷",
+    "type": "머스킷",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "firearm",
+    "twoHanded": true,
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "gunnery",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "firearm"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "volley",
+          "true_aim"
+        ]
+      },
+      {
+        "options": [
+          "reload",
+          "bayonet"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "master_musket",
+    "name": "명장의 머스킷",
+    "type": "머스킷",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "firearm",
+    "twoHanded": true,
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "gunnery",
+        "level": 5
+      },
+      {
+        "skillId": "steady_aim",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "firearm"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "volley",
+          "true_aim"
+        ]
+      },
+      {
+        "options": [
+          "reload",
+          "bayonet"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "iron_handgonne",
+    "name": "무쇠 핸드캐논",
+    "type": "핸드캐논",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "firearm",
+    "twoHanded": true,
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "firearm"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bombard",
+          "line_breaker"
+        ]
+      },
+      {
+        "options": [
+          "thunderclap",
+          "point_blank"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "steel_handgonne",
+    "name": "강철 핸드캐논",
+    "type": "핸드캐논",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "firearm",
+    "twoHanded": true,
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "gunnery",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "firearm"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bombard",
+          "line_breaker"
+        ]
+      },
+      {
+        "options": [
+          "thunderclap",
+          "point_blank"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "siege_handgonne",
+    "name": "공성 핸드캐논",
+    "type": "핸드캐논",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "firearm",
+    "twoHanded": true,
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "gunnery",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "firearm"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bombard",
+          "line_breaker"
+        ]
+      },
+      {
+        "options": [
+          "thunderclap",
+          "point_blank"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "master_handgonne",
+    "name": "명장의 핸드캐논",
+    "type": "핸드캐논",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "firearm",
+    "twoHanded": true,
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "gunnery",
+        "level": 5
+      },
+      {
+        "skillId": "steady_aim",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "firearm"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bombard",
+          "line_breaker"
+        ]
+      },
+      {
+        "options": [
+          "thunderclap",
+          "point_blank"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "apprentice_fire_wand",
+    "name": "견습 화염 마법봉",
+    "type": "화염 마법봉",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "fire",
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "fire"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "ember",
           "fireball"
         ]
       },
       {
         "options": [
-          "weaken"
+          "ash_storm",
+          "flame_pillar"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mage_fire_wand",
+    "name": "마법사의 화염 마법봉",
+    "type": "화염 마법봉",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "fire",
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "pyromancy",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "fire"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "ember",
+          "fireball"
+        ]
+      },
+      {
+        "options": [
+          "ash_storm",
+          "flame_pillar"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sage_fire_wand",
+    "name": "현자의 화염 마법봉",
+    "type": "화염 마법봉",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "fire",
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "pyromancy",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "fire"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "ember",
+          "fireball"
+        ]
+      },
+      {
+        "options": [
+          "ash_storm",
+          "flame_pillar"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "archmage_fire_wand",
+    "name": "대마법사의 화염 마법봉",
+    "type": "화염 마법봉",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "fire",
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "pyromancy",
+        "level": 5
+      },
+      {
+        "skillId": "fire_efficiency",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "fire"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "ember",
+          "fireball"
+        ]
+      },
+      {
+        "options": [
+          "ash_storm",
+          "flame_pillar"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "apprentice_staff",
+    "name": "견습 화염 지팡이",
+    "type": "화염 지팡이",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "fire",
+    "twoHanded": true,
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "fire"
+      }
+    ],
+    "powerMultiplierPercent": 200,
+    "effectDurationBonus": 1,
+    "abilities": [
+      {
+        "options": [
+          "ember",
+          "fireball"
+        ]
+      },
+      {
+        "options": [
+          "ash_storm",
+          "flame_pillar"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mage_staff",
+    "name": "마법사의 화염 지팡이",
+    "type": "화염 지팡이",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "fire",
+    "twoHanded": true,
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "pyromancy",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "fire"
+      }
+    ],
+    "powerMultiplierPercent": 200,
+    "effectDurationBonus": 1,
+    "abilities": [
+      {
+        "options": [
+          "ember",
+          "fireball"
+        ]
+      },
+      {
+        "options": [
+          "ash_storm",
+          "flame_pillar"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sage_staff",
+    "name": "현자의 화염 지팡이",
+    "type": "화염 지팡이",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "fire",
+    "twoHanded": true,
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "pyromancy",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "fire"
+      }
+    ],
+    "powerMultiplierPercent": 200,
+    "effectDurationBonus": 1,
+    "abilities": [
+      {
+        "options": [
+          "ember",
+          "fireball"
+        ]
+      },
+      {
+        "options": [
+          "ash_storm",
+          "flame_pillar"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "archmage_staff",
+    "name": "대마법사의 화염 지팡이",
+    "type": "화염 지팡이",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "fire",
+    "twoHanded": true,
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "pyromancy",
+        "level": 5
+      },
+      {
+        "skillId": "fire_efficiency",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "fire"
+      }
+    ],
+    "powerMultiplierPercent": 200,
+    "effectDurationBonus": 1,
+    "abilities": [
+      {
+        "options": [
+          "ember",
+          "fireball"
+        ]
+      },
+      {
+        "options": [
+          "ash_storm",
+          "flame_pillar"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "apprentice_frost_wand",
+    "name": "견습 냉기 마법봉",
+    "type": "냉기 마법봉",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "frost",
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "frost"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "frost_bolt",
+          "ice_lance"
+        ]
+      },
+      {
+        "options": [
+          "blizzard",
+          "deep_freeze"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mage_frost_wand",
+    "name": "마법사의 냉기 마법봉",
+    "type": "냉기 마법봉",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "frost",
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "cryomancy",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "frost"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "frost_bolt",
+          "ice_lance"
+        ]
+      },
+      {
+        "options": [
+          "blizzard",
+          "deep_freeze"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sage_frost_wand",
+    "name": "현자의 냉기 마법봉",
+    "type": "냉기 마법봉",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "frost",
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "cryomancy",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "frost"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "frost_bolt",
+          "ice_lance"
+        ]
+      },
+      {
+        "options": [
+          "blizzard",
+          "deep_freeze"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "archmage_frost_wand",
+    "name": "대마법사의 냉기 마법봉",
+    "type": "냉기 마법봉",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "frost",
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "cryomancy",
+        "level": 5
+      },
+      {
+        "skillId": "frost_efficiency",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "frost"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "frost_bolt",
+          "ice_lance"
+        ]
+      },
+      {
+        "options": [
+          "blizzard",
+          "deep_freeze"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "apprentice_frost_staff",
+    "name": "견습 냉기 지팡이",
+    "type": "냉기 지팡이",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "frost",
+    "twoHanded": true,
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "frost"
+      }
+    ],
+    "powerMultiplierPercent": 200,
+    "effectDurationBonus": 1,
+    "abilities": [
+      {
+        "options": [
+          "frost_bolt",
+          "ice_lance"
+        ]
+      },
+      {
+        "options": [
+          "blizzard",
+          "deep_freeze"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mage_frost_staff",
+    "name": "마법사의 냉기 지팡이",
+    "type": "냉기 지팡이",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "frost",
+    "twoHanded": true,
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "cryomancy",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "frost"
+      }
+    ],
+    "powerMultiplierPercent": 200,
+    "effectDurationBonus": 1,
+    "abilities": [
+      {
+        "options": [
+          "frost_bolt",
+          "ice_lance"
+        ]
+      },
+      {
+        "options": [
+          "blizzard",
+          "deep_freeze"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sage_frost_staff",
+    "name": "현자의 냉기 지팡이",
+    "type": "냉기 지팡이",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "frost",
+    "twoHanded": true,
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "cryomancy",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "frost"
+      }
+    ],
+    "powerMultiplierPercent": 200,
+    "effectDurationBonus": 1,
+    "abilities": [
+      {
+        "options": [
+          "frost_bolt",
+          "ice_lance"
+        ]
+      },
+      {
+        "options": [
+          "blizzard",
+          "deep_freeze"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "archmage_frost_staff",
+    "name": "대마법사의 냉기 지팡이",
+    "type": "냉기 지팡이",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "frost",
+    "twoHanded": true,
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "cryomancy",
+        "level": 5
+      },
+      {
+        "skillId": "frost_efficiency",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "frost"
+      }
+    ],
+    "powerMultiplierPercent": 200,
+    "effectDurationBonus": 1,
+    "abilities": [
+      {
+        "options": [
+          "frost_bolt",
+          "ice_lance"
+        ]
+      },
+      {
+        "options": [
+          "blizzard",
+          "deep_freeze"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "apprentice_lightning_wand",
+    "name": "견습 전기 마법봉",
+    "type": "전기 마법봉",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "lightning",
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "lightning"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "static_shock",
+          "shock"
+        ]
+      },
+      {
+        "options": [
+          "chain_lightning",
+          "thunderbolt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mage_lightning_wand",
+    "name": "마법사의 전기 마법봉",
+    "type": "전기 마법봉",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "lightning",
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "electromancy",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "lightning"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "static_shock",
+          "shock"
+        ]
+      },
+      {
+        "options": [
+          "chain_lightning",
+          "thunderbolt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sage_lightning_wand",
+    "name": "현자의 전기 마법봉",
+    "type": "전기 마법봉",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "lightning",
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "electromancy",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "lightning"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "static_shock",
+          "shock"
+        ]
+      },
+      {
+        "options": [
+          "chain_lightning",
+          "thunderbolt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "archmage_lightning_wand",
+    "name": "대마법사의 전기 마법봉",
+    "type": "전기 마법봉",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "lightning",
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "electromancy",
+        "level": 5
+      },
+      {
+        "skillId": "lightning_efficiency",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "lightning"
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "static_shock",
+          "shock"
+        ]
+      },
+      {
+        "options": [
+          "chain_lightning",
+          "thunderbolt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "apprentice_lightning_staff",
+    "name": "견습 전기 지팡이",
+    "type": "전기 지팡이",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "lightning",
+    "twoHanded": true,
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 5,
+        "tag": "lightning"
+      }
+    ],
+    "powerMultiplierPercent": 200,
+    "effectDurationBonus": 1,
+    "abilities": [
+      {
+        "options": [
+          "static_shock",
+          "shock"
+        ]
+      },
+      {
+        "options": [
+          "chain_lightning",
+          "thunderbolt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mage_lightning_staff",
+    "name": "마법사의 전기 지팡이",
+    "type": "전기 지팡이",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "lightning",
+    "twoHanded": true,
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "electromancy",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "lightning"
+      }
+    ],
+    "powerMultiplierPercent": 200,
+    "effectDurationBonus": 1,
+    "abilities": [
+      {
+        "options": [
+          "static_shock",
+          "shock"
+        ]
+      },
+      {
+        "options": [
+          "chain_lightning",
+          "thunderbolt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sage_lightning_staff",
+    "name": "현자의 전기 지팡이",
+    "type": "전기 지팡이",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "lightning",
+    "twoHanded": true,
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "electromancy",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "lightning"
+      }
+    ],
+    "powerMultiplierPercent": 200,
+    "effectDurationBonus": 1,
+    "abilities": [
+      {
+        "options": [
+          "static_shock",
+          "shock"
+        ]
+      },
+      {
+        "options": [
+          "chain_lightning",
+          "thunderbolt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "archmage_lightning_staff",
+    "name": "대마법사의 전기 지팡이",
+    "type": "전기 지팡이",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "lightning",
+    "twoHanded": true,
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "electromancy",
+        "level": 5
+      },
+      {
+        "skillId": "lightning_efficiency",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "lightning"
+      }
+    ],
+    "powerMultiplierPercent": 200,
+    "effectDurationBonus": 1,
+    "abilities": [
+      {
+        "options": [
+          "static_shock",
+          "shock"
+        ]
+      },
+      {
+        "options": [
+          "chain_lightning",
+          "thunderbolt"
         ]
       }
     ]
   },
   {
     "id": "wooden_relic",
-    "name": "나무 성구",
-    "description": "T1. 수치는 임시.",
+    "name": "나무 치유봉",
+    "type": "치유봉",
+    "description": "T1. 임시 수치.",
     "slot": "MainHand",
     "mastery": "relic",
     "tier": 1,
@@ -415,20 +3160,22 @@
       {
         "options": [
           "heal",
-          "regen"
+          "greater_heal"
         ]
       },
       {
         "options": [
-          "bless"
+          "light_of_prayer",
+          "life_share"
         ]
       }
     ]
   },
   {
     "id": "silver_relic",
-    "name": "은 성구",
-    "description": "T2. 수치는 임시.",
+    "name": "은 치유봉",
+    "type": "치유봉",
+    "description": "T2. 임시 수치.",
     "slot": "MainHand",
     "mastery": "relic",
     "tier": 2,
@@ -449,20 +3196,22 @@
       {
         "options": [
           "heal",
-          "regen"
+          "greater_heal"
         ]
       },
       {
         "options": [
-          "bless"
+          "light_of_prayer",
+          "life_share"
         ]
       }
     ]
   },
   {
     "id": "blessed_relic",
-    "name": "축성된 성구",
-    "description": "T3. 수치는 임시.",
+    "name": "축성된 치유봉",
+    "type": "치유봉",
+    "description": "T3. 임시 수치.",
     "slot": "MainHand",
     "mastery": "relic",
     "tier": 3,
@@ -483,20 +3232,22 @@
       {
         "options": [
           "heal",
-          "regen"
+          "greater_heal"
         ]
       },
       {
         "options": [
-          "bless"
+          "light_of_prayer",
+          "life_share"
         ]
       }
     ]
   },
   {
     "id": "saint_relic",
-    "name": "성인의 성구",
-    "description": "T4. 수치는 임시.",
+    "name": "성인의 치유봉",
+    "type": "치유봉",
+    "description": "T4. 임시 수치.",
     "slot": "MainHand",
     "mastery": "relic",
     "tier": 4,
@@ -521,12 +3272,439 @@
       {
         "options": [
           "heal",
-          "regen"
+          "greater_heal"
         ]
       },
       {
         "options": [
-          "bless"
+          "light_of_prayer",
+          "life_share"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "wooden_renewal_wand",
+    "name": "나무 재생봉",
+    "type": "재생봉",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "relic",
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 5
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "regen",
+          "wave_of_renewal"
+        ]
+      },
+      {
+        "options": [
+          "dawn_grace",
+          "purify"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "silver_renewal_wand",
+    "name": "은 재생봉",
+    "type": "재생봉",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "relic",
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "healing",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 10
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "regen",
+          "wave_of_renewal"
+        ]
+      },
+      {
+        "options": [
+          "dawn_grace",
+          "purify"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "blessed_renewal_wand",
+    "name": "축성된 재생봉",
+    "type": "재생봉",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "relic",
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "healing",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 15
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "regen",
+          "wave_of_renewal"
+        ]
+      },
+      {
+        "options": [
+          "dawn_grace",
+          "purify"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "saint_renewal_wand",
+    "name": "성인의 재생봉",
+    "type": "재생봉",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "relic",
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "healing",
+        "level": 5
+      },
+      {
+        "skillId": "holy_magic",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 20
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "regen",
+          "wave_of_renewal"
+        ]
+      },
+      {
+        "options": [
+          "dawn_grace",
+          "purify"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "wooden_ward_wand",
+    "name": "나무 보호막봉",
+    "type": "보호막봉",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "relic",
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 5
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "guard",
+          "sanctuary"
+        ]
+      },
+      {
+        "options": [
+          "martyrdom",
+          "holy_shield"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "silver_ward_wand",
+    "name": "은 보호막봉",
+    "type": "보호막봉",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "relic",
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "healing",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 10
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "guard",
+          "sanctuary"
+        ]
+      },
+      {
+        "options": [
+          "martyrdom",
+          "holy_shield"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "blessed_ward_wand",
+    "name": "축성된 보호막봉",
+    "type": "보호막봉",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "relic",
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "healing",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 15
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "guard",
+          "sanctuary"
+        ]
+      },
+      {
+        "options": [
+          "martyrdom",
+          "holy_shield"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "saint_ward_wand",
+    "name": "성인의 보호막봉",
+    "type": "보호막봉",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "relic",
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "healing",
+        "level": 5
+      },
+      {
+        "skillId": "holy_magic",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 20
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "guard",
+          "sanctuary"
+        ]
+      },
+      {
+        "options": [
+          "martyrdom",
+          "holy_shield"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "wooden_blessing_wand",
+    "name": "나무 축복봉",
+    "type": "축복봉",
+    "description": "T1. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "relic",
+    "tier": 1,
+    "price": 40,
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 5
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bless",
+          "haste"
+        ]
+      },
+      {
+        "options": [
+          "hymn",
+          "resolve"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "silver_blessing_wand",
+    "name": "은 축복봉",
+    "type": "축복봉",
+    "description": "T2. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "relic",
+    "tier": 2,
+    "price": 120,
+    "requirements": [
+      {
+        "skillId": "healing",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 10
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bless",
+          "haste"
+        ]
+      },
+      {
+        "options": [
+          "hymn",
+          "resolve"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "blessed_blessing_wand",
+    "name": "축성된 축복봉",
+    "type": "축복봉",
+    "description": "T3. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "relic",
+    "tier": 3,
+    "price": 320,
+    "requirements": [
+      {
+        "skillId": "healing",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 15
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bless",
+          "haste"
+        ]
+      },
+      {
+        "options": [
+          "hymn",
+          "resolve"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "saint_blessing_wand",
+    "name": "성인의 축복봉",
+    "type": "축복봉",
+    "description": "T4. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "relic",
+    "tier": 4,
+    "price": 800,
+    "requirements": [
+      {
+        "skillId": "healing",
+        "level": 5
+      },
+      {
+        "skillId": "holy_magic",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 20
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "bless",
+          "haste"
+        ]
+      },
+      {
+        "options": [
+          "hymn",
+          "resolve"
         ]
       }
     ]
@@ -534,9 +3712,10 @@
   {
     "id": "wooden_shield",
     "name": "나무 방패",
-    "description": "T1. 수치는 임시.",
+    "type": "방패",
+    "description": "T1. 임시 수치.",
     "slot": "OffHand",
-    "mastery": "sword",
+    "mastery": "shield",
     "tier": 1,
     "price": 30,
     "bonuses": [
@@ -548,7 +3727,10 @@
     "abilities": [
       {
         "options": [
-          "first_aid"
+          "first_aid",
+          "shield_wall",
+          "shield_bash",
+          "oath_of_protection"
         ]
       }
     ]
@@ -556,14 +3738,15 @@
   {
     "id": "iron_shield",
     "name": "철 방패",
-    "description": "T2. 수치는 임시.",
+    "type": "방패",
+    "description": "T2. 임시 수치.",
     "slot": "OffHand",
-    "mastery": "sword",
+    "mastery": "shield",
     "tier": 2,
     "price": 90,
     "requirements": [
       {
-        "skillId": "swordsmanship",
+        "skillId": "shield_mastery",
         "level": 1
       }
     ],
@@ -576,7 +3759,10 @@
     "abilities": [
       {
         "options": [
-          "first_aid"
+          "first_aid",
+          "shield_wall",
+          "shield_bash",
+          "oath_of_protection"
         ]
       }
     ]
@@ -584,14 +3770,15 @@
   {
     "id": "knight_shield",
     "name": "기사 방패",
-    "description": "T3. 수치는 임시.",
+    "type": "방패",
+    "description": "T3. 임시 수치.",
     "slot": "OffHand",
-    "mastery": "sword",
+    "mastery": "shield",
     "tier": 3,
     "price": 240,
     "requirements": [
       {
-        "skillId": "swordsmanship",
+        "skillId": "shield_mastery",
         "level": 3
       }
     ],
@@ -604,7 +3791,10 @@
     "abilities": [
       {
         "options": [
-          "first_aid"
+          "first_aid",
+          "shield_wall",
+          "shield_bash",
+          "oath_of_protection"
         ]
       }
     ]
@@ -612,18 +3802,19 @@
   {
     "id": "bulwark_shield",
     "name": "성벽 방패",
-    "description": "T4. 수치는 임시.",
+    "type": "방패",
+    "description": "T4. 임시 수치.",
     "slot": "OffHand",
-    "mastery": "sword",
+    "mastery": "shield",
     "tier": 4,
     "price": 600,
     "requirements": [
       {
-        "skillId": "swordsmanship",
+        "skillId": "shield_mastery",
         "level": 5
       },
       {
-        "skillId": "flurry",
+        "skillId": "shield_training",
         "level": 1
       }
     ],
@@ -636,7 +3827,156 @@
     "abilities": [
       {
         "options": [
-          "first_aid"
+          "first_aid",
+          "shield_wall",
+          "shield_bash",
+          "oath_of_protection"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "worn_tome",
+    "name": "낡은 마법책",
+    "type": "마법책",
+    "description": "T1. 임시 수치.",
+    "slot": "OffHand",
+    "mastery": "tome",
+    "tier": 1,
+    "price": 30,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 25,
+        "tag": "spell"
+      },
+      {
+        "kind": "MaxMpPercent",
+        "percent": 5
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "deep_breath",
+          "spell_amplify",
+          "mana_barrier",
+          "magic_bolt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mage_tome",
+    "name": "마법사의 마법책",
+    "type": "마법책",
+    "description": "T2. 임시 수치.",
+    "slot": "OffHand",
+    "mastery": "tome",
+    "tier": 2,
+    "price": 90,
+    "requirements": [
+      {
+        "skillId": "tome_study",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 25,
+        "tag": "spell"
+      },
+      {
+        "kind": "MaxMpPercent",
+        "percent": 10
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "deep_breath",
+          "spell_amplify",
+          "mana_barrier",
+          "magic_bolt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sage_grimoire",
+    "name": "현자의 마도서",
+    "type": "마법책",
+    "description": "T3. 임시 수치.",
+    "slot": "OffHand",
+    "mastery": "tome",
+    "tier": 3,
+    "price": 240,
+    "requirements": [
+      {
+        "skillId": "tome_study",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 25,
+        "tag": "spell"
+      },
+      {
+        "kind": "MaxMpPercent",
+        "percent": 15
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "deep_breath",
+          "spell_amplify",
+          "mana_barrier",
+          "magic_bolt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "archmage_grimoire",
+    "name": "대마법사의 마도서",
+    "type": "마법책",
+    "description": "T4. 임시 수치.",
+    "slot": "OffHand",
+    "mastery": "tome",
+    "tier": 4,
+    "price": 600,
+    "requirements": [
+      {
+        "skillId": "tome_study",
+        "level": 5
+      },
+      {
+        "skillId": "inscription",
+        "level": 1
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 25,
+        "tag": "spell"
+      },
+      {
+        "kind": "MaxMpPercent",
+        "percent": 20
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "deep_breath",
+          "spell_amplify",
+          "mana_barrier",
+          "magic_bolt"
         ]
       }
     ]
@@ -644,7 +3984,8 @@
   {
     "id": "holy_token",
     "name": "작은 성물",
-    "description": "T1. 수치는 임시.",
+    "type": "성물",
+    "description": "T1. 임시 수치.",
     "slot": "OffHand",
     "mastery": "relic",
     "tier": 1,
@@ -658,12 +3999,23 @@
         "kind": "HealPercent",
         "percent": 3
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "mana_gift",
+          "mana_burn",
+          "prayer_of_protection",
+          "vigil"
+        ]
+      }
     ]
   },
   {
     "id": "silver_token",
     "name": "은 성물",
-    "description": "T2. 수치는 임시.",
+    "type": "성물",
+    "description": "T2. 임시 수치.",
     "slot": "OffHand",
     "mastery": "relic",
     "tier": 2,
@@ -683,12 +4035,23 @@
         "kind": "HealPercent",
         "percent": 6
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "mana_gift",
+          "mana_burn",
+          "prayer_of_protection",
+          "vigil"
+        ]
+      }
     ]
   },
   {
     "id": "blessed_token",
     "name": "축성된 성물",
-    "description": "T3. 수치는 임시.",
+    "type": "성물",
+    "description": "T3. 임시 수치.",
     "slot": "OffHand",
     "mastery": "relic",
     "tier": 3,
@@ -708,12 +4071,23 @@
         "kind": "HealPercent",
         "percent": 9
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "mana_gift",
+          "mana_burn",
+          "prayer_of_protection",
+          "vigil"
+        ]
+      }
     ]
   },
   {
     "id": "saint_token",
     "name": "성인의 성물",
-    "description": "T4. 수치는 임시.",
+    "type": "성물",
+    "description": "T4. 임시 수치.",
     "slot": "OffHand",
     "mastery": "relic",
     "tier": 4,
@@ -737,6 +4111,16 @@
         "kind": "HealPercent",
         "percent": 12
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "mana_gift",
+          "mana_burn",
+          "prayer_of_protection",
+          "vigil"
+        ]
+      }
     ]
   },
   {
@@ -755,6 +4139,13 @@
       {
         "kind": "MaxHpPercent",
         "percent": 3
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "brace"
+        ]
       }
     ]
   },
@@ -781,6 +4172,13 @@
         "kind": "MaxHpPercent",
         "percent": 6
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "brace"
+        ]
+      }
     ]
   },
   {
@@ -805,6 +4203,13 @@
       {
         "kind": "MaxHpPercent",
         "percent": 9
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "brace"
+        ]
       }
     ]
   },
@@ -835,6 +4240,13 @@
         "kind": "MaxHpPercent",
         "percent": 12
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "brace"
+        ]
+      }
     ]
   },
   {
@@ -853,6 +4265,14 @@
       {
         "kind": "MaxHpPercent",
         "percent": 5
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "war_cry",
+          "provoke"
+        ]
       }
     ]
   },
@@ -879,6 +4299,14 @@
         "kind": "MaxHpPercent",
         "percent": 10
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "war_cry",
+          "provoke"
+        ]
+      }
     ]
   },
   {
@@ -903,6 +4331,14 @@
       {
         "kind": "MaxHpPercent",
         "percent": 15
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "war_cry",
+          "provoke"
+        ]
       }
     ]
   },
@@ -933,6 +4369,14 @@
         "kind": "MaxHpPercent",
         "percent": 20
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "war_cry",
+          "provoke"
+        ]
+      }
     ]
   },
   {
@@ -947,6 +4391,13 @@
       {
         "kind": "DefensePercent",
         "percent": 5
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "charge"
+        ]
       }
     ]
   },
@@ -969,6 +4420,13 @@
         "kind": "DefensePercent",
         "percent": 10
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "charge"
+        ]
+      }
     ]
   },
   {
@@ -989,6 +4447,13 @@
       {
         "kind": "DefensePercent",
         "percent": 15
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "charge"
+        ]
       }
     ]
   },
@@ -1015,6 +4480,13 @@
         "kind": "DefensePercent",
         "percent": 20
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "charge"
+        ]
+      }
     ]
   },
   {
@@ -1029,6 +4501,13 @@
       {
         "kind": "DelayReductionPercent",
         "percent": 2
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "hide"
+        ]
       }
     ]
   },
@@ -1051,6 +4530,13 @@
         "kind": "DelayReductionPercent",
         "percent": 4
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "hide"
+        ]
+      }
     ]
   },
   {
@@ -1071,6 +4557,13 @@
       {
         "kind": "DelayReductionPercent",
         "percent": 6
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "hide"
+        ]
       }
     ]
   },
@@ -1097,6 +4590,13 @@
         "kind": "DelayReductionPercent",
         "percent": 8
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "hide"
+        ]
+      }
     ]
   },
   {
@@ -1115,6 +4615,14 @@
       {
         "kind": "DelayReductionPercent",
         "percent": 3
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "throwing_knife",
+          "hamstring"
+        ]
       }
     ]
   },
@@ -1141,6 +4649,14 @@
         "kind": "DelayReductionPercent",
         "percent": 6
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "throwing_knife",
+          "hamstring"
+        ]
+      }
     ]
   },
   {
@@ -1165,6 +4681,14 @@
       {
         "kind": "DelayReductionPercent",
         "percent": 9
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "throwing_knife",
+          "hamstring"
+        ]
       }
     ]
   },
@@ -1195,6 +4719,14 @@
         "kind": "DelayReductionPercent",
         "percent": 12
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "throwing_knife",
+          "hamstring"
+        ]
+      }
     ]
   },
   {
@@ -1209,6 +4741,13 @@
       {
         "kind": "DelayReductionPercent",
         "percent": 3
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "fleet_foot"
+        ]
       }
     ]
   },
@@ -1231,6 +4770,13 @@
         "kind": "DelayReductionPercent",
         "percent": 6
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "fleet_foot"
+        ]
+      }
     ]
   },
   {
@@ -1251,6 +4797,13 @@
       {
         "kind": "DelayReductionPercent",
         "percent": 9
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "fleet_foot"
+        ]
       }
     ]
   },
@@ -1277,6 +4830,13 @@
         "kind": "DelayReductionPercent",
         "percent": 12
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "fleet_foot"
+        ]
+      }
     ]
   },
   {
@@ -1291,6 +4851,13 @@
       {
         "kind": "MaxMpPercent",
         "percent": 5
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "arcane_haste"
+        ]
       }
     ]
   },
@@ -1313,6 +4880,13 @@
         "kind": "MaxMpPercent",
         "percent": 10
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "arcane_haste"
+        ]
+      }
     ]
   },
   {
@@ -1333,6 +4907,13 @@
       {
         "kind": "MaxMpPercent",
         "percent": 15
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "arcane_haste"
+        ]
       }
     ]
   },
@@ -1359,6 +4940,13 @@
         "kind": "MaxMpPercent",
         "percent": 20
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "arcane_haste"
+        ]
+      }
     ]
   },
   {
@@ -1377,6 +4965,14 @@
       {
         "kind": "MpCostReductionPercent",
         "percent": 3
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "arcane_ward",
+          "mana_overload"
+        ]
       }
     ]
   },
@@ -1403,6 +4999,14 @@
         "kind": "MpCostReductionPercent",
         "percent": 6
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "arcane_ward",
+          "mana_overload"
+        ]
+      }
     ]
   },
   {
@@ -1427,6 +5031,14 @@
       {
         "kind": "MpCostReductionPercent",
         "percent": 9
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "arcane_ward",
+          "mana_overload"
+        ]
       }
     ]
   },
@@ -1457,6 +5069,14 @@
         "kind": "MpCostReductionPercent",
         "percent": 12
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "arcane_ward",
+          "mana_overload"
+        ]
+      }
     ]
   },
   {
@@ -1471,6 +5091,13 @@
       {
         "kind": "MpCostReductionPercent",
         "percent": 3
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "step_back"
+        ]
       }
     ]
   },
@@ -1493,6 +5120,13 @@
         "kind": "MpCostReductionPercent",
         "percent": 6
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "step_back"
+        ]
+      }
     ]
   },
   {
@@ -1513,6 +5147,13 @@
       {
         "kind": "MpCostReductionPercent",
         "percent": 9
+      }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "step_back"
+        ]
       }
     ]
   },
@@ -1539,26 +5180,33 @@
         "kind": "MpCostReductionPercent",
         "percent": 12
       }
+    ],
+    "abilities": [
+      {
+        "options": [
+          "step_back"
+        ]
+      }
     ]
   },
   {
     "id": "iron_scrap",
     "name": "철 조각",
-    "description": "제작 재료. 검, 방패, 판금, 성구에 쓴다.",
+    "description": "제작 재료. 금속 근접 무기, 석궁, 화기, 방패, 판금, 힐러 마법봉에 쓴다.",
     "slot": "Material",
     "price": 10
   },
   {
     "id": "tough_leather",
     "name": "질긴 가죽",
-    "description": "제작 재료. 활과 가죽 방어구에 쓴다.",
+    "description": "제작 재료. 활, 슬링, 가죽 방어구에 쓴다.",
     "slot": "Material",
     "price": 10
   },
   {
     "id": "mana_thread",
     "name": "마력 실",
-    "description": "제작 재료. 지팡이, 성물, 천 방어구에 쓴다.",
+    "description": "제작 재료. 마법봉, 지팡이, 마법책, 성물, 천 방어구에 쓴다.",
     "slot": "Material",
     "price": 10
   },

@@ -380,9 +380,9 @@ public static class GameDataLoader
 
         if (!item.IsEquipment)
         {
-            if (item.Mastery is not null || item.TwoHanded || item.Bonuses.Count > 0 || item.Abilities.Count > 0 || item.Requirements.Count > 0)
+            if (item.Mastery is not null || item.TwoHanded || item.Bonuses.Count > 0 || item.Actions.Count > 0 || item.Requirements.Count > 0)
             {
-                errors.Add($"{at}: a material has no mastery, twoHanded, requirements, bonuses or abilities");
+                errors.Add($"{at}: a material has no mastery, twoHanded, requirements, bonuses or actions");
             }
 
             return;
@@ -414,30 +414,21 @@ public static class GameDataLoader
 
         DataValidation.RequireNonNegative(item.EffectDurationBonus, $"{at}: effectDurationBonus", errors);
 
-        for (var i = 0; i < item.Abilities.Count; i++)
+        foreach (var actionId in item.Actions)
         {
-            var options = item.Abilities[i].Options;
-            if (options.Count == 0)
+            if (!actions.TryGetValue(actionId, out var action))
             {
-                errors.Add($"{at}: ability {i + 1} needs at least one option");
+                errors.Add($"{at}: unknown action '{actionId}'");
             }
+            else if (action.Universal || action.SummonOnly)
+            {
+                errors.Add($"{at}: offers {(action.Universal ? "universal" : "summonOnly")} action '{actionId}'");
+            }
+        }
 
-            foreach (var option in options)
-            {
-                if (!actions.TryGetValue(option, out var action))
-                {
-                    errors.Add($"{at}: ability {i + 1} has unknown action '{option}'");
-                }
-                else if (action.Universal || action.SummonOnly)
-                {
-                    errors.Add($"{at}: ability {i + 1} offers {(action.Universal ? "universal" : "summonOnly")} action '{option}'");
-                }
-            }
-
-            foreach (var duplicate in options.GroupBy(o => o).Where(g => g.Count() > 1))
-            {
-                errors.Add($"{at}: ability {i + 1} lists '{duplicate.Key}' more than once");
-            }
+        foreach (var duplicate in item.Actions.GroupBy(a => a).Where(g => g.Count() > 1))
+        {
+            errors.Add($"{at}: lists action '{duplicate.Key}' more than once");
         }
     }
 
@@ -637,7 +628,7 @@ public static class GameDataLoader
             errors.Add($"{at}: an off-hand item cannot be worn with a two-handed weapon");
         }
 
-        var granted = equipped.SelectMany(i => i.DefaultChoices).ToHashSet();
+        var granted = equipped.SelectMany(i => i.Actions).ToHashSet();
         foreach (var tactic in r.Tactics)
         {
             var tacticAt = $"{at} tactic {tactic.Priority}";

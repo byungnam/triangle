@@ -27,12 +27,12 @@ public class EquipmentTests
         """,
         """[ { "id": "camp", "name": "야영지", "units": [ { "id": "e", "name": "적", "row": "Front", "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 } } ] } ]""",
         itemsJson: """
-        [ { "id": "sword", "name": "검", "slot": "MainHand", "mastery": "sword", "abilities": [ { "options": [ "slash" ] } ] },
+        [ { "id": "sword", "name": "검", "slot": "MainHand", "mastery": "sword", "actions": [ "slash" ] },
           { "id": "bow", "name": "활", "slot": "MainHand", "mastery": "bow", "twoHanded": true,
             "bonuses": [ { "kind": "PowerPercent", "percent": 5, "tag": "bow" } ],
-            "abilities": [ { "options": [ "shot", "snipe" ] }, { "options": [ "poison" ] } ] },
+            "actions": [ "shot", "snipe", "poison" ] },
           { "id": "long_bow", "name": "장궁", "slot": "MainHand", "mastery": "bow", "twoHanded": true, "tier": 2,
-            "requirements": [ { "skillId": "archery", "level": 1 } ], "abilities": [ { "options": [ "snipe" ] } ] },
+            "requirements": [ { "skillId": "archery", "level": 1 } ], "actions": [ "snipe" ] },
           { "id": "shield", "name": "방패", "slot": "OffHand", "mastery": "sword",
             "bonuses": [ { "kind": "DefensePercent", "percent": 10 } ] },
           { "id": "helm", "name": "투구", "slot": "Head", "mastery": "plate",
@@ -42,7 +42,7 @@ public class EquipmentTests
 
     private static Company NewCompany(params string[] stash)
     {
-        var member = new PartyMember("a", "A", new Stats(10, 10, 20, 10, 10), Row.Front, TestGear.Of("sword", offHand: "shield"), null,
+        var member = new PartyMember("a", "A", new Stats(10, 10, 20, 10, 10), Row.Front, TestGear.Of("sword", offHand: "shield"),
             new Dictionary<string, int> { ["bow"] = 100 }, new Dictionary<string, int>(),
             [[new Tactic(1, Condition.Always, 0, "slash"), new Tactic(2, Condition.Always, 0, "strike")]]);
         var company = new Company([member], ["a"], 0, new Dictionary<string, int>(), 0, 1);
@@ -109,26 +109,23 @@ public class EquipmentTests
     }
 
     [Fact]
-    public void Only_chosen_options_are_usable_and_changing_a_choice_locks_tactics()
+    public void Every_action_of_a_worn_item_is_usable_and_swapping_the_item_locks_tactics()
     {
-        var company = NewCompany("bow");
+        var company = NewCompany("bow", "long_bow");
         company.Equip("a", "bow", Data);
         var member = company.Member("a");
         member.TacticSets[0].Replace(0, Condition.Always, 0, "shot");
         member.TacticSets[0].Add(Condition.Always, 0, "poison");
 
-        Assert.Equal(["shot", "poison"], member.ChosenAbilities(EquipmentSlot.MainHand, Data));
-        Assert.Equal(new HashSet<string> { "shot", "poison" }, member.GrantedActions(Data));
+        Assert.Equal(["shot", "snipe", "poison"], member.ItemActions(EquipmentSlot.MainHand, Data));
+        Assert.Equal(new HashSet<string> { "shot", "snipe", "poison" }, member.GrantedActions(Data));
         Assert.Empty(member.LockedTacticIndexes(Data, 0));
+        Assert.Empty(member.ItemActions(EquipmentSlot.Head, Data));
 
-        Assert.True(company.ChooseAbility("a", EquipmentSlot.MainHand, 0, "snipe", Data));
-        Assert.Equal(["snipe", "poison"], member.ChosenAbilities(EquipmentSlot.MainHand, Data));
-        Assert.Equal([0], member.LockedTacticIndexes(Data, 0));
+        Assert.True(member.Learn("archery", Data));
+        Assert.True(company.Equip("a", "long_bow", Data));
+        Assert.Equal([0, 2], member.LockedTacticIndexes(Data, 0));
         Assert.True(company.HasLockedTactics(Data));
-
-        Assert.False(company.ChooseAbility("a", EquipmentSlot.MainHand, 0, "poison", Data)); // 그 칸의 후보가 아니다
-        Assert.False(company.ChooseAbility("a", EquipmentSlot.MainHand, 2, "shot", Data)); // 없는 칸
-        Assert.False(company.ChooseAbility("a", EquipmentSlot.Head, 0, "shot", Data)); // 빈 부위
     }
 
     [Fact]
@@ -164,13 +161,12 @@ public class EquipmentTests
     }
 
     [Fact]
-    public void Equipment_and_choices_are_locked_on_an_expedition()
+    public void Equipment_is_locked_on_an_expedition()
     {
         var company = NewCompany("helm");
         company.Expedition = new Triangle.Core.Expeditions.Expedition("z", 1, 0, [], 0, new Dictionary<string, int>(), null);
 
         Assert.False(company.Equip("a", "helm", Data));
         Assert.False(company.Unequip("a", EquipmentSlot.MainHand, Data));
-        Assert.False(company.ChooseAbility("a", EquipmentSlot.MainHand, 0, "slash", Data));
     }
 }

@@ -222,7 +222,7 @@ internal sealed class MasteryScene : IScene
                 var missing = set.Missing(action.Requirements);
                 var weapon = action.Universal ? "공용"
                     : action.Weapon is { } w ? $"{_data.Masteries[w].Name} 무기"
-                    : $"{string.Join(", ", _data.ItemsGranting(action.Id).Select(i => i.TypeOrName).Distinct())}에서 선택";
+                    : $"{string.Join(", ", _data.ItemsGranting(action.Id).Select(i => i.TypeOrName).Distinct())} 필요";
                 var text = missing.Count == 0
                     ? $"{action.Name} ({weapon}) — 배움"
                     : $"{action.Name} ({weapon}) — {string.Join(", ", missing.Select(m => $"{_data.Skills[m.SkillId].Name} {m.Level}"))} 필요";

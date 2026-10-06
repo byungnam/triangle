@@ -236,7 +236,7 @@ public class GameDataLoaderTests
             """;
         const string items = """
             [ { "id": "orb", "name": "구슬", "slot": "OffHand", "mastery": "bow", "powerMultiplierPercent": 200,
-                "abilities": [ { "options": [ "spirit_hit" ] } ] },
+                "actions": [ "spirit_hit" ] },
               { "id": "zero", "name": "영", "slot": "MainHand", "mastery": "bow", "powerMultiplierPercent": 0 } ]
             """;
 
@@ -255,7 +255,7 @@ public class GameDataLoaderTests
         Assert.Contains("actions.json 'call': summon action 'strike' must be summonOnly", errors);
         Assert.Contains("actions.json 'call': summon statSkill unknown skill 'ghost_skill'", errors);
         Assert.Contains("items.json 'orb': only a main-hand item can have powerMultiplierPercent or effectDurationBonus", errors);
-        Assert.Contains("items.json 'orb': ability 1 offers summonOnly action 'spirit_hit'", errors);
+        Assert.Contains("items.json 'orb': offers summonOnly action 'spirit_hit'", errors);
         Assert.Contains("items.json 'zero': powerMultiplierPercent must be at least 1, got 0", errors);
     }
 
@@ -341,7 +341,7 @@ public class GameDataLoaderTests
               { "id": "ore", "name": "광석", "slot": "Material", "mastery": "plate" },
               { "id": "wand", "name": "막대기", "slot": "MainHand", "mastery": "bow",
                 "requirements": [ { "skillId": "ghost", "level": 1 } ],
-                "abilities": [ { "options": [] }, { "options": [ "shot", "shot", "ghost", "strike" ] } ] } ]
+                "actions": [ "shot", "shot", "ghost", "strike" ] } ]
             """;
 
         var errors = Assert.Throws<GameDataException>(() =>
@@ -354,12 +354,11 @@ public class GameDataLoaderTests
         Assert.Contains("items.json 'helm': mastery: 'sword' is Weapon, not Armor", errors);
         Assert.Contains("items.json 'helm': only a main-hand item can be twoHanded", errors);
         Assert.Contains("items.json 'naked': equipment needs a mastery", errors);
-        Assert.Contains("items.json 'ore': a material has no mastery, twoHanded, requirements, bonuses or abilities", errors);
+        Assert.Contains("items.json 'ore': a material has no mastery, twoHanded, requirements, bonuses or actions", errors);
         Assert.Contains("items.json 'wand' requirement: requires unknown skill 'ghost'", errors);
-        Assert.Contains("items.json 'wand': ability 1 needs at least one option", errors);
-        Assert.Contains("items.json 'wand': ability 2 has unknown action 'ghost'", errors);
-        Assert.Contains("items.json 'wand': ability 2 offers universal action 'strike'", errors);
-        Assert.Contains("items.json 'wand': ability 2 lists 'shot' more than once", errors);
+        Assert.Contains("items.json 'wand': unknown action 'ghost'", errors);
+        Assert.Contains("items.json 'wand': offers universal action 'strike'", errors);
+        Assert.Contains("items.json 'wand': lists action 'shot' more than once", errors);
     }
 
     [Fact]

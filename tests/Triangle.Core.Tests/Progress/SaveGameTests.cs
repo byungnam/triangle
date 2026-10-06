@@ -31,12 +31,12 @@ public sealed class SaveGameTests : IDisposable
         """,
         """[ { "id": "camp", "name": "야영지", "units": [ { "id": "e", "name": "적", "row": "Front", "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 } } ] } ]""",
         itemsJson: """
-        [ { "id": "wooden_relic", "name": "나무 성구", "slot": "MainHand", "mastery": "relic", "abilities": [ { "options": [ "heal", "smite" ] } ] },
+        [ { "id": "wooden_relic", "name": "나무 성구", "slot": "MainHand", "mastery": "relic", "actions": [ "heal", "smite" ] },
           { "id": "silver_relic", "name": "은 성구", "slot": "MainHand", "mastery": "relic", "tier": 2,
-            "requirements": [ { "skillId": "healing", "level": 1 } ], "abilities": [ { "options": [ "heal", "smite" ] } ] },
+            "requirements": [ { "skillId": "healing", "level": 1 } ], "actions": [ "heal", "smite" ] },
           { "id": "gold_relic", "name": "금 성구", "slot": "MainHand", "mastery": "relic", "tier": 3,
             "requirements": [ { "skillId": "healing", "level": 3 } ], "bonuses": [ { "kind": "HealPercent", "percent": 30 } ],
-            "abilities": [ { "options": [ "heal" ] } ] },
+            "actions": [ "heal" ] },
           { "id": "old_sword", "name": "낡은 검", "slot": "MainHand", "mastery": "sword" },
           { "id": "cloth_robe", "name": "천 로브", "slot": "Body", "mastery": "cloth" } ]
         """);
@@ -54,14 +54,13 @@ public sealed class SaveGameTests : IDisposable
         PartyMember[] roster =
         [
             new("a", "이졸데", new Stats(10, 11, 21, 24, 12), Row.Back, TestGear.Of("wooden_relic", "cloth_robe"),
-                new Dictionary<EquipmentSlot, IReadOnlyList<string>> { [EquipmentSlot.MainHand] = ["smite"] },
                 new Dictionary<string, int> { ["relic"] = MasteryProgression.XpForLevel(3) + 40, ["cloth"] = 120 },
                 new Dictionary<string, int> { ["healing"] = 2 },
                 [[new Tactic(1, Condition.AnyAllyHpAtMost, 50, "smite"), new Tactic(2, Condition.Always, 0, "strike")],
                  [new Tactic(1, Condition.Always, 0, "strike")]]),
-            new("b", "고드릭", new Stats(15, 12, 25, 20, 13), Row.Front, TestGear.Of("old_sword"), null,
+            new("b", "고드릭", new Stats(15, 12, 25, 20, 13), Row.Front, TestGear.Of("old_sword"),
                 new Dictionary<string, int>(), new Dictionary<string, int>(), []),
-            new("c", "후보", new Stats(9, 9, 9, 9, 9), Row.Front, TestGear.Of(), null,
+            new("c", "후보", new Stats(9, 9, 9, 9, 9), Row.Front, TestGear.Of(),
                 new Dictionary<string, int>(), new Dictionary<string, int>(), []),
         ];
         return new Company(roster, ["b", "a"], gold: 120, new Dictionary<string, int> { ["silver_relic"] = 2 }, activeTacticSet: 1, nextSeed: 77);
@@ -92,7 +91,6 @@ public sealed class SaveGameTests : IDisposable
             var (o, l) = (original.Roster[i], loaded.Roster[i]);
             Assert.Equal((o.Id, o.Name, o.Stats, o.Row), (l.Id, l.Name, l.Stats, l.Row));
             Assert.Equal(o.Equipment, l.Equipment);
-            Assert.Equal(o.ChosenAbilities(EquipmentSlot.MainHand, Data), l.ChosenAbilities(EquipmentSlot.MainHand, Data));
             Assert.Equal(o.MasteryXp, l.MasteryXp);
             Assert.Equal(o.SkillLevels, l.SkillLevels);
             for (var set = 0; set < PartyMember.TacticSetCount; set++)
@@ -116,7 +114,7 @@ public sealed class SaveGameTests : IDisposable
         Assert.DoesNotContain("\"party\"", json);
         Assert.Contains("\"name\": \"이졸데\"", json);
         Assert.Contains("\"MainHand\": \"wooden_relic\"", json);
-        Assert.Contains("\"abilityChoices\"", json);
+        Assert.DoesNotContain("\"abilityChoices\"", json);
         Assert.DoesNotContain("\"weapon\"", json);
         Assert.Contains("\"silver_relic\": 2", json);
         Assert.Contains("\"healing\": 2", json);
@@ -145,8 +143,7 @@ public sealed class SaveGameTests : IDisposable
 
         var member = company.Roster[0];
         Assert.Equal(TestGear.Of("wooden_relic", "cloth_robe"), member.Equipment);
-        Assert.Equal(["heal"], member.ChosenAbilities(EquipmentSlot.MainHand, Data)); // 첫 옵션
-        Assert.Equal([1], member.LockedTacticIndexes(Data, 0)); // 징벌은 고르지 않았으므로 잠긴다
+        Assert.Empty(member.LockedTacticIndexes(Data, 0)); // 아이템 행동은 모두 쓴다
         Assert.Equal((10, 3, 300), (company.Gold, company.NextSeed, member.MasteryXp["relic"]));
     }
 
@@ -199,15 +196,24 @@ public sealed class SaveGameTests : IDisposable
     }
 
     [Fact]
-    public void Ability_choices_that_are_no_longer_options_fall_back_to_the_first()
+    public void Version_6_ability_choices_are_dropped_and_every_item_action_is_usable()
     {
         var member = Member("""
-            , "equipment": { "MainHand": "wooden_relic" }, "abilityChoices": { "MainHand": [ "removed" ] }
+            , "equipment": { "MainHand": "wooden_relic" }, "abilityChoices": { "MainHand": [ "removed" ] },
+            "skillLevels": { "healing": 1 }, "masteryXp": { "relic": 300 },
+            "tacticSets": [ [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "smite" },
+                              { "priority": 2, "condition": "Always", "value": 0, "actionId": "heal" } ] ]
             """);
 
         var company = SaveGame.Deserialize(Version6(member), Data);
 
-        Assert.Equal(["heal"], company.Roster[0].ChosenAbilities(EquipmentSlot.MainHand, Data));
+        Assert.Equal(["heal", "smite"], company.Roster[0].ItemActions(EquipmentSlot.MainHand, Data));
+        Assert.Empty(company.Roster[0].LockedTacticIndexes(Data, 0));
+        Assert.DoesNotContain("abilityChoices", SaveGame.Serialize(company));
+
+        var v7 = Version6(member).Replace("\"version\": 6", "\"version\": 7");
+        var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(v7, Data)).Errors;
+        Assert.Contains("save member 'a': 'abilityChoices' is a version 6 field; items now grant all their actions", errors);
     }
 
     [Fact]
@@ -387,7 +393,6 @@ public sealed class SaveGameTests : IDisposable
         company.Roster[1].TacticSets[1].Add(Condition.EveryNthTurn, 3, "strike");
         company.ActiveTacticSet = 0;
         Assert.True(company.Equip("a", "silver_relic", Data));
-        Assert.True(company.ChooseAbility("a", EquipmentSlot.MainHand, 0, "smite", Data));
 
         store.Save(company);
         var result = store.Load(Data, () => throw new InvalidOperationException("should not create new"));
@@ -397,7 +402,6 @@ public sealed class SaveGameTests : IDisposable
         Assert.Equal(new Tactic(1, Condition.EveryNthTurn, 3, "strike"), Assert.Single(result.Company.Roster[1].TacticSets[1]));
         Assert.Equal(0, result.Company.ActiveTacticSet);
         Assert.Equal("silver_relic", result.Company.Roster[0].ItemIn(EquipmentSlot.MainHand));
-        Assert.Equal(["smite"], result.Company.Roster[0].ChosenAbilities(EquipmentSlot.MainHand, Data));
         Assert.Equal(1, result.Company.StashCount("wooden_relic"));
         Assert.False(File.Exists(store.Path + ".tmp"));
     }

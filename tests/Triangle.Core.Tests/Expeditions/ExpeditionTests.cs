@@ -69,7 +69,7 @@ public class ExpeditionTests
         TestGear.Of(mainHand: "old_sword", offHand: "old_shield", head: "plate_helm", body: "plate_armor", feet: "plate_boots");
 
     private static PartyMember Member(string id, int vital = 20) =>
-        new(id, id.ToUpperInvariant(), new Stats(10, 10, vital, 10, 10), Row.Front, FullGear, null,
+        new(id, id.ToUpperInvariant(), new Stats(10, 10, vital, 10, 10), Row.Front, FullGear,
             new Dictionary<string, int>(), new Dictionary<string, int>(), [[new Tactic(1, Condition.Always, 0, "strike")]]);
 
     private static Company NewCompany(int gold = 0) =>

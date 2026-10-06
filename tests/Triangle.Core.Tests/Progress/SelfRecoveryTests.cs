@@ -14,7 +14,7 @@ public class SelfRecoveryTests
     private static readonly GameData Data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
 
     private static PartyMember Member(Dictionary<EquipmentSlot, string> gear) =>
-        new("a", "A", new Stats(10, 10, 20, 15, 10), Row.Front, gear, null,
+        new("a", "A", new Stats(10, 10, 20, 15, 10), Row.Front, gear,
             new Dictionary<string, int>(), new Dictionary<string, int>(),
             [[
                 new Tactic(1, Condition.SelfMpAtMost, 90, "focus"),
@@ -40,7 +40,7 @@ public class SelfRecoveryTests
         Assert.Empty(firstAid.Requirements);
         Assert.Equal(TargetSide.Self, firstAid.Side);
 
-        var offering = Data.Items.Values.Where(i => i.Abilities.Any(a => a.Options.Contains("first_aid"))).Select(i => i.Id).ToHashSet();
+        var offering = Data.Items.Values.Where(i => i.Actions.Contains("first_aid")).Select(i => i.Id).ToHashSet();
         Assert.Equal(new HashSet<string> { "wooden_shield", "iron_shield", "knight_shield", "bulwark_shield" }, offering);
     }
 

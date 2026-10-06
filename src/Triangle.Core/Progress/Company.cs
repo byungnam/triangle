@@ -236,13 +236,6 @@ public sealed class Company
         return true;
     }
 
-    /// <summary>
-    /// 그 부위 아이템의 행동 칸 하나에서 후보를 고른다. 원정 중이거나, 아이템이 없거나, 칸·후보가 아니면 false.
-    /// 고르지 않게 된 행동이 든 전술은 잠긴다.
-    /// </summary>
-    public bool ChooseAbility(string memberId, EquipmentSlot slot, int abilityIndex, string optionId, GameData data) =>
-        !OnExpedition && Member(memberId).SetAbility(slot, abilityIndex, optionId, data);
-
     /// <summary>상점에서 살 수 없는 이유. null이면 살 수 있다. 원정 중, 상점에 없는 아이템, 골드 부족.</summary>
     public string? WhyCannotBuy(string itemId, GameData data)
     {
@@ -381,7 +374,7 @@ public sealed class Company
         Gold -= HirePrice(offerIndex);
         _recruitOffers.RemoveAt(offerIndex);
         var member = new PartyMember(
-            id, offer.Name, offer.Stats, template.Row, template.Equipment, null,
+            id, offer.Name, offer.Stats, template.Row, template.Equipment,
             new Dictionary<string, int>(), new Dictionary<string, int>(), [template.Tactics, template.Tactics]);
         _roster.Add(member);
         AddToLineup(id);

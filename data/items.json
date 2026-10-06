@@ -15,19 +15,11 @@
         "tag": "sword"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "heavy_strike",
-          "duel_stance"
-        ]
-      },
-      {
-        "options": [
-          "disarm",
-          "double_slash"
-        ]
-      }
+    "actions": [
+      "heavy_strike",
+      "duel_stance",
+      "disarm",
+      "double_slash"
     ]
   },
   {
@@ -52,19 +44,11 @@
         "tag": "sword"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "heavy_strike",
-          "duel_stance"
-        ]
-      },
-      {
-        "options": [
-          "disarm",
-          "double_slash"
-        ]
-      }
+    "actions": [
+      "heavy_strike",
+      "duel_stance",
+      "disarm",
+      "double_slash"
     ]
   },
   {
@@ -89,19 +73,11 @@
         "tag": "sword"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "heavy_strike",
-          "duel_stance"
-        ]
-      },
-      {
-        "options": [
-          "disarm",
-          "double_slash"
-        ]
-      }
+    "actions": [
+      "heavy_strike",
+      "duel_stance",
+      "disarm",
+      "double_slash"
     ]
   },
   {
@@ -130,19 +106,11 @@
         "tag": "sword"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "heavy_strike",
-          "duel_stance"
-        ]
-      },
-      {
-        "options": [
-          "disarm",
-          "double_slash"
-        ]
-      }
+    "actions": [
+      "heavy_strike",
+      "duel_stance",
+      "disarm",
+      "double_slash"
     ]
   },
   {
@@ -162,19 +130,11 @@
         "tag": "sword"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "greatsword_sweep",
-          "cleave_down"
-        ]
-      },
-      {
-        "options": [
-          "blood_whirl",
-          "execute"
-        ]
-      }
+    "actions": [
+      "greatsword_sweep",
+      "cleave_down",
+      "blood_whirl",
+      "execute"
     ]
   },
   {
@@ -200,19 +160,11 @@
         "tag": "sword"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "greatsword_sweep",
-          "cleave_down"
-        ]
-      },
-      {
-        "options": [
-          "blood_whirl",
-          "execute"
-        ]
-      }
+    "actions": [
+      "greatsword_sweep",
+      "cleave_down",
+      "blood_whirl",
+      "execute"
     ]
   },
   {
@@ -238,19 +190,11 @@
         "tag": "sword"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "greatsword_sweep",
-          "cleave_down"
-        ]
-      },
-      {
-        "options": [
-          "blood_whirl",
-          "execute"
-        ]
-      }
+    "actions": [
+      "greatsword_sweep",
+      "cleave_down",
+      "blood_whirl",
+      "execute"
     ]
   },
   {
@@ -280,19 +224,11 @@
         "tag": "sword"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "greatsword_sweep",
-          "cleave_down"
-        ]
-      },
-      {
-        "options": [
-          "blood_whirl",
-          "execute"
-        ]
-      }
+    "actions": [
+      "greatsword_sweep",
+      "cleave_down",
+      "blood_whirl",
+      "execute"
     ]
   },
   {
@@ -311,19 +247,11 @@
         "tag": "spear"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "pierce",
-          "javelin"
-        ]
-      },
-      {
-        "options": [
-          "harrying_thrust",
-          "shaft_strike"
-        ]
-      }
+    "actions": [
+      "pierce",
+      "javelin",
+      "harrying_thrust",
+      "shaft_strike"
     ]
   },
   {
@@ -348,19 +276,11 @@
         "tag": "spear"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "pierce",
-          "javelin"
-        ]
-      },
-      {
-        "options": [
-          "harrying_thrust",
-          "shaft_strike"
-        ]
-      }
+    "actions": [
+      "pierce",
+      "javelin",
+      "harrying_thrust",
+      "shaft_strike"
     ]
   },
   {
@@ -385,19 +305,11 @@
         "tag": "spear"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "pierce",
-          "javelin"
-        ]
-      },
-      {
-        "options": [
-          "harrying_thrust",
-          "shaft_strike"
-        ]
-      }
+    "actions": [
+      "pierce",
+      "javelin",
+      "harrying_thrust",
+      "shaft_strike"
     ]
   },
   {
@@ -426,19 +338,11 @@
         "tag": "spear"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "pierce",
-          "javelin"
-        ]
-      },
-      {
-        "options": [
-          "harrying_thrust",
-          "shaft_strike"
-        ]
-      }
+    "actions": [
+      "pierce",
+      "javelin",
+      "harrying_thrust",
+      "shaft_strike"
     ]
   },
   {
@@ -458,19 +362,11 @@
         "tag": "spear"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "spear_brace",
-          "spear_phalanx"
-        ]
-      },
-      {
-        "options": [
-          "spear_sweep",
-          "hook_pull"
-        ]
-      }
+    "actions": [
+      "spear_brace",
+      "spear_phalanx",
+      "spear_sweep",
+      "hook_pull"
     ]
   },
   {
@@ -496,19 +392,11 @@
         "tag": "spear"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "spear_brace",
-          "spear_phalanx"
-        ]
-      },
-      {
-        "options": [
-          "spear_sweep",
-          "hook_pull"
-        ]
-      }
+    "actions": [
+      "spear_brace",
+      "spear_phalanx",
+      "spear_sweep",
+      "hook_pull"
     ]
   },
   {
@@ -534,19 +422,11 @@
         "tag": "spear"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "spear_brace",
-          "spear_phalanx"
-        ]
-      },
-      {
-        "options": [
-          "spear_sweep",
-          "hook_pull"
-        ]
-      }
+    "actions": [
+      "spear_brace",
+      "spear_phalanx",
+      "spear_sweep",
+      "hook_pull"
     ]
   },
   {
@@ -576,19 +456,11 @@
         "tag": "spear"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "spear_brace",
-          "spear_phalanx"
-        ]
-      },
-      {
-        "options": [
-          "spear_sweep",
-          "hook_pull"
-        ]
-      }
+    "actions": [
+      "spear_brace",
+      "spear_phalanx",
+      "spear_sweep",
+      "hook_pull"
     ]
   },
   {
@@ -607,19 +479,11 @@
         "tag": "axe"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bleeding_cut",
-          "open_wound"
-        ]
-      },
-      {
-        "options": [
-          "axe_throw",
-          "blood_scent"
-        ]
-      }
+    "actions": [
+      "bleeding_cut",
+      "open_wound",
+      "axe_throw",
+      "blood_scent"
     ]
   },
   {
@@ -644,19 +508,11 @@
         "tag": "axe"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bleeding_cut",
-          "open_wound"
-        ]
-      },
-      {
-        "options": [
-          "axe_throw",
-          "blood_scent"
-        ]
-      }
+    "actions": [
+      "bleeding_cut",
+      "open_wound",
+      "axe_throw",
+      "blood_scent"
     ]
   },
   {
@@ -681,19 +537,11 @@
         "tag": "axe"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bleeding_cut",
-          "open_wound"
-        ]
-      },
-      {
-        "options": [
-          "axe_throw",
-          "blood_scent"
-        ]
-      }
+    "actions": [
+      "bleeding_cut",
+      "open_wound",
+      "axe_throw",
+      "blood_scent"
     ]
   },
   {
@@ -722,19 +570,11 @@
         "tag": "axe"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bleeding_cut",
-          "open_wound"
-        ]
-      },
-      {
-        "options": [
-          "axe_throw",
-          "blood_scent"
-        ]
-      }
+    "actions": [
+      "bleeding_cut",
+      "open_wound",
+      "axe_throw",
+      "blood_scent"
     ]
   },
   {
@@ -754,19 +594,11 @@
         "tag": "axe"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "berserk",
-          "reckless_blow"
-        ]
-      },
-      {
-        "options": [
-          "whirlwind",
-          "armor_cleave"
-        ]
-      }
+    "actions": [
+      "berserk",
+      "reckless_blow",
+      "whirlwind",
+      "armor_cleave"
     ]
   },
   {
@@ -792,19 +624,11 @@
         "tag": "axe"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "berserk",
-          "reckless_blow"
-        ]
-      },
-      {
-        "options": [
-          "whirlwind",
-          "armor_cleave"
-        ]
-      }
+    "actions": [
+      "berserk",
+      "reckless_blow",
+      "whirlwind",
+      "armor_cleave"
     ]
   },
   {
@@ -830,19 +654,11 @@
         "tag": "axe"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "berserk",
-          "reckless_blow"
-        ]
-      },
-      {
-        "options": [
-          "whirlwind",
-          "armor_cleave"
-        ]
-      }
+    "actions": [
+      "berserk",
+      "reckless_blow",
+      "whirlwind",
+      "armor_cleave"
     ]
   },
   {
@@ -872,19 +688,11 @@
         "tag": "axe"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "berserk",
-          "reckless_blow"
-        ]
-      },
-      {
-        "options": [
-          "whirlwind",
-          "armor_cleave"
-        ]
-      }
+    "actions": [
+      "berserk",
+      "reckless_blow",
+      "whirlwind",
+      "armor_cleave"
     ]
   },
   {
@@ -903,19 +711,11 @@
         "tag": "mace"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bone_crusher",
-          "weaken"
-        ]
-      },
-      {
-        "options": [
-          "heavy_blow",
-          "skull_bash"
-        ]
-      }
+    "actions": [
+      "bone_crusher",
+      "weaken",
+      "heavy_blow",
+      "skull_bash"
     ]
   },
   {
@@ -940,19 +740,11 @@
         "tag": "mace"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bone_crusher",
-          "weaken"
-        ]
-      },
-      {
-        "options": [
-          "heavy_blow",
-          "skull_bash"
-        ]
-      }
+    "actions": [
+      "bone_crusher",
+      "weaken",
+      "heavy_blow",
+      "skull_bash"
     ]
   },
   {
@@ -977,19 +769,11 @@
         "tag": "mace"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bone_crusher",
-          "weaken"
-        ]
-      },
-      {
-        "options": [
-          "heavy_blow",
-          "skull_bash"
-        ]
-      }
+    "actions": [
+      "bone_crusher",
+      "weaken",
+      "heavy_blow",
+      "skull_bash"
     ]
   },
   {
@@ -1018,19 +802,11 @@
         "tag": "mace"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bone_crusher",
-          "weaken"
-        ]
-      },
-      {
-        "options": [
-          "heavy_blow",
-          "skull_bash"
-        ]
-      }
+    "actions": [
+      "bone_crusher",
+      "weaken",
+      "heavy_blow",
+      "skull_bash"
     ]
   },
   {
@@ -1050,19 +826,11 @@
         "tag": "mace"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "quake_slam",
-          "crush"
-        ]
-      },
-      {
-        "options": [
-          "knockback",
-          "earth_tremor"
-        ]
-      }
+    "actions": [
+      "quake_slam",
+      "crush",
+      "knockback",
+      "earth_tremor"
     ]
   },
   {
@@ -1088,19 +856,11 @@
         "tag": "mace"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "quake_slam",
-          "crush"
-        ]
-      },
-      {
-        "options": [
-          "knockback",
-          "earth_tremor"
-        ]
-      }
+    "actions": [
+      "quake_slam",
+      "crush",
+      "knockback",
+      "earth_tremor"
     ]
   },
   {
@@ -1126,19 +886,11 @@
         "tag": "mace"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "quake_slam",
-          "crush"
-        ]
-      },
-      {
-        "options": [
-          "knockback",
-          "earth_tremor"
-        ]
-      }
+    "actions": [
+      "quake_slam",
+      "crush",
+      "knockback",
+      "earth_tremor"
     ]
   },
   {
@@ -1168,19 +920,11 @@
         "tag": "mace"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "quake_slam",
-          "crush"
-        ]
-      },
-      {
-        "options": [
-          "knockback",
-          "earth_tremor"
-        ]
-      }
+    "actions": [
+      "quake_slam",
+      "crush",
+      "knockback",
+      "earth_tremor"
     ]
   },
   {
@@ -1200,19 +944,11 @@
         "tag": "bow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "fire_arrow",
-          "harass_shot"
-        ]
-      },
-      {
-        "options": [
-          "poison_arrow",
-          "rapid_volley"
-        ]
-      }
+    "actions": [
+      "fire_arrow",
+      "harass_shot",
+      "poison_arrow",
+      "rapid_volley"
     ]
   },
   {
@@ -1238,19 +974,11 @@
         "tag": "bow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "fire_arrow",
-          "harass_shot"
-        ]
-      },
-      {
-        "options": [
-          "poison_arrow",
-          "rapid_volley"
-        ]
-      }
+    "actions": [
+      "fire_arrow",
+      "harass_shot",
+      "poison_arrow",
+      "rapid_volley"
     ]
   },
   {
@@ -1276,19 +1004,11 @@
         "tag": "bow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "fire_arrow",
-          "harass_shot"
-        ]
-      },
-      {
-        "options": [
-          "poison_arrow",
-          "rapid_volley"
-        ]
-      }
+    "actions": [
+      "fire_arrow",
+      "harass_shot",
+      "poison_arrow",
+      "rapid_volley"
     ]
   },
   {
@@ -1318,19 +1038,11 @@
         "tag": "bow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "fire_arrow",
-          "harass_shot"
-        ]
-      },
-      {
-        "options": [
-          "poison_arrow",
-          "rapid_volley"
-        ]
-      }
+    "actions": [
+      "fire_arrow",
+      "harass_shot",
+      "poison_arrow",
+      "rapid_volley"
     ]
   },
   {
@@ -1350,19 +1062,11 @@
         "tag": "bow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "snipe",
-          "take_aim"
-        ]
-      },
-      {
-        "options": [
-          "arrow_rain",
-          "mark_prey"
-        ]
-      }
+    "actions": [
+      "snipe",
+      "take_aim",
+      "arrow_rain",
+      "mark_prey"
     ]
   },
   {
@@ -1388,19 +1092,11 @@
         "tag": "bow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "snipe",
-          "take_aim"
-        ]
-      },
-      {
-        "options": [
-          "arrow_rain",
-          "mark_prey"
-        ]
-      }
+    "actions": [
+      "snipe",
+      "take_aim",
+      "arrow_rain",
+      "mark_prey"
     ]
   },
   {
@@ -1426,19 +1122,11 @@
         "tag": "bow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "snipe",
-          "take_aim"
-        ]
-      },
-      {
-        "options": [
-          "arrow_rain",
-          "mark_prey"
-        ]
-      }
+    "actions": [
+      "snipe",
+      "take_aim",
+      "arrow_rain",
+      "mark_prey"
     ]
   },
   {
@@ -1468,19 +1156,11 @@
         "tag": "bow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "snipe",
-          "take_aim"
-        ]
-      },
-      {
-        "options": [
-          "arrow_rain",
-          "mark_prey"
-        ]
-      }
+    "actions": [
+      "snipe",
+      "take_aim",
+      "arrow_rain",
+      "mark_prey"
     ]
   },
   {
@@ -1500,19 +1180,11 @@
         "tag": "crossbow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bolt_shot",
-          "piercing_bolt"
-        ]
-      },
-      {
-        "options": [
-          "armor_piercer",
-          "barbed_bolt"
-        ]
-      }
+    "actions": [
+      "bolt_shot",
+      "piercing_bolt",
+      "armor_piercer",
+      "barbed_bolt"
     ]
   },
   {
@@ -1538,19 +1210,11 @@
         "tag": "crossbow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bolt_shot",
-          "piercing_bolt"
-        ]
-      },
-      {
-        "options": [
-          "armor_piercer",
-          "barbed_bolt"
-        ]
-      }
+    "actions": [
+      "bolt_shot",
+      "piercing_bolt",
+      "armor_piercer",
+      "barbed_bolt"
     ]
   },
   {
@@ -1576,19 +1240,11 @@
         "tag": "crossbow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bolt_shot",
-          "piercing_bolt"
-        ]
-      },
-      {
-        "options": [
-          "armor_piercer",
-          "barbed_bolt"
-        ]
-      }
+    "actions": [
+      "bolt_shot",
+      "piercing_bolt",
+      "armor_piercer",
+      "barbed_bolt"
     ]
   },
   {
@@ -1618,19 +1274,11 @@
         "tag": "crossbow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bolt_shot",
-          "piercing_bolt"
-        ]
-      },
-      {
-        "options": [
-          "armor_piercer",
-          "barbed_bolt"
-        ]
-      }
+    "actions": [
+      "bolt_shot",
+      "piercing_bolt",
+      "armor_piercer",
+      "barbed_bolt"
     ]
   },
   {
@@ -1650,19 +1298,11 @@
         "tag": "crossbow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "heavy_bolt",
-          "siege_bolt"
-        ]
-      },
-      {
-        "options": [
-          "scatter_bolt",
-          "emplace"
-        ]
-      }
+    "actions": [
+      "heavy_bolt",
+      "siege_bolt",
+      "scatter_bolt",
+      "emplace"
     ]
   },
   {
@@ -1688,19 +1328,11 @@
         "tag": "crossbow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "heavy_bolt",
-          "siege_bolt"
-        ]
-      },
-      {
-        "options": [
-          "scatter_bolt",
-          "emplace"
-        ]
-      }
+    "actions": [
+      "heavy_bolt",
+      "siege_bolt",
+      "scatter_bolt",
+      "emplace"
     ]
   },
   {
@@ -1726,19 +1358,11 @@
         "tag": "crossbow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "heavy_bolt",
-          "siege_bolt"
-        ]
-      },
-      {
-        "options": [
-          "scatter_bolt",
-          "emplace"
-        ]
-      }
+    "actions": [
+      "heavy_bolt",
+      "siege_bolt",
+      "scatter_bolt",
+      "emplace"
     ]
   },
   {
@@ -1768,19 +1392,11 @@
         "tag": "crossbow"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "heavy_bolt",
-          "siege_bolt"
-        ]
-      },
-      {
-        "options": [
-          "scatter_bolt",
-          "emplace"
-        ]
-      }
+    "actions": [
+      "heavy_bolt",
+      "siege_bolt",
+      "scatter_bolt",
+      "emplace"
     ]
   },
   {
@@ -1799,19 +1415,11 @@
         "tag": "sling"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "sling_stone",
-          "lead_shot"
-        ]
-      },
-      {
-        "options": [
-          "stone_hail",
-          "headshot"
-        ]
-      }
+    "actions": [
+      "sling_stone",
+      "lead_shot",
+      "stone_hail",
+      "headshot"
     ]
   },
   {
@@ -1836,19 +1444,11 @@
         "tag": "sling"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "sling_stone",
-          "lead_shot"
-        ]
-      },
-      {
-        "options": [
-          "stone_hail",
-          "headshot"
-        ]
-      }
+    "actions": [
+      "sling_stone",
+      "lead_shot",
+      "stone_hail",
+      "headshot"
     ]
   },
   {
@@ -1873,19 +1473,11 @@
         "tag": "sling"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "sling_stone",
-          "lead_shot"
-        ]
-      },
-      {
-        "options": [
-          "stone_hail",
-          "headshot"
-        ]
-      }
+    "actions": [
+      "sling_stone",
+      "lead_shot",
+      "stone_hail",
+      "headshot"
     ]
   },
   {
@@ -1914,19 +1506,11 @@
         "tag": "sling"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "sling_stone",
-          "lead_shot"
-        ]
-      },
-      {
-        "options": [
-          "stone_hail",
-          "headshot"
-        ]
-      }
+    "actions": [
+      "sling_stone",
+      "lead_shot",
+      "stone_hail",
+      "headshot"
     ]
   },
   {
@@ -1946,19 +1530,11 @@
         "tag": "firearm"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "volley",
-          "true_aim"
-        ]
-      },
-      {
-        "options": [
-          "reload",
-          "bayonet"
-        ]
-      }
+    "actions": [
+      "volley",
+      "true_aim",
+      "reload",
+      "bayonet"
     ]
   },
   {
@@ -1984,19 +1560,11 @@
         "tag": "firearm"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "volley",
-          "true_aim"
-        ]
-      },
-      {
-        "options": [
-          "reload",
-          "bayonet"
-        ]
-      }
+    "actions": [
+      "volley",
+      "true_aim",
+      "reload",
+      "bayonet"
     ]
   },
   {
@@ -2022,19 +1590,11 @@
         "tag": "firearm"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "volley",
-          "true_aim"
-        ]
-      },
-      {
-        "options": [
-          "reload",
-          "bayonet"
-        ]
-      }
+    "actions": [
+      "volley",
+      "true_aim",
+      "reload",
+      "bayonet"
     ]
   },
   {
@@ -2064,19 +1624,11 @@
         "tag": "firearm"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "volley",
-          "true_aim"
-        ]
-      },
-      {
-        "options": [
-          "reload",
-          "bayonet"
-        ]
-      }
+    "actions": [
+      "volley",
+      "true_aim",
+      "reload",
+      "bayonet"
     ]
   },
   {
@@ -2096,19 +1648,11 @@
         "tag": "firearm"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bombard",
-          "line_breaker"
-        ]
-      },
-      {
-        "options": [
-          "thunderclap",
-          "point_blank"
-        ]
-      }
+    "actions": [
+      "bombard",
+      "line_breaker",
+      "thunderclap",
+      "point_blank"
     ]
   },
   {
@@ -2134,19 +1678,11 @@
         "tag": "firearm"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bombard",
-          "line_breaker"
-        ]
-      },
-      {
-        "options": [
-          "thunderclap",
-          "point_blank"
-        ]
-      }
+    "actions": [
+      "bombard",
+      "line_breaker",
+      "thunderclap",
+      "point_blank"
     ]
   },
   {
@@ -2172,19 +1708,11 @@
         "tag": "firearm"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bombard",
-          "line_breaker"
-        ]
-      },
-      {
-        "options": [
-          "thunderclap",
-          "point_blank"
-        ]
-      }
+    "actions": [
+      "bombard",
+      "line_breaker",
+      "thunderclap",
+      "point_blank"
     ]
   },
   {
@@ -2214,19 +1742,11 @@
         "tag": "firearm"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bombard",
-          "line_breaker"
-        ]
-      },
-      {
-        "options": [
-          "thunderclap",
-          "point_blank"
-        ]
-      }
+    "actions": [
+      "bombard",
+      "line_breaker",
+      "thunderclap",
+      "point_blank"
     ]
   },
   {
@@ -2245,19 +1765,11 @@
         "tag": "fire"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "ember",
-          "fireball"
-        ]
-      },
-      {
-        "options": [
-          "ash_storm",
-          "flame_pillar"
-        ]
-      }
+    "actions": [
+      "ember",
+      "fireball",
+      "ash_storm",
+      "flame_pillar"
     ]
   },
   {
@@ -2282,19 +1794,11 @@
         "tag": "fire"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "ember",
-          "fireball"
-        ]
-      },
-      {
-        "options": [
-          "ash_storm",
-          "flame_pillar"
-        ]
-      }
+    "actions": [
+      "ember",
+      "fireball",
+      "ash_storm",
+      "flame_pillar"
     ]
   },
   {
@@ -2319,19 +1823,11 @@
         "tag": "fire"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "ember",
-          "fireball"
-        ]
-      },
-      {
-        "options": [
-          "ash_storm",
-          "flame_pillar"
-        ]
-      }
+    "actions": [
+      "ember",
+      "fireball",
+      "ash_storm",
+      "flame_pillar"
     ]
   },
   {
@@ -2360,19 +1856,11 @@
         "tag": "fire"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "ember",
-          "fireball"
-        ]
-      },
-      {
-        "options": [
-          "ash_storm",
-          "flame_pillar"
-        ]
-      }
+    "actions": [
+      "ember",
+      "fireball",
+      "ash_storm",
+      "flame_pillar"
     ]
   },
   {
@@ -2394,19 +1882,11 @@
     ],
     "powerMultiplierPercent": 200,
     "effectDurationBonus": 1,
-    "abilities": [
-      {
-        "options": [
-          "ember",
-          "fireball"
-        ]
-      },
-      {
-        "options": [
-          "ash_storm",
-          "flame_pillar"
-        ]
-      }
+    "actions": [
+      "ember",
+      "fireball",
+      "ash_storm",
+      "flame_pillar"
     ]
   },
   {
@@ -2434,19 +1914,11 @@
     ],
     "powerMultiplierPercent": 200,
     "effectDurationBonus": 1,
-    "abilities": [
-      {
-        "options": [
-          "ember",
-          "fireball"
-        ]
-      },
-      {
-        "options": [
-          "ash_storm",
-          "flame_pillar"
-        ]
-      }
+    "actions": [
+      "ember",
+      "fireball",
+      "ash_storm",
+      "flame_pillar"
     ]
   },
   {
@@ -2474,19 +1946,11 @@
     ],
     "powerMultiplierPercent": 200,
     "effectDurationBonus": 1,
-    "abilities": [
-      {
-        "options": [
-          "ember",
-          "fireball"
-        ]
-      },
-      {
-        "options": [
-          "ash_storm",
-          "flame_pillar"
-        ]
-      }
+    "actions": [
+      "ember",
+      "fireball",
+      "ash_storm",
+      "flame_pillar"
     ]
   },
   {
@@ -2518,19 +1982,11 @@
     ],
     "powerMultiplierPercent": 200,
     "effectDurationBonus": 1,
-    "abilities": [
-      {
-        "options": [
-          "ember",
-          "fireball"
-        ]
-      },
-      {
-        "options": [
-          "ash_storm",
-          "flame_pillar"
-        ]
-      }
+    "actions": [
+      "ember",
+      "fireball",
+      "ash_storm",
+      "flame_pillar"
     ]
   },
   {
@@ -2549,19 +2005,11 @@
         "tag": "frost"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "frost_bolt",
-          "ice_lance"
-        ]
-      },
-      {
-        "options": [
-          "blizzard",
-          "deep_freeze"
-        ]
-      }
+    "actions": [
+      "frost_bolt",
+      "ice_lance",
+      "blizzard",
+      "deep_freeze"
     ]
   },
   {
@@ -2586,19 +2034,11 @@
         "tag": "frost"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "frost_bolt",
-          "ice_lance"
-        ]
-      },
-      {
-        "options": [
-          "blizzard",
-          "deep_freeze"
-        ]
-      }
+    "actions": [
+      "frost_bolt",
+      "ice_lance",
+      "blizzard",
+      "deep_freeze"
     ]
   },
   {
@@ -2623,19 +2063,11 @@
         "tag": "frost"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "frost_bolt",
-          "ice_lance"
-        ]
-      },
-      {
-        "options": [
-          "blizzard",
-          "deep_freeze"
-        ]
-      }
+    "actions": [
+      "frost_bolt",
+      "ice_lance",
+      "blizzard",
+      "deep_freeze"
     ]
   },
   {
@@ -2664,19 +2096,11 @@
         "tag": "frost"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "frost_bolt",
-          "ice_lance"
-        ]
-      },
-      {
-        "options": [
-          "blizzard",
-          "deep_freeze"
-        ]
-      }
+    "actions": [
+      "frost_bolt",
+      "ice_lance",
+      "blizzard",
+      "deep_freeze"
     ]
   },
   {
@@ -2698,19 +2122,11 @@
     ],
     "powerMultiplierPercent": 200,
     "effectDurationBonus": 1,
-    "abilities": [
-      {
-        "options": [
-          "frost_bolt",
-          "ice_lance"
-        ]
-      },
-      {
-        "options": [
-          "blizzard",
-          "deep_freeze"
-        ]
-      }
+    "actions": [
+      "frost_bolt",
+      "ice_lance",
+      "blizzard",
+      "deep_freeze"
     ]
   },
   {
@@ -2738,19 +2154,11 @@
     ],
     "powerMultiplierPercent": 200,
     "effectDurationBonus": 1,
-    "abilities": [
-      {
-        "options": [
-          "frost_bolt",
-          "ice_lance"
-        ]
-      },
-      {
-        "options": [
-          "blizzard",
-          "deep_freeze"
-        ]
-      }
+    "actions": [
+      "frost_bolt",
+      "ice_lance",
+      "blizzard",
+      "deep_freeze"
     ]
   },
   {
@@ -2778,19 +2186,11 @@
     ],
     "powerMultiplierPercent": 200,
     "effectDurationBonus": 1,
-    "abilities": [
-      {
-        "options": [
-          "frost_bolt",
-          "ice_lance"
-        ]
-      },
-      {
-        "options": [
-          "blizzard",
-          "deep_freeze"
-        ]
-      }
+    "actions": [
+      "frost_bolt",
+      "ice_lance",
+      "blizzard",
+      "deep_freeze"
     ]
   },
   {
@@ -2822,19 +2222,11 @@
     ],
     "powerMultiplierPercent": 200,
     "effectDurationBonus": 1,
-    "abilities": [
-      {
-        "options": [
-          "frost_bolt",
-          "ice_lance"
-        ]
-      },
-      {
-        "options": [
-          "blizzard",
-          "deep_freeze"
-        ]
-      }
+    "actions": [
+      "frost_bolt",
+      "ice_lance",
+      "blizzard",
+      "deep_freeze"
     ]
   },
   {
@@ -2853,19 +2245,11 @@
         "tag": "lightning"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "static_shock",
-          "shock"
-        ]
-      },
-      {
-        "options": [
-          "chain_lightning",
-          "thunderbolt"
-        ]
-      }
+    "actions": [
+      "static_shock",
+      "shock",
+      "chain_lightning",
+      "thunderbolt"
     ]
   },
   {
@@ -2890,19 +2274,11 @@
         "tag": "lightning"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "static_shock",
-          "shock"
-        ]
-      },
-      {
-        "options": [
-          "chain_lightning",
-          "thunderbolt"
-        ]
-      }
+    "actions": [
+      "static_shock",
+      "shock",
+      "chain_lightning",
+      "thunderbolt"
     ]
   },
   {
@@ -2927,19 +2303,11 @@
         "tag": "lightning"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "static_shock",
-          "shock"
-        ]
-      },
-      {
-        "options": [
-          "chain_lightning",
-          "thunderbolt"
-        ]
-      }
+    "actions": [
+      "static_shock",
+      "shock",
+      "chain_lightning",
+      "thunderbolt"
     ]
   },
   {
@@ -2968,19 +2336,11 @@
         "tag": "lightning"
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "static_shock",
-          "shock"
-        ]
-      },
-      {
-        "options": [
-          "chain_lightning",
-          "thunderbolt"
-        ]
-      }
+    "actions": [
+      "static_shock",
+      "shock",
+      "chain_lightning",
+      "thunderbolt"
     ]
   },
   {
@@ -3002,19 +2362,11 @@
     ],
     "powerMultiplierPercent": 200,
     "effectDurationBonus": 1,
-    "abilities": [
-      {
-        "options": [
-          "static_shock",
-          "shock"
-        ]
-      },
-      {
-        "options": [
-          "chain_lightning",
-          "thunderbolt"
-        ]
-      }
+    "actions": [
+      "static_shock",
+      "shock",
+      "chain_lightning",
+      "thunderbolt"
     ]
   },
   {
@@ -3042,19 +2394,11 @@
     ],
     "powerMultiplierPercent": 200,
     "effectDurationBonus": 1,
-    "abilities": [
-      {
-        "options": [
-          "static_shock",
-          "shock"
-        ]
-      },
-      {
-        "options": [
-          "chain_lightning",
-          "thunderbolt"
-        ]
-      }
+    "actions": [
+      "static_shock",
+      "shock",
+      "chain_lightning",
+      "thunderbolt"
     ]
   },
   {
@@ -3082,19 +2426,11 @@
     ],
     "powerMultiplierPercent": 200,
     "effectDurationBonus": 1,
-    "abilities": [
-      {
-        "options": [
-          "static_shock",
-          "shock"
-        ]
-      },
-      {
-        "options": [
-          "chain_lightning",
-          "thunderbolt"
-        ]
-      }
+    "actions": [
+      "static_shock",
+      "shock",
+      "chain_lightning",
+      "thunderbolt"
     ]
   },
   {
@@ -3126,19 +2462,11 @@
     ],
     "powerMultiplierPercent": 200,
     "effectDurationBonus": 1,
-    "abilities": [
-      {
-        "options": [
-          "static_shock",
-          "shock"
-        ]
-      },
-      {
-        "options": [
-          "chain_lightning",
-          "thunderbolt"
-        ]
-      }
+    "actions": [
+      "static_shock",
+      "shock",
+      "chain_lightning",
+      "thunderbolt"
     ]
   },
   {
@@ -3156,19 +2484,11 @@
         "percent": 5
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "heal",
-          "greater_heal"
-        ]
-      },
-      {
-        "options": [
-          "light_of_prayer",
-          "life_share"
-        ]
-      }
+    "actions": [
+      "heal",
+      "greater_heal",
+      "light_of_prayer",
+      "life_share"
     ]
   },
   {
@@ -3192,19 +2512,11 @@
         "percent": 10
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "heal",
-          "greater_heal"
-        ]
-      },
-      {
-        "options": [
-          "light_of_prayer",
-          "life_share"
-        ]
-      }
+    "actions": [
+      "heal",
+      "greater_heal",
+      "light_of_prayer",
+      "life_share"
     ]
   },
   {
@@ -3228,19 +2540,11 @@
         "percent": 15
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "heal",
-          "greater_heal"
-        ]
-      },
-      {
-        "options": [
-          "light_of_prayer",
-          "life_share"
-        ]
-      }
+    "actions": [
+      "heal",
+      "greater_heal",
+      "light_of_prayer",
+      "life_share"
     ]
   },
   {
@@ -3268,19 +2572,11 @@
         "percent": 20
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "heal",
-          "greater_heal"
-        ]
-      },
-      {
-        "options": [
-          "light_of_prayer",
-          "life_share"
-        ]
-      }
+    "actions": [
+      "heal",
+      "greater_heal",
+      "light_of_prayer",
+      "life_share"
     ]
   },
   {
@@ -3298,19 +2594,11 @@
         "percent": 5
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "regen",
-          "wave_of_renewal"
-        ]
-      },
-      {
-        "options": [
-          "dawn_grace",
-          "purify"
-        ]
-      }
+    "actions": [
+      "regen",
+      "wave_of_renewal",
+      "dawn_grace",
+      "purify"
     ]
   },
   {
@@ -3334,19 +2622,11 @@
         "percent": 10
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "regen",
-          "wave_of_renewal"
-        ]
-      },
-      {
-        "options": [
-          "dawn_grace",
-          "purify"
-        ]
-      }
+    "actions": [
+      "regen",
+      "wave_of_renewal",
+      "dawn_grace",
+      "purify"
     ]
   },
   {
@@ -3370,19 +2650,11 @@
         "percent": 15
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "regen",
-          "wave_of_renewal"
-        ]
-      },
-      {
-        "options": [
-          "dawn_grace",
-          "purify"
-        ]
-      }
+    "actions": [
+      "regen",
+      "wave_of_renewal",
+      "dawn_grace",
+      "purify"
     ]
   },
   {
@@ -3410,19 +2682,11 @@
         "percent": 20
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "regen",
-          "wave_of_renewal"
-        ]
-      },
-      {
-        "options": [
-          "dawn_grace",
-          "purify"
-        ]
-      }
+    "actions": [
+      "regen",
+      "wave_of_renewal",
+      "dawn_grace",
+      "purify"
     ]
   },
   {
@@ -3440,19 +2704,11 @@
         "percent": 5
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "guard",
-          "sanctuary"
-        ]
-      },
-      {
-        "options": [
-          "martyrdom",
-          "holy_shield"
-        ]
-      }
+    "actions": [
+      "guard",
+      "sanctuary",
+      "martyrdom",
+      "holy_shield"
     ]
   },
   {
@@ -3476,19 +2732,11 @@
         "percent": 10
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "guard",
-          "sanctuary"
-        ]
-      },
-      {
-        "options": [
-          "martyrdom",
-          "holy_shield"
-        ]
-      }
+    "actions": [
+      "guard",
+      "sanctuary",
+      "martyrdom",
+      "holy_shield"
     ]
   },
   {
@@ -3512,19 +2760,11 @@
         "percent": 15
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "guard",
-          "sanctuary"
-        ]
-      },
-      {
-        "options": [
-          "martyrdom",
-          "holy_shield"
-        ]
-      }
+    "actions": [
+      "guard",
+      "sanctuary",
+      "martyrdom",
+      "holy_shield"
     ]
   },
   {
@@ -3552,19 +2792,11 @@
         "percent": 20
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "guard",
-          "sanctuary"
-        ]
-      },
-      {
-        "options": [
-          "martyrdom",
-          "holy_shield"
-        ]
-      }
+    "actions": [
+      "guard",
+      "sanctuary",
+      "martyrdom",
+      "holy_shield"
     ]
   },
   {
@@ -3582,19 +2814,11 @@
         "percent": 5
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bless",
-          "haste"
-        ]
-      },
-      {
-        "options": [
-          "hymn",
-          "resolve"
-        ]
-      }
+    "actions": [
+      "bless",
+      "haste",
+      "hymn",
+      "resolve"
     ]
   },
   {
@@ -3618,19 +2842,11 @@
         "percent": 10
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bless",
-          "haste"
-        ]
-      },
-      {
-        "options": [
-          "hymn",
-          "resolve"
-        ]
-      }
+    "actions": [
+      "bless",
+      "haste",
+      "hymn",
+      "resolve"
     ]
   },
   {
@@ -3654,19 +2870,11 @@
         "percent": 15
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bless",
-          "haste"
-        ]
-      },
-      {
-        "options": [
-          "hymn",
-          "resolve"
-        ]
-      }
+    "actions": [
+      "bless",
+      "haste",
+      "hymn",
+      "resolve"
     ]
   },
   {
@@ -3694,19 +2902,11 @@
         "percent": 20
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "bless",
-          "haste"
-        ]
-      },
-      {
-        "options": [
-          "hymn",
-          "resolve"
-        ]
-      }
+    "actions": [
+      "bless",
+      "haste",
+      "hymn",
+      "resolve"
     ]
   },
   {
@@ -3724,15 +2924,11 @@
         "percent": 10
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "first_aid",
-          "shield_wall",
-          "shield_bash",
-          "oath_of_protection"
-        ]
-      }
+    "actions": [
+      "first_aid",
+      "shield_wall",
+      "shield_bash",
+      "oath_of_protection"
     ]
   },
   {
@@ -3756,15 +2952,11 @@
         "percent": 20
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "first_aid",
-          "shield_wall",
-          "shield_bash",
-          "oath_of_protection"
-        ]
-      }
+    "actions": [
+      "first_aid",
+      "shield_wall",
+      "shield_bash",
+      "oath_of_protection"
     ]
   },
   {
@@ -3788,15 +2980,11 @@
         "percent": 30
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "first_aid",
-          "shield_wall",
-          "shield_bash",
-          "oath_of_protection"
-        ]
-      }
+    "actions": [
+      "first_aid",
+      "shield_wall",
+      "shield_bash",
+      "oath_of_protection"
     ]
   },
   {
@@ -3824,15 +3012,11 @@
         "percent": 40
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "first_aid",
-          "shield_wall",
-          "shield_bash",
-          "oath_of_protection"
-        ]
-      }
+    "actions": [
+      "first_aid",
+      "shield_wall",
+      "shield_bash",
+      "oath_of_protection"
     ]
   },
   {
@@ -3855,15 +3039,11 @@
         "percent": 5
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "deep_breath",
-          "spell_amplify",
-          "mana_barrier",
-          "magic_bolt"
-        ]
-      }
+    "actions": [
+      "deep_breath",
+      "spell_amplify",
+      "mana_barrier",
+      "magic_bolt"
     ]
   },
   {
@@ -3892,15 +3072,11 @@
         "percent": 10
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "deep_breath",
-          "spell_amplify",
-          "mana_barrier",
-          "magic_bolt"
-        ]
-      }
+    "actions": [
+      "deep_breath",
+      "spell_amplify",
+      "mana_barrier",
+      "magic_bolt"
     ]
   },
   {
@@ -3929,15 +3105,11 @@
         "percent": 15
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "deep_breath",
-          "spell_amplify",
-          "mana_barrier",
-          "magic_bolt"
-        ]
-      }
+    "actions": [
+      "deep_breath",
+      "spell_amplify",
+      "mana_barrier",
+      "magic_bolt"
     ]
   },
   {
@@ -3970,15 +3142,11 @@
         "percent": 20
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "deep_breath",
-          "spell_amplify",
-          "mana_barrier",
-          "magic_bolt"
-        ]
-      }
+    "actions": [
+      "deep_breath",
+      "spell_amplify",
+      "mana_barrier",
+      "magic_bolt"
     ]
   },
   {
@@ -4000,15 +3168,11 @@
         "percent": 3
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "mana_gift",
-          "mana_burn",
-          "prayer_of_protection",
-          "vigil"
-        ]
-      }
+    "actions": [
+      "mana_gift",
+      "mana_burn",
+      "prayer_of_protection",
+      "vigil"
     ]
   },
   {
@@ -4036,15 +3200,11 @@
         "percent": 6
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "mana_gift",
-          "mana_burn",
-          "prayer_of_protection",
-          "vigil"
-        ]
-      }
+    "actions": [
+      "mana_gift",
+      "mana_burn",
+      "prayer_of_protection",
+      "vigil"
     ]
   },
   {
@@ -4072,15 +3232,11 @@
         "percent": 9
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "mana_gift",
-          "mana_burn",
-          "prayer_of_protection",
-          "vigil"
-        ]
-      }
+    "actions": [
+      "mana_gift",
+      "mana_burn",
+      "prayer_of_protection",
+      "vigil"
     ]
   },
   {
@@ -4112,15 +3268,11 @@
         "percent": 12
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "mana_gift",
-          "mana_burn",
-          "prayer_of_protection",
-          "vigil"
-        ]
-      }
+    "actions": [
+      "mana_gift",
+      "mana_burn",
+      "prayer_of_protection",
+      "vigil"
     ]
   },
   {
@@ -4141,12 +3293,8 @@
         "percent": 3
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "brace"
-        ]
-      }
+    "actions": [
+      "brace"
     ]
   },
   {
@@ -4173,12 +3321,8 @@
         "percent": 6
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "brace"
-        ]
-      }
+    "actions": [
+      "brace"
     ]
   },
   {
@@ -4205,12 +3349,8 @@
         "percent": 9
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "brace"
-        ]
-      }
+    "actions": [
+      "brace"
     ]
   },
   {
@@ -4241,12 +3381,8 @@
         "percent": 12
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "brace"
-        ]
-      }
+    "actions": [
+      "brace"
     ]
   },
   {
@@ -4267,13 +3403,9 @@
         "percent": 5
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "war_cry",
-          "provoke"
-        ]
-      }
+    "actions": [
+      "war_cry",
+      "provoke"
     ]
   },
   {
@@ -4300,13 +3432,9 @@
         "percent": 10
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "war_cry",
-          "provoke"
-        ]
-      }
+    "actions": [
+      "war_cry",
+      "provoke"
     ]
   },
   {
@@ -4333,13 +3461,9 @@
         "percent": 15
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "war_cry",
-          "provoke"
-        ]
-      }
+    "actions": [
+      "war_cry",
+      "provoke"
     ]
   },
   {
@@ -4370,13 +3494,9 @@
         "percent": 20
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "war_cry",
-          "provoke"
-        ]
-      }
+    "actions": [
+      "war_cry",
+      "provoke"
     ]
   },
   {
@@ -4393,12 +3513,8 @@
         "percent": 5
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "charge"
-        ]
-      }
+    "actions": [
+      "charge"
     ]
   },
   {
@@ -4421,12 +3537,8 @@
         "percent": 10
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "charge"
-        ]
-      }
+    "actions": [
+      "charge"
     ]
   },
   {
@@ -4449,12 +3561,8 @@
         "percent": 15
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "charge"
-        ]
-      }
+    "actions": [
+      "charge"
     ]
   },
   {
@@ -4481,12 +3589,8 @@
         "percent": 20
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "charge"
-        ]
-      }
+    "actions": [
+      "charge"
     ]
   },
   {
@@ -4503,12 +3607,8 @@
         "percent": 2
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "hide"
-        ]
-      }
+    "actions": [
+      "hide"
     ]
   },
   {
@@ -4531,12 +3631,8 @@
         "percent": 4
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "hide"
-        ]
-      }
+    "actions": [
+      "hide"
     ]
   },
   {
@@ -4559,12 +3655,8 @@
         "percent": 6
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "hide"
-        ]
-      }
+    "actions": [
+      "hide"
     ]
   },
   {
@@ -4591,12 +3683,8 @@
         "percent": 8
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "hide"
-        ]
-      }
+    "actions": [
+      "hide"
     ]
   },
   {
@@ -4617,13 +3705,9 @@
         "percent": 3
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "throwing_knife",
-          "hamstring"
-        ]
-      }
+    "actions": [
+      "throwing_knife",
+      "hamstring"
     ]
   },
   {
@@ -4650,13 +3734,9 @@
         "percent": 6
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "throwing_knife",
-          "hamstring"
-        ]
-      }
+    "actions": [
+      "throwing_knife",
+      "hamstring"
     ]
   },
   {
@@ -4683,13 +3763,9 @@
         "percent": 9
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "throwing_knife",
-          "hamstring"
-        ]
-      }
+    "actions": [
+      "throwing_knife",
+      "hamstring"
     ]
   },
   {
@@ -4720,13 +3796,9 @@
         "percent": 12
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "throwing_knife",
-          "hamstring"
-        ]
-      }
+    "actions": [
+      "throwing_knife",
+      "hamstring"
     ]
   },
   {
@@ -4743,12 +3815,8 @@
         "percent": 3
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "fleet_foot"
-        ]
-      }
+    "actions": [
+      "fleet_foot"
     ]
   },
   {
@@ -4771,12 +3839,8 @@
         "percent": 6
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "fleet_foot"
-        ]
-      }
+    "actions": [
+      "fleet_foot"
     ]
   },
   {
@@ -4799,12 +3863,8 @@
         "percent": 9
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "fleet_foot"
-        ]
-      }
+    "actions": [
+      "fleet_foot"
     ]
   },
   {
@@ -4831,12 +3891,8 @@
         "percent": 12
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "fleet_foot"
-        ]
-      }
+    "actions": [
+      "fleet_foot"
     ]
   },
   {
@@ -4853,12 +3909,8 @@
         "percent": 5
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "arcane_haste"
-        ]
-      }
+    "actions": [
+      "arcane_haste"
     ]
   },
   {
@@ -4881,12 +3933,8 @@
         "percent": 10
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "arcane_haste"
-        ]
-      }
+    "actions": [
+      "arcane_haste"
     ]
   },
   {
@@ -4909,12 +3957,8 @@
         "percent": 15
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "arcane_haste"
-        ]
-      }
+    "actions": [
+      "arcane_haste"
     ]
   },
   {
@@ -4941,12 +3985,8 @@
         "percent": 20
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "arcane_haste"
-        ]
-      }
+    "actions": [
+      "arcane_haste"
     ]
   },
   {
@@ -4967,13 +4007,9 @@
         "percent": 3
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "arcane_ward",
-          "mana_overload"
-        ]
-      }
+    "actions": [
+      "arcane_ward",
+      "mana_overload"
     ]
   },
   {
@@ -5000,13 +4036,9 @@
         "percent": 6
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "arcane_ward",
-          "mana_overload"
-        ]
-      }
+    "actions": [
+      "arcane_ward",
+      "mana_overload"
     ]
   },
   {
@@ -5033,13 +4065,9 @@
         "percent": 9
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "arcane_ward",
-          "mana_overload"
-        ]
-      }
+    "actions": [
+      "arcane_ward",
+      "mana_overload"
     ]
   },
   {
@@ -5070,13 +4098,9 @@
         "percent": 12
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "arcane_ward",
-          "mana_overload"
-        ]
-      }
+    "actions": [
+      "arcane_ward",
+      "mana_overload"
     ]
   },
   {
@@ -5093,12 +4117,8 @@
         "percent": 3
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "step_back"
-        ]
-      }
+    "actions": [
+      "step_back"
     ]
   },
   {
@@ -5121,12 +4141,8 @@
         "percent": 6
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "step_back"
-        ]
-      }
+    "actions": [
+      "step_back"
     ]
   },
   {
@@ -5149,12 +4165,8 @@
         "percent": 9
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "step_back"
-        ]
-      }
+    "actions": [
+      "step_back"
     ]
   },
   {
@@ -5181,12 +4193,8 @@
         "percent": 12
       }
     ],
-    "abilities": [
-      {
-        "options": [
-          "step_back"
-        ]
-      }
+    "actions": [
+      "step_back"
     ]
   },
   {

@@ -58,7 +58,7 @@ public static class StartingCompany
     [
         // 전위 탱커: 받는 피해를 줄이고(방어 기술) 최대 HP를 늘린다(체력 단련). 공격은 기본 공격뿐이다.
         // HP가 35% 이하면 방패의 응급 처치로 버틴다.
-        new PartyMember("ally_godric", "고드릭", new Stats(15, 12, 26, 20, 12), Row.Front, Gear("old_sword", "plate", offHand: "wooden_shield"), null,
+        new PartyMember("ally_godric", "고드릭", new Stats(15, 12, 26, 20, 12), Row.Front, Gear("old_sword", "plate", offHand: "wooden_shield"),
             new Dictionary<string, int> { ["plate"] = Xp(4) },
             new Dictionary<string, int> { ["defense"] = 2, ["endurance"] = 1 },
             [
@@ -70,7 +70,7 @@ public static class StartingCompany
             ]),
 
         // 후위 궁수: 첫 턴과 4턴마다 독화살(없는 적 우선), 그 외 화살. MP가 15% 이하면 정신 집중으로 채운다.
-        new PartyMember("ally_elsbeth", "엘스베트", new Stats(10, 14, 20, 24, 13), Row.Back, Gear("hunting_bow", "leather"), null,
+        new PartyMember("ally_elsbeth", "엘스베트", new Stats(10, 14, 20, 24, 13), Row.Back, Gear("hunting_bow", "leather"),
             new Dictionary<string, int> { ["bow"] = Xp(2) },
             new Dictionary<string, int> { ["archery"] = 2 },
             [
@@ -88,7 +88,6 @@ public static class StartingCompany
         // 후위 화염 마법사: 화염구(지속 피해)를 주로 쓰고, 4턴마다 재의 폭풍으로 적 전체를 태운다.
         // MP가 25% 이하면 정신 집중으로 채운다.
         new PartyMember("ally_morwen", "모르웬", new Stats(9, 11, 19, 27, 12), Row.Back, Gear("apprentice_staff", "cloth"),
-            new Dictionary<EquipmentSlot, IReadOnlyList<string>> { [EquipmentSlot.MainHand] = ["fireball", "ash_storm"] },
             new Dictionary<string, int> { ["fire"] = Xp(3), ["cloth"] = Xp(2) },
             new Dictionary<string, int> { ["pyromancy"] = 3, ["meditation"] = 2 },
             [

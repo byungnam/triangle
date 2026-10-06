@@ -16,6 +16,24 @@ const string Usage = """
       show <id>                  그 id의 원본 JSON과 쓰는 곳.
       refs <id>                  그 id를 가리키는 곳만.
 
+    수정 명령 (고친 뒤 검증을 통과해야 저장한다. 실패하면 아무 파일도 바꾸지 않는다):
+      set <종류> <id> <경로> <값>      값을 바꾼다. 없는 속성은 만든다.
+      unset <종류> <id> <경로>         속성을 지워 기본값으로 돌린다.
+      add <종류> <id> <경로> <값>      배열에 값을 붙인다 (이미 있으면 그대로).
+      remove <종류> <id> <경로> <값>   배열에서 그 값을 뺀다.
+      new <종류> <JSON> [--after <id>] 새 항목을 넣는다 (기본: 맨 끝).
+      copy <종류> <원본id> <새id> [--after <id>]  항목을 복사한다 (기본: 원본 바로 뒤).
+      delete <종류> <id>               항목을 지운다. 가리키는 곳이 남아 있으면 검증에서 막힌다.
+
+      <id>: 쉼표로 여럿, *는 아무 글자 (예: old_*, '*'). 제작법은 결과 아이템 id.
+      <경로>: 점으로 잇는다. 배열 원소는 번호(0부터)나 id. 예: price, rewards.goldMin, units.e1.stats.str
+      <값>: JSON으로 읽히면 JSON(50, true, ["a"], {"skillId":"archery","level":1}), 아니면 문자열.
+            *=1.2  /=2  +=10  -=5 는 지금 숫자로 계산한다 (정수는 반올림).
+      --where <경로><연산><값>   여러 번 줄 수 있다 (모두 만족). 연산: = != >= <= > <. 배열의 =는 "포함".
+      --dry-run                  바뀔 내용과 검증 결과만 보여 주고 저장하지 않는다.
+      예: set items '*' price '*=1.2' --where tier=2
+          add items '*' actions cleave_down --where type=양손검
+
     공통 옵션:
       --data <폴더>              데이터 폴더 (기본: 현재 폴더에서 위로 올라가며 data/masteries.json을 찾는다)
     """;
@@ -36,6 +54,13 @@ if (directory is null)
     return 2;
 }
 
+var command = options.Positional[0];
+var rest = options.Positional.Skip(1).ToList();
+if (Editing.Commands.Contains(command))
+{
+    return Editing.Run(command, rest, options, directory);
+}
+
 GameData data;
 try
 {
@@ -52,8 +77,6 @@ catch (GameDataException e)
     return 1;
 }
 
-var command = options.Positional[0];
-var rest = options.Positional.Skip(1).ToList();
 switch (command)
 {
     case "validate":

@@ -51,7 +51,7 @@ triangle/
 │  │  ├─ Items/                 #   아이템 정의 (장비 칸, 숙련 계열, 티어, 가격), 상점 규칙, 제작법
 │  │  ├─ Expeditions/           #   지역 정의, 원정 상태와 규칙(출정·전투·전리품·사망·귀환)
 │  │  └─ Progress/              #   회사(로스터·출전 멤버·골드·창고·모집), 멤버 편집, 시작 회사, 세이브
-│  ├─ Triangle.DataTool/        # 데이터 검사·조회 명령줄 도구 (triangle-data). 편집기 1단계
+│  ├─ Triangle.DataTool/        # 데이터 검사·조회·수정 명령줄 도구 (triangle-data)
 │  ├─ Triangle.Editor/          # (예정) 데이터 편집기 GUI. Triangle.Core의 정의·검사를 그대로 사용
 │  └─ Triangle.Desktop/         # MonoGame DesktopGL 실행 프로젝트
 │     ├─ Scenes/                #   타이틀, 로스터, 유닛 상세, 전술 편집, 전투, 결과
@@ -423,7 +423,7 @@ EVE Online과 Albion Online을 참고했다. 구현은 `Items/`, `Progress/Party
 
 ### 데이터 도구 (`Triangle.DataTool`, 2026-10-06)
 
-편집기는 두 층으로 만든다. 검사와 조회는 `Triangle.Core/Data/`에 두고, 명령줄 도구(지금)와 GUI(예정)가 같은 코드를 쓴다. 그래서 사람이 GUI로 고치든 Claude가 JSON을 직접 고치든 같은 규칙으로 검사된다.
+편집기는 두 층으로 만든다. 검사·조회·수정은 `Triangle.Core/Data/`에 두고, 명령줄 도구와 GUI(미룸, 2026-10-06)가 같은 코드를 쓴다. 그래서 사람이 GUI로 고치든 Claude가 JSON을 직접 고치든 같은 규칙으로 검사된다.
 
 - `DataLint.Check(GameData)`: 로더 검증을 통과한 데이터의 **경고**. 게임은 보지 않는다.
   - 아무 아이템도 주지 않고 적도 쓰지 않는 행동 (공용·무기 계열 행동 제외), 어떤 소환도 쓰지 않는 소환 전용 행동
@@ -431,7 +431,12 @@ EVE Online과 Albion Online을 참고했다. 구현은 `Items/`, `Progress/Party
   - 상점·전리품(지정 드롭, 티어 드롭)·제작·신입 시작 장비 어디로도 얻을 수 없는 아이템, 제작에 안 쓰이는 재료
   - 저장소 데이터는 경고 0개를 유지한다(테스트).
 - `DataReferences.Find(GameData, id)`: 그 ID를 가리키는 곳 (계열, 스킬, 행동, 효과, 아이템, 적 팀 모두).
-- `triangle-data validate [--strict]`, `list <종류> [필터]`, `show <id>`, `refs <id>`. `show`는 원본 JSON을 그대로 보여 준다. 사용법은 README.
+- `DataDocument`, `DataPath`: 편집용 데이터. 정의 클래스가 아니라 JSON 노드로 들고 있어서 파일에 적힌 모양(적힌 속성, 순서) 그대로 고치고 다시 쓴다. 저장소 파일은 읽고 그대로 쓰면 한 글자도 바뀌지 않는다(테스트).
+  - 고친 뒤 로더 검증(`GameDataLoader.Parse`)을 통과해야 저장한다. 실패하면 아무 파일도 바꾸지 않는다.
+  - 경로는 점으로 잇고 배열 원소는 번호나 id로 고른다. 일괄 수정은 id 와일드카드와 `--where` 조건으로 고른다.
+- `triangle-data`: 조회 `validate [--strict]`, `list`, `show`, `refs`, 수정 `set`, `unset`, `add`, `remove`, `new`, `copy`, `delete` (`--dry-run`). 사용법은 README.
+- 왜 SQL(SQLite)이 아닌가 (2026-10-06): 데이터가 중첩 구조(행동의 효과·소환, 적 팀의 유닛·전술, 지역 보상)라 표로 풀면 테이블과 조인 코드가 많고, 필드를 자주 더해서 마이그레이션 비용이 크며, 바이너리라 git diff와 병합이 안 된다. 일괄 수정은 CLI가 대신한다.
+- id 이름 바꾸기(가리키는 곳까지)는 아직 없다.
 
 ### 원정 (`Triangle.Core/Expeditions/`, 2026-10-02)
 

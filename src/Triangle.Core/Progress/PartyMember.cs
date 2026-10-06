@@ -13,8 +13,7 @@ namespace Triangle.Core.Progress;
 /// - 전열과 전술을 편집한다. 전술은 세트 두 벌(<see cref="TacticSetCount"/>)을 저장하고,
 ///   어느 세트로 싸울지는 회사가 정한다(<see cref="Company.ActiveTacticSet"/>).
 /// - 부위 5개(주무기, 보조, 머리, 몸통, 신발)에 아이템을 하나씩 낀다. 장착과 해제는 회사 창고와 오간다
-///   (<see cref="Company.Equip"/>). 아이템의 행동 칸마다 후보 하나를 고르고(<see cref="ChosenAbilities"/>),
-///   고른 행동과 공용 행동만 전술에 쓸 수 있다.
+///   (<see cref="Company.Equip"/>). 낀 아이템이 주는 행동(<see cref="GrantedActions"/>)과 공용 행동만 전술에 쓸 수 있다.
 /// - 착용 조건(패시브 레벨)을 못 채운 아이템이나 두손 무기와 같이 낀 보조는 "착용 불가"다.
 ///   보너스와 행동을 주지 않고, 출정을 막는다.
 /// - 장착한 계열로 싸우면 그 숙련 경험치가 쌓이고, 숙련 레벨 1당 그 트리 포인트 1점이 생긴다.
@@ -28,17 +27,14 @@ public sealed class PartyMember
     private readonly Dictionary<string, int> _masteryXp;
     private readonly Dictionary<string, int> _skillLevels;
     private readonly Dictionary<EquipmentSlot, string> _equipment;
-    private readonly Dictionary<EquipmentSlot, List<string>> _abilityChoices;
 
     /// <param name="equipment">부위별 아이템 ID.</param>
-    /// <param name="abilityChoices">부위별 행동 칸 선택. 없거나 맞지 않는 칸은 첫 옵션으로 본다.</param>
     public PartyMember(
         string id,
         string name,
         Stats stats,
         Row row,
         IReadOnlyDictionary<EquipmentSlot, string> equipment,
-        IReadOnlyDictionary<EquipmentSlot, IReadOnlyList<string>>? abilityChoices,
         IReadOnlyDictionary<string, int> masteryXp,
         IReadOnlyDictionary<string, int> skillLevels,
         IReadOnlyList<IEnumerable<Tactic>> tacticSets)
@@ -48,9 +44,6 @@ public sealed class PartyMember
         Stats = stats;
         Row = row;
         _equipment = new Dictionary<EquipmentSlot, string>(equipment);
-        _abilityChoices = (abilityChoices ?? new Dictionary<EquipmentSlot, IReadOnlyList<string>>())
-            .Where(p => _equipment.ContainsKey(p.Key))
-            .ToDictionary(p => p.Key, p => p.Value.ToList());
         _masteryXp = new Dictionary<string, int>(masteryXp);
         _skillLevels = new Dictionary<string, int>(skillLevels.Where(p => p.Value > 0));
         if (tacticSets.Count > TacticSetCount)
@@ -75,26 +68,9 @@ public sealed class PartyMember
     /// <summary>그 부위의 아이템 ID (비었으면 null).</summary>
     public string? ItemIn(EquipmentSlot slot) => _equipment.GetValueOrDefault(slot);
 
-    /// <summary>저장된 행동 칸 선택 (부위별). 화면과 전투는 <see cref="ChosenAbilities"/>를 쓴다.</summary>
-    public IReadOnlyDictionary<EquipmentSlot, IReadOnlyList<string>> AbilityChoices =>
-        _abilityChoices.ToDictionary(p => p.Key, p => (IReadOnlyList<string>)p.Value);
-
-    /// <summary>
-    /// 그 부위 아이템의 칸별 선택. 저장된 선택이 그 칸의 후보가 아니거나 없으면 첫 옵션이다
-    /// (게임 데이터가 바뀌었을 때). 아이템이 없으면 빈 목록.
-    /// </summary>
-    public IReadOnlyList<string> ChosenAbilities(EquipmentSlot slot, GameData data)
-    {
-        if (ItemIn(slot) is not { } itemId || !data.Items.TryGetValue(itemId, out var item))
-        {
-            return [];
-        }
-
-        var saved = _abilityChoices.GetValueOrDefault(slot);
-        return item.Abilities
-            .Select((a, i) => saved is not null && i < saved.Count && a.Options.Contains(saved[i]) ? saved[i] : a.Options[0])
-            .ToList();
-    }
+    /// <summary>그 부위 아이템이 주는 행동. 아이템이 없으면 빈 목록.</summary>
+    public IReadOnlyList<string> ItemActions(EquipmentSlot slot, GameData data) =>
+        ItemIn(slot) is { } itemId && data.Items.TryGetValue(itemId, out var item) ? item.Actions : [];
 
     /// <summary>
     /// 그 부위의 아이템을 착용할 수 없는 이유. null이면 착용 중이거나 비어 있다.
@@ -129,9 +105,17 @@ public sealed class PartyMember
             .Where(s => ItemIn(s) is not null && WhyCannotWear(s, data) is null)
             .Select(s => (s, data.Items[ItemIn(s)!]));
 
-    /// <summary>착용 중인 아이템에서 고른 행동 ID.</summary>
-    public IReadOnlySet<string> GrantedActions(GameData data) =>
-        WornItems(data).SelectMany(w => ChosenAbilities(w.Slot, data)).ToHashSet();
+    /// <summary>착용 중인 아이템에서 고른 행동 ID와, 든 주무기 계열이 주는 행동(예: 정령 소환).</summary>
+    public IReadOnlySet<string> GrantedActions(GameData data)
+    {
+        var granted = WornItems(data).SelectMany(w => w.Item.Actions).ToHashSet();
+        if (WeaponMastery(data) is { } weapon)
+        {
+            granted.UnionWith(data.Actions.Values.Where(a => a.Weapon == weapon).Select(a => a.Id));
+        }
+
+        return granted;
+    }
 
     /// <summary>착용 중인 아이템의 보너스 (숙련 아이템 파워 반영).</summary>
     public IReadOnlyList<ItemBonus> ItemBonuses(GameData data) =>
@@ -140,6 +124,10 @@ public sealed class PartyMember
     /// <summary>주무기의 계열 ID (맨손이거나 착용 불가면 null).</summary>
     public string? WeaponMastery(GameData data) =>
         WornItems(data).Where(w => w.Slot == EquipmentSlot.MainHand).Select(w => w.Item.Mastery).FirstOrDefault();
+
+    /// <summary>보조 아이템의 계열 ID (없거나 착용 불가면 null).</summary>
+    public string? OffHandMastery(GameData data) =>
+        WornItems(data).Where(w => w.Slot == EquipmentSlot.OffHand).Select(w => w.Item.Mastery).FirstOrDefault();
 
     /// <summary>몸통 방어구의 재질 계열 ID (표시용, 없으면 null).</summary>
     public string? ArmorMastery(GameData data) =>
@@ -150,7 +138,7 @@ public sealed class PartyMember
         WornItems(data).Where(w => w.Slot.IsArmor()).Select(w => w.Item.Mastery!).ToList();
 
     /// <summary>
-    /// 그 부위에 아이템을 넣는다(창고와 오가는 것은 <see cref="Company"/>가 한다). 행동 칸은 첫 옵션으로 고른다.
+    /// 그 부위에 아이템을 넣는다(창고와 오가는 것은 <see cref="Company"/>가 한다).
     /// null이면 비운다.
     /// </summary>
     internal void SetItem(EquipmentSlot slot, string? itemId, GameData data)
@@ -158,32 +146,10 @@ public sealed class PartyMember
         if (itemId is null)
         {
             _equipment.Remove(slot);
-            _abilityChoices.Remove(slot);
             return;
         }
 
         _equipment[slot] = itemId;
-        _abilityChoices[slot] = data.Items[itemId].DefaultChoices.ToList();
-    }
-
-    /// <summary>그 부위 아이템의 행동 칸 하나를 고른다. 아이템이 없거나 칸·후보가 아니면 false.</summary>
-    internal bool SetAbility(EquipmentSlot slot, int abilityIndex, string optionId, GameData data)
-    {
-        if (ItemIn(slot) is not { } itemId)
-        {
-            return false;
-        }
-
-        var abilities = data.Items[itemId].Abilities;
-        if (abilityIndex < 0 || abilityIndex >= abilities.Count || !abilities[abilityIndex].Options.Contains(optionId))
-        {
-            return false;
-        }
-
-        var choices = ChosenAbilities(slot, data).ToList();
-        choices[abilityIndex] = optionId;
-        _abilityChoices[slot] = choices;
-        return true;
     }
 
     /// <summary>전술 세트들 (항상 <see cref="TacticSetCount"/>벌).</summary>
@@ -276,5 +242,11 @@ public sealed class PartyMember
             GrantedActions = GrantedActions(data),
             ItemBonuses = ItemBonuses(data),
             ArmorPieces = ArmorPieces(data),
+            OffHand = OffHandMastery(data),
+            PowerMultiplierPercent = MainHandItem(data)?.PowerMultiplierPercent ?? 100,
+            EffectDurationBonus = MainHandItem(data)?.EffectDurationBonus ?? 0,
         };
+
+    private ItemDefinition? MainHandItem(GameData data) =>
+        WornItems(data).Where(w => w.Slot == EquipmentSlot.MainHand).Select(w => w.Item).FirstOrDefault();
 }

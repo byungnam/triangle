@@ -11,7 +11,7 @@ public sealed record CombatRules
 {
     public static CombatRules Default { get; } = new();
 
-    /// <summary>행동 간격 = TimeConstant / speed (버림) × (100 − 대기 감소%) / 100.</summary>
+    /// <summary>행동 간격 = (행동의 delay, 없으면 TimeConstant) / speed (버림) × (100 − 대기 감소%) / 100.</summary>
     public int TimeConstant { get; init; } = 1000;
 
     /// <summary>전투 전체에서 허용하는 행동 횟수(라운드가 아니라 개별 행동).</summary>

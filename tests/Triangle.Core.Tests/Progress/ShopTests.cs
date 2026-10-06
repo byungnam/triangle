@@ -21,7 +21,7 @@ public class ShopTests
         """);
 
     private static Company NewCompany(int gold) =>
-        new([new PartyMember("a", "A", new Stats(10, 10, 10, 10, 10), Row.Front, TestGear.Of("old_sword"), null,
+        new([new PartyMember("a", "A", new Stats(10, 10, 10, 10, 10), Row.Front, TestGear.Of("old_sword"),
                 new Dictionary<string, int>(), new Dictionary<string, int>(), [])],
             ["a"], gold, new Dictionary<string, int>(), 0, 1);
 

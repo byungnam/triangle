@@ -83,8 +83,17 @@ public class GameDataLoaderTests
             Assert.Equal((slot, 1), (data.Items[id].Slot, data.Items[id].Tier));
         }
 
-        // 공용 행동이 아닌 행동은 모두 어떤 아이템의 행동 칸에 있어야 한다 (아니면 아군이 쓸 수 없다).
-        Assert.All(data.Actions.Values.Where(a => !a.Universal), a => Assert.NotEmpty(data.ItemsGranting(a.Id)));
+        // 공용 행동이 아닌 행동은 모두 아군이 쓸 길이 있어야 한다: 아이템 행동 칸, 무기 계열(정령 소환), 소환수 행동.
+        var summonActions = data.Actions.Values.Where(a => a.Summon is not null).Select(a => a.Summon!.ActionId).ToHashSet();
+        foreach (var action in data.Actions.Values.Where(a => !a.Universal))
+        {
+            if (action.SummonOnly)
+                Assert.Contains(action.Id, summonActions);
+            else if (action.Weapon is not null)
+                Assert.Contains(data.Items.Values, i => i.Slot == EquipmentSlot.MainHand && i.Mastery == action.Weapon);
+            else
+                Assert.NotEmpty(data.ItemsGranting(action.Id));
+        }
 
         // 시작 회사가 데이터와 맞아야 한다 (세이브로 왕복해서 검증).
         var company = StartingCompany.Create(data, seed: 1);
@@ -110,16 +119,17 @@ public class GameDataLoaderTests
         var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
         var core = new Dictionary<string, string>
         {
-            ["sword"] = "swordsmanship", ["bow"] = "archery", ["staff"] = "magic_control", ["relic"] = "healing",
+            ["sword"] = "swordsmanship", ["spear"] = "spearmanship", ["axe"] = "axemanship", ["mace"] = "mace_mastery",
+            ["bow"] = "archery", ["crossbow"] = "crossbow_mastery", ["sling"] = "slinging", ["firearm"] = "gunnery",
+            ["fire"] = "pyromancy", ["frost"] = "cryomancy", ["lightning"] = "electromancy", ["relic"] = "healing",
+            ["shield"] = "shield_mastery", ["tome"] = "tome_study",
             ["plate"] = "defense", ["leather"] = "mobility", ["cloth"] = "meditation",
         };
 
-        foreach (var line in data.Items.Values.Where(i => i.IsEquipment).GroupBy(i => (i.Slot, i.Mastery, T1: i.Tier == 1)).Where(g => g.Key.T1))
-        {
-            // 계열·부위마다 T1이 있고, 같은 계열·부위에 T1~T4가 모두 있다.
-            var tiers = data.Items.Values.Where(i => i.Slot == line.Key.Slot && i.Mastery == line.Key.Mastery).Select(i => i.Tier).Distinct().Order();
-            Assert.Equal([1, 2, 3, 4], tiers);
-        }
+        // 종류(무기는 type, 방어구는 계열)·부위마다 T1~T4가 하나씩 있다.
+        static (EquipmentSlot, string?, string?) Line(ItemDefinition i) => (i.Slot, i.Mastery, i.Type);
+        foreach (var line in data.Items.Values.Where(i => i.IsEquipment).GroupBy(Line))
+            Assert.Equal([1, 2, 3, 4], line.Select(i => i.Tier).Order());
 
         foreach (var item in data.Items.Values.Where(i => i.IsEquipment))
         {
@@ -145,7 +155,7 @@ public class GameDataLoaderTests
             // 티어가 오를수록 보너스가 커진다.
             if (item.Tier > 1)
             {
-                var lower = data.Items.Values.Single(i => i.Slot == item.Slot && i.Mastery == item.Mastery && i.Tier == item.Tier - 1);
+                var lower = data.Items.Values.Single(i => Line(i) == Line(item) && i.Tier == item.Tier - 1);
                 Assert.True(item.Bonuses.Sum(b => b.Percent) > lower.Bonuses.Sum(b => b.Percent), $"{item.Id} should beat {lower.Id}");
                 Assert.True(item.Price > lower.Price);
             }
@@ -207,6 +217,46 @@ public class GameDataLoaderTests
         Assert.Contains("recipes.json 'sword1': needs at least one material", errors);
         Assert.Contains("recipes.json 'sword1': unknown material 'dust'", errors);
         Assert.Contains("recipes.json 'sword1': lists material 'ore' more than once", errors);
+    }
+
+    [Fact]
+    public void Rejects_bad_action_mechanics_and_item_multipliers()
+    {
+        const string actions = """
+            [
+              { "id": "strike", "name": "공격", "power": 10, "universal": true },
+              { "id": "bad_numbers", "name": "x", "hits": 0, "chant": 0, "extraTargets": -1, "pushBack": -5,
+                "bonusAgainst": { "effectId": "ghost", "percent": 50 }, "weapon": "plate" },
+              { "id": "spirit_hit", "name": "정령 공격", "summonOnly": true, "weapon": "bow" },
+              { "id": "half_summon", "name": "y", "effect": "Summon" },
+              { "id": "call", "name": "소환", "effect": "Summon", "weapon": "bow",
+                "summon": { "name": "정령", "row": "Back", "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 },
+                            "actionId": "strike", "duration": 0, "statSkill": "ghost_skill" } }
+            ]
+            """;
+        const string items = """
+            [ { "id": "orb", "name": "구슬", "slot": "OffHand", "mastery": "bow", "powerMultiplierPercent": 200,
+                "actions": [ "spirit_hit" ] },
+              { "id": "zero", "name": "영", "slot": "MainHand", "mastery": "bow", "powerMultiplierPercent": 0 } ]
+            """;
+
+        var errors = Assert.Throws<GameDataException>(() =>
+            GameDataLoader.Parse(Masteries, Skills, actions, Encounters(), itemsJson: items)).Errors;
+
+        Assert.Contains("actions.json 'bad_numbers': hits must be at least 1, got 0", errors);
+        Assert.Contains("actions.json 'bad_numbers': chant must be at least 1, got 0", errors);
+        Assert.Contains("actions.json 'bad_numbers': bonusAgainst unknown effect 'ghost'", errors);
+        Assert.Contains(errors, e => e.StartsWith("actions.json 'bad_numbers': extraTargets"));
+        Assert.Contains(errors, e => e.StartsWith("actions.json 'bad_numbers': pushBack"));
+        Assert.Contains(errors, e => e.StartsWith("actions.json 'bad_numbers': weapon"));
+        Assert.Contains("actions.json 'spirit_hit': a summonOnly action cannot be universal or weapon-granted", errors);
+        Assert.Contains("actions.json 'half_summon': effect Summon and summon must be set together", errors);
+        Assert.Contains("actions.json 'call': summon duration must be at least 1, got 0", errors);
+        Assert.Contains("actions.json 'call': summon action 'strike' must be summonOnly", errors);
+        Assert.Contains("actions.json 'call': summon statSkill unknown skill 'ghost_skill'", errors);
+        Assert.Contains("items.json 'orb': only a main-hand item can have powerMultiplierPercent or effectDurationBonus", errors);
+        Assert.Contains("items.json 'orb': offers summonOnly action 'spirit_hit'", errors);
+        Assert.Contains("items.json 'zero': powerMultiplierPercent must be at least 1, got 0", errors);
     }
 
     [Fact]
@@ -291,7 +341,7 @@ public class GameDataLoaderTests
               { "id": "ore", "name": "광석", "slot": "Material", "mastery": "plate" },
               { "id": "wand", "name": "막대기", "slot": "MainHand", "mastery": "bow",
                 "requirements": [ { "skillId": "ghost", "level": 1 } ],
-                "abilities": [ { "options": [] }, { "options": [ "shot", "shot", "ghost", "strike" ] } ] } ]
+                "actions": [ "shot", "shot", "ghost", "strike" ] } ]
             """;
 
         var errors = Assert.Throws<GameDataException>(() =>
@@ -304,12 +354,11 @@ public class GameDataLoaderTests
         Assert.Contains("items.json 'helm': mastery: 'sword' is Weapon, not Armor", errors);
         Assert.Contains("items.json 'helm': only a main-hand item can be twoHanded", errors);
         Assert.Contains("items.json 'naked': equipment needs a mastery", errors);
-        Assert.Contains("items.json 'ore': a material has no mastery, twoHanded, requirements, bonuses or abilities", errors);
+        Assert.Contains("items.json 'ore': a material has no mastery, twoHanded, requirements, bonuses or actions", errors);
         Assert.Contains("items.json 'wand' requirement: requires unknown skill 'ghost'", errors);
-        Assert.Contains("items.json 'wand': ability 1 needs at least one option", errors);
-        Assert.Contains("items.json 'wand': ability 2 has unknown action 'ghost'", errors);
-        Assert.Contains("items.json 'wand': ability 2 offers universal action 'strike'", errors);
-        Assert.Contains("items.json 'wand': ability 2 lists 'shot' more than once", errors);
+        Assert.Contains("items.json 'wand': unknown action 'ghost'", errors);
+        Assert.Contains("items.json 'wand': offers universal action 'strike'", errors);
+        Assert.Contains("items.json 'wand': lists action 'shot' more than once", errors);
     }
 
     [Fact]

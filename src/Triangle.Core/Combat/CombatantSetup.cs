@@ -25,6 +25,18 @@ public sealed record CombatantSetup(
     /// <summary>아이템 행동 칸에서 고른 행동 ID. null이면 아이템 제한이 없다 (적 유닛).</summary>
     public IReadOnlySet<string>? GrantedActions { get; init; }
 
+    /// <summary>보조 아이템의 계열 ID (없으면 null). 주무기와 다르면 같은 무기 경험치를 받는다.</summary>
+    public string? OffHand { get; init; }
+
+    /// <summary>
+    /// 무기 위력 배율(%). 주무기 계열 태그가 붙은 행동의 피해·회복·보호막과 소환 유닛 능력치에 마지막으로 곱한다
+    /// (예: 마법 지팡이 200 = 같은 속성 마법봉의 2배).
+    /// </summary>
+    public int PowerMultiplierPercent { get; init; } = 100;
+
+    /// <summary>주무기 계열 태그가 붙은 행동이 거는 효과의 지속 턴에 더한다 (예: 마법 지팡이 +1).</summary>
+    public int EffectDurationBonus { get; init; }
+
     /// <summary>장비 보너스 (숙련 아이템 파워 반영). 스킬 보너스에 더한다.</summary>
     public IReadOnlyList<ItemBonus> ItemBonuses { get; init; } = [];
 

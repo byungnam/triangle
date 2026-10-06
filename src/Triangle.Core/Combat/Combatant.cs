@@ -15,10 +15,14 @@ public sealed class Combatant
         Name = setup.Name;
         Skills = skills;
         Weapon = setup.Weapon;
+        OffHand = setup.OffHand;
+        PowerMultiplierPercent = setup.PowerMultiplierPercent;
+        EffectDurationBonus = setup.EffectDurationBonus;
         Armor = setup.Armor;
         ArmorMasteries = setup.ArmorMasteries;
         Stats = setup.Stats;
         Row = setup.Row;
+        StartRow = setup.Row;
         Side = side;
         Tactics = setup.Tactics.OrderBy(t => t.Priority).ToArray();
         _tacticUses = new int[Tactics.Count];
@@ -35,13 +39,20 @@ public sealed class Combatant
     public string Name { get; }
     public SkillSet Skills { get; }
     public string? Weapon { get; }
+    public string? OffHand { get; }
     public string? Armor { get; }
+    public int PowerMultiplierPercent { get; }
+    public int EffectDurationBonus { get; }
 
     /// <summary>입은 방어구 부위별 재질 계열.</summary>
     public IReadOnlyList<string> ArmorMasteries { get; }
 
     public Stats Stats { get; }
-    public Row Row { get; }
+    /// <summary>전투를 시작한(소환 유닛은 나타난) 줄.</summary>
+    public Row StartRow { get; }
+
+    /// <summary>지금 서 있는 줄. 갈고리 당기기·밀쳐내기로 바뀐다.</summary>
+    public Row Row { get; internal set; }
     public CombatSide Side { get; }
 
     /// <summary>우선순위 순으로 정렬된 전술 (같은 우선순위는 입력 순서 유지).</summary>
@@ -59,7 +70,36 @@ public sealed class Combatant
     public int Defense => Stats.Str;
     public int MagicDefense => Stats.Intel;
 
-    public bool IsAlive => Hp > 0;
+    public bool IsAlive => Hp > 0 && !Dismissed;
+
+    /// <summary>남은 보호막 (피해를 먼저 흡수한다).</summary>
+    public int Shield { get; internal set; }
+
+    /// <summary>소환한 유닛의 ID. null이면 소환 유닛이 아니다.</summary>
+    public string? OwnerId { get; internal init; }
+
+    public bool IsSummon => OwnerId is not null;
+
+    /// <summary>소환 유닛이 사라졌다 (지속 끝, 시전자 쓰러짐, 다시 소환).</summary>
+    public bool Dismissed { get; internal set; }
+
+    /// <summary>소환 유닛의 남은 행동 횟수. null이면 전투 끝까지.</summary>
+    internal int? SummonRemaining { get; set; }
+
+    /// <summary>영창 중인 행동과 지금까지 한 횟수.</summary>
+    internal string? ChantActionId { get; set; }
+    internal int ChantCount { get; set; }
+
+    internal void ResetChant()
+    {
+        ChantActionId = null;
+        ChantCount = 0;
+    }
+
+    /// <summary>전투당 한 번인 행동 중 이미 쓴 것.</summary>
+    internal HashSet<string> UsedOnce { get; } = [];
+
+    internal bool HasEffect(Func<Triangle.Core.Effects.EffectDefinition, bool> predicate) => Effects.Any(e => predicate(e.Definition));
 
     /// <summary>이 유닛이 지금까지 받은 턴 수 (현재 턴 포함, 1부터).</summary>
     public int TurnCount { get; internal set; }

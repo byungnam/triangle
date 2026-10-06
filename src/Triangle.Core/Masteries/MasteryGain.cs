@@ -32,7 +32,8 @@ public sealed record MasteryRules
 
 /// <param name="Weapon">주무기 계열 (없으면 null).</param>
 /// <param name="Armor">방어구 재질 계열별 경험치 (입은 부위가 없으면 비어 있다).</param>
-public sealed record MasteryXp(string CombatantId, string? Weapon, int WeaponXp, IReadOnlyDictionary<string, int> Armor);
+/// <param name="OffHand">보조 아이템 계열. 주무기와 다를 때만 있고, 무기 경험치와 같은 양을 받는다.</param>
+public sealed record MasteryXp(string CombatantId, string? Weapon, int WeaponXp, IReadOnlyDictionary<string, int> Armor, string? OffHand = null);
 
 /// <summary>전투 기록에서 유닛별 숙련 경험치를 계산한다.</summary>
 public static class MasteryGain
@@ -82,13 +83,15 @@ public static class MasteryGain
         }
 
         var resultXp = rules.ResultXp(result.Outcome);
+        // 소환 유닛은 경험치를 받지 않는다.
         return result.Combatants
-            .Where(c => c.Side == CombatSide.Ally)
+            .Where(c => c.Side == CombatSide.Ally && !c.IsSummon)
             .Select(c => new MasteryXp(
                 c.Id,
                 c.Weapon,
                 c.Weapon is null ? 0 : actions.GetValueOrDefault(c.Id) * rules.XpPerAction + dealt.GetValueOrDefault(c.Id) / rules.AmountPerXp + resultXp,
-                ArmorShares(c.ArmorMasteries, taken.GetValueOrDefault(c.Id) / rules.DamageTakenPerXp + resultXp)))
+                ArmorShares(c.ArmorMasteries, taken.GetValueOrDefault(c.Id) / rules.DamageTakenPerXp + resultXp),
+                c.Weapon is not null && c.OffHand != c.Weapon ? c.OffHand : null))
             .ToList();
     }
 

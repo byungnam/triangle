@@ -11,7 +11,7 @@ namespace Triangle.Core.Combat;
 /// </summary>
 /// <remarks>
 /// 행동 순서는 ATB 방식이다. 다음 행동 시각이 가장 이른 유닛이 행동하고,
-/// 행동 후 TimeConstant / speed 만큼(스킬의 대기 감소 적용) 뒤로 밀린다.
+/// 행동 후 (행동의 delay, 없으면 TimeConstant) / speed 만큼(스킬의 대기 감소 적용) 뒤로 밀린다.
 /// 턴이 오면 전술을 우선순위 순으로 훑어 조건이 참인 첫 전술의 행동을 쓴다.
 /// 그 행동의 비용을 낼 수 없거나 대상이 없으면 턴을 잃는다.
 /// 스킬과 장비는 패시브 보너스(위력, 회복, MP 소모, 대기, 최대 HP/MP, 받는 피해, 방어)로만 작용한다.
@@ -24,6 +24,7 @@ public sealed class CombatSimulator
     private readonly List<Combatant> _combatants;
     private readonly List<CombatEvent> _events = [];
     private long _nextTieBreak;
+    private int _nextSummon;
 
     private CombatSimulator(
         IReadOnlyList<CombatantSetup> allies,
@@ -130,14 +131,24 @@ public sealed class CombatSimulator
                 continue;
             }
 
-            var (plan, waited) = ChooseAction(actor);
-            if (plan is not null)
+            Plan? plan = null;
+            if (actor.HasEffect(d => d.Stun))
             {
-                Execute(actor, plan);
+                BreakChant(actor);
+                _events.Add(new Waited(actor.Id, WaitReason.Stunned, null));
             }
             else
             {
-                _events.Add(waited!);
+                (plan, var waited) = ChooseAction(actor);
+                if (plan is not null)
+                {
+                    Execute(actor, plan);
+                }
+                else
+                {
+                    BreakChant(actor);
+                    _events.Add(waited!);
+                }
             }
 
             if (CheckOutcome() is { } outcome)
@@ -148,6 +159,15 @@ public sealed class CombatSimulator
             EndTurnEffects(actor);
             actor.NextActionTime += ActionDelay(actor, plan?.Action);
             actor.TieBreak = _nextTieBreak++;
+
+            if (actor.IsSummon && actor.IsAlive && actor.SummonRemaining is { } remaining)
+            {
+                actor.SummonRemaining = remaining - 1;
+                if (remaining - 1 <= 0)
+                {
+                    Dismiss(actor);
+                }
+            }
         }
 
         return Finish(_rules.ActionLimitOutcome, _rules.MaxActions);
@@ -161,12 +181,13 @@ public sealed class CombatSimulator
 
     private CombatOutcome? CheckOutcome()
     {
-        if (!_combatants.Any(c => c.Side == CombatSide.Enemy && c.IsAlive))
+        // 소환 유닛은 승패에 세지 않는다.
+        if (!_combatants.Any(c => c.Side == CombatSide.Enemy && c.IsAlive && !c.IsSummon))
         {
             return CombatOutcome.Victory;
         }
 
-        if (!_combatants.Any(c => c.Side == CombatSide.Ally && c.IsAlive))
+        if (!_combatants.Any(c => c.Side == CombatSide.Ally && c.IsAlive && !c.IsSummon))
         {
             return CombatOutcome.Defeat;
         }
@@ -174,11 +195,14 @@ public sealed class CombatSimulator
         return null;
     }
 
-    /// <summary>행동 뒤 대기. 대기 감소 보너스는 태그 없는 것(전체 속도)과 방금 쓴 행동의 태그 것을 더한다.</summary>
+    /// <summary>
+    /// 행동 뒤 대기. 방금 쓴 행동의 대기 수치(없으면 TimeConstant)를 속도로 나누고, 대기 감소 보너스는
+    /// 태그 없는 것(전체 속도)과 방금 쓴 행동의 태그 것을 더한다. 행동하지 못한 턴은 기본 대기다.
+    /// </summary>
     private long ActionDelay(Combatant c, ActionDefinition? used)
     {
         var speed = Math.Max(1, c.Stats.Speed);
-        var baseDelay = _rules.TimeConstant / speed;
+        var baseDelay = (used?.Delay ?? _rules.TimeConstant) / speed;
         var reduction = SignedReduction(
             c.Skills.Bonus(BonusKind.DelayReductionPercent, used?.BonusTags(c.Weapon))
             + c.EffectModifier(EffectModifierKind.DelayReductionPercent));
@@ -229,31 +253,66 @@ public sealed class CombatSimulator
         }
     }
 
-    private void ApplyEffects(ActionDefinition action, Combatant target)
+    private void ApplyEffects(Combatant actor, ActionDefinition action, Combatant target)
     {
+        var bonus = WeaponBoosted(actor, action) ? actor.EffectDurationBonus : 0;
         foreach (var application in action.Applies)
         {
             var definition = _catalog.Effects[application.EffectId];
+            var duration = application.Duration + bonus;
             var existing = target.Effects.FirstOrDefault(e => e.Definition.Id == definition.Id);
             if (existing is not null)
             {
-                existing.Remaining = application.Duration;
+                existing.Remaining = duration;
             }
             else
             {
-                target.Effects.Add(new ActiveEffect(definition, application.Duration));
+                target.Effects.Add(new ActiveEffect(definition, duration));
             }
 
-            _events.Add(new EffectApplied(target.Id, definition.Id, application.Duration, existing is not null));
+            _events.Add(new EffectApplied(target.Id, definition.Id, duration, existing is not null));
+            if (definition.Stun)
+            {
+                BreakChant(target);
+            }
         }
     }
 
-    /// <summary>쓰러지면 효과는 모두 사라진다 (부활이 없으므로 따로 기록하지 않는다).</summary>
+    /// <summary>쓰러지면 효과와 보호막은 모두 사라진다 (부활이 없으므로 따로 기록하지 않는다). 부른 소환 유닛도 사라진다.</summary>
     private void Die(Combatant unit)
     {
         unit.Effects.Clear();
+        unit.Shield = 0;
+        unit.ResetChant();
         _events.Add(new Died(unit.Id));
+        foreach (var summon in _combatants.Where(c => c.OwnerId == unit.Id && c.IsAlive).ToList())
+        {
+            Dismiss(summon);
+        }
     }
+
+    private void Dismiss(Combatant summon)
+    {
+        summon.Dismissed = true;
+        summon.Effects.Clear();
+        _events.Add(new Dismissed(summon.Id));
+    }
+
+    private void BreakChant(Combatant unit)
+    {
+        if (unit.ChantActionId is { } actionId)
+        {
+            unit.ResetChant();
+            _events.Add(new ChantBroken(unit.Id, actionId));
+        }
+    }
+
+    /// <summary>주무기 계열 태그가 붙은 행동인가 (무기 위력 배율과 효과 지속 보너스를 받는다).</summary>
+    private static bool WeaponBoosted(Combatant actor, ActionDefinition action) =>
+        actor.Weapon is not null && action.Tags.Contains(actor.Weapon);
+
+    private static int Multiplier(Combatant actor, ActionDefinition action) =>
+        WeaponBoosted(actor, action) ? actor.PowerMultiplierPercent : 100;
 
     // ── 전술 ───────────────────────────────────────────────
 
@@ -277,6 +336,11 @@ public sealed class CombatSimulator
             actor.AddUse(i);
 
             var action = _catalog.Actions[tactic.ActionId];
+            if (action.OncePerBattle && actor.UsedOnce.Contains(action.Id))
+            {
+                return (null, new Waited(actor.Id, WaitReason.AlreadyUsed, tactic.Priority));
+            }
+
             if (!CanPay(actor, action))
             {
                 return (null, new Waited(actor.Id, WaitReason.NotEnoughResource, tactic.Priority));
@@ -367,7 +431,7 @@ public sealed class CombatSimulator
     /// <summary>줄 제한까지 통과한 후보. 전체 공격이면 이 목록이 곧 대상이다.</summary>
     private List<Combatant> Candidates(Combatant actor, ActionDefinition action)
     {
-        if (action.Side == TargetSide.Self)
+        if (action.Side == TargetSide.Self || action.Effect == ActionEffect.Summon)
         {
             return [actor];
         }
@@ -396,13 +460,22 @@ public sealed class CombatSimulator
             case TargetRule.BackFirst:
                 return PickRandom(PreferRow(candidates, Row.Back));
             case TargetRule.LowestHpRatio:
-                // 동률이면 앞쪽(입력 순서)을 고른다.
+                return LowestHp(candidates);
+            case TargetRule.LowestMpRatio:
+                // 동률이면 앞쪽(입력 순서)을 고른다. 최대 MP가 0인 유닛은 가득 찬 것으로 본다.
                 return candidates.Aggregate((best, c) =>
-                    Ratio.Compare(c.Hp, c.MaxHp, best.Hp, best.MaxHp) < 0 ? c : best);
+                    Ratio.Compare(c.Mp, Math.Max(1, c.MaxMp), best.Mp, Math.Max(1, best.MaxMp)) < 0 ? c : best);
+            case TargetRule.WithDebuffFirst:
+                var debuffed = candidates.Where(c => c.HasEffect(d => d.Kind == EffectKind.Debuff)).ToList();
+                return debuffed.Count > 0 ? PickRandom(debuffed) : LowestHp(candidates);
             default:
                 return PickRandom(candidates);
         }
     }
+
+    /// <summary>HP 비율이 가장 낮은 후보. 동률이면 앞쪽(입력 순서)을 고른다.</summary>
+    private static Combatant LowestHp(IReadOnlyList<Combatant> candidates) =>
+        candidates.Aggregate((best, c) => Ratio.Compare(c.Hp, c.MaxHp, best.Hp, best.MaxHp) < 0 ? c : best);
 
     private static IReadOnlyList<Combatant> PreferRow(IReadOnlyList<Combatant> candidates, Row row)
     {
@@ -417,18 +490,76 @@ public sealed class CombatSimulator
     private void Execute(Combatant actor, Plan plan)
     {
         var action = plan.Action;
+        if (actor.ChantActionId is { } chanting && chanting != action.Id)
+        {
+            BreakChant(actor);
+        }
+
         actor.Hp -= action.HpCost;
         actor.Mp -= MpCost(actor, action);
         _events.Add(new ActionUsed(actor.Id, action.Id, plan.Tactic.Priority, actor.Hp, actor.Mp));
 
-        IReadOnlyList<Combatant> targets = action.Scope == TargetScope.All
-            ? plan.Targets
-            : [ApplyCover(action, PickOne(plan.Targets, action))];
-
-        foreach (var target in targets)
+        if (action.Chant > 1)
         {
-            Apply(actor, action, target);
+            actor.ChantActionId = action.Id;
+            actor.ChantCount++;
+            _events.Add(new Chanting(actor.Id, action.Id, actor.ChantCount, action.Chant));
+            if (actor.ChantCount < action.Chant)
+            {
+                return;
+            }
+
+            actor.ResetChant();
         }
+
+        if (action.OncePerBattle)
+        {
+            actor.UsedOnce.Add(action.Id);
+        }
+
+        if (action.Effect == ActionEffect.Summon)
+        {
+            Summon(actor, action);
+            return;
+        }
+
+        foreach (var target in Targets(action, plan.Targets))
+        {
+            for (var hit = 0; hit < action.Hits && target.IsAlive; hit++)
+            {
+                Apply(actor, action, target);
+            }
+
+            if (target.IsAlive)
+            {
+                AfterHits(action, target);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 실제 대상. 전체면 후보 전부. 단일이면 상대 편 도발 유닛이 먼저이고(엄호 없음), 아니면 대상 규칙과 엄호로 고른다.
+    /// 연쇄(<see cref="ActionDefinition.ExtraTargets"/>)는 남은 후보에서 무작위로 더한다.
+    /// </summary>
+    private List<Combatant> Targets(ActionDefinition action, IReadOnlyList<Combatant> candidates)
+    {
+        if (action.Scope == TargetScope.All)
+        {
+            return candidates.ToList();
+        }
+
+        var taunting = action.Side == TargetSide.Enemy ? candidates.Where(c => c.HasEffect(d => d.Taunt)).ToList() : [];
+        var primary = taunting.Count > 0 ? PickRandom(taunting) : ApplyCover(action, PickOne(candidates, action));
+        var targets = new List<Combatant> { primary };
+        var rest = candidates.Where(c => c != primary).ToList();
+        for (var i = 0; i < action.ExtraTargets && rest.Count > 0; i++)
+        {
+            var next = PickRandom(rest);
+            rest.Remove(next);
+            targets.Add(next);
+        }
+
+        return targets;
     }
 
     private Combatant ApplyCover(ActionDefinition action, Combatant target)
@@ -438,7 +569,7 @@ public sealed class CombatSimulator
             return target;
         }
 
-        var fronts = Living(target.Side).Where(c => c.Row == Row.Front).ToList();
+        var fronts = Living(target.Side).Where(c => c.Row == Row.Front && !c.HasEffect(d => d.NoCover)).ToList();
         if (fronts.Count == 0)
         {
             return target;
@@ -455,9 +586,17 @@ public sealed class CombatSimulator
         {
             case ActionEffect.Damage:
             {
-                var amount = Math.Min(target.Hp, DamageAmount(actor, action, target));
-                target.Hp -= amount;
-                _events.Add(new Damaged(target.Id, amount, target.Hp));
+                var amount = DamageAmount(actor, action, target);
+                var absorbed = Math.Min(target.Shield, amount);
+                if (absorbed > 0)
+                {
+                    target.Shield -= absorbed;
+                    _events.Add(new ShieldAbsorbed(target.Id, absorbed, target.Shield));
+                }
+
+                var hpLoss = Math.Min(target.Hp, amount - absorbed);
+                target.Hp -= hpLoss;
+                _events.Add(new Damaged(target.Id, hpLoss, target.Hp));
                 if (!target.IsAlive)
                 {
                     Die(target);
@@ -474,20 +613,105 @@ public sealed class CombatSimulator
             }
             case ActionEffect.Heal:
             {
-                var tags = action.BonusTags(actor.Weapon);
-                var bonus = actor.Skills.Bonus(BonusKind.HealPercent, tags) + actor.Skills.Bonus(BonusKind.PowerPercent, tags);
-                var heal = Ratio.ApplyPercent(Scaled(action.Power, actor.Stats.Intel), 100 + bonus);
-                var amount = Math.Min(target.MaxHp - target.Hp, heal);
+                var amount = Math.Min(target.MaxHp - target.Hp, HealAmount(actor, action));
                 target.Hp += amount;
                 _events.Add(new Healed(target.Id, amount, target.Hp));
+                break;
+            }
+            case ActionEffect.Shield:
+            {
+                var amount = HealAmount(actor, action);
+                var gained = Math.Max(0, amount - target.Shield);
+                target.Shield += gained;
+                _events.Add(new ShieldGained(target.Id, gained, target.Shield));
                 break;
             }
         }
 
         if (target.IsAlive)
         {
-            ApplyEffects(action, target);
+            ApplyEffects(actor, action, target);
         }
+    }
+
+    /// <summary>타격이 끝난 뒤 살아 있는 대상에게 한 번: 넘어뜨림, MP 깎기, 줄 옮기기, 디버프 지우기.</summary>
+    private void AfterHits(ActionDefinition action, Combatant target)
+    {
+        if (action.PushBack > 0)
+        {
+            var amount = (long)action.PushBack / Math.Max(1, target.Stats.Speed);
+            target.NextActionTime += amount;
+            _events.Add(new Delayed(target.Id, amount));
+            BreakChant(target);
+        }
+
+        if (action.MpDamage > 0)
+        {
+            var amount = Math.Min(target.Mp, action.MpDamage);
+            target.Mp -= amount;
+            _events.Add(new MpBurned(target.Id, amount, target.Mp));
+        }
+
+        if (action.MoveTo is { } row && target.Row != row)
+        {
+            target.Row = row;
+            _events.Add(new Moved(target.Id, row));
+        }
+
+        if (action.RemovesDebuffs)
+        {
+            foreach (var effect in target.Effects.Where(e => e.Definition.Kind == EffectKind.Debuff).ToList())
+            {
+                target.Effects.Remove(effect);
+                _events.Add(new EffectExpired(target.Id, effect.Definition.Id));
+            }
+        }
+    }
+
+    /// <summary>회복·보호막 양: 위력 × 지능 보정 × (회복 + 위력 보너스) × 무기 위력 배율.</summary>
+    private int HealAmount(Combatant actor, ActionDefinition action)
+    {
+        var tags = action.BonusTags(actor.Weapon);
+        var bonus = actor.Skills.Bonus(BonusKind.HealPercent, tags) + actor.Skills.Bonus(BonusKind.PowerPercent, tags);
+        var heal = Ratio.ApplyPercent(Scaled(action.Power, actor.Stats.Intel), 100 + bonus);
+        return Ratio.ApplyPercent(heal, Multiplier(actor, action));
+    }
+
+    /// <summary>
+    /// 소환. 시전자가 이미 부른 유닛은 사라진다. 능력치(속도 제외) × 무기 위력 배율 × (100 + 스킬 레벨 × 레벨당 %).
+    /// 소환 유닛은 지금 시각에서 자기 기본 대기 뒤에 첫 차례를 갖는다.
+    /// </summary>
+    private void Summon(Combatant actor, ActionDefinition action)
+    {
+        var definition = action.Summon!;
+        foreach (var old in _combatants.Where(c => c.OwnerId == actor.Id && c.IsAlive).ToList())
+        {
+            Dismiss(old);
+        }
+
+        var level = definition.StatSkill is null ? 0 : actor.Skills.Level(definition.StatSkill);
+        var percent = Ratio.ApplyPercent(Multiplier(actor, action), 100 + level * definition.StatPercentPerLevel);
+        int Scale(int stat) => Ratio.ApplyPercent(stat, percent);
+        var stats = definition.Stats with
+        {
+            Str = Scale(definition.Stats.Str),
+            Dex = Scale(definition.Stats.Dex),
+            Vital = Scale(definition.Stats.Vital),
+            Intel = Scale(definition.Stats.Intel),
+        };
+
+        var id = $"{actor.Id}~{++_nextSummon}";
+        var setup = new CombatantSetup(id, definition.Name, stats, definition.Row, null, null, SkillSet.NoSkills,
+            [new Tactic(1, Condition.Always, 0, definition.ActionId)]);
+        var summon = new Combatant(setup, actor.Side, _rules, new SkillSet(SkillSet.NoSkills, _catalog.Skills))
+        {
+            OwnerId = actor.Id,
+        };
+        summon.SummonRemaining = definition.Duration;
+        summon.NextActionTime = actor.NextActionTime + ActionDelay(summon, null);
+        summon.TieBreak = _nextTieBreak++;
+        _combatants.Add(summon);
+        _events.Add(new Summoned(actor.Id, id, definition.Name, definition.Row, summon.Hp));
     }
 
     /// <summary>
@@ -501,8 +725,11 @@ public sealed class CombatSimulator
             : (actor.Stats.Intel, target.MagicDefense);
 
         var powerBonus = actor.Skills.Bonus(BonusKind.PowerPercent, action.BonusTags(actor.Weapon))
-            + actor.EffectModifier(EffectModifierKind.PowerPercent);
+            + actor.EffectModifier(EffectModifierKind.PowerPercent)
+            + (int)((long)action.MissingHpBonusPercent * (target.MaxHp - target.Hp) / Math.Max(1, target.MaxHp))
+            + (action.BonusAgainst is { } against && target.Effects.Any(e => e.Definition.Id == against.EffectId) ? against.Percent : 0);
         var raw = Ratio.ApplyPercent(Scaled(action.Power, attackStat), Math.Max(0, 100 + powerBonus));
+        raw = Ratio.ApplyPercent(raw, Multiplier(actor, action));
         var effectiveDefense = Ratio.ApplyPercent(
             defense, Math.Max(0, 100 + target.Skills.Bonus(BonusKind.DefensePercent) + target.EffectModifier(EffectModifierKind.DefensePercent)));
         var mitigated = Ratio.DivideRounded((long)raw * 100, 100 + (long)effectiveDefense * _rules.DefenseReductionPercentPerPoint);

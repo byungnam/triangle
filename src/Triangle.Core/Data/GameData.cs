@@ -53,9 +53,9 @@ public sealed class GameData
     public IReadOnlyList<ItemDefinition> EquipmentInTiers(int minTier, int maxTier) =>
         Items.Values.Where(i => i.IsEquipment && i.Tier >= minTier && i.Tier <= maxTier).ToList();
 
-    /// <summary>그 행동을 행동 칸 후보로 가진 아이템 (데이터 순서).</summary>
+    /// <summary>그 행동을 주는 아이템 (데이터 순서).</summary>
     public IEnumerable<ItemDefinition> ItemsGranting(string actionId) =>
-        Items.Values.Where(i => i.Abilities.Any(a => a.Options.Contains(actionId)));
+        Items.Values.Where(i => i.Actions.Contains(actionId));
 
     /// <summary>제작법 (결과 아이템 ID → 제작법, 데이터 순서).</summary>
     public IReadOnlyDictionary<string, RecipeDefinition> Recipes { get; }
@@ -89,7 +89,10 @@ public sealed class GameData
         }
 
         return encounter.Units
-            .Select(u => new CombatantSetup(u.Id, u.Name, u.Stats, u.Row, u.Weapon, u.Armor, u.Skills, u.Tactics))
+            .Select(u => new CombatantSetup(u.Id, u.Name, u.Stats, u.Row, u.Weapon, u.Armor, u.Skills, u.Tactics)
+            {
+                PowerMultiplierPercent = u.PowerMultiplierPercent,
+            })
             .ToList();
     }
 }

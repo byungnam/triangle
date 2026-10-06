@@ -29,13 +29,13 @@ public class MasteryTests
         """,
         """[ { "id": "camp", "name": "야영지", "units": [ { "id": "e", "name": "적", "row": "Front", "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 } } ] } ]""",
         itemsJson: """
-        [ { "id": "short_bow", "name": "짧은 활", "slot": "MainHand", "mastery": "bow", "abilities": [ { "options": [ "shot" ] } ] },
+        [ { "id": "short_bow", "name": "짧은 활", "slot": "MainHand", "mastery": "bow", "actions": [ "shot" ] },
           { "id": "old_sword", "name": "낡은 검", "slot": "MainHand", "mastery": "sword" },
           { "id": "plate_mail", "name": "판금 갑옷", "slot": "Body", "mastery": "plate" } ]
         """);
 
     private static PartyMember Member(Dictionary<string, int>? xp = null, Dictionary<string, int>? skills = null) =>
-        new("m", "멤버", new Stats(15, 15, 15, 15, 15), Row.Front, TestGear.Of("short_bow", "plate_mail"), null, xp ?? [], skills ?? [], []);
+        new("m", "멤버", new Stats(15, 15, 15, 15, 15), Row.Front, TestGear.Of("short_bow", "plate_mail"), xp ?? [], skills ?? [], []);
 
     [Theory]
     [InlineData(0, 0)]
@@ -96,7 +96,7 @@ public class MasteryTests
     [Fact]
     public void Changing_weapon_locks_weapon_tactics()
     {
-        var m = new PartyMember("m", "멤버", new Stats(15, 15, 15, 15, 15), Row.Front, TestGear.Of("short_bow"), null, new Dictionary<string, int>(),
+        var m = new PartyMember("m", "멤버", new Stats(15, 15, 15, 15, 15), Row.Front, TestGear.Of("short_bow"), new Dictionary<string, int>(),
             new Dictionary<string, int>(), [[new Tactic(1, Condition.Always, 0, "shot"), new Tactic(2, Condition.Always, 0, "strike")]]);
 
         Assert.Empty(m.LockedTacticIndexes(Data, 0));

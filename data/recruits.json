@@ -160,7 +160,7 @@
         "priority": 2,
         "condition": "Always",
         "value": 0,
-        "actionId": "magic_bolt"
+        "actionId": "ember"
       }
     ],
     "price": 130

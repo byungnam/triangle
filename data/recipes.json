@@ -32,6 +32,262 @@
     "gold": 400
   },
   {
+    "result": "knight_greatsword",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "master_greatsword",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "knight_spear",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "master_spear",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "knight_halberd",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "master_halberd",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "knight_hatchet",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "master_hatchet",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "knight_greataxe",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "master_greataxe",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "knight_mace",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "master_mace",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "knight_warhammer",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "master_warhammer",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "scout_bow",
+    "materials": [
+      {
+        "itemId": "tough_leather",
+        "count": 6
+      },
+      {
+        "itemId": "iron_scrap",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "shadow_bow",
+    "materials": [
+      {
+        "itemId": "tough_leather",
+        "count": 10
+      },
+      {
+        "itemId": "iron_scrap",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
     "result": "long_bow",
     "materials": [
       {
@@ -54,6 +310,198 @@
       },
       {
         "itemId": "iron_scrap",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "knight_crossbow",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "master_crossbow",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "siege_arbalest",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "master_arbalest",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "veteran_sling",
+    "materials": [
+      {
+        "itemId": "tough_leather",
+        "count": 6
+      },
+      {
+        "itemId": "iron_scrap",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "master_sling",
+    "materials": [
+      {
+        "itemId": "tough_leather",
+        "count": 10
+      },
+      {
+        "itemId": "iron_scrap",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "guard_musket",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "master_musket",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "siege_handgonne",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "master_handgonne",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "sage_fire_wand",
+    "materials": [
+      {
+        "itemId": "mana_thread",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "archmage_fire_wand",
+    "materials": [
+      {
+        "itemId": "mana_thread",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
         "count": 4
       },
       {
@@ -96,6 +544,134 @@
     "gold": 400
   },
   {
+    "result": "sage_frost_wand",
+    "materials": [
+      {
+        "itemId": "mana_thread",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "archmage_frost_wand",
+    "materials": [
+      {
+        "itemId": "mana_thread",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "sage_frost_staff",
+    "materials": [
+      {
+        "itemId": "mana_thread",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "archmage_frost_staff",
+    "materials": [
+      {
+        "itemId": "mana_thread",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "sage_lightning_wand",
+    "materials": [
+      {
+        "itemId": "mana_thread",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "archmage_lightning_wand",
+    "materials": [
+      {
+        "itemId": "mana_thread",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "sage_lightning_staff",
+    "materials": [
+      {
+        "itemId": "mana_thread",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "archmage_lightning_staff",
+    "materials": [
+      {
+        "itemId": "mana_thread",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
     "result": "blessed_relic",
     "materials": [
       {
@@ -103,7 +679,7 @@
         "count": 6
       },
       {
-        "itemId": "mana_thread",
+        "itemId": "tough_leather",
         "count": 2
       }
     ],
@@ -117,7 +693,103 @@
         "count": 10
       },
       {
-        "itemId": "mana_thread",
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "blessed_renewal_wand",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "saint_renewal_wand",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "blessed_ward_wand",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "saint_ward_wand",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 4
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 3
+      }
+    ],
+    "gold": 400
+  },
+  {
+    "result": "blessed_blessing_wand",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      }
+    ],
+    "gold": 160
+  },
+  {
+    "result": "saint_blessing_wand",
+    "materials": [
+      {
+        "itemId": "iron_scrap",
+        "count": 10
+      },
+      {
+        "itemId": "tough_leather",
         "count": 4
       },
       {
@@ -160,14 +832,46 @@
     "gold": 300
   },
   {
-    "result": "blessed_token",
+    "result": "sage_grimoire",
     "materials": [
       {
-        "itemId": "iron_scrap",
+        "itemId": "mana_thread",
         "count": 4
       },
       {
+        "itemId": "tough_leather",
+        "count": 1
+      }
+    ],
+    "gold": 120
+  },
+  {
+    "result": "archmage_grimoire",
+    "materials": [
+      {
         "itemId": "mana_thread",
+        "count": 6
+      },
+      {
+        "itemId": "tough_leather",
+        "count": 2
+      },
+      {
+        "itemId": "ancient_shard",
+        "count": 2
+      }
+    ],
+    "gold": 300
+  },
+  {
+    "result": "blessed_token",
+    "materials": [
+      {
+        "itemId": "mana_thread",
+        "count": 4
+      },
+      {
+        "itemId": "tough_leather",
         "count": 1
       }
     ],
@@ -177,11 +881,11 @@
     "result": "saint_token",
     "materials": [
       {
-        "itemId": "iron_scrap",
+        "itemId": "mana_thread",
         "count": 6
       },
       {
-        "itemId": "mana_thread",
+        "itemId": "tough_leather",
         "count": 2
       },
       {

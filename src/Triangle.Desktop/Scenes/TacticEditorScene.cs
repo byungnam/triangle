@@ -295,7 +295,7 @@ internal sealed class TacticEditorScene : IScene
         }
 
         // 새 전술은 쓸 수 있는 첫 행동으로 시작한다.
-        var firstUsable = _data.Actions.Values.FirstOrDefault(a => a.IsUsableBy(member.GrantedActions(_data), skills));
+        var firstUsable = _data.Actions.Values.FirstOrDefault(a => !a.SummonOnly && a.IsUsableBy(member.GrantedActions(_data), skills));
         var addButton = TextButton("+ 전술 추가", Theme.Button, Theme.ButtonHover);
         addButton.Enabled = TacticsOf(member).Count < MaxTactics && firstUsable is not null;
         addButton.Click += (_, _) =>
@@ -403,11 +403,15 @@ internal sealed class TacticEditorScene : IScene
             ? BuildValueInput(member, index)
             : Label("—", 17, Theme.TextDim, width: ValueColumnWidth));
 
-        // 행동: 쓸 수 있는 행동을 먼저, 잠긴 행동은 아래에 (고를 수 없음)
+        // 행동: 쓸 수 있는 행동을 먼저, 잠긴 행동은 아래에 (고를 수 없음).
+        // 행동이 많으므로 잠긴 행동은 장비가 주지만 패시브가 모자란 것과 지금 고른 것만 보여 준다.
         var skills = member.Skills(_data);
         var granted = member.GrantedActions(_data);
         bool Usable(ActionDefinition a) => a.IsUsableBy(granted, skills);
-        var actions = _data.Actions.Values.OrderBy(a => Usable(a) ? 0 : 1).ToList();
+        var actions = _data.Actions.Values
+            .Where(a => !a.SummonOnly && (a.IsGranted(granted) || a.Id == tactic.ActionId))
+            .OrderBy(a => Usable(a) ? 0 : 1)
+            .ToList();
         var items = actions.Select(a => Usable(a)
             ? (ActionLabel(a), Theme.Text)
             : ($"(잠김) {a.Name} — {LockReason(a, granted, skills)}", Theme.Enemy));
@@ -557,17 +561,24 @@ internal sealed class TacticEditorScene : IScene
             cost.Add($"HP {action.HpCost}");
         }
 
+        if (action.Delay is { } delay)
+        {
+            cost.Add($"대기 {delay}");
+        }
+
         return cost.Count == 0 ? action.Name : $"{action.Name} ({string.Join(", ", cost)})";
     }
 
-    /// <summary>행동을 못 쓰는 이유, 예: "사냥용 활에서 선택, 정밀 사격 1".</summary>
+    /// <summary>행동을 못 쓰는 이유, 예: "단궁 필요, 정밀 사격 1".</summary>
     private string LockReason(ActionDefinition action, IReadOnlySet<string> granted, SkillSet skills)
     {
         var reasons = new List<string>();
         if (!action.IsGranted(granted))
         {
-            var items = _data.ItemsGranting(action.Id).Select(i => i.Name).Distinct().Take(2).ToList();
-            reasons.Add(items.Count == 0 ? "쓸 수 있는 장비 없음" : $"{string.Join("·", items)}에서 선택");
+            var items = _data.ItemsGranting(action.Id).Select(i => i.TypeOrName).Distinct().Take(2).ToList();
+            reasons.Add(action.Weapon is { } weapon ? $"{_data.Masteries[weapon].Name} 무기 필요"
+                : items.Count == 0 ? "쓸 수 있는 장비 없음"
+                : $"{string.Join("·", items)} 필요");
         }
 
         reasons.AddRange(skills.Missing(action.Requirements).Select(r => $"{_data.Skills[r.SkillId].Name} {r.Level}"));
@@ -576,12 +587,11 @@ internal sealed class TacticEditorScene : IScene
 
     private const int SlotLabelWidth = 52;
     private const int ItemComboWidth = 300;
-    private const int AbilityComboWidth = 150;
 
     /// <summary>
-    /// 장비 패널: 부위마다 한 줄. 아이템 드롭다운(비우기 + 장착 + 창고), 해제 버튼, 행동 칸별 옵션 드롭다운,
+    /// 장비 패널: 부위마다 한 줄. 아이템 드롭다운(비우기 + 장착 + 창고), 해제 버튼, 아이템이 주는 행동,
     /// 착용 불가면 그 이유. 고르면 창고에서 꺼내 끼고, 끼고 있던 것은 창고로 간다.
-    /// 행동 칸이나 아이템을 바꾸면 그 행동을 쓰는 전술이 잠길 수 있다(빨간색으로 표시).
+    /// 아이템을 바꾸면 그 행동을 쓰는 전술이 잠길 수 있다(빨간색으로 표시).
     /// </summary>
     private Widget BuildEquipmentPanel(PartyMember member)
     {
@@ -654,44 +664,26 @@ internal sealed class TacticEditorScene : IScene
         if (current is not null)
         {
             var item = _data.Items[current];
-            var chosen = member.ChosenAbilities(slot, _data);
-            for (var i = 0; i < item.Abilities.Count; i++)
-            {
-                row.Widgets.Add(BuildAbilityCombo(member, slot, i, item.Abilities[i], chosen[i]));
-            }
-
             if (member.WhyCannotWear(slot, _data) is { } why)
             {
                 row.Widgets.Add(Label($"착용 불가 — {why}", 15, Theme.Enemy));
             }
-            else if (item.Abilities.Count == 0)
+            else if (item.Actions.Count > 0)
+            {
+                // 요구 스킬이 모자란 행동은 빨간색이다(전술에는 못 쓴다).
+                var skills = member.Skills(_data);
+                foreach (var action in item.Actions.Select(id => _data.Actions[id]))
+                {
+                    row.Widgets.Add(Label(action.Name, 15, skills.Meets(action.Requirements) ? Theme.Text : Theme.Enemy));
+                }
+            }
+            else
             {
                 row.Widgets.Add(Label(ItemText.Bonuses(item.BonusesAt(member.MasteryLevel(item.Mastery!)), _data), 15, Theme.TextDim));
             }
         }
 
         return row;
-    }
-
-    /// <summary>행동 칸 하나의 옵션 드롭다운. 요구 스킬이 모자란 옵션은 빨간색이다(골라도 전술에는 못 쓴다).</summary>
-    private Widget BuildAbilityCombo(PartyMember member, EquipmentSlot slot, int index, AbilitySlot ability, string chosen)
-    {
-        var skills = member.Skills(_data);
-        var options = ability.Options.Select(id => _data.Actions[id]).ToList();
-        var combo = Combo(
-            options.Select(a => (a.Name, skills.Meets(a.Requirements) ? Theme.Text : Theme.Enemy)),
-            ability.Options.ToList().IndexOf(chosen),
-            AbilityComboWidth);
-        combo.Enabled = !OnExpedition && options.Count > 1;
-        combo.SelectedIndexChanged += (_, _) =>
-        {
-            var next = options[combo.SelectedIndex ?? 0].Id;
-            if (next != chosen && _company.ChooseAbility(member.Id, slot, index, next, _data))
-            {
-                MarkChanged();
-            }
-        };
-        return combo;
     }
 
     private bool CanWear(PartyMember member, ItemDefinition item) => member.Skills(_data).Meets(item.Requirements);

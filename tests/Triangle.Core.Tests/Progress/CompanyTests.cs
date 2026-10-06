@@ -23,7 +23,7 @@ public class CompanyTests
         """);
 
     private static PartyMember Member(string id, string? weapon = "old_sword", string? armor = null) =>
-        new(id, id, new Stats(10, 10, 10, 10, 10), Row.Front, TestGear.Of(weapon, armor), null, new Dictionary<string, int>(), new Dictionary<string, int>(), []);
+        new(id, id, new Stats(10, 10, 10, 10, 10), Row.Front, TestGear.Of(weapon, armor), new Dictionary<string, int>(), new Dictionary<string, int>(), []);
 
     private static Company Company(params PartyMember[] roster) =>
         new(roster, roster.Take(1).Select(m => m.Id), gold: 0, new Dictionary<string, int>(), activeTacticSet: 0, nextSeed: 5);

@@ -27,6 +27,9 @@ public sealed record EncounterUnitDefinition
     public string? Weapon { get; init; }
     public string? Armor { get; init; }
 
+    /// <summary>무기 위력 배율(%). 마법 지팡이를 든 적은 200 (아이템이 없으므로 직접 적는다).</summary>
+    public int PowerMultiplierPercent { get; init; } = 100;
+
     /// <summary>스킬 ID별 레벨 (1–5).</summary>
     public IReadOnlyDictionary<string, int> Skills { get; init; } = new Dictionary<string, int>();
 

@@ -42,6 +42,15 @@ public sealed record EffectDefinition
 
     /// <summary>턴 시작마다 최대 HP의 이 %만큼 HP가 변한다. 음수면 지속 피해, 양수면 지속 회복.</summary>
     public int TickHpPercent { get; init; }
+
+    /// <summary>기절: 걸린 동안 차례가 와도 행동하지 못한다.</summary>
+    public bool Stun { get; init; }
+
+    /// <summary>도발: 상대 편의 단일 대상 공격이 이 유닛을 노린다 (줄 제한을 통과할 때, 엄호 없이).</summary>
+    public bool Taunt { get; init; }
+
+    /// <summary>엄호 불가: 이 유닛은 후위를 엄호하지 못한다.</summary>
+    public bool NoCover { get; init; }
 }
 
 /// <summary>행동이 대상에게 거는 효과와 지속시간(대상의 행동 횟수).</summary>

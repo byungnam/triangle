@@ -35,8 +35,10 @@ public class CombatSimulatorTests
 
     private static readonly ActionDefinition Expensive = Strike with { Id = "expensive", MpCost = 100_000 };
 
+    private static readonly ActionDefinition SlowStrike = Strike with { Id = "slow_strike", Delay = 2000 };
+
     private static readonly Dictionary<string, ActionDefinition> Actions =
-        new[] { Strike, Snipe, PiercingSnipe, Sweep, Heal, FrontOnlyStrike, Expensive }.ToDictionary(s => s.Id);
+        new[] { Strike, Snipe, PiercingSnipe, Sweep, Heal, FrontOnlyStrike, Expensive, SlowStrike }.ToDictionary(s => s.Id);
 
     private static readonly CombatCatalog Catalog = new(Actions, new Dictionary<string, SkillDefinition>());
 
@@ -80,6 +82,19 @@ public class CombatSimulatorTests
         var turns = result.Events.OfType<TurnStarted>().GroupBy(t => t.ActorId).ToDictionary(g => g.Key, g => g.Count());
         Assert.Equal(20, turns["fast"]);
         Assert.Equal(10, turns["slow"]);
+    }
+
+    [Fact]
+    public void Action_delay_replaces_the_base_wait_after_that_action()
+    {
+        var result = Run(
+            [Unit("heavy", vital: 1000, tactics: [Always("slow_strike")])],
+            [Unit("plain", vital: 1000, tactics: [Always("strike")])],
+            rules: new CombatRules { MaxActions = 30 });
+
+        var turns = result.Events.OfType<TurnStarted>().GroupBy(t => t.ActorId).ToDictionary(g => g.Key, g => g.Count());
+        Assert.Equal(10, turns["heavy"]);
+        Assert.Equal(20, turns["plain"]);
     }
 
     [Fact]

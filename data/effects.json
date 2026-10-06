@@ -43,5 +43,334 @@
     "description": "임시 수치",
     "kind": "Buff",
     "tickHpPercent": 5
+  },
+  {
+    "id": "bleeding",
+    "name": "출혈",
+    "description": "임시 수치",
+    "kind": "Debuff",
+    "tickHpPercent": -4
+  },
+  {
+    "id": "sundered",
+    "name": "갑옷 파손",
+    "description": "임시 수치",
+    "kind": "Debuff",
+    "modifiers": [
+      {
+        "kind": "DefensePercent",
+        "percent": -20
+      }
+    ]
+  },
+  {
+    "id": "slowed",
+    "name": "둔화",
+    "description": "임시 수치",
+    "kind": "Debuff",
+    "modifiers": [
+      {
+        "kind": "DelayReductionPercent",
+        "percent": -30
+      }
+    ]
+  },
+  {
+    "id": "disarmed",
+    "name": "무장 해제",
+    "description": "임시 수치",
+    "kind": "Debuff",
+    "modifiers": [
+      {
+        "kind": "PowerPercent",
+        "percent": -25
+      }
+    ]
+  },
+  {
+    "id": "enfeebled",
+    "name": "쇠약",
+    "description": "임시 수치",
+    "kind": "Debuff",
+    "modifiers": [
+      {
+        "kind": "PowerPercent",
+        "percent": -20
+      }
+    ]
+  },
+  {
+    "id": "marked",
+    "name": "사냥감",
+    "description": "임시 수치",
+    "kind": "Debuff",
+    "modifiers": [
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percent": -20
+      }
+    ]
+  },
+  {
+    "id": "stunned",
+    "name": "기절",
+    "description": "임시 수치",
+    "kind": "Debuff",
+    "stun": true
+  },
+  {
+    "id": "broken_line",
+    "name": "엄호 불가",
+    "description": "임시 수치",
+    "kind": "Debuff",
+    "noCover": true
+  },
+  {
+    "id": "dueling",
+    "name": "결투 자세",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15
+      },
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percent": 15
+      }
+    ]
+  },
+  {
+    "id": "braced",
+    "name": "버티기",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "DefensePercent",
+        "percent": 40
+      },
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percent": 20
+      }
+    ]
+  },
+  {
+    "id": "phalanx",
+    "name": "장창 진형",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "DefensePercent",
+        "percent": 20
+      }
+    ]
+  },
+  {
+    "id": "blood_scent",
+    "name": "피 냄새",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20
+      }
+    ]
+  },
+  {
+    "id": "berserk",
+    "name": "광분",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "PowerPercent",
+        "percent": 35
+      }
+    ]
+  },
+  {
+    "id": "aiming",
+    "name": "조준",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "PowerPercent",
+        "percent": 30
+      }
+    ]
+  },
+  {
+    "id": "emplaced",
+    "name": "거치",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "PowerPercent",
+        "percent": 25
+      },
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percent": 20
+      }
+    ]
+  },
+  {
+    "id": "hasted",
+    "name": "가속",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "DelayReductionPercent",
+        "percent": 30
+      }
+    ]
+  },
+  {
+    "id": "shield_wall",
+    "name": "방패 벽",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percent": 40
+      }
+    ]
+  },
+  {
+    "id": "guarded",
+    "name": "수호",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percent": 35
+      }
+    ]
+  },
+  {
+    "id": "sanctuary",
+    "name": "신성 방벽",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percent": 20
+      }
+    ]
+  },
+  {
+    "id": "martyrdom",
+    "name": "순교",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percent": 60
+      }
+    ]
+  },
+  {
+    "id": "evasive",
+    "name": "은신",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percent": 35
+      }
+    ]
+  },
+  {
+    "id": "mana_barrier",
+    "name": "마력 방벽",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percent": 30
+      }
+    ]
+  },
+  {
+    "id": "empowered",
+    "name": "주문 증폭",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "PowerPercent",
+        "percent": 25
+      }
+    ]
+  },
+  {
+    "id": "rallied",
+    "name": "함성",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15
+      }
+    ]
+  },
+  {
+    "id": "inspired",
+    "name": "성가",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10
+      }
+    ]
+  },
+  {
+    "id": "resolute",
+    "name": "결의",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "DefensePercent",
+        "percent": 25
+      }
+    ]
+  },
+  {
+    "id": "dawn_grace",
+    "name": "새벽의 은총",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "DefensePercent",
+        "percent": 20
+      }
+    ],
+    "tickHpPercent": 4
+  },
+  {
+    "id": "taunting",
+    "name": "도발",
+    "description": "임시 수치",
+    "kind": "Buff",
+    "taunt": true
   }
 ]

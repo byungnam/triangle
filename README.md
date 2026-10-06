@@ -9,6 +9,7 @@
 ```
 src/Triangle.Core/          게임 규칙 (MonoGame 의존 없음)
 src/Triangle.Desktop/       MonoGame DesktopGL 실행 프로젝트
+src/Triangle.DataTool/      게임 데이터 검사·조회 명령줄 도구 (triangle-data)
 tests/Triangle.Core.Tests/  xUnit 테스트
 docs/                       설계 문서
 ```
@@ -28,6 +29,19 @@ dotnet run --project src/Triangle.Desktop -- --screenshot shot.png              
 dotnet run --project src/Triangle.Desktop -- --combat --screenshot shot.png       # 전투가 끝난 화면
 dotnet run --project src/Triangle.Desktop -- --combat --screenshot shot.png 40    # 로그 40줄까지 진행한 중간 화면
 dotnet run --project src/Triangle.Desktop -- --save /tmp/test-save.json            # 세이브 위치 바꾸기 (기본: ~/.config/Triangle/save.json)
+```
+
+## 데이터 검사 · 조회
+
+`data/*.json`을 고친 뒤에는 검사를 돌린다. 오류(게임이 못 읽음)와 경고(못 쓰는 행동, 얻을 수 없는 아이템 등)를 모두 보여 준다.
+
+```bash
+dotnet run --project src/Triangle.DataTool -- validate                      # 오류 있으면 종료 코드 1, --strict면 경고도 1
+dotnet run --project src/Triangle.DataTool -- list items --mastery sword    # 종류: masteries skills actions effects items encounters zones recipes recruits
+dotnet run --project src/Triangle.DataTool -- list items --type 한손검 --tier 2
+dotnet run --project src/Triangle.DataTool -- list actions --mastery fire   # 화염 계열 아이템이 주는 행동
+dotnet run --project src/Triangle.DataTool -- show heal                     # 원본 JSON + 쓰는 곳
+dotnet run --project src/Triangle.DataTool -- refs poisoned                 # 쓰는 곳만
 ```
 
 콘텐츠(`src/Triangle.Desktop/Content/Content.mgcb`)는 빌드할 때 함께 처리된다. 에디터는 `src/Triangle.Desktop`에서 `dotnet tool restore && dotnet mgcb-editor`로 연다.

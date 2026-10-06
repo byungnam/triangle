@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>triangle-data</AssemblyName>
+    <RootNamespace>Triangle.DataTool</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Triangle.Core\Triangle.Core.csproj" />
+  </ItemGroup>
+
+</Project>

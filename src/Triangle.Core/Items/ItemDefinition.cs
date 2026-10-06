@@ -25,6 +25,12 @@ public sealed record ItemDefinition
 
     public required EquipmentSlot Slot { get; init; }
 
+    /// <summary>무기 종류 이름 (예: "한손검", "화염 지팡이"). 같은 종류는 티어만 다르다. 표시용.</summary>
+    public string? Type { get; init; }
+
+    /// <summary>표시용 종류: <see cref="Type"/>, 없으면 이름.</summary>
+    public string TypeOrName => Type ?? Name;
+
     /// <summary>장비 계열(숙련) ID. 재료는 null.</summary>
     public string? Mastery { get; init; }
 
@@ -42,6 +48,15 @@ public sealed record ItemDefinition
 
     /// <summary>끼고 있으면 주는 보너스.</summary>
     public IReadOnlyList<ItemBonus> Bonuses { get; init; } = [];
+
+    /// <summary>
+    /// 무기 위력 배율(%, 주무기만). 이 무기 계열 태그가 붙은 행동의 피해·회복·보호막과 소환 능력치에 마지막으로 곱한다.
+    /// 마법 지팡이는 200이라 같은 속성 마법봉(100)의 2배다.
+    /// </summary>
+    public int PowerMultiplierPercent { get; init; } = 100;
+
+    /// <summary>이 무기 계열 태그가 붙은 행동이 거는 효과의 지속 턴 보너스 (주무기만, 예: 마법 지팡이 +1).</summary>
+    public int EffectDurationBonus { get; init; }
 
     /// <summary>행동 칸. 칸마다 후보 행동 중 하나를 고른다.</summary>
     public IReadOnlyList<AbilitySlot> Abilities { get; init; } = [];

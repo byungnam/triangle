@@ -124,6 +124,7 @@ public static class GameDataLoader
         foreach (var a in actions!)
         {
             ValidateAction(a, skillMap, errors);
+            ValidateActionMechanics(a, masteryMap, skillMap, actionMap, effectMap, errors);
             foreach (var applied in a.Applies)
             {
                 if (!effectMap.ContainsKey(applied.EffectId))
@@ -289,6 +290,76 @@ public static class GameDataLoader
         DataValidation.ValidateRequirements(a.Requirements, $"{at} requirement", skills, errors);
     }
 
+    /// <summary>행동의 특수 규칙(연타, 연쇄, 영창, 소환 등) 검사.</summary>
+    private static void ValidateActionMechanics(
+        ActionDefinition a,
+        IReadOnlyDictionary<string, MasteryDefinition> masteries,
+        IReadOnlyDictionary<string, SkillDefinition> skills,
+        IReadOnlyDictionary<string, ActionDefinition> actions,
+        IReadOnlyDictionary<string, EffectDefinition> effects,
+        List<string> errors)
+    {
+        var at = $"{ActionsFile} '{a.Id}'";
+        if (a.Hits < 1)
+        {
+            errors.Add($"{at}: hits must be at least 1, got {a.Hits}");
+        }
+
+        if (a.Chant < 1)
+        {
+            errors.Add($"{at}: chant must be at least 1, got {a.Chant}");
+        }
+
+        DataValidation.RequireNonNegative(a.ExtraTargets, $"{at}: extraTargets", errors);
+        DataValidation.RequireNonNegative(a.MissingHpBonusPercent, $"{at}: missingHpBonusPercent", errors);
+        DataValidation.RequireNonNegative(a.PushBack, $"{at}: pushBack", errors);
+        DataValidation.RequireNonNegative(a.MpDamage, $"{at}: mpDamage", errors);
+
+        if (a.BonusAgainst is { } bonus && !effects.ContainsKey(bonus.EffectId))
+        {
+            errors.Add($"{at}: bonusAgainst unknown effect '{bonus.EffectId}'");
+        }
+
+        if (a.Weapon is { } weapon)
+        {
+            DataValidation.RequireKind(weapon, MasteryKind.Weapon, $"{at}: weapon", masteries, errors);
+        }
+
+        if (a.SummonOnly && (a.Universal || a.Weapon is not null))
+        {
+            errors.Add($"{at}: a summonOnly action cannot be universal or weapon-granted");
+        }
+
+        if ((a.Effect == ActionEffect.Summon) != (a.Summon is not null))
+        {
+            errors.Add($"{at}: effect Summon and summon must be set together");
+        }
+
+        if (a.Summon is { } summon)
+        {
+            DataValidation.RequireText(summon.Name, $"{at}: summon name", errors);
+            DataValidation.ValidateStats(summon.Stats, $"{at}: summon", errors);
+            if (summon.Duration is < 1)
+            {
+                errors.Add($"{at}: summon duration must be at least 1, got {summon.Duration}");
+            }
+
+            if (!actions.TryGetValue(summon.ActionId ?? "", out var summonAction))
+            {
+                errors.Add($"{at}: summon uses unknown action '{summon.ActionId}'");
+            }
+            else if (!summonAction.SummonOnly)
+            {
+                errors.Add($"{at}: summon action '{summon.ActionId}' must be summonOnly");
+            }
+
+            if (summon.StatSkill is { } statSkill && !skills.ContainsKey(statSkill))
+            {
+                errors.Add($"{at}: summon statSkill unknown skill '{statSkill}'");
+            }
+        }
+    }
+
     private static void ValidateItem(
         ItemDefinition item,
         IReadOnlyDictionary<string, MasteryDefinition> masteries,
@@ -331,6 +402,18 @@ public static class GameDataLoader
             errors.Add($"{at}: only a main-hand item can be twoHanded");
         }
 
+        if (item.Slot != EquipmentSlot.MainHand && (item.PowerMultiplierPercent != 100 || item.EffectDurationBonus != 0))
+        {
+            errors.Add($"{at}: only a main-hand item can have powerMultiplierPercent or effectDurationBonus");
+        }
+
+        if (item.PowerMultiplierPercent < 1)
+        {
+            errors.Add($"{at}: powerMultiplierPercent must be at least 1, got {item.PowerMultiplierPercent}");
+        }
+
+        DataValidation.RequireNonNegative(item.EffectDurationBonus, $"{at}: effectDurationBonus", errors);
+
         for (var i = 0; i < item.Abilities.Count; i++)
         {
             var options = item.Abilities[i].Options;
@@ -345,9 +428,9 @@ public static class GameDataLoader
                 {
                     errors.Add($"{at}: ability {i + 1} has unknown action '{option}'");
                 }
-                else if (action.Universal)
+                else if (action.Universal || action.SummonOnly)
                 {
-                    errors.Add($"{at}: ability {i + 1} offers universal action '{option}'");
+                    errors.Add($"{at}: ability {i + 1} offers {(action.Universal ? "universal" : "summonOnly")} action '{option}'");
                 }
             }
 

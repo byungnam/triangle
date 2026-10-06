@@ -295,7 +295,7 @@ internal sealed class TacticEditorScene : IScene
         }
 
         // 새 전술은 쓸 수 있는 첫 행동으로 시작한다.
-        var firstUsable = _data.Actions.Values.FirstOrDefault(a => a.IsUsableBy(member.GrantedActions(_data), skills));
+        var firstUsable = _data.Actions.Values.FirstOrDefault(a => !a.SummonOnly && a.IsUsableBy(member.GrantedActions(_data), skills));
         var addButton = TextButton("+ 전술 추가", Theme.Button, Theme.ButtonHover);
         addButton.Enabled = TacticsOf(member).Count < MaxTactics && firstUsable is not null;
         addButton.Click += (_, _) =>
@@ -403,11 +403,15 @@ internal sealed class TacticEditorScene : IScene
             ? BuildValueInput(member, index)
             : Label("—", 17, Theme.TextDim, width: ValueColumnWidth));
 
-        // 행동: 쓸 수 있는 행동을 먼저, 잠긴 행동은 아래에 (고를 수 없음)
+        // 행동: 쓸 수 있는 행동을 먼저, 잠긴 행동은 아래에 (고를 수 없음).
+        // 행동이 많으므로 잠긴 행동은 장비가 주지만 패시브가 모자란 것과 지금 고른 것만 보여 준다.
         var skills = member.Skills(_data);
         var granted = member.GrantedActions(_data);
         bool Usable(ActionDefinition a) => a.IsUsableBy(granted, skills);
-        var actions = _data.Actions.Values.OrderBy(a => Usable(a) ? 0 : 1).ToList();
+        var actions = _data.Actions.Values
+            .Where(a => !a.SummonOnly && (a.IsGranted(granted) || a.Id == tactic.ActionId))
+            .OrderBy(a => Usable(a) ? 0 : 1)
+            .ToList();
         var items = actions.Select(a => Usable(a)
             ? (ActionLabel(a), Theme.Text)
             : ($"(잠김) {a.Name} — {LockReason(a, granted, skills)}", Theme.Enemy));
@@ -571,8 +575,10 @@ internal sealed class TacticEditorScene : IScene
         var reasons = new List<string>();
         if (!action.IsGranted(granted))
         {
-            var items = _data.ItemsGranting(action.Id).Select(i => i.Name).Distinct().Take(2).ToList();
-            reasons.Add(items.Count == 0 ? "쓸 수 있는 장비 없음" : $"{string.Join("·", items)}에서 선택");
+            var items = _data.ItemsGranting(action.Id).Select(i => i.TypeOrName).Distinct().Take(2).ToList();
+            reasons.Add(action.Weapon is { } weapon ? $"{_data.Masteries[weapon].Name} 무기 필요"
+                : items.Count == 0 ? "쓸 수 있는 장비 없음"
+                : $"{string.Join("·", items)}에서 선택");
         }
 
         reasons.AddRange(skills.Missing(action.Requirements).Select(r => $"{_data.Skills[r.SkillId].Name} {r.Level}"));

@@ -116,7 +116,7 @@ public static class ExpeditionRules
         var encounterId = NextEncounter(expedition, data);
 
         var downed = new List<PartyMember>();
-        foreach (var c in result.Combatants.Where(c => c.Side == CombatSide.Ally))
+        foreach (var c in result.Combatants.Where(c => c.Side == CombatSide.Ally && !c.IsSummon))
         {
             expedition.Update(new ExpeditionMember(c.Id, c.Hp, c.Mp, Down: !c.IsAlive));
             if (!c.IsAlive)
@@ -241,14 +241,16 @@ public static class ExpeditionRules
             expedition.Deaths.ToList());
     }
 
-    /// <summary>주무기 계열과 입은 방어구 재질 숙련에 경험치를 더한다.</summary>
+    /// <summary>주무기 계열, (주무기와 다르면) 보조 계열, 입은 방어구 재질 숙련에 경험치를 더한다.</summary>
     private static List<XpReport> GrantMasteryXp(Company company, CombatResult result)
     {
         var reports = new List<XpReport>();
         foreach (var gain in MasteryGain.ForAllies(result))
         {
             var member = company.Member(gain.CombatantId);
-            var gains = gain.Armor.Select(p => (Mastery: (string?)p.Key, Amount: p.Value)).Prepend((gain.Weapon, gain.WeaponXp));
+            var gains = gain.Armor.Select(p => (Mastery: (string?)p.Key, Amount: p.Value))
+                .Prepend((gain.OffHand, gain.WeaponXp))
+                .Prepend((gain.Weapon, gain.WeaponXp));
             foreach (var (mastery, amount) in gains)
             {
                 if (mastery is not null)

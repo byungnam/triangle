@@ -71,7 +71,8 @@ internal sealed class CombatLogScene : IScene
 
         foreach (var c in _result.Combatants)
         {
-            var view = new UnitView(c.Id, c.Side, c.Row, c.MaxHp, c.MaxMp) { Hp = c.StartHp, Mp = c.StartMp };
+            // 소환 유닛은 나타날 때까지 숨긴다.
+            var view = new UnitView(c.Id, c.Side, c.StartRow, c.MaxHp, c.MaxMp) { Hp = c.StartHp, Mp = c.StartMp, Visible = !c.IsSummon };
             (c.Side == CombatSide.Ally ? _allies : _enemies).Add(view);
             _units[c.Id] = view;
         }
@@ -199,6 +200,25 @@ internal sealed class CombatLogScene : IScene
                 break;
             case Died d:
                 _units[d.UnitId].Effects.Clear();
+                _units[d.UnitId].Shield = 0;
+                break;
+            case ShieldGained g:
+                _units[g.TargetId].Shield = g.ShieldAfter;
+                break;
+            case ShieldAbsorbed a:
+                _units[a.TargetId].Shield = a.ShieldAfter;
+                break;
+            case MpBurned m:
+                _units[m.TargetId].Mp = m.MpAfter;
+                break;
+            case Moved m:
+                _units[m.TargetId].Row = m.Row;
+                break;
+            case Summoned s:
+                _units[s.UnitId].Visible = true;
+                break;
+            case Dismissed d:
+                _units[d.UnitId].Visible = false;
                 break;
             case CombatEnded:
                 foreach (var u in _units.Values)
@@ -278,7 +298,7 @@ internal sealed class CombatLogScene : IScene
             _ui.Text(batch, _ui.Font(16), row == Row.Front ? "전위" : "후위", new Vector2(x, y), Theme.TextDim);
             y += 24;
 
-            foreach (var unit in units.Where(u => u.Row == row))
+            foreach (var unit in units.Where(u => u.Row == row && u.Visible))
             {
                 DrawUnit(batch, unit, new Rectangle(x, y, area.Width - 32, 64), color);
                 y += 74;
@@ -319,7 +339,7 @@ internal sealed class CombatLogScene : IScene
         _ui.Bar(batch, mpBar, unit.Mp, unit.MaxMp, Theme.MpBar);
 
         var font = _ui.Font(14);
-        var hpText = $"HP {unit.Hp}/{unit.MaxHp}   MP {unit.Mp}/{unit.MaxMp}";
+        var hpText = $"HP {unit.Hp}/{unit.MaxHp}   MP {unit.Mp}/{unit.MaxMp}" + (unit.Shield > 0 ? $"   보호막 {unit.Shield}" : "");
         _ui.Text(batch, font, hpText, new Vector2(area.X, area.Y + 50), Theme.TextDim);
     }
 
@@ -420,13 +440,15 @@ internal sealed class CombatLogScene : IScene
     {
         public string Id { get; } = id;
         public CombatSide Side { get; } = side;
-        public Row Row { get; } = row;
+        public Row Row { get; set; } = row;
         public int MaxHp { get; } = maxHp;
         public int MaxMp { get; } = maxMp;
         public string Name { get; set; } = id;
         public int Hp { get; set; } = maxHp;
         public int Mp { get; set; } = maxMp;
         public bool Acting { get; set; }
+        public bool Visible { get; set; } = true;
+        public int Shield { get; set; }
         public List<string> Effects { get; } = [];
     }
 }

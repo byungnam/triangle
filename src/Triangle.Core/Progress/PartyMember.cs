@@ -129,9 +129,17 @@ public sealed class PartyMember
             .Where(s => ItemIn(s) is not null && WhyCannotWear(s, data) is null)
             .Select(s => (s, data.Items[ItemIn(s)!]));
 
-    /// <summary>착용 중인 아이템에서 고른 행동 ID.</summary>
-    public IReadOnlySet<string> GrantedActions(GameData data) =>
-        WornItems(data).SelectMany(w => ChosenAbilities(w.Slot, data)).ToHashSet();
+    /// <summary>착용 중인 아이템에서 고른 행동 ID와, 든 주무기 계열이 주는 행동(예: 정령 소환).</summary>
+    public IReadOnlySet<string> GrantedActions(GameData data)
+    {
+        var granted = WornItems(data).SelectMany(w => ChosenAbilities(w.Slot, data)).ToHashSet();
+        if (WeaponMastery(data) is { } weapon)
+        {
+            granted.UnionWith(data.Actions.Values.Where(a => a.Weapon == weapon).Select(a => a.Id));
+        }
+
+        return granted;
+    }
 
     /// <summary>착용 중인 아이템의 보너스 (숙련 아이템 파워 반영).</summary>
     public IReadOnlyList<ItemBonus> ItemBonuses(GameData data) =>
@@ -140,6 +148,10 @@ public sealed class PartyMember
     /// <summary>주무기의 계열 ID (맨손이거나 착용 불가면 null).</summary>
     public string? WeaponMastery(GameData data) =>
         WornItems(data).Where(w => w.Slot == EquipmentSlot.MainHand).Select(w => w.Item.Mastery).FirstOrDefault();
+
+    /// <summary>보조 아이템의 계열 ID (없거나 착용 불가면 null).</summary>
+    public string? OffHandMastery(GameData data) =>
+        WornItems(data).Where(w => w.Slot == EquipmentSlot.OffHand).Select(w => w.Item.Mastery).FirstOrDefault();
 
     /// <summary>몸통 방어구의 재질 계열 ID (표시용, 없으면 null).</summary>
     public string? ArmorMastery(GameData data) =>
@@ -276,5 +288,11 @@ public sealed class PartyMember
             GrantedActions = GrantedActions(data),
             ItemBonuses = ItemBonuses(data),
             ArmorPieces = ArmorPieces(data),
+            OffHand = OffHandMastery(data),
+            PowerMultiplierPercent = MainHandItem(data)?.PowerMultiplierPercent ?? 100,
+            EffectDurationBonus = MainHandItem(data)?.EffectDurationBonus ?? 0,
         };
+
+    private ItemDefinition? MainHandItem(GameData data) =>
+        WornItems(data).Where(w => w.Slot == EquipmentSlot.MainHand).Select(w => w.Item).FirstOrDefault();
 }

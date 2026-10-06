@@ -210,7 +210,7 @@ internal sealed class MasteryScene : IScene
         // 이 계열 아이템이 주는 행동, 또는 이 트리의 스킬로 열리는 행동.
         var treeSkills = skills.Select(s => s.Id).ToHashSet();
         var related = _data.Actions.Values
-            .Where(a => ItemsOf(mastery.Id, a.Id).Any() || a.Requirements.Any(r => treeSkills.Contains(r.SkillId)))
+            .Where(a => !a.SummonOnly && (ItemsOf(mastery.Id, a.Id).Any() || a.Weapon == mastery.Id || a.Requirements.Any(r => treeSkills.Contains(r.SkillId))))
             .ToList();
         if (related.Count > 0)
         {
@@ -220,7 +220,9 @@ internal sealed class MasteryScene : IScene
             foreach (var action in related)
             {
                 var missing = set.Missing(action.Requirements);
-                var weapon = action.Universal ? "공용" : $"{string.Join(", ", _data.ItemsGranting(action.Id).Select(i => i.Name).Distinct())}에서 선택";
+                var weapon = action.Universal ? "공용"
+                    : action.Weapon is { } w ? $"{_data.Masteries[w].Name} 무기"
+                    : $"{string.Join(", ", _data.ItemsGranting(action.Id).Select(i => i.TypeOrName).Distinct())}에서 선택";
                 var text = missing.Count == 0
                     ? $"{action.Name} ({weapon}) — 배움"
                     : $"{action.Name} ({weapon}) — {string.Join(", ", missing.Select(m => $"{_data.Skills[m.SkillId].Name} {m.Level}"))} 필요";

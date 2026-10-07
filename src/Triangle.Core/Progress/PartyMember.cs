@@ -105,37 +105,20 @@ public sealed class PartyMember
             .Where(s => ItemIn(s) is not null && WhyCannotWear(s, data) is null)
             .Select(s => (s, data.Items[ItemIn(s)!]));
 
-    /// <summary>착용 중인 아이템에서 고른 행동 ID와, 든 주무기 계열이 주는 행동(예: 정령 소환).</summary>
-    public IReadOnlySet<string> GrantedActions(GameData data)
-    {
-        var granted = WornItems(data).SelectMany(w => w.Item.Actions).ToHashSet();
-        if (WeaponMastery(data) is { } weapon)
-        {
-            granted.UnionWith(data.Actions.Values.Where(a => a.Weapon == weapon).Select(a => a.Id));
-        }
+    /// <summary>실제로 착용 중인 장비 묶음.</summary>
+    public Loadout Loadout(GameData data) => new(WornItems(data));
 
-        return granted;
-    }
+    /// <summary>착용 중인 아이템의 행동과, 든 주무기 계열이 주는 행동(예: 정령 소환).</summary>
+    public IReadOnlySet<string> GrantedActions(GameData data) => Loadout(data).GrantedActions(data.Actions.Values);
 
     /// <summary>착용 중인 아이템의 보너스 (숙련 아이템 파워 반영).</summary>
-    public IReadOnlyList<ItemBonus> ItemBonuses(GameData data) =>
-        WornItems(data).SelectMany(w => w.Item.BonusesAt(MasteryLevel(w.Item.Mastery!))).ToList();
+    public IReadOnlyList<ItemBonus> ItemBonuses(GameData data) => Loadout(data).ItemBonuses(MasteryLevel);
 
     /// <summary>주무기의 계열 ID (맨손이거나 착용 불가면 null).</summary>
-    public string? WeaponMastery(GameData data) =>
-        WornItems(data).Where(w => w.Slot == EquipmentSlot.MainHand).Select(w => w.Item.Mastery).FirstOrDefault();
-
-    /// <summary>보조 아이템의 계열 ID (없거나 착용 불가면 null).</summary>
-    public string? OffHandMastery(GameData data) =>
-        WornItems(data).Where(w => w.Slot == EquipmentSlot.OffHand).Select(w => w.Item.Mastery).FirstOrDefault();
+    public string? WeaponMastery(GameData data) => Loadout(data).WeaponMastery;
 
     /// <summary>몸통 방어구의 재질 계열 ID (표시용, 없으면 null).</summary>
-    public string? ArmorMastery(GameData data) =>
-        WornItems(data).Where(w => w.Slot == EquipmentSlot.Body).Select(w => w.Item.Mastery).FirstOrDefault();
-
-    /// <summary>입은 방어구 부위별 재질 (방어구 숙련 경험치를 나눈다).</summary>
-    public IReadOnlyList<string> ArmorPieces(GameData data) =>
-        WornItems(data).Where(w => w.Slot.IsArmor()).Select(w => w.Item.Mastery!).ToList();
+    public string? ArmorMastery(GameData data) => Loadout(data).ArmorMastery;
 
     /// <summary>
     /// 그 부위에 아이템을 넣는다(창고와 오가는 것은 <see cref="Company"/>가 한다).
@@ -235,18 +218,10 @@ public sealed class PartyMember
 
     public void ToggleRow() => Row = Row == Row.Front ? Row.Back : Row.Front;
 
-    /// <summary>전투 입력으로 바꾼다. 착용 중인 아이템의 계열, 고른 행동, 보너스를 넘긴다.</summary>
+    /// <summary>전투 입력으로 바꾼다. 착용 중인 아이템의 계열, 행동, 보너스를 넘긴다.</summary>
     public CombatantSetup ToCombatantSetup(GameData data, int tacticSet) =>
-        new(Id, Name, Stats, Row, WeaponMastery(data), ArmorMastery(data), new Dictionary<string, int>(_skillLevels), _tacticSets[tacticSet].ToList())
-        {
-            GrantedActions = GrantedActions(data),
-            ItemBonuses = ItemBonuses(data),
-            ArmorPieces = ArmorPieces(data),
-            OffHand = OffHandMastery(data),
-            PowerMultiplierPercent = MainHandItem(data)?.PowerMultiplierPercent ?? 100,
-            EffectDurationBonus = MainHandItem(data)?.EffectDurationBonus ?? 0,
-        };
-
-    private ItemDefinition? MainHandItem(GameData data) =>
-        WornItems(data).Where(w => w.Slot == EquipmentSlot.MainHand).Select(w => w.Item).FirstOrDefault();
+        Loadout(data).Apply(
+            new(Id, Name, Stats, Row, null, null, new Dictionary<string, int>(_skillLevels), _tacticSets[tacticSet].ToList()),
+            data.Actions.Values,
+            MasteryLevel);
 }

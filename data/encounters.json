@@ -15,8 +15,11 @@
           "speed": 12
         },
         "row": "Front",
-        "weapon": "sword",
-        "armor": "plate",
+        "equipment": {
+          "MainHand": "old_sword",
+          "OffHand": "wooden_shield",
+          "Body": "plate_armor"
+        },
         "skills": {
           "swordsmanship": 1,
           "defense": 1
@@ -24,6 +27,12 @@
         "tactics": [
           {
             "priority": 1,
+            "condition": "OnTurn",
+            "value": 2,
+            "actionId": "shield_wall"
+          },
+          {
+            "priority": 2,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"
@@ -41,15 +50,23 @@
           "speed": 13
         },
         "row": "Front",
-        "weapon": "sword",
-        "armor": "plate",
+        "equipment": {
+          "MainHand": "old_spear",
+          "Body": "plate_armor"
+        },
         "skills": {
-          "swordsmanship": 1,
+          "spearmanship": 1,
           "defense": 1
         },
         "tactics": [
           {
             "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "harrying_thrust"
+          },
+          {
+            "priority": 2,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"
@@ -67,26 +84,22 @@
           "speed": 11
         },
         "row": "Back",
-        "weapon": "relic",
-        "armor": "cloth",
+        "equipment": {
+          "MainHand": "wooden_relic",
+          "Body": "cloth_robe"
+        },
         "skills": {
           "healing": 2
         },
         "tactics": [
           {
             "priority": 1,
-            "condition": "OnTurn",
-            "value": 2,
-            "actionId": "regen"
-          },
-          {
-            "priority": 2,
             "condition": "AnyAllyHpAtMost",
             "value": 50,
             "actionId": "heal"
           },
           {
-            "priority": 3,
+            "priority": 2,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"
@@ -104,17 +117,21 @@
         "id": "elite_soldier_1",
         "name": "정예병",
         "stats": {
-          "str": 16,
+          "str": 13,
           "dex": 13,
-          "vital": 22,
+          "vital": 19,
           "intel": 20,
           "speed": 13
         },
         "row": "Front",
-        "weapon": "sword",
-        "armor": "plate",
+        "equipment": {
+          "MainHand": "steel_sword",
+          "OffHand": "wooden_shield",
+          "Body": "plate_armor"
+        },
         "skills": {
           "swordsmanship": 2,
+          "shield_mastery": 1,
           "defense": 1
         },
         "tactics": [
@@ -136,21 +153,29 @@
         "id": "elite_soldier_2",
         "name": "정예병",
         "stats": {
-          "str": 16,
+          "str": 13,
           "dex": 13,
-          "vital": 22,
+          "vital": 19,
           "intel": 20,
           "speed": 13
         },
         "row": "Front",
-        "weapon": "sword",
-        "armor": "plate",
+        "equipment": {
+          "MainHand": "steel_greatsword",
+          "Body": "plate_armor"
+        },
         "skills": {
           "swordsmanship": 2
         },
         "tactics": [
           {
             "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "greatsword_sweep"
+          },
+          {
+            "priority": 2,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"
@@ -162,16 +187,19 @@
         "name": "정예 궁수",
         "stats": {
           "str": 11,
-          "dex": 15,
+          "dex": 13,
           "vital": 18,
           "intel": 22,
           "speed": 14
         },
         "row": "Back",
-        "weapon": "bow",
-        "armor": "leather",
+        "equipment": {
+          "MainHand": "composite_bow",
+          "Body": "leather_armor"
+        },
         "skills": {
-          "archery": 3
+          "archery": 3,
+          "mobility": 1
         },
         "tactics": [
           {
@@ -195,12 +223,15 @@
           "str": 10,
           "dex": 11,
           "vital": 20,
-          "intel": 25,
+          "intel": 21,
           "speed": 12
         },
         "row": "Back",
-        "weapon": "relic",
-        "armor": "cloth",
+        "equipment": {
+          "MainHand": "silver_relic",
+          "OffHand": "holy_token",
+          "Body": "cloth_robe"
+        },
         "skills": {
           "healing": 2
         },
@@ -215,7 +246,7 @@
             "priority": 2,
             "condition": "OnTurn",
             "value": 2,
-            "actionId": "regen"
+            "actionId": "prayer_of_protection"
           },
           {
             "priority": 3,
@@ -302,19 +333,27 @@
       {
         "id": "bandit_1",
         "name": "도적",
-        "row": "Front",
-        "weapon": "sword",
-        "armor": "leather",
         "stats": {
           "str": 10,
           "dex": 9,
-          "vital": 12,
+          "vital": 10,
           "intel": 8,
           "speed": 10
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_hatchet",
+          "Body": "leather_armor"
         },
         "tactics": [
           {
             "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "bleeding_cut"
+          },
+          {
+            "priority": 2,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"
@@ -324,19 +363,27 @@
       {
         "id": "bandit_2",
         "name": "도적",
-        "row": "Front",
-        "weapon": "sword",
-        "armor": "leather",
         "stats": {
           "str": 10,
           "dex": 9,
-          "vital": 12,
+          "vital": 10,
           "intel": 8,
           "speed": 10
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_sword",
+          "Body": "leather_armor"
         },
         "tactics": [
           {
             "priority": 1,
+            "condition": "OnTurn",
+            "value": 2,
+            "actionId": "disarm"
+          },
+          {
+            "priority": 2,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"
@@ -353,9 +400,6 @@
       {
         "id": "poacher_1",
         "name": "밀렵꾼",
-        "row": "Front",
-        "weapon": "sword",
-        "armor": "leather",
         "stats": {
           "str": 10,
           "dex": 9,
@@ -363,9 +407,20 @@
           "intel": 8,
           "speed": 10
         },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_spear",
+          "Body": "leather_armor"
+        },
         "tactics": [
           {
             "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "javelin"
+          },
+          {
+            "priority": 2,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"
@@ -375,15 +430,17 @@
       {
         "id": "poacher_archer",
         "name": "밀렵 궁수",
-        "row": "Back",
-        "weapon": "bow",
-        "armor": "leather",
         "stats": {
           "str": 8,
           "dex": 10,
           "vital": 10,
           "intel": 12,
           "speed": 10
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "hunting_bow",
+          "Body": "leather_armor"
         },
         "tactics": [
           {
@@ -394,6 +451,12 @@
           },
           {
             "priority": 2,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "harass_shot"
+          },
+          {
+            "priority": 3,
             "condition": "Always",
             "value": 0,
             "actionId": "fire_arrow"
@@ -410,22 +473,31 @@
       {
         "id": "deserter_1",
         "name": "탈영병",
-        "row": "Front",
-        "weapon": "sword",
-        "armor": "plate",
         "stats": {
           "str": 11,
           "dex": 9,
-          "vital": 13,
+          "vital": 12,
           "intel": 10,
           "speed": 10
         },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_spear",
+          "OffHand": "wooden_shield",
+          "Body": "plate_armor"
+        },
         "skills": {
-          "swordsmanship": 1
+          "spearmanship": 1
         },
         "tactics": [
           {
             "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "harrying_thrust"
+          },
+          {
+            "priority": 2,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"
@@ -435,22 +507,30 @@
       {
         "id": "deserter_2",
         "name": "탈영병",
-        "row": "Front",
-        "weapon": "sword",
-        "armor": "plate",
         "stats": {
           "str": 11,
           "dex": 9,
-          "vital": 13,
+          "vital": 12,
           "intel": 10,
           "speed": 10
         },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_halberd",
+          "Body": "plate_armor"
+        },
         "skills": {
-          "swordsmanship": 1
+          "spearmanship": 1
         },
         "tactics": [
           {
             "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "spear_sweep"
+          },
+          {
+            "priority": 2,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"
@@ -462,20 +542,24 @@
   {
     "id": "fort_archers",
     "name": "요새 궁수대",
-    "description": "보통. 방패병 하나와 궁수 둘. 수치는 임시.",
+    "description": "보통. 방패병 하나와 석궁수 하나. 수치는 임시.",
     "units": [
       {
         "id": "fort_guard",
         "name": "방패병",
-        "row": "Front",
-        "weapon": "sword",
-        "armor": "plate",
         "stats": {
           "str": 11,
           "dex": 9,
-          "vital": 15,
+          "vital": 13,
           "intel": 10,
           "speed": 10
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_mace",
+          "OffHand": "wooden_shield",
+          "Head": "plate_helm",
+          "Body": "plate_armor"
         },
         "skills": {
           "defense": 2
@@ -483,6 +567,12 @@
         "tactics": [
           {
             "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "shield_wall"
+          },
+          {
+            "priority": 2,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"
@@ -491,19 +581,21 @@
       },
       {
         "id": "fort_archer_1",
-        "name": "요새 궁수",
-        "row": "Back",
-        "weapon": "bow",
-        "armor": "leather",
+        "name": "요새 석궁수",
         "stats": {
           "str": 8,
           "dex": 11,
-          "vital": 11,
+          "vital": 9,
           "intel": 14,
           "speed": 11
         },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "old_crossbow",
+          "Body": "leather_armor"
+        },
         "skills": {
-          "archery": 2
+          "crossbow_mastery": 2
         },
         "tactics": [
           {
@@ -516,13 +608,13 @@
             "priority": 2,
             "condition": "OnTurn",
             "value": 1,
-            "actionId": "poison_arrow"
+            "actionId": "barbed_bolt"
           },
           {
             "priority": 3,
             "condition": "Always",
             "value": 0,
-            "actionId": "fire_arrow"
+            "actionId": "bolt_shot"
           }
         ]
       }
@@ -536,34 +628,30 @@
       {
         "id": "chief",
         "name": "도적 두목",
-        "row": "Front",
-        "weapon": "sword",
-        "armor": "plate",
         "stats": {
           "str": 12,
           "dex": 11,
-          "vital": 16,
+          "vital": 14,
           "intel": 14,
           "speed": 11
         },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_greataxe",
+          "Body": "plate_armor"
+        },
         "skills": {
-          "swordsmanship": 2
+          "axemanship": 2
         },
         "tactics": [
           {
             "priority": 1,
-            "condition": "SelfMpAtMost",
-            "value": 15,
-            "actionId": "basic_attack"
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "reckless_blow"
           },
           {
             "priority": 2,
-            "condition": "EveryNthTurn",
-            "value": 2,
-            "actionId": "heavy_strike"
-          },
-          {
-            "priority": 3,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"
@@ -573,19 +661,27 @@
       {
         "id": "chief_bandit_1",
         "name": "도적",
-        "row": "Front",
-        "weapon": "sword",
-        "armor": "leather",
         "stats": {
           "str": 10,
           "dex": 9,
-          "vital": 12,
+          "vital": 10,
           "intel": 8,
           "speed": 10
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_hatchet",
+          "Body": "leather_armor"
         },
         "tactics": [
           {
             "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "bleeding_cut"
+          },
+          {
+            "priority": 2,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"
@@ -602,9 +698,6 @@
       {
         "id": "dead_infantry_1",
         "name": "망자 보병",
-        "row": "Front",
-        "weapon": "sword",
-        "armor": "plate",
         "stats": {
           "str": 9,
           "dex": 9,
@@ -612,8 +705,14 @@
           "intel": 9,
           "speed": 10
         },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_mace",
+          "OffHand": "wooden_shield",
+          "Body": "plate_armor"
+        },
         "skills": {
-          "swordsmanship": 2,
+          "mace_mastery": 2,
           "defense": 1
         },
         "tactics": [
@@ -627,7 +726,7 @@
             "priority": 2,
             "condition": "EveryNthTurn",
             "value": 3,
-            "actionId": "heavy_strike"
+            "actionId": "bone_crusher"
           },
           {
             "priority": 3,
@@ -640,9 +739,6 @@
       {
         "id": "dead_infantry_2",
         "name": "망자 보병",
-        "row": "Front",
-        "weapon": "sword",
-        "armor": "plate",
         "stats": {
           "str": 9,
           "dex": 9,
@@ -650,22 +746,27 @@
           "intel": 9,
           "speed": 10
         },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_warhammer",
+          "Body": "plate_armor"
+        },
         "skills": {
-          "swordsmanship": 2,
+          "mace_mastery": 2,
           "defense": 1
         },
         "tactics": [
           {
             "priority": 1,
             "condition": "SelfMpAtMost",
-            "value": 15,
+            "value": 25,
             "actionId": "basic_attack"
           },
           {
             "priority": 2,
             "condition": "EveryNthTurn",
             "value": 3,
-            "actionId": "heavy_strike"
+            "actionId": "quake_slam"
           },
           {
             "priority": 3,
@@ -678,15 +779,17 @@
       {
         "id": "dead_archer",
         "name": "망자 궁수",
-        "row": "Back",
-        "weapon": "bow",
-        "armor": "leather",
         "stats": {
           "str": 7,
           "dex": 8,
           "vital": 8,
           "intel": 10,
           "speed": 9
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "hunting_bow",
+          "Body": "leather_armor"
         },
         "skills": {
           "archery": 2
@@ -722,15 +825,17 @@
       {
         "id": "wraith_rider_1",
         "name": "망령 기수",
-        "row": "Front",
-        "weapon": "sword",
-        "armor": "leather",
         "stats": {
           "str": 10,
           "dex": 9,
-          "vital": 9,
+          "vital": 8,
           "intel": 9,
           "speed": 13
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_spear",
+          "Body": "leather_armor"
         },
         "skills": {
           "mobility": 1
@@ -738,6 +843,12 @@
         "tactics": [
           {
             "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "javelin"
+          },
+          {
+            "priority": 2,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"
@@ -747,15 +858,17 @@
       {
         "id": "wraith_rider_2",
         "name": "망령 기수",
-        "row": "Front",
-        "weapon": "sword",
-        "armor": "leather",
         "stats": {
           "str": 10,
           "dex": 9,
-          "vital": 9,
+          "vital": 8,
           "intel": 9,
           "speed": 13
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_spear",
+          "Body": "leather_armor"
         },
         "skills": {
           "mobility": 1
@@ -763,6 +876,12 @@
         "tactics": [
           {
             "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "hamstring"
+          },
+          {
+            "priority": 2,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"
@@ -779,15 +898,18 @@
       {
         "id": "cult_guard",
         "name": "교단 호위병",
-        "row": "Front",
-        "weapon": "sword",
-        "armor": "plate",
         "stats": {
           "str": 9,
           "dex": 8,
-          "vital": 9,
+          "vital": 8,
           "intel": 9,
           "speed": 9
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_mace",
+          "OffHand": "wooden_shield",
+          "Body": "plate_armor"
         },
         "skills": {
           "defense": 1
@@ -795,6 +917,12 @@
         "tactics": [
           {
             "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "heavy_blow"
+          },
+          {
+            "priority": 2,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"
@@ -804,16 +932,17 @@
       {
         "id": "cult_mage",
         "name": "교단 주술사",
-        "row": "Back",
-        "weapon": "fire",
-        "armor": "cloth",
-        "powerMultiplierPercent": 200,
         "stats": {
           "str": 6,
           "dex": 8,
           "vital": 8,
           "intel": 13,
           "speed": 9
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "apprentice_staff",
+          "Body": "cloth_robe"
         },
         "skills": {
           "pyromancy": 2
@@ -842,15 +971,17 @@
       {
         "id": "cult_priest",
         "name": "교단 사제",
-        "row": "Back",
-        "weapon": "relic",
-        "armor": "cloth",
         "stats": {
           "str": 6,
           "dex": 8,
           "vital": 8,
           "intel": 11,
           "speed": 9
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "wooden_relic",
+          "Body": "cloth_robe"
         },
         "skills": {
           "healing": 2

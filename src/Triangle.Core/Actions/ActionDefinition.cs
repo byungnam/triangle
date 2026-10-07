@@ -155,7 +155,7 @@ public sealed record ActionDefinition
 
     /// <summary>
     /// 고른 행동과 스킬 레벨로 이 행동을 쓸 수 있는가.
-    /// <paramref name="granted"/>가 null이면 아이템 제한이 없다 (적 유닛).
+    /// <paramref name="granted"/>가 null이면 아이템 제한이 없다 (규칙 시험용 유닛).
     /// </summary>
     public bool IsUsableBy(IReadOnlySet<string>? granted, SkillSet skills) => IsGranted(granted) && skills.Meets(Requirements);
 

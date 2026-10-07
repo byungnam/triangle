@@ -42,14 +42,14 @@ public class GameDataLoaderTests
     private static string Encounters(
         string tactics = """{ "priority": 1, "condition": "Always", "value": 0, "actionId": "strike" }""",
         string skills = "{}",
-        string weapon = "bow") => $$"""
+        string equipment = "{}") => $$"""
         [
           {
             "id": "camp",
             "name": "야영지",
             "units": [
               {
-                "id": "e1", "name": "적", "row": "Back", "weapon": "{{weapon}}", "armor": "plate",
+                "id": "e1", "name": "적", "row": "Back", "equipment": {{equipment}},
                 "stats": { "str": 10, "dex": 10, "vital": 20, "intel": 10, "speed": 10 },
                 "skills": {{skills}},
                 "tactics": [ {{tactics}} ]
@@ -364,7 +364,15 @@ public class GameDataLoaderTests
     [Fact]
     public void Parses_skills_actions_and_encounters()
     {
-        var data = GameDataLoader.Parse(Masteries, Skills, Actions, Encounters(skills: """{ "archery": 2 }"""));
+        var items = """
+            [ { "id": "longbow", "name": "장궁", "slot": "MainHand", "mastery": "bow", "twoHanded": true, "powerMultiplierPercent": 150,
+                "bonuses": [ { "kind": "PowerPercent", "percent": 5, "tag": "bow" } ], "actions": [ "shot" ] },
+              { "id": "mail", "name": "판금 갑옷", "slot": "Body", "mastery": "plate", "actions": [ "heal" ] } ]
+            """;
+        var data = GameDataLoader.Parse(
+            Masteries, Skills, Actions,
+            Encounters(skills: """{ "archery": 2 }""", equipment: """{ "MainHand": "longbow", "Body": "mail" }"""),
+            itemsJson: items);
 
         Assert.Equal(MasteryKind.Armor, data.Masteries["plate"].Kind);
         var archery = data.Skills["archery"];
@@ -383,7 +391,12 @@ public class GameDataLoaderTests
         var unit = Assert.Single(data.CreateEncounterTeam("camp"));
         Assert.Equal("적", unit.Name);
         Assert.Equal(Row.Back, unit.Row);
+        // 적도 낀 아이템의 계열, 행동, 보너스, 위력 배율을 그대로 쓴다 (숙련 레벨 0).
         Assert.Equal(("bow", "plate"), (unit.Weapon, unit.Armor));
+        Assert.Equal(["plate"], unit.ArmorMasteries);
+        Assert.Equal(new HashSet<string> { "shot", "heal" }, unit.GrantedActions);
+        Assert.Equal(150, unit.PowerMultiplierPercent);
+        Assert.Equal([new ItemBonus(BonusKind.PowerPercent, 5, "bow")], unit.ItemBonuses);
         Assert.Equal(2, unit.Skills["archery"]);
         Assert.Equal(new Tactic(1, Condition.Always, 0, "strike"), Assert.Single(unit.Tactics));
     }
@@ -452,7 +465,8 @@ public class GameDataLoaderTests
         Assert.Contains(errors, e => e.StartsWith("encounters.json 'camp' unit 'e1' tactic 1: SelfHpAtMost value must be a percent"));
         Assert.Contains(errors, e => e.StartsWith("encounters.json 'camp' unit 'e1' tactic 2: EveryNthTurn value must be positive"));
         Assert.Contains("encounters.json 'camp' unit 'e1' tactic 3: unknown action 'missing'", errors);
-        Assert.Equal(7, errors.Count);
+        Assert.Contains("encounters.json 'camp' unit 'e1' tactic 1: no equipped item gives 'strike'", errors);
+        Assert.Equal(9, errors.Count);
     }
 
     [Fact]
@@ -466,7 +480,7 @@ public class GameDataLoaderTests
             ]
             """;
 
-        var error = Assert.Single(Fails(skills, """[ { "id": "strike", "name": "공격" } ]""", Encounters()).Errors);
+        var error = Assert.Single(Fails(skills, """[ { "id": "strike", "name": "공격", "universal": true } ]""", Encounters()).Errors);
 
         Assert.StartsWith("skills.json: prerequisite cycle", error);
     }
@@ -484,7 +498,7 @@ public class GameDataLoaderTests
     }
 
     [Fact]
-    public void Validates_enemy_equipment_kinds_and_tree_membership()
+    public void Validates_enemy_equipment_and_tree_membership()
     {
         var skills = """
             [ { "id": "archery", "name": "활 숙련", "mastery": "bow" },
@@ -493,18 +507,35 @@ public class GameDataLoaderTests
               { "id": "lost", "name": "없는 트리", "mastery": "nowhere" } ]
             """;
         var actions = """
-            [ { "id": "strike", "name": "공격" },
-              { "id": "shot", "name": "화살" } ]
+            [ { "id": "strike", "name": "공격", "universal": true },
+              { "id": "shot", "name": "화살" },
+              { "id": "slash", "name": "베기" } ]
             """;
-        // 적은 아이템이 없으므로 화살을 검으로도 쓴다. 장비는 계열의 종류만 맞으면 된다.
-        var tactics = """{ "priority": 1, "condition": "Always", "value": 0, "actionId": "shot" }""";
+        var items = """
+            [ { "id": "war_bow", "name": "전쟁 활", "slot": "MainHand", "mastery": "bow", "twoHanded": true, "actions": [ "shot" ],
+                "requirements": [ { "skillId": "archery", "level": 2 } ] },
+              { "id": "buckler", "name": "버클러", "slot": "OffHand", "mastery": "sword" },
+              { "id": "mail", "name": "판금 갑옷", "slot": "Body", "mastery": "plate" } ]
+            """;
+        // 적도 낀 아이템이 주는 행동만 쓴다. 착용 조건과 두손·보조 충돌은 데이터 오류다.
+        var tactics = """
+            { "priority": 1, "condition": "Always", "value": 0, "actionId": "slash" },
+            { "priority": 2, "condition": "Always", "value": 0, "actionId": "shot" },
+            { "priority": 3, "condition": "Always", "value": 0, "actionId": "strike" }
+            """;
+        var equipment = """{ "MainHand": "war_bow", "OffHand": "buckler", "Head": "mail", "Feet": "ghost" }""";
 
-        var errors = Fails(skills, actions, Encounters(tactics, weapon: "plate")).Errors;
+        var errors = Assert.Throws<GameDataException>(() =>
+            GameDataLoader.Parse(Masteries, skills, actions, Encounters(tactics, equipment: equipment), itemsJson: items)).Errors;
 
         Assert.Contains("skills.json 'cross': prerequisite 'archery' belongs to another mastery tree", errors);
         Assert.Contains("skills.json 'lost': unknown mastery 'nowhere'", errors);
-        Assert.Contains("encounters.json 'camp' unit 'e1': weapon: 'plate' is Armor, not Weapon", errors);
-        Assert.DoesNotContain(errors, e => e.Contains("tactic 1"));
+        Assert.Contains("encounters.json 'camp' unit 'e1': equipment: Head: 'mail' is Body", errors);
+        Assert.Contains("encounters.json 'camp' unit 'e1': equipment: Feet: unknown item 'ghost'", errors);
+        Assert.Contains("encounters.json 'camp' unit 'e1': 'war_bow' needs 'archery' level 2", errors);
+        Assert.Contains("encounters.json 'camp' unit 'e1': an off-hand item cannot be worn with a two-handed weapon", errors);
+        Assert.Contains("encounters.json 'camp' unit 'e1' tactic 1: no equipped item gives 'slash'", errors);
+        Assert.DoesNotContain(errors, e => e.Contains("tactic 2") || e.Contains("tactic 3"));
     }
 
     [Fact]

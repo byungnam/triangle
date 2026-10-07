@@ -67,7 +67,7 @@ public class AmountConditionTests
                 "stats": { "str": 1, "dex": 1, "vital": 1, "intel": 1, "speed": 1 },
                 "tactics": [ { "priority": 1, "condition": "{{condition}}", "value": {{value}}, "actionId": "punch" } ] } ] } ]
             """;
-        const string actions = """[ { "id": "punch", "name": "주먹" } ]""";
+        const string actions = """[ { "id": "punch", "name": "주먹", "universal": true } ]""";
 
         GameDataLoader.Parse("[]", "[]", actions, Encounter("SelfHpAmountAtMost", 99_999));
         GameDataLoader.Parse("[]", "[]", actions, Encounter("AllyAverageMpAmountAtLeast", -5));

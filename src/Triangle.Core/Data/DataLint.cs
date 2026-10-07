@@ -19,14 +19,9 @@ public static class DataLint
         return warnings;
     }
 
-    /// <summary>공용도, 무기 행동도, 소환 행동도 아니고 주는 아이템도 쓰는 적도 없는 행동.</summary>
+    /// <summary>공용도, 무기 행동도, 소환 행동도 아니고 주는 아이템도 없는 행동 (적도 아이템 행동만 쓴다).</summary>
     private static void CheckActions(GameData data, List<string> warnings)
     {
-        var enemyActions = data.Encounters.Values
-            .SelectMany(e => e.Units)
-            .SelectMany(u => u.Tactics)
-            .Select(t => t.ActionId)
-            .ToHashSet();
         var summonActions = data.Actions.Values
             .Select(a => a.Summon?.ActionId)
             .OfType<string>()
@@ -43,9 +38,9 @@ public static class DataLint
                     warnings.Add($"{at}: summonOnly but no summon uses it");
                 }
             }
-            else if (!action.Universal && action.Weapon is null && !itemActions.Contains(action.Id) && !enemyActions.Contains(action.Id))
+            else if (!action.Universal && action.Weapon is null && !itemActions.Contains(action.Id))
             {
-                warnings.Add($"{at}: no item grants it and no enemy uses it");
+                warnings.Add($"{at}: no item grants it");
             }
         }
     }

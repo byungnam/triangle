@@ -49,7 +49,7 @@ public static class DataReferences
             foreach (var u in e.Units)
             {
                 var at = $"{GameDataLoader.EncountersFile} '{e.Id}' unit '{u.Id}'";
-                Add(u.Weapon == id || u.Armor == id, $"{at}: equipment");
+                Add(u.Equipment.Values.Contains(id), $"{at}: equipment");
                 Add(u.Skills.ContainsKey(id), $"{at}: skills");
                 Add(u.Tactics.Any(t => t.ActionId == id), $"{at}: tactics");
             }

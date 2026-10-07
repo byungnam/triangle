@@ -141,7 +141,7 @@ public static class GameDataLoader
 
         foreach (var e in encounters!)
         {
-            ValidateEncounter(e, masteryMap, skillMap, actionMap, errors);
+            ValidateEncounter(e, skillMap, actionMap, itemMap, errors);
         }
 
         foreach (var item in items!)
@@ -476,9 +476,9 @@ public static class GameDataLoader
 
     private static void ValidateEncounter(
         EncounterDefinition e,
-        IReadOnlyDictionary<string, MasteryDefinition> masteries,
         IReadOnlyDictionary<string, SkillDefinition> skills,
         IReadOnlyDictionary<string, ActionDefinition> actions,
+        IReadOnlyDictionary<string, ItemDefinition> items,
         List<string> errors)
     {
         var at = $"{EncountersFile} '{e.Id}'";
@@ -500,21 +500,46 @@ public static class GameDataLoader
             DataValidation.RequireText(unit.Id, $"{at}: unit id", errors);
             DataValidation.RequireText(unit.Name, $"{unitAt}: name", errors);
             DataValidation.ValidateStats(unit.Stats, unitAt, errors);
-            DataValidation.ValidateEquipment(unit.Weapon, unit.Armor, unitAt, masteries, errors);
+            DataValidation.ValidateEquipped(unit.Equipment, $"{unitAt}: equipment", items, errors);
             DataValidation.ValidateSkillLevels(unit.Skills, unitAt, skills, errors);
 
+            // 적은 착용 불가 상태를 두지 않는다: 착용 조건과 두손·보조 충돌은 데이터 오류다.
             var set = new SkillSet(unit.Skills, skills);
+            var worn = unit.Equipment
+                .Where(p => items.TryGetValue(p.Value, out var item) && item.Slot == p.Key)
+                .Select(p => (p.Key, items[p.Value]))
+                .ToList();
+            foreach (var (_, item) in worn)
+            {
+                foreach (var missing in set.Missing(item.Requirements))
+                {
+                    errors.Add($"{unitAt}: '{item.Id}' needs '{missing.SkillId}' level {missing.Level}");
+                }
+            }
+
+            if (unit.Equipment.ContainsKey(EquipmentSlot.OffHand) && worn.Any(w => w.Item2.TwoHanded))
+            {
+                errors.Add($"{unitAt}: an off-hand item cannot be worn with a two-handed weapon");
+            }
+
+            var granted = new Loadout(worn).GrantedActions(actions.Values);
             foreach (var tactic in unit.Tactics)
             {
                 var tacticAt = $"{unitAt} tactic {tactic.Priority}";
                 DataValidation.ValidateTactic(tactic, tacticAt, actions, errors);
-                // 적은 아이템이 없다: 행동은 스킬 요구만 본다.
-                if (actions.TryGetValue(tactic.ActionId, out var action))
+                if (!actions.TryGetValue(tactic.ActionId, out var action))
                 {
-                    foreach (var missing in set.Missing(action.Requirements))
-                    {
-                        errors.Add($"{tacticAt}: '{tactic.ActionId}' needs '{missing.SkillId}' level {missing.Level}");
-                    }
+                    continue;
+                }
+
+                if (!action.IsGranted(granted))
+                {
+                    errors.Add($"{tacticAt}: no equipped item gives '{tactic.ActionId}'");
+                }
+
+                foreach (var missing in set.Missing(action.Requirements))
+                {
+                    errors.Add($"{tacticAt}: '{tactic.ActionId}' needs '{missing.SkillId}' level {missing.Level}");
                 }
             }
         }

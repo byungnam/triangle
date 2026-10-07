@@ -51,7 +51,8 @@ triangle/
 │  │  ├─ Items/                 #   아이템 정의 (장비 칸, 숙련 계열, 티어, 가격), 상점 규칙, 제작법
 │  │  ├─ Expeditions/           #   지역 정의, 원정 상태와 규칙(출정·전투·전리품·사망·귀환)
 │  │  └─ Progress/              #   회사(로스터·출전 멤버·골드·창고·모집), 멤버 편집, 시작 회사, 세이브
-│  ├─ Triangle.Editor/          # (예정) 데이터 편집기 도구. Triangle.Core의 정의 클래스를 그대로 사용
+│  ├─ Triangle.DataTool/        # 데이터 검사·조회·수정 명령줄 도구 (triangle-data)
+│  ├─ Triangle.Editor/          # (예정) 데이터 편집기 GUI. Triangle.Core의 정의·검사를 그대로 사용
 │  └─ Triangle.Desktop/         # MonoGame DesktopGL 실행 프로젝트
 │     ├─ Scenes/                #   타이틀, 로스터, 유닛 상세, 전술 편집, 전투, 결과
 │     ├─ UI/                    #   공용 위젯/레이아웃
@@ -77,6 +78,7 @@ triangle/
 ```
 Triangle.Desktop ──► Triangle.Core ◄── Triangle.Core.Tests
         │                 ▲
+        │                 ├── Triangle.DataTool
         │                 └── Triangle.Editor (예정)
         └──► MonoGame.Framework.DesktopGL
 ```
@@ -419,6 +421,23 @@ EVE Online과 Albion Online을 참고했다. 구현은 `Items/`, `Progress/Party
 - 저장소의 `data/` 파일 자체도 테스트에서 검증한다. 모든 적 팀이 실제로 전투를 끝까지 치르는지까지 확인한다.
 - 현재 데이터는 레거시 값을 참고한 **임시 수치**다(`description`에 표시).
 
+### 데이터 도구 (`Triangle.DataTool`, 2026-10-06)
+
+편집기는 두 층으로 만든다. 검사·조회·수정은 `Triangle.Core/Data/`에 두고, 명령줄 도구와 GUI(미룸, 2026-10-06)가 같은 코드를 쓴다. 그래서 사람이 GUI로 고치든 Claude가 JSON을 직접 고치든 같은 규칙으로 검사된다.
+
+- `DataLint.Check(GameData)`: 로더 검증을 통과한 데이터의 **경고**. 게임은 보지 않는다.
+  - 아무 아이템도 주지 않고 적도 쓰지 않는 행동 (공용·무기 계열 행동 제외), 어떤 소환도 쓰지 않는 소환 전용 행동
+  - 어떤 행동도 걸지 않는 효과, 어떤 지역에도 없는 적 팀
+  - 상점·전리품(지정 드롭, 티어 드롭)·제작·신입 시작 장비 어디로도 얻을 수 없는 아이템, 제작에 안 쓰이는 재료
+  - 저장소 데이터는 경고 0개를 유지한다(테스트).
+- `DataReferences.Find(GameData, id)`: 그 ID를 가리키는 곳 (계열, 스킬, 행동, 효과, 아이템, 적 팀 모두).
+- `DataDocument`, `DataPath`: 편집용 데이터. 정의 클래스가 아니라 JSON 노드로 들고 있어서 파일에 적힌 모양(적힌 속성, 순서) 그대로 고치고 다시 쓴다. 저장소 파일은 읽고 그대로 쓰면 한 글자도 바뀌지 않는다(테스트).
+  - 고친 뒤 로더 검증(`GameDataLoader.Parse`)을 통과해야 저장한다. 실패하면 아무 파일도 바꾸지 않는다.
+  - 경로는 점으로 잇고 배열 원소는 번호나 id로 고른다. 일괄 수정은 id 와일드카드와 `--where` 조건으로 고른다.
+- `triangle-data`: 조회 `validate [--strict]`, `list`, `show`, `refs`, 수정 `set`, `unset`, `add`, `remove`, `new`, `copy`, `delete` (`--dry-run`). 사용법은 README.
+- 왜 SQL(SQLite)이 아닌가 (2026-10-06): 데이터가 중첩 구조(행동의 효과·소환, 적 팀의 유닛·전술, 지역 보상)라 표로 풀면 테이블과 조인 코드가 많고, 필드를 자주 더해서 마이그레이션 비용이 크며, 바이너리라 git diff와 병합이 안 된다. 일괄 수정은 CLI가 대신한다.
+- id 이름 바꾸기(가리키는 곳까지)는 아직 없다.
+
 ### 원정 (`Triangle.Core/Expeditions/`, 2026-10-02)
 
 - **회사**(`Progress/Company.cs`): 로스터, 출전 멤버(최대 5명, 마을에서는 0명도 된다), 골드, 창고(아이템 ID → 개수), 고른 전술 세트, 모집 후보, 다음 시드, 진행 중인 원정.
@@ -501,4 +520,4 @@ EVE Online과 Albion Online을 참고했다. 구현은 `Items/`, `Progress/Party
 - 장비 수치(보너스, 가격, 재료 드롭률, 제작 비용)는 임시다. 아이템 특성(패시브 옵션)은 이번에 넣지 않았다.
 - 행동 밸런스: 강타(위력 85, MP 15)가 기본 공격(60, MP 0)보다 효율이 너무 좋다. "MP가 있으면 항상 강타"가 가장 강한 전술이라, 전술 선택의 폭이 좁아진다.
 - 1차 범위에 넣을 시스템 (효과, 경험치, 아이템, 부활 등)
-- 데이터 편집기의 형태 (MonoGame + ImGui, Avalonia 등)
+- 데이터 편집기 GUI의 형태 (MonoGame + ImGui, Avalonia 등). 검사·조회 명령줄 도구는 있다

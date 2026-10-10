@@ -22,7 +22,7 @@ namespace Triangle.Desktop.Scenes;
 /// 캐릭터의 장비, 전열, 전술을 편집한다. 마을에서는 로스터 전원을, 원정 중에는 출전 멤버만 보여준다.
 /// 장비 패널: 부위 5개마다 아이템 드롭다운(장착 + 창고)과 해제 버튼, 그 아래 행동 칸별 옵션 드롭다운.
 /// 착용 조건을 못 채운 아이템은 빨간색이고, 두손 무기를 끼면 보조 칸을 쓸 수 없다.
-/// 원정 중에는 전술(세트 선택 포함)과 전열만 바꿀 수 있다: 장비와 행동 칸은 잠그고, 숙련·패시브와 저장 버튼은 숨긴다.
+/// 원정 중에는 전술(세트 선택·관리 포함)과 전열만 바꿀 수 있다: 장비와 행동 칸은 잠그고, 숙련·패시브와 저장 버튼은 숨긴다.
 /// 위젯은 Myra로 그린다. 편집할 때마다 위젯 트리를 다시 만든다(화면이 작아서 충분히 빠르다).
 /// </summary>
 internal sealed class TacticEditorScene : IScene
@@ -316,31 +316,92 @@ internal sealed class TacticEditorScene : IScene
     }
 
     /// <summary>
-    /// 전술 세트 선택. 파티 전원이 같은 번호의 세트로 바뀌고, 편집도 전투도 그 세트로 한다.
-    /// 상대에 따라 세트를 바꿔 쓰는 용도. 고른 세트는 세이브에 함께 저장된다.
+    /// 전술 세트 선택과 관리. 세트는 이름 붙은 전술 계획이고 수에 제한이 없다.
+    /// 고르면 파티 전원이 그 세트로 바뀌고, 편집도 전투도 그 세트로 한다. 고른 세트는 세이브에 함께 저장된다.
+    /// "새 세트"는 지금 세트를 복사해 만들고, 마지막 남은 세트는 지울 수 없다. 이름은 입력칸에서 바로 바꾼다.
     /// </summary>
     private Widget BuildTacticSetSelector()
     {
-        var row = new HorizontalStackPanel { Spacing = 6 };
-        row.Widgets.Add(Label("전술 세트", 16, Theme.Text, width: 76));
-        for (var set = 0; set < PartyMember.TacticSetCount; set++)
-        {
-            var index = set;
-            var active = _company.ActiveTacticSet == set;
-            var button = TextButton($"{set + 1}", active ? Theme.Selected : Theme.Button, Theme.ButtonHover, bold: active);
-            button.Width = 48;
-            button.Click += (_, _) =>
-            {
-                if (_company.ActiveTacticSet != index)
-                {
-                    _company.ActiveTacticSet = index;
-                    MarkChanged();
-                }
-            };
-            row.Widgets.Add(button);
-        }
+        var panel = new VerticalStackPanel { Spacing = 6, Width = PartyWidth };
+        panel.Widgets.Add(Label($"전술 세트 ({_company.TacticSetNames.Count}개)", 16, Theme.Text));
 
-        return row;
+        var combo = Combo(_company.TacticSetNames, _company.ActiveTacticSet, PartyWidth);
+        combo.SelectedIndexChanged += (_, _) =>
+        {
+            if (combo.SelectedIndex is { } index && index != _company.ActiveTacticSet)
+            {
+                _company.ActiveTacticSet = index;
+                MarkChanged();
+            }
+        };
+        panel.Widgets.Add(combo);
+
+        var name = new TextBox
+        {
+            Text = _company.TacticSetNames[_company.ActiveTacticSet],
+            Width = PartyWidth - 46,
+            Font = _ui.Font(17),
+            TextColor = Theme.Text,
+            FocusedTextColor = Theme.Text,
+            Background = new SolidBrush(Theme.BarBack),
+            Padding = new Thickness(6, 3),
+        };
+        name.ValueChanging += (_, e) =>
+        {
+            if ((e.NewValue ?? "").Length > Company.MaxTacticSetNameLength)
+            {
+                e.Cancel = true;
+            }
+        };
+        name.TextChangedByUser += (_, _) =>
+        {
+            // 비어 있으면 이전 이름을 둔다. 목록의 이름은 입력칸을 벗어나거나 Enter를 누르면 갱신한다.
+            if (_company.RenameTacticSet(_company.ActiveTacticSet, name.Text ?? ""))
+            {
+                MarkChangedInPlace();
+            }
+        };
+        name.KeyboardFocusChanged += (_, _) =>
+        {
+            if (!name.IsKeyboardFocused)
+            {
+                MarkDirty();
+            }
+        };
+        name.KeyDown += (_, e) =>
+        {
+            if (e.Data == Keys.Enter)
+            {
+                MarkDirty();
+            }
+        };
+        var nameRow = new HorizontalStackPanel { Spacing = 6 };
+        nameRow.Widgets.Add(Label("이름", 15, Theme.TextDim, width: 40));
+        nameRow.Widgets.Add(name);
+        panel.Widgets.Add(nameRow);
+
+        var buttons = new HorizontalStackPanel { Spacing = 6 };
+        var add = _widgets.TextButton("+ 새 세트 (복사)", Theme.Button, Theme.ButtonHover, size: 15);
+        add.Click += (_, _) =>
+        {
+            _company.AddTacticSet();
+            MarkChanged();
+        };
+        buttons.Widgets.Add(add);
+
+        var remove = _widgets.TextButton("세트 삭제", Theme.Button, Theme.ButtonHover, size: 15);
+        remove.Enabled = _company.TacticSetNames.Count > 1;
+        remove.Click += (_, _) =>
+        {
+            if (_company.RemoveTacticSet(_company.ActiveTacticSet))
+            {
+                MarkChanged();
+            }
+        };
+        buttons.Widgets.Add(remove);
+        panel.Widgets.Add(buttons);
+
+        return panel;
     }
 
     private Widget BuildRowSelector(PartyMember member)
@@ -371,7 +432,7 @@ internal sealed class TacticEditorScene : IScene
         header.Widgets.Add(Label("조건", 15, Theme.TextDim, width: 265));
         header.Widgets.Add(Label("값", 15, Theme.TextDim, width: ValueColumnWidth));
         header.Widgets.Add(Label("행동", 15, Theme.TextDim, width: 270));
-        header.Widgets.Add(Label($"전술 세트 {_company.ActiveTacticSet + 1} 편집 중", 15, Theme.Cover));
+        header.Widgets.Add(Label($"\"{_company.TacticSetNames[_company.ActiveTacticSet]}\" 편집 중", 15, Theme.Cover));
         return header;
     }
 

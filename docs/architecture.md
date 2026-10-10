@@ -7,6 +7,8 @@
 | 플레이 형태 | 싱글플레이 (서버·계정·네트워크·DB 없음, 로컬 저장) | 2026-10-02 |
 | 플랫폼 | 데스크톱 우선 (MonoGame DesktopGL: Windows/Linux/macOS) | 2026-10-02 |
 | 전술 구조 | 레거시와 같이 `우선순위 · 조건 · 값 · 행동`. **전술에는 대상 지정 칸이 없다.** | 2026-10-02 |
+| 적 판정 조건 | HoF처럼 적은 **수와 상태로만** 본다(살아있는·쓰러진·전열·후열 수). 특정 적을 가리키는 조건과 전술의 대상 지정은 없다. | 2026-10-10 |
+| 전술 세트 | 회사 단위의 이름 붙은 계획, **수 제한 없음**. 출정 전에 회사(나중에는 팀)가 하나를 고른다. | 2026-10-10 |
 | 대상 선택 | **스킬마다 대상 우선순위 규칙을 가진다.** 플레이어가 특정 대상을 직접 지정할 수 없게 해서, 전위/후위 배치가 전략의 중심이 되도록 한다. | 2026-10-02 |
 | 진형 | 전위/후위 2줄. 아래 [진형 규칙](#진형-규칙) 참고 | 2026-10-02 |
 | 데이터 형식 | 게임 데이터와 세이브 모두 **JSON** (System.Text.Json). 데이터는 별도 편집기 도구로 수정한다 | 2026-10-02 |
@@ -117,6 +119,10 @@ var result = CombatSimulator.Run(allyTeam, enemyTeam, rules, seed);
   - 대상은 둘 다 자신 / 아군 누군가 / 아군 평균이다.
   - 아군 평균 수치는 합계와 값 × 인원을 비교한다(정수).
   - 새 조건은 enum 끝에 덧붙였다. JSON에는 이름으로 저장되므로 기존 세이브와 호환된다.
+- **적 수 조건**(2026-10-10, HoF의 적 판정을 따름): 살아있는 적 수, 쓰러진 적 수, 적 전열 수, 적 후열 수. 각각 이상/이하이고 값은 인원수(0 이상)다.
+  - 적은 **수와 상태로만** 본다. 특정 적(무기, 종류, 개체)을 가리키는 조건은 두지 않는다. 대상은 여전히 행동이 정하고, 전술로 대상을 바꾸는 칸은 없다.
+  - 소환물도 적 한 명으로 센다. 지속 시간이 끝나 사라진 소환물은 쓰러진 적으로 세지 않는다.
+  - 전열·후열 수는 살아있는 적만, 지금 줄(대열 무너뜨리기 등으로 옮겨진 줄) 기준으로 센다.
 - **정수 연산만 사용**: 규칙 계산에는 실수(float/double)를 쓰지 않는다. 경계값 오차를 없애려는 것이다.
   - 비율 비교는 교차 곱셈으로 한다: `현재 × 100 ≥ 값 × 최대`.
   - 아군 평균 조건은 분수를 정확히 더해서 비교한다(BigInteger).
@@ -406,14 +412,17 @@ EVE Online과 Albion Online을 참고했다. 구현은 `Items/`, `Progress/Party
 - 조건 드롭다운은 같은 대상끼리 %와 수치를 나란히 둔다(예: "자신 HP 이하 (%)", "자신 HP 이하 (수치)").
 - **값은 숫자 입력칸**으로 받는다. 옆에 단위(%, HP, MP, 회, 번째 턴, 턴마다)를 표시한다.
   - 정수만 입력할 수 있다. 수치 조건만 음수를 허용한다.
-  - 검증: 백분율 0–100, 턴 주기 1 이상, 횟수·턴 0 이상. 수치 조건은 검증하지 않는다.
+  - 검증: 백분율 0–100, 턴 주기 1 이상, 횟수·턴·적 수 0 이상. 수치 조건은 검증하지 않는다.
   - 맞지 않는 값은 빨간색으로 표시하고("0~100만") 반영하지 않는다.
   - 올바른 값은 바로 반영한다. 이때 화면은 다시 만들지 않고 저장 버튼과 "저장하지 않은 변경" 표시만 갱신한다. 다시 만들면 입력칸 포커스가 사라지기 때문이다. 그래서 같은 줄의 다른 핸들러는 항상 현재 전술을 다시 읽는다.
 - 조건을 바꿀 때 값의 종류(%, HP 수치, MP 수치, 횟수, 턴)가 같으면 값을 유지하고, 다르면 기본값(50%, HP 300, MP 50, 1, 2턴마다)으로 바꾼다.
-- **전술 세트**: 유닛마다 전술 목록을 두 벌(`PartyMember.TacticSetCount`) 저장한다.
-  - 파티 목록 위의 "전술 세트 1 / 2"로 고르면 파티 전원이 그 세트로 바뀌고, 편집도 전투도 그 세트로 한다(`Company.ActiveTacticSet`).
+- **전술 세트**(2026-10-10 개편): 회사 단위의 이름 붙은 전술 계획이다. **수에 제한이 없고** 플레이어가 만들고 지운다(`Company.TacticSetNames`, `AddTacticSet`, `RemoveTacticSet`, `RenameTacticSet`).
+  - 멤버는 세트마다 전술 목록을 하나씩 갖는다(`PartyMember.TacticSets`, 회사의 세트 순서). 세트를 만들거나 지우면 모든 멤버에게 같이 반영된다.
+  - 파티 목록 위의 세트 드롭다운으로 고르면 파티 전원이 그 세트로 바뀌고, 편집도 전투도 그 세트로 한다(`Company.ActiveTacticSet`). 출정 전에 고른 세트로 싸운다. 여러 팀을 동시에 보내는 기능이 생기면 팀마다 세트를 고른다.
+  - "+ 새 세트 (복사)"는 지금 세트를 복사해 만들고 그 세트를 고른다. 이름은 "세트 N"이고 입력칸에서 바로 바꾼다(최대 20자, 빈 이름은 무시). "세트 삭제"는 지금 세트를 지우며 마지막 남은 세트는 지울 수 없다.
+  - 새로 모집한 멤버는 모든 세트를 모집 템플릿의 전술로 시작한다.
   - 상대에 따라 세트를 바꿔 쓰는 용도다. 장비와 전열은 세트와 관계없이 하나다.
-  - 고른 세트도 세이브에 들어간다.
+  - 세트 이름과 고른 세트도 세이브에 들어간다.
   - 잠긴 전술 검사(전투 막기, 파티 목록 표시)는 지금 고른 세트만 본다.
 - 아래에서 상대 적 팀을 고르고(훈련 부대, 정예 부대) "전투 시험"을 누르면 전투 기록 화면으로 간다. Esc를 누르면 편집 화면으로 돌아오고, 편집 내용과 선택이 그대로 유지된다.
 - 편집 로직(우선순위 재번호, 순서 변경, 전열 전환)은 `Triangle.Core/Progress/PartyMember`에 있고 테스트로 고정되어 있다. 화면은 편집할 때마다 Myra 위젯 트리를 다시 만든다.
@@ -525,7 +534,8 @@ EVE Online과 Albion Online을 참고했다. 구현은 `Items/`, `Progress/Party
 구현은 `Triangle.Core/Progress/SaveGame.cs`, `SaveStore.cs`에 있다 (2026-10-02).
 
 - 로컬 JSON 세이브 파일 하나다. 위치는 `ApplicationData/Triangle/save.json`이다(Linux `~/.config/Triangle/`, Windows `%APPDATA%\Triangle\`). `--save <경로>`로 바꿀 수 있다.
-- 형식(버전 7): `{ "version": 7, "activeTacticSet", "roster": [ { id, name, stats, row, equipment: { 부위: itemId }, masteryXp, skillLevels, tacticSets } ], "lineup": [id…], "gold", "stash": { itemId: 개수 }, "nextSeed", "nextRecruitNumber", "recruitOffers": [ … ], "expedition": { zoneId, seed, battleIndex, members: [ { id, hp, mp, down } ], carriedGold, carriedItems, lastBattle, deaths } | null }`. 창고에는 재료도 들어간다. JSON 설정은 게임 데이터와 같다(`GameDataJson.Options`).
+- 형식(버전 7): `{ "version": 7, "activeTacticSet", "tacticSetNames": [이름…], "roster": [ { id, name, stats, row, equipment: { 부위: itemId }, masteryXp, skillLevels, tacticSets } ], "lineup": [id…], "gold", "stash": { itemId: 개수 }, "nextSeed", "nextRecruitNumber", "recruitOffers": [ … ], "expedition": { zoneId, seed, battleIndex, members: [ { id, hp, mp, down } ], carriedGold, carriedItems, lastBattle, deaths } | null }`. 창고에는 재료도 들어간다. JSON 설정은 게임 데이터와 같다(`GameDataJson.Options`).
+  - `tacticSetNames`(2026-10-10)가 없는 파일은 세트가 늘 두 벌이었으므로 "세트 1", "세트 2"로 읽는다. 이전 파일이 그대로 읽히므로 버전은 올리지 않았다. 멤버의 `tacticSets`는 이 순서를 따르고, 모자란 세트는 빈 목록이 된다. 세트 수보다 많으면 오류다.
   - 버전 6은 **변환해서 읽는다**(2026-10-06): 숙련 `staff` 경험치는 `fire`로, 스킬 `magic_control`은 `pyromancy`로 옮기고 `mana_efficiency`는 지운다(포인트는 레벨에서 다시 계산되므로 돌려받는다). 행동 칸 선택(`abilityChoices`)은 버린다. 방패는 이제 방패 계열이 착용 조건이라 T2 이상 방패는 착용 불가가 될 수 있다(편집 화면에서 바꾼다).
   - 버전 5(멤버의 `weapon`/`armor` 아이템 ID)도 6을 거쳐 **변환해서 읽는다**. 무기는 주무기, 방어구는 몸통이 된다. v5 기본 아이템 ID는 새 T1 아이템 ID와 같다. 이제 쓸 수 없는 행동이 든 전술은 잠김으로 표시한다.
   - 버전 4 이하는 읽지 않고, 따로 보관한 뒤 새로 시작한다. 버전은 형식 검사 전에 먼저 읽는다.

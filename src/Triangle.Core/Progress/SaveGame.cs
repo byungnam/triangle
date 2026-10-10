@@ -17,6 +17,13 @@ public sealed record SaveFile
     /// <summary>전투에 쓸 전술 세트 (0부터).</summary>
     public int ActiveTacticSet { get; init; }
 
+    /// <summary>
+    /// 전술 세트 이름 (세트 순서). 멤버의 tacticSets가 이 순서를 따른다.
+    /// 없으면(2026-10-10 이전 파일) 멤버의 세트 수만큼 "세트 1", "세트 2"…가 된다.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? TacticSetNames { get; init; }
+
     /// <summary>보유한 캐릭터 모두.</summary>
     public IReadOnlyList<SavedMember> Roster { get; init; } = [];
 
@@ -81,7 +88,7 @@ public sealed record SavedMember
     /// <summary>배운 스킬의 레벨.</summary>
     public IReadOnlyDictionary<string, int> SkillLevels { get; init; } = new Dictionary<string, int>();
 
-    /// <summary>전술 세트들.</summary>
+    /// <summary>전술 세트들 (회사의 tacticSetNames 순서).</summary>
     public IReadOnlyList<IReadOnlyList<Tactic>> TacticSets { get; init; } = [];
 }
 
@@ -106,6 +113,8 @@ public static class SaveGame
     ///    버전 5는 무기를 주무기로, 방어구를 몸통으로 옮기고 행동 칸은 첫 옵션으로 고른다. 그 이전은 읽지 않는다.
     /// 7: 무기 세분화로 지팡이 계열이 원소 계열이 되고, 행동 칸 선택이 없어짐 (2026-10-06). 버전 6의 staff 경험치는 fire로,
     ///    magic_control은 pyromancy로 옮기고 mana_efficiency는 지운다(포인트는 돌려받는다). abilityChoices는 버린다.
+    ///    2026-10-10: 전술 세트 수 제한(2벌)을 없애고 세트 이름(tacticSetNames)을 덧붙였다. 이전 파일은 그대로 읽히므로
+    ///    버전은 올리지 않았다(이름이 없으면 "세트 1", "세트 2").
     /// </summary>
     public const int CurrentVersion = 7;
 
@@ -117,6 +126,7 @@ public static class SaveGame
         {
             Version = CurrentVersion,
             ActiveTacticSet = company.ActiveTacticSet,
+            TacticSetNames = company.TacticSetNames.ToList(),
             Gold = company.Gold,
             NextSeed = company.NextSeed,
             NextRecruitNumber = company.NextRecruitNumber,
@@ -201,7 +211,8 @@ public static class SaveGame
             file.NextRecruitNumber,
             saved is null
                 ? null
-                : new Expedition(saved.ZoneId, saved.Seed, saved.BattleIndex, saved.Members, saved.CarriedGold, saved.CarriedItems, saved.LastBattle, saved.Deaths));
+                : new Expedition(saved.ZoneId, saved.Seed, saved.BattleIndex, saved.Members, saved.CarriedGold, saved.CarriedItems, saved.LastBattle, saved.Deaths),
+            TacticSetNames(file));
     }
 
     private static int ReadVersion(string json)
@@ -286,13 +297,42 @@ public static class SaveGame
         };
     }
 
+    /// <summary>
+    /// 세트 이름. 이름이 없는 파일(2026-10-10 이전)은 세트가 늘 두 벌이었으므로 두 벌 이상(멤버가 가진 만큼)으로 본다.
+    /// </summary>
+    private static IReadOnlyList<string> TacticSetNames(SaveFile file) =>
+        file.TacticSetNames
+        ?? Enumerable.Range(1, Math.Max(2, file.Roster.Select(m => m.TacticSets.Count).DefaultIfEmpty(0).Max()))
+            .Select(Company.DefaultTacticSetName)
+            .ToList();
+
     private static void Validate(SaveFile file, GameData data)
     {
         var errors = new List<string>();
 
-        if (file.ActiveTacticSet is < 0 or >= PartyMember.TacticSetCount)
+        var setCount = TacticSetNames(file).Count;
+        if (file.TacticSetNames is { Count: 0 })
         {
-            errors.Add($"save: activeTacticSet must be 0-{PartyMember.TacticSetCount - 1}, got {file.ActiveTacticSet}");
+            errors.Add("save: tacticSetNames needs at least one set");
+        }
+
+        foreach (var name in file.TacticSetNames ?? [])
+        {
+            DataValidation.RequireText(name, "save: tactic set name", errors);
+            if (name.Length > Company.MaxTacticSetNameLength)
+            {
+                errors.Add($"save: tactic set name '{name}' is longer than {Company.MaxTacticSetNameLength} characters");
+            }
+        }
+
+        if (setCount > 0 && (file.ActiveTacticSet < 0 || file.ActiveTacticSet >= setCount))
+        {
+            errors.Add($"save: activeTacticSet must be 0-{setCount - 1}, got {file.ActiveTacticSet}");
+        }
+
+        foreach (var member in file.Roster.Where(m => m.TacticSets.Count > setCount))
+        {
+            errors.Add($"save member '{member.Id}': has {member.TacticSets.Count} tactic sets but the company has {setCount}");
         }
 
         DataValidation.RequireNonNegative(file.Gold, "save: gold", errors);
@@ -457,11 +497,6 @@ public static class SaveGame
             {
                 errors.Add($"{at}: spent {spent} points in '{group.Key}' but mastery level is {earned}");
             }
-        }
-
-        if (member.TacticSets.Count > PartyMember.TacticSetCount)
-        {
-            errors.Add($"{at}: at most {PartyMember.TacticSetCount} tactic sets, got {member.TacticSets.Count}");
         }
 
         for (var set = 0; set < member.TacticSets.Count; set++)

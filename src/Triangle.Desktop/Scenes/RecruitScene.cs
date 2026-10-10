@@ -152,9 +152,7 @@ internal sealed class RecruitScene : IScene
             panel.Widgets.Add(label);
         }
 
-        var price = Company.HirePrice(index);
-        var priceText = price == 0 && offer.Price > 0 ? $"무료 (원래 {offer.Price}골드, 로스터가 비었습니다)" : $"{price}골드";
-        panel.Widgets.Add(_w.Label(priceText, 20, Company.CanHire(index) ? Theme.Cover : Theme.Enemy, bold: true));
+        panel.Widgets.Add(_w.Label($"{offer.Price}골드", 20, Company.CanHire(index) ? Theme.Cover : Theme.Enemy, bold: true));
 
         var hire = _w.TextButton("고용", Theme.Accent, Theme.AccentHover, bold: true);
         hire.Width = 140;

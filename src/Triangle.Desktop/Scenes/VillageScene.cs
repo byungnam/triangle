@@ -238,11 +238,15 @@ internal sealed class VillageScene : IScene
     }
 
 
-    /// <summary>전투지역 목록 (난이도순). 고른 지역으로 출정한다. 영구 사망 지역은 빨간 경고를 단다.</summary>
+    /// <summary>전투지역 목록 (난이도순). 고른 지역으로 출정한다.</summary>
     private Widget BuildZones(Rectangle area)
     {
         var list = new VerticalStackPanel { Spacing = 8 };
         list.Widgets.Add(Label("전투지역", 20, Theme.Enemy, bold: true));
+        var rules = Label("출정하면 끝날 때까지 돌아오거나 전술을 바꿀 수 없습니다. 전멸해도 이미 얻은 전리품은 남고, 쓰러진 멤버는 원정이 끝나면 회복합니다.", 14, Theme.TextDim);
+        rules.Wrap = true;
+        rules.Width = area.Width - 20;
+        list.Widgets.Add(rules);
 
         foreach (var zone in _session.Data.Zones.Values.OrderBy(z => z.Difficulty))
         {
@@ -250,9 +254,6 @@ internal sealed class VillageScene : IScene
             var content = new VerticalStackPanel { Spacing = 3 };
             content.Widgets.Add(Label(zone.Name, 20, selected ? Theme.Text : Theme.Ally, bold: true));
             content.Widgets.Add(Label($"난이도 {zone.Difficulty} · 전투 {zone.MaxBattles}회", 15, Theme.TextDim));
-            content.Widgets.Add(zone.Permadeath
-                ? Label($"영구 사망: 쓰러지면 캐릭터를 잃고, 장비가 {ExpeditionRules.EquipmentDestroyChance}% 확률로 파괴됩니다", 15, Theme.Enemy)
-                : Label("사망 페널티 없음: 쓰러져도 원정이 끝나면 회복합니다", 15, Theme.Heal));
             if (zone.Description is { } description)
             {
                 var label = Label(description, 14, Theme.TextDim);

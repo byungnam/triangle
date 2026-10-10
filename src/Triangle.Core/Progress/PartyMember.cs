@@ -10,8 +10,8 @@ namespace Triangle.Core.Progress;
 
 /// <summary>
 /// 플레이어 파티의 유닛 한 명.
-/// - 전열과 전술을 편집한다. 전술은 세트 두 벌(<see cref="TacticSetCount"/>)을 저장하고,
-///   어느 세트로 싸울지는 회사가 정한다(<see cref="Company.ActiveTacticSet"/>).
+/// - 전열과 전술을 편집한다. 전술은 회사의 전술 세트마다 한 벌씩 저장하고(세트 수 제한 없음),
+///   세트를 만들고 지우고 고르는 것은 회사가 한다(<see cref="Company.TacticSetNames"/>, <see cref="Company.ActiveTacticSet"/>).
 /// - 부위 5개(주무기, 보조, 머리, 몸통, 신발)에 아이템을 하나씩 낀다. 장착과 해제는 회사 창고와 오간다
 ///   (<see cref="Company.Equip"/>). 낀 아이템이 주는 행동(<see cref="GrantedActions"/>)과 공용 행동만 전술에 쓸 수 있다.
 /// - 착용 조건(패시브 레벨)을 못 채운 아이템이나 두손 무기와 같이 낀 보조는 "착용 불가"다.
@@ -21,14 +21,13 @@ namespace Triangle.Core.Progress;
 /// </summary>
 public sealed class PartyMember
 {
-    public const int TacticSetCount = 2;
-
-    private readonly TacticList[] _tacticSets;
+    private readonly List<TacticList> _tacticSets;
     private readonly Dictionary<string, int> _masteryXp;
     private readonly Dictionary<string, int> _skillLevels;
     private readonly Dictionary<EquipmentSlot, string> _equipment;
 
     /// <param name="equipment">부위별 아이템 ID.</param>
+    /// <param name="tacticSets">세트별 전술. 비어 있으면 빈 세트 하나로 시작한다. 회사가 세트 수를 맞춘다.</param>
     public PartyMember(
         string id,
         string name,
@@ -46,15 +45,8 @@ public sealed class PartyMember
         _equipment = new Dictionary<EquipmentSlot, string>(equipment);
         _masteryXp = new Dictionary<string, int>(masteryXp);
         _skillLevels = new Dictionary<string, int>(skillLevels.Where(p => p.Value > 0));
-        if (tacticSets.Count > TacticSetCount)
-        {
-            throw new ArgumentException($"At most {TacticSetCount} tactic sets.", nameof(tacticSets));
-        }
-
-        // 모자란 세트는 빈 목록으로 채운다.
-        _tacticSets = Enumerable.Range(0, TacticSetCount)
-            .Select(i => new TacticList(i < tacticSets.Count ? tacticSets[i] : []))
-            .ToArray();
+        _tacticSets = tacticSets.Select(set => new TacticList(set)).ToList();
+        PadTacticSets(1);
     }
 
     public string Id { get; }
@@ -135,8 +127,22 @@ public sealed class PartyMember
         _equipment[slot] = itemId;
     }
 
-    /// <summary>전술 세트들 (항상 <see cref="TacticSetCount"/>벌).</summary>
+    /// <summary>전술 세트들. 회사에 속하면 회사의 세트 수(<see cref="Company.TacticSetNames"/>)와 같다.</summary>
     public IReadOnlyList<TacticList> TacticSets => _tacticSets;
+
+    /// <summary>세트가 count벌보다 적으면 빈 세트로 채운다.</summary>
+    internal void PadTacticSets(int count)
+    {
+        while (_tacticSets.Count < count)
+        {
+            _tacticSets.Add(new TacticList([]));
+        }
+    }
+
+    /// <summary>세트를 끝에 덧붙인다.</summary>
+    internal void AddTacticSet(IEnumerable<Tactic> tactics) => _tacticSets.Add(new TacticList(tactics));
+
+    internal void RemoveTacticSet(int index) => _tacticSets.RemoveAt(index);
 
     /// <summary>숙련 ID별 누적 경험치.</summary>
     public IReadOnlyDictionary<string, int> MasteryXp => _masteryXp;

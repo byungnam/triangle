@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Triangle.Core.Data;
 using Triangle.Core.Expeditions;
@@ -50,8 +51,6 @@ public sealed record SavedExpedition
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public BattleReport? LastBattle { get; init; }
-
-    public IReadOnlyList<string> Deaths { get; init; } = [];
 }
 
 public sealed record SavedMember
@@ -61,19 +60,8 @@ public sealed record SavedMember
     public required Stats Stats { get; init; }
     public required Row Row { get; init; }
 
-    /// <summary>부위별 장착 아이템 ID (버전 6부터).</summary>
+    /// <summary>부위별 장착 아이템 ID.</summary>
     public IReadOnlyDictionary<EquipmentSlot, string> Equipment { get; init; } = new Dictionary<EquipmentSlot, string>();
-
-    /// <summary>버전 6의 행동 칸 선택. 버전 7부터 아이템 행동을 모두 쓰므로 읽을 때 버린다.</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public IReadOnlyDictionary<EquipmentSlot, IReadOnlyList<string>>? AbilityChoices { get; init; }
-
-    /// <summary>버전 5의 무기·방어구 아이템 ID. 읽을 때만 쓰고 주무기·몸통으로 옮긴다.</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Weapon { get; init; }
-
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Armor { get; init; }
 
     /// <summary>숙련 ID별 누적 경험치.</summary>
     public IReadOnlyDictionary<string, int> MasteryXp { get; init; } = new Dictionary<string, int>();
@@ -106,10 +94,12 @@ public static class SaveGame
     ///    버전 5는 무기를 주무기로, 방어구를 몸통으로 옮기고 행동 칸은 첫 옵션으로 고른다. 그 이전은 읽지 않는다.
     /// 7: 무기 세분화로 지팡이 계열이 원소 계열이 되고, 행동 칸 선택이 없어짐 (2026-10-06). 버전 6의 staff 경험치는 fire로,
     ///    magic_control은 pyromancy로 옮기고 mana_efficiency는 지운다(포인트는 돌려받는다). abilityChoices는 버린다.
+    /// 8: 영구 사망과 장비 파괴가 없어짐 (2026-10-10). 버전 7의 원정 사망자(deaths)와 직전 전투의
+    ///    사망·파괴·회수 목록(deaths, destroyed, recovered)을 버린다. 그 이전은 읽지 않는다.
     /// </summary>
-    public const int CurrentVersion = 7;
+    public const int CurrentVersion = 8;
 
-    private const int OldestReadableVersion = 5;
+    private const int OldestReadableVersion = 7;
 
     public static string Serialize(Company company)
     {
@@ -131,7 +121,6 @@ public static class SaveGame
                     CarriedGold = e.CarriedGold,
                     CarriedItems = new SortedDictionary<string, int>(e.CarriedItems.ToDictionary()),
                     LastBattle = e.LastBattle,
-                    Deaths = e.Deaths.ToList(),
                 }
                 : null,
             Stash = new SortedDictionary<string, int>(company.Stash.ToDictionary()),
@@ -160,6 +149,11 @@ public static class SaveGame
             throw new SaveGameException([$"save: unsupported version {version} (expected {OldestReadableVersion}-{CurrentVersion})"]);
         }
 
+        if (version == 7)
+        {
+            json = ConvertFromVersion7(json);
+        }
+
         SaveFile? file;
         try
         {
@@ -174,16 +168,6 @@ public static class SaveGame
         if (file is null)
         {
             throw new SaveGameException(["save: expected an object, found null"]);
-        }
-
-        if (file.Version == 5)
-        {
-            file = ConvertFromVersion5(file);
-        }
-
-        if (file.Version == 6)
-        {
-            file = ConvertFromVersion6(file);
         }
 
         Validate(file, data);
@@ -201,7 +185,7 @@ public static class SaveGame
             file.NextRecruitNumber,
             saved is null
                 ? null
-                : new Expedition(saved.ZoneId, saved.Seed, saved.BattleIndex, saved.Members, saved.CarriedGold, saved.CarriedItems, saved.LastBattle, saved.Deaths));
+                : new Expedition(saved.ZoneId, saved.Seed, saved.BattleIndex, saved.Members, saved.CarriedGold, saved.CarriedItems, saved.LastBattle));
     }
 
     private static int ReadVersion(string json)
@@ -226,64 +210,24 @@ public static class SaveGame
     }
 
     /// <summary>
-    /// 버전 5 → 6: 무기 아이템은 주무기로, 방어구 아이템은 몸통으로 옮긴다. v5 기본 아이템 ID는 새 T1 아이템 ID와 같다.
-    /// 행동 칸 선택은 비워 두면 첫 옵션이 된다. 이제 쓸 수 없는 행동이 든 전술은 잠긴다(편집 화면에서 고친다).
+    /// 버전 7 → 8: 영구 사망 기록을 버린다. 형식이 맞지 않는 부분은 그대로 두어 읽을 때 오류로 보고한다.
     /// </summary>
-    private static SaveFile ConvertFromVersion5(SaveFile file)
+    private static string ConvertFromVersion7(string json)
     {
-        static Dictionary<EquipmentSlot, string> ToEquipment(SavedMember m)
+        var root = JsonNode.Parse(json)!.AsObject();
+        root["version"] = CurrentVersion;
+        if (root["expedition"] is JsonObject expedition)
         {
-            var equipment = new Dictionary<EquipmentSlot, string>();
-            if (m.Weapon is not null)
+            expedition.Remove("deaths");
+            if (expedition["lastBattle"] is JsonObject lastBattle)
             {
-                equipment[EquipmentSlot.MainHand] = m.Weapon;
+                lastBattle.Remove("deaths");
+                lastBattle.Remove("destroyed");
+                lastBattle.Remove("recovered");
             }
-
-            if (m.Armor is not null)
-            {
-                equipment[EquipmentSlot.Body] = m.Armor;
-            }
-
-            return equipment;
         }
 
-        return file with
-        {
-            Version = 6,
-            Roster = file.Roster.Select(m => m with { Equipment = ToEquipment(m), Weapon = null, Armor = null }).ToList(),
-        };
-    }
-
-    /// <summary>버전 6 → 7: 사라진 숙련·스킬 ID를 새 ID로 옮기고 행동 칸 선택을 버린다.</summary>
-    private static SaveFile ConvertFromVersion6(SaveFile file)
-    {
-        static Dictionary<string, int> Rename(IReadOnlyDictionary<string, int> values, IReadOnlyDictionary<string, string?> renames)
-        {
-            var result = new Dictionary<string, int>();
-            foreach (var (id, value) in values)
-            {
-                var newId = renames.TryGetValue(id, out var renamed) ? renamed : id;
-                if (newId is not null)
-                {
-                    result[newId] = result.GetValueOrDefault(newId) + value;
-                }
-            }
-
-            return result;
-        }
-
-        var masteries = new Dictionary<string, string?> { ["staff"] = "fire" };
-        var skills = new Dictionary<string, string?> { ["magic_control"] = "pyromancy", ["mana_efficiency"] = null };
-        return file with
-        {
-            Version = CurrentVersion,
-            Roster = file.Roster.Select(m => m with
-            {
-                MasteryXp = Rename(m.MasteryXp, masteries),
-                SkillLevels = Rename(m.SkillLevels, skills),
-                AbilityChoices = null,
-            }).ToList(),
-        };
+        return root.ToJsonString();
     }
 
     private static void Validate(SaveFile file, GameData data)
@@ -423,17 +367,7 @@ public static class SaveGame
         DataValidation.RequireText(member.Id, "save: member id", errors);
         DataValidation.RequireText(member.Name, $"{at}: name", errors);
         DataValidation.ValidateStats(member.Stats, at, errors);
-        if (member.Weapon is not null || member.Armor is not null)
-        {
-            errors.Add($"{at}: 'weapon' and 'armor' are version 5 fields; use 'equipment'");
-        }
-
         DataValidation.ValidateEquipped(member.Equipment, $"{at}: equipment", data.Items, errors);
-        if (member.AbilityChoices is not null)
-        {
-            errors.Add($"{at}: 'abilityChoices' is a version 6 field; items now grant all their actions");
-        }
-
         foreach (var (masteryId, xp) in member.MasteryXp)
         {
             if (!data.Masteries.ContainsKey(masteryId))

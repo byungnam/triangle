@@ -100,7 +100,7 @@ public class TriangleGame : Game
         _session = new GameSession(data, loaded.Company, store) { Notice = LoadNotice(loaded) };
 
         _village = new VillageScene(_ui, Session, Bounds, OpenEditor, OpenRecruit, OpenShop, OpenCraft, Depart, ConfirmedExit);
-        _expedition = new ExpeditionScene(_ui, Session, Bounds, NextBattle, ReturnFromExpedition, OpenEditor);
+        _expedition = new ExpeditionScene(_ui, Session, Bounds, NextBattle);
         _editor = new TacticEditorScene(_ui, Session, Bounds, OpenTraining, ShowHome);
 
         if (!_options.StartInCombat || Company.Lineup.Count == 0)
@@ -196,15 +196,6 @@ public class TriangleGame : Game
         var combat = new CombatLogScene(_ui, Data, result, encounterId, title, Bounds, ShowHome, summary is null ? "원정으로" : "마을로");
         combat.SetRewardLines(lines);
         _scene = combat;
-    }
-
-    /// <summary>귀환한다. 들고 있던 전리품이 확정되고 저장한다.</summary>
-    private void ReturnFromExpedition()
-    {
-        var summary = ExpeditionRules.Return(Company, Data);
-        Session.AutoSave();
-        Session.Notice = ExpeditionText.Summary(Data, summary);
-        ShowHome();
     }
 
     /// <summary>마을이 종료를 확인했다 (저장했거나 버리기로 했다).</summary>

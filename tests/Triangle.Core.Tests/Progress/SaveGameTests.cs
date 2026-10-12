@@ -66,12 +66,9 @@ public sealed class SaveGameTests : IDisposable
         return new Company(roster, ["b", "a"], gold: 120, new Dictionary<string, int> { ["silver_relic"] = 2 }, activeTacticSet: 1, nextSeed: 77);
     }
 
-    /// <summary>버전 5 세이브: 장비는 weapon·armor 아이템 ID.</summary>
-    private static string Version5(string members, string lineup = "\"a\"") =>
-        $$"""{ "version": 5, "gold": 10, "nextSeed": 3, "lineup": [ {{lineup}} ], "roster": [ {{members}} ] }""";
-
-    private static string Version6(string members, string lineup = "\"a\"", string extra = "") =>
-        $$"""{ "version": 6, "gold": 10, "nextSeed": 3, "lineup": [ {{lineup}} ], "roster": [ {{members}} ]{{extra}} }""";
+    /// <summary>지금 버전의 세이브.</summary>
+    private static string Save(string members, string lineup = "\"a\"", string extra = "") =>
+        $$"""{ "version": {{SaveGame.CurrentVersion}}, "gold": 10, "nextSeed": 3, "lineup": [ {{lineup}} ], "roster": [ {{members}} ]{{extra}} }""";
 
     private static string Member(string extra, string id = "a") => $$"""
         { "id": "{{id}}", "name": "이름", "row": "Front",
@@ -109,7 +106,7 @@ public sealed class SaveGameTests : IDisposable
     {
         var json = SaveGame.Serialize(SampleCompany());
 
-        Assert.Contains("\"version\": 7", json);
+        Assert.Contains("\"version\": 8", json);
         Assert.Contains("\"roster\"", json);
         Assert.DoesNotContain("\"party\"", json);
         Assert.Contains("\"name\": \"이졸데\"", json);
@@ -123,7 +120,7 @@ public sealed class SaveGameTests : IDisposable
     [Fact]
     public void Rejects_older_and_unknown_versions()
     {
-        foreach (var version in new[] { 1, 2, 3, 4, 99 })
+        foreach (var version in new[] { 1, 2, 3, 4, 5, 6, 99 })
         {
             var e = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize($$"""{ "version": {{version}}, "party": [] }""", Data));
             Assert.Contains($"unsupported version {version}", Assert.Single(e.Errors));
@@ -131,45 +128,27 @@ public sealed class SaveGameTests : IDisposable
     }
 
     [Fact]
-    public void Converts_version_5_weapon_and_armor_to_main_hand_and_body()
+    public void Converts_version_7_by_dropping_permadeath_records()
     {
-        var members = Member("""
-            , "weapon": "wooden_relic", "armor": "cloth_robe", "masteryXp": { "relic": 300 }, "skillLevels": { "healing": 1 },
-            "tacticSets": [ [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "heal" },
-                              { "priority": 2, "condition": "Always", "value": 0, "actionId": "smite" } ] ]
-            """);
+        var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
+        var company = StartingCompany.Create(data, seed: 11);
+        ExpeditionRules.Start(company, data, data.Zones.Values.OrderBy(z => z.Difficulty).First().Id);
+        ExpeditionRules.ApplyResult(company, data, ExpeditionRules.Fight(company, data));
+        var v7 = SaveGame.Serialize(company)
+            .Replace("\"version\": 8", "\"version\": 7")
+            .Replace("\"battleIndex\": 1,", "\"battleIndex\": 1, \"deaths\": [ \"이졸데\" ],")
+            .Replace("\"downed\": [", "\"deaths\": [], \"destroyed\": [ \"old_sword\" ], \"recovered\": [], \"downed\": [");
+        Assert.Contains("\"destroyed\"", v7);
+        Assert.Contains("\"deaths\": [ \"이졸데\" ]", v7);
 
-        var company = SaveGame.Deserialize(Version5(members), Data);
+        var loaded = SaveGame.Deserialize(v7, data);
 
-        var member = company.Roster[0];
-        Assert.Equal(TestGear.Of("wooden_relic", "cloth_robe"), member.Equipment);
-        Assert.Empty(member.LockedTacticIndexes(Data, 0)); // 아이템 행동은 모두 쓴다
-        Assert.Equal((10, 3, 300), (company.Gold, company.NextSeed, member.MasteryXp["relic"]));
-    }
-
-    [Fact]
-    public void Converts_version_6_staff_mastery_and_skills_to_fire()
-    {
-        var member = Member("""
-            , "masteryXp": { "staff": 300, "cloth": 50 }, "skillLevels": { "magic_control": 2, "mana_efficiency": 1 }
-            """);
-
-        var company = SaveGame.Deserialize(Version6(member), Data);
-
-        var m = company.Roster[0];
-        Assert.Equal(new Dictionary<string, int> { ["fire"] = 300, ["cloth"] = 50 }, m.MasteryXp);
-        Assert.Equal(new Dictionary<string, int> { ["pyromancy"] = 2 }, m.SkillLevels); // 절약 포인트는 돌려받는다
-        Assert.Contains("\"version\": 7", SaveGame.Serialize(company));
-    }
-
-    [Fact]
-    public void Rejects_version_5_items_that_no_longer_exist_or_moved_slot()
-    {
-        var errors = Assert.Throws<SaveGameException>(() =>
-            SaveGame.Deserialize(Version5(Member(""", "weapon": "cloth_robe", "armor": "ghost" """)), Data)).Errors;
-
-        Assert.Contains("save member 'a': equipment: MainHand: 'cloth_robe' is Body", errors);
-        Assert.Contains("save member 'a': equipment: Body: unknown item 'ghost'", errors);
+        Assert.Equal(company.Expedition!.Members, loaded.Expedition!.Members);
+        Assert.Equal(company.Expedition.LastBattle!.Downed, loaded.Expedition.LastBattle!.Downed);
+        var json = SaveGame.Serialize(loaded);
+        Assert.Contains("\"version\": 8", json);
+        Assert.DoesNotContain("\"deaths\"", json);
+        Assert.DoesNotContain("\"destroyed\"", json);
     }
 
     [Fact]
@@ -181,7 +160,7 @@ public sealed class SaveGameTests : IDisposable
             "tacticSets": [ [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "heal" } ] ]
             """);
 
-        var company = SaveGame.Deserialize(Version6(member, extra: """, "stash": { "wooden_relic": 1 }"""), Data);
+        var company = SaveGame.Deserialize(Save(member, extra: """, "stash": { "wooden_relic": 1 }"""), Data);
 
         var m = company.Roster[0];
         Assert.Equal([EquipmentSlot.MainHand], m.UnwearableSlots(Data));
@@ -196,27 +175,6 @@ public sealed class SaveGameTests : IDisposable
     }
 
     [Fact]
-    public void Version_6_ability_choices_are_dropped_and_every_item_action_is_usable()
-    {
-        var member = Member("""
-            , "equipment": { "MainHand": "wooden_relic" }, "abilityChoices": { "MainHand": [ "removed" ] },
-            "skillLevels": { "healing": 1 }, "masteryXp": { "relic": 300 },
-            "tacticSets": [ [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "smite" },
-                              { "priority": 2, "condition": "Always", "value": 0, "actionId": "heal" } ] ]
-            """);
-
-        var company = SaveGame.Deserialize(Version6(member), Data);
-
-        Assert.Equal(["heal", "smite"], company.Roster[0].ItemActions(EquipmentSlot.MainHand, Data));
-        Assert.Empty(company.Roster[0].LockedTacticIndexes(Data, 0));
-        Assert.DoesNotContain("abilityChoices", SaveGame.Serialize(company));
-
-        var v7 = Version6(member).Replace("\"version\": 6", "\"version\": 7");
-        var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(v7, Data)).Errors;
-        Assert.Contains("save member 'a': 'abilityChoices' is a version 6 field; items now grant all their actions", errors);
-    }
-
-    [Fact]
     public void Rejects_references_missing_from_game_data_and_wrong_slots()
     {
         var member = Member("""
@@ -227,7 +185,7 @@ public sealed class SaveGameTests : IDisposable
             """);
 
         var errors = Assert.Throws<SaveGameException>(() =>
-            SaveGame.Deserialize(Version6(member, extra: """, "stash": { "ghost_item": 1, "old_sword": 0 }"""), Data)).Errors;
+            SaveGame.Deserialize(Save(member, extra: """, "stash": { "ghost_item": 1, "old_sword": 0 }"""), Data)).Errors;
 
         Assert.Contains("save member 'a': equipment: MainHand: 'cloth_robe' is Body", errors);
         Assert.Contains("save member 'a': equipment: Body: unknown item 'ghost_armor'", errors);
@@ -243,20 +201,20 @@ public sealed class SaveGameTests : IDisposable
     {
         var two = Member("") + ", " + Member("", id: "b");
         var errors = Assert.Throws<SaveGameException>(() =>
-            SaveGame.Deserialize(Version6(two, lineup: "\"a\", \"a\", \"ghost\""), Data)).Errors;
+            SaveGame.Deserialize(Save(two, lineup: "\"a\", \"a\", \"ghost\""), Data)).Errors;
         Assert.Contains("save: lineup lists 'a' more than once", errors);
         Assert.Contains("save: lineup member 'ghost' is not in the roster", errors);
 
         var six = string.Join(", ", Enumerable.Range(1, 6).Select(i => Member("", id: $"m{i}")));
         var lineup = string.Join(", ", Enumerable.Range(1, 6).Select(i => $"\"m{i}\""));
-        errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Version6(six, lineup), Data)).Errors;
+        errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Save(six, lineup), Data)).Errors;
         Assert.Contains("save: lineup has 6 members (at most 5)", errors);
     }
 
     [Fact]
     public void Empty_lineup_is_allowed_in_the_village()
     {
-        var company = SaveGame.Deserialize(Version6(Member(""), lineup: ""), Data);
+        var company = SaveGame.Deserialize(Save(Member(""), lineup: ""), Data);
 
         Assert.Empty(company.Lineup);
         Assert.Single(company.Roster);
@@ -271,7 +229,7 @@ public sealed class SaveGameTests : IDisposable
             "skillLevels": { "healing": 1, "holy": 1 }
             """);
 
-        var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Version6(member), Data)).Errors;
+        var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Save(member), Data)).Errors;
 
         Assert.Contains("save member 'a': 'holy' needs 'healing' level 3", errors);
         Assert.Contains("save member 'a': spent 4 points in 'relic' but mastery level is 1", errors);
@@ -287,7 +245,7 @@ public sealed class SaveGameTests : IDisposable
                               { "priority": 2, "condition": "Always", "value": 0, "actionId": "heal" } ] ]
             """);
 
-        var company = SaveGame.Deserialize(Version6(member, extra: """, "stash": { "silver_relic": 1 }"""), Data);
+        var company = SaveGame.Deserialize(Save(member, extra: """, "stash": { "silver_relic": 1 }"""), Data);
 
         Assert.Equal([1], company.Roster[0].LockedTacticIndexes(Data, 0));
         Assert.True(company.HasLockedTactics(Data));
@@ -296,19 +254,15 @@ public sealed class SaveGameTests : IDisposable
     }
 
     [Fact]
-    public void Rejects_bad_tactic_set_data_and_version_mixups()
+    public void Rejects_bad_tactic_set_data()
     {
         var tooMany = Member(""", "tacticSets": [ [], [], [] ]""");
-        var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Version6(tooMany), Data)).Errors;
+        var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Save(tooMany), Data)).Errors;
         Assert.Contains("save member 'a': at most 2 tactic sets, got 3", errors);
 
-        var badActive = Version6(Member(""), extra: """, "activeTacticSet": 5""");
+        var badActive = Save(Member(""), extra: """, "activeTacticSet": 5""");
         errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(badActive, Data)).Errors;
         Assert.Contains("save: activeTacticSet must be 0-1, got 5", errors);
-
-        var weaponInV6 = Version6(Member(""", "weapon": "old_sword" """));
-        errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(weaponInV6, Data)).Errors;
-        Assert.Contains("save member 'a': 'weapon' and 'armor' are version 5 fields; use 'equipment'", errors);
     }
 
     [Fact]
@@ -316,7 +270,7 @@ public sealed class SaveGameTests : IDisposable
     {
         Assert.Throws<SaveGameException>(() => SaveGame.Deserialize("{ not json", Data));
 
-        var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Version6(Member("") + ", " + Member("")), Data)).Errors;
+        var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Save(Member("") + ", " + Member("")), Data)).Errors;
         Assert.Contains("save: duplicate member id 'a'", errors);
     }
 
@@ -325,7 +279,7 @@ public sealed class SaveGameTests : IDisposable
     {
         var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
         var company = StartingCompany.Create(data, seed: 11);
-        var zone = data.Zones.Values.First(z => !z.Permadeath);
+        var zone = data.Zones.Values.OrderBy(z => z.Difficulty).First();
         ExpeditionRules.Start(company, data, zone.Id);
         ExpeditionRules.ApplyResult(company, data, ExpeditionRules.Fight(company, data));
         Assert.NotNull(company.Expedition); // 첫 전투로는 끝나지 않는 지역이어야 한다

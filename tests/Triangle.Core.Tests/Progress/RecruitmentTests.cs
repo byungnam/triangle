@@ -78,7 +78,10 @@ public class RecruitmentTests
 
         // 시작 회사의 전술을 쓰지 않는 멤버도 출정할 수 있다 (전술이 없으면 기다리기만 한다).
         ExpeditionRules.Start(company, Data, Data.Zones.Keys.First());
-        ExpeditionRules.Return(company, Data);
+        while (company.OnExpedition)
+        {
+            ExpeditionRules.ApplyResult(company, Data, ExpeditionRules.Fight(company, Data));
+        }
 
         Assert.Equal(Recruitment.OfferCount, company.RecruitOffers.Count);
         Assert.NotEqual(before, company.RecruitOffers);

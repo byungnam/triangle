@@ -43,6 +43,15 @@
         "maxTier": 1
       },
       "clearBonusGold": 50
+    },
+    "gate": {
+      "encounterId": "gate_scavenger_chief",
+      "clue": "우두머리가 지키던 길목 너머로 땅에 그어진 선이 보인다. 자로 잰 듯 곧다.",
+      "firstWinGold": 150,
+      "firstWinItems": [
+        "iron_scrap",
+        "tough_leather"
+      ]
     }
   },
   {
@@ -93,6 +102,16 @@
         "maxTier": 2
       },
       "clearBonusGold": 150
+    },
+    "gate": {
+      "encounterId": "gate_halted_regiment",
+      "clue": "연대의 깃발에는 백 년 전 날짜가 적혀 있다. 그들에게는 아직 그날이다.",
+      "firstWinGold": 400,
+      "firstWinItems": [
+        "iron_scrap",
+        "tough_leather",
+        "mana_thread"
+      ]
     }
   },
   {
@@ -147,6 +166,15 @@
         "maxTier": 3
       },
       "clearBonusGold": 400
+    },
+    "gate": {
+      "encounterId": "gate_triad_guardians",
+      "clue": "세 수호자의 가면을 모으면 꼭짓점 셋이 맞물린다. 중심으로 가는 길은 아직 닫혀 있다.",
+      "firstWinGold": 1000,
+      "firstWinItems": [
+        "ancient_shard",
+        "ancient_shard"
+      ]
     }
   }
 ]

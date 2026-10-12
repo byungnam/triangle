@@ -608,6 +608,20 @@ public static class GameDataLoader
                 errors.Add($"{at}: no equipment in tiers {tierDrop.MinTier}-{tierDrop.MaxTier}");
             }
         }
+
+        if (z.Gate is { } gate)
+        {
+            if (!encounters.ContainsKey(gate.EncounterId))
+            {
+                errors.Add($"{at}: gate has unknown encounter '{gate.EncounterId}'");
+            }
+
+            DataValidation.RequireNonNegative(gate.FirstWinGold, $"{at}: gate firstWinGold", errors);
+            foreach (var itemId in gate.FirstWinItems.Where(id => !items.ContainsKey(id)))
+            {
+                errors.Add($"{at}: gate gives unknown item '{itemId}'");
+            }
+        }
     }
 
     private static void ValidateRecruit(

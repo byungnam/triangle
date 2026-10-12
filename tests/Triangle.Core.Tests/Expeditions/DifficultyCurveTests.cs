@@ -22,6 +22,7 @@ public class DifficultyCurveTests(ITestOutputHelper output)
         {
             var company = StartingCompany.Create(data, seed);
             company.ActiveTacticSet = tacticSet;
+            Growth.UnlockAll(company, data);
             var expedition = ExpeditionRules.Start(company, data, zoneId);
             ExpeditionSummary? summary = null;
             while (summary is null)

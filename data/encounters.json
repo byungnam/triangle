@@ -1002,5 +1002,378 @@
         ]
       }
     ]
+  },
+  {
+    "id": "gate_scavenger_chief",
+    "name": "넝마주이 우두머리",
+    "description": "관문 보스 (깊이 1, 근교 숲). 튼튼한 우두머리 하나를 앞에 세우고 뒤에서 투석꾼이 괴롭힌다. 임시 수치.",
+    "units": [
+      {
+        "id": "gate_chief",
+        "name": "넝마주이 우두머리",
+        "stats": {
+          "str": 19,
+          "dex": 10,
+          "vital": 81,
+          "intel": 18,
+          "speed": 10
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_greataxe",
+          "Head": "plate_helm",
+          "Body": "plate_armor"
+        },
+        "skills": {
+          "axemanship": 2,
+          "defense": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "berserk"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "reckless_blow"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "gate_chief_guard",
+        "name": "넝마주이",
+        "stats": {
+          "str": 15,
+          "dex": 9,
+          "vital": 32,
+          "intel": 12,
+          "speed": 10
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_hatchet",
+          "Body": "leather_armor"
+        },
+        "skills": {},
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "bleeding_cut"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "gate_chief_slinger",
+        "name": "넝마주이 투석꾼",
+        "stats": {
+          "str": 12,
+          "dex": 11,
+          "vital": 27,
+          "intel": 18,
+          "speed": 11
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "leather_sling",
+          "Body": "leather_armor"
+        },
+        "skills": {},
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "lead_shot"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "sling_stone"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "gate_halted_regiment",
+    "name": "멈춘 연대 본대",
+    "description": "관문 보스 (깊이 2, 버려진 요새). 방패와 미늘창이 앞을 막고, 뒤에서 군목이 치료하고 머스킷병이 일제 사격한다. 임시 수치.",
+    "units": [
+      {
+        "id": "gate_regiment_shield",
+        "name": "연대 방패병",
+        "stats": {
+          "str": 22,
+          "dex": 10,
+          "vital": 50,
+          "intel": 25,
+          "speed": 10
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_spear",
+          "OffHand": "wooden_shield",
+          "Head": "plate_helm",
+          "Body": "plate_armor",
+          "Feet": "plate_boots"
+        },
+        "skills": {
+          "defense": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "shield_wall"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "gate_regiment_halberd",
+        "name": "연대 미늘창병",
+        "stats": {
+          "str": 24,
+          "dex": 11,
+          "vital": 45,
+          "intel": 25,
+          "speed": 11
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "steel_halberd",
+          "Body": "plate_armor"
+        },
+        "skills": {
+          "spearmanship": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "spear_sweep"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "gate_regiment_chaplain",
+        "name": "연대 군목",
+        "stats": {
+          "str": 16,
+          "dex": 10,
+          "vital": 40,
+          "intel": 37,
+          "speed": 11
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "silver_relic",
+          "Body": "cloth_robe"
+        },
+        "skills": {
+          "healing": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "AnyAllyHpAtMost",
+            "value": 50,
+            "actionId": "heal"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "gate_regiment_musketeer",
+        "name": "연대 머스킷병",
+        "stats": {
+          "str": 18,
+          "dex": 12,
+          "vital": 35,
+          "intel": 29,
+          "speed": 10
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "matchlock",
+          "Body": "leather_armor"
+        },
+        "skills": {},
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "volley"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "bayonet"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "gate_triad_guardians",
+    "name": "삼인 수호자",
+    "description": "관문 보스 (깊이 3, 재의 왕도). 반드시 셋이 함께 다니는 삼각 가면의 수호자: 쇠(앞), 불(앞), 마력(뒤). 임시 수치.",
+    "units": [
+      {
+        "id": "gate_guardian_iron",
+        "name": "쇠의 수호자",
+        "stats": {
+          "str": 19,
+          "dex": 12,
+          "vital": 46,
+          "intel": 23,
+          "speed": 11
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "steel_warhammer",
+          "Head": "steel_plate_helm",
+          "Body": "steel_plate_armor",
+          "Feet": "steel_plate_boots"
+        },
+        "skills": {
+          "mace_mastery": 2,
+          "defense": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "crush"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "gate_guardian_fire",
+        "name": "불의 수호자",
+        "stats": {
+          "str": 19,
+          "dex": 13,
+          "vital": 39,
+          "intel": 20,
+          "speed": 13
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "steel_greataxe",
+          "Body": "tanned_leather_armor"
+        },
+        "skills": {
+          "axemanship": 2,
+          "mobility": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "berserk"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 2,
+            "actionId": "reckless_blow"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "gate_guardian_mana",
+        "name": "마력의 수호자",
+        "stats": {
+          "str": 11,
+          "dex": 11,
+          "vital": 36,
+          "intel": 33,
+          "speed": 12
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "mage_frost_staff",
+          "Body": "silk_robe"
+        },
+        "skills": {
+          "cryomancy": 2,
+          "meditation": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "blizzard"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "ice_lance"
+          }
+        ]
+      }
+    ]
   }
 ]

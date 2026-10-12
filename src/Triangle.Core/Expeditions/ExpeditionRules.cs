@@ -9,6 +9,7 @@ namespace Triangle.Core.Expeditions;
 /// <summary>
 /// 원정 규칙. 상태는 <see cref="Company.Expedition"/>에 있고, 여기 함수들이 바꾼다.
 /// 흐름: <see cref="Start"/> → (<see cref="Fight"/> → <see cref="ApplyResult"/>) 반복 → 끝 (클리어, 전멸, 무승부).
+/// 관문 보스 도전(<c>gate</c>)도 같은 흐름이다: 관문 보스와 한 번 싸우고 끝난다. 아래 <see cref="Depths"/> 참고.
 /// 출정한 뒤에는 중간에 돌아오거나 전술을 바꿀 수 없다: 전술은 출정 전에만 짠다.
 /// 같은 세이브에서 같은 선택을 하면 결과도 같다: 인카운터, 전투, 전리품의 시드가
 /// 모두 원정 시드와 전투 번호에서 나온다.
@@ -21,7 +22,8 @@ public static class ExpeditionRules
     private const int LootStream = 2;
 
     /// <summary>출정할 수 없는 이유. null이면 출정할 수 있다.</summary>
-    public static string? WhyCannotStart(Company company, GameData data, string zoneId)
+    /// <param name="gate">지역 원정 대신 그 지역의 관문 보스에 도전한다.</param>
+    public static string? WhyCannotStart(Company company, GameData data, string zoneId, bool gate = false)
     {
         if (company.OnExpedition)
         {
@@ -33,6 +35,11 @@ public static class ExpeditionRules
             return "없는 지역입니다";
         }
 
+        if ((gate ? Depths.WhyGateLocked(company, data, zoneId) : Depths.WhyZoneLocked(company, data, zoneId)) is { } locked)
+        {
+            return locked;
+        }
+
         if (company.Lineup.Count == 0)
         {
             return "출전 명단이 비어 있습니다";
@@ -42,9 +49,9 @@ public static class ExpeditionRules
     }
 
     /// <summary>출정한다. 출전 멤버는 HP·MP가 가득 찬 상태로 시작한다.</summary>
-    public static Expedition Start(Company company, GameData data, string zoneId, CombatRules? rules = null)
+    public static Expedition Start(Company company, GameData data, string zoneId, CombatRules? rules = null, bool gate = false)
     {
-        if (WhyCannotStart(company, data, zoneId) is { } reason)
+        if (WhyCannotStart(company, data, zoneId, gate) is { } reason)
         {
             throw new InvalidOperationException($"Cannot start expedition: {reason}");
         }
@@ -55,15 +62,23 @@ public static class ExpeditionRules
             var skills = m.CombatSkills(data);
             return new ExpeditionMember(m.Id, rules.MaxHp(m.Stats, skills), rules.MaxMp(m.Stats, skills), Down: false);
         });
-        var expedition = new Expedition(zoneId, company.TakeSeed(), 0, members, 0, new Dictionary<string, int>(), null);
+        var expedition = new Expedition(zoneId, company.TakeSeed(), 0, members, 0, new Dictionary<string, int>(), null, gate);
         company.Expedition = expedition;
         return expedition;
     }
 
-    /// <summary>다음 전투에서 만날 인카운터. 지역의 가중치 목록에서 시드로 고른다 (결정적).</summary>
+    /// <summary>원정의 전투 수: 지역 원정은 지역의 최대 전투 수, 관문 도전은 1.</summary>
+    public static int MaxBattles(Expedition expedition, GameData data) => expedition.Gate ? 1 : data.Zones[expedition.ZoneId].MaxBattles;
+
+    /// <summary>다음 전투에서 만날 인카운터. 지역의 가중치 목록에서 시드로 고른다 (결정적). 관문 도전은 늘 관문 보스다.</summary>
     public static string NextEncounter(Expedition expedition, GameData data)
     {
         var zone = data.Zones[expedition.ZoneId];
+        if (expedition.Gate)
+        {
+            return zone.Gate?.EncounterId ?? throw new InvalidOperationException($"Zone '{zone.Id}' has no gate.");
+        }
+
         var random = new Random(StreamSeed(expedition, EncounterStream));
         var roll = random.Next(zone.Encounters.Sum(e => e.Weight));
         foreach (var encounter in zone.Encounters)
@@ -119,6 +134,8 @@ public static class ExpeditionRules
     /// - 이기면 전리품(골드, 정해진 아이템, 티어 범위의 장비)을 굴려 들고 있는 전리품에 더한다. 마지막 전투면 클리어 보너스를 받고 끝난다.
     /// - 쓰러진 멤버는 남은 전투에 나가지 못할 뿐 잃지 않는다. 장비도 그대로다.
     /// - 지면(전멸) 끝난다. 무승부는 강제 귀환이다. 어느 쪽이든 이미 얻은 전리품은 확정된다.
+    /// - 지역 원정을 클리어하면 그 지역을 클리어한 것으로 기록한다(관문 보스가 열린다).
+    /// - 관문 도전은 지역 전리품을 굴리지 않는다. 이기면 도전 기록을 남기고, 처음 이겼을 때만 관문 보상을 받는다.
     /// </summary>
     public static ExpeditionSummary? ApplyResult(Company company, GameData data, CombatResult result)
     {
@@ -140,7 +157,27 @@ public static class ExpeditionRules
 
         var gold = 0;
         var drops = new List<string>();
-        if (result.Outcome == CombatOutcome.Victory)
+        GateWin? gateWin = null;
+        if (expedition.Gate)
+        {
+            if (result.Outcome == CombatOutcome.Victory)
+            {
+                var gearTier = expedition.Members
+                    .SelectMany(m => company.Member(m.Id).WornItems(data))
+                    .Select(w => w.Item.Tier)
+                    .DefaultIfEmpty(0)
+                    .Max();
+                var gateResult = new GateResult(expedition.Members.Count, gearTier, expedition.Members.Count(m => m.Down));
+                var (firstWin, improved) = company.RecordGateWin(zone.Id, gateResult);
+                gateWin = new GateWin(gateResult, firstWin, improved);
+                if (firstWin)
+                {
+                    gold = zone.Gate!.FirstWinGold;
+                    drops.AddRange(zone.Gate.FirstWinItems);
+                }
+            }
+        }
+        else if (result.Outcome == CombatOutcome.Victory)
         {
             var random = new Random(StreamSeed(expedition, LootStream));
             var rewards = zone.Rewards;
@@ -163,12 +200,13 @@ public static class ExpeditionRules
         {
             CombatOutcome.Defeat => ExpeditionEnd.Wiped,
             CombatOutcome.Draw => ExpeditionEnd.ForcedReturn,
-            _ when number >= zone.MaxBattles => ExpeditionEnd.Cleared,
+            _ when number >= MaxBattles(expedition, data) => ExpeditionEnd.Cleared,
             _ => null,
         };
-        if (end == ExpeditionEnd.Cleared)
+        if (end == ExpeditionEnd.Cleared && !expedition.Gate)
         {
             gold += zone.Rewards.ClearBonusGold;
+            company.MarkCleared(zone.Id);
         }
 
         expedition.CarriedGold += gold;
@@ -188,12 +226,12 @@ public static class ExpeditionRules
             Downed = downed.Select(m => m.Name).ToList(),
         };
 
-        return end is { } e ? Finish(company, data, e) : null;
+        return end is { } e ? Finish(company, data, e) with { GateWin = gateWin } : null;
     }
 
     /// <summary>남은 전투가 있는가 (이겼고 마지막 전투가 아니면 계속할 수 있다).</summary>
     public static bool CanContinue(Company company, GameData data) =>
-        company.Expedition is { } e && e.BattleIndex < data.Zones[e.ZoneId].MaxBattles && e.Standing.Any();
+        company.Expedition is { } e && e.BattleIndex < MaxBattles(e, data) && e.Standing.Any();
 
     /// <summary>
     /// 원정을 끝낸다: 전리품을 창고와 골드로 확정한다(전멸해도 이미 얻은 것은 남는다). 쓰러진 멤버는
@@ -215,7 +253,8 @@ public static class ExpeditionRules
             end,
             expedition.BattleIndex,
             expedition.CarriedGold,
-            new Dictionary<string, int>(expedition.CarriedItems));
+            new Dictionary<string, int>(expedition.CarriedItems),
+            expedition.Gate);
     }
 
     /// <summary>주무기 계열, (주무기와 다르면) 보조 계열, 입은 방어구 재질 숙련에 경험치를 더한다.</summary>

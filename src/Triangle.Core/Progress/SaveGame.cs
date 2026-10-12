@@ -45,11 +45,22 @@ public sealed record SaveFile
     /// <summary>진행 중인 원정. 마을에 있으면 없다.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public SavedExpedition? Expedition { get; init; }
+
+    /// <summary>한 번이라도 클리어한 지역 ID.</summary>
+    public IReadOnlyList<string> ClearedZones { get; init; } = [];
+
+    /// <summary>넘은 관문의 도전 기록 (지역 ID별).</summary>
+    public IReadOnlyDictionary<string, GateRecord> Gates { get; init; } = new Dictionary<string, GateRecord>();
 }
 
 public sealed record SavedExpedition
 {
     public required string ZoneId { get; init; }
+
+    /// <summary>관문 보스 도전이다.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Gate { get; init; }
+
     public required int Seed { get; init; }
     public required int BattleIndex { get; init; }
     public required IReadOnlyList<ExpeditionMember> Members { get; init; }
@@ -105,10 +116,12 @@ public static class SaveGame
     ///    사망·파괴·회수 목록(deaths, destroyed, recovered)을 버린다. 그 이전은 읽지 않는다.
     ///    2026-10-10: 전술 세트 수 제한(2벌)을 없애고 세트 이름(tacticSetNames)을 덧붙였다. 이전 파일은 그대로 읽히므로
     ///    버전은 올리지 않았다(이름이 없으면 "세트 1", "세트 2").
+    /// 9: 관문 보스 (2026-10-12). 클리어한 지역(clearedZones), 관문 도전 기록(gates), 관문 도전 중인 원정(expedition.gate).
+    ///    버전 8은 아무 지역도 클리어하지 않고 아무 관문도 넘지 않은 것으로 읽는다. 그 이전은 읽지 않는다.
     /// </summary>
-    public const int CurrentVersion = 8;
+    public const int CurrentVersion = 9;
 
-    private const int OldestReadableVersion = 7;
+    private const int OldestReadableVersion = 8;
 
     public static string Serialize(Company company)
     {
@@ -125,6 +138,7 @@ public static class SaveGame
                 ? new SavedExpedition
                 {
                     ZoneId = e.ZoneId,
+                    Gate = e.Gate,
                     Seed = e.Seed,
                     BattleIndex = e.BattleIndex,
                     Members = e.Members.ToList(),
@@ -134,6 +148,8 @@ public static class SaveGame
                 }
                 : null,
             Stash = new SortedDictionary<string, int>(company.Stash.ToDictionary()),
+            ClearedZones = company.ClearedZones.Order(StringComparer.Ordinal).ToList(),
+            Gates = new SortedDictionary<string, GateRecord>(company.GateRecords.ToDictionary(), StringComparer.Ordinal),
             Lineup = company.Lineup.ToList(),
             Roster = company.Roster.Select(m => new SavedMember
             {
@@ -159,9 +175,9 @@ public static class SaveGame
             throw new SaveGameException([$"save: unsupported version {version} (expected {OldestReadableVersion}-{CurrentVersion})"]);
         }
 
-        if (version == 7)
+        if (version == 8)
         {
-            json = ConvertFromVersion7(json);
+            json = ConvertFromVersion8(json);
         }
 
         SaveFile? file;
@@ -195,8 +211,10 @@ public static class SaveGame
             file.NextRecruitNumber,
             saved is null
                 ? null
-                : new Expedition(saved.ZoneId, saved.Seed, saved.BattleIndex, saved.Members, saved.CarriedGold, saved.CarriedItems, saved.LastBattle),
-            TacticSetNames(file));
+                : new Expedition(saved.ZoneId, saved.Seed, saved.BattleIndex, saved.Members, saved.CarriedGold, saved.CarriedItems, saved.LastBattle, saved.Gate),
+            TacticSetNames(file),
+            file.ClearedZones,
+            file.Gates);
     }
 
     private static int ReadVersion(string json)
@@ -221,23 +239,12 @@ public static class SaveGame
     }
 
     /// <summary>
-    /// 버전 7 → 8: 영구 사망 기록을 버린다. 형식이 맞지 않는 부분은 그대로 두어 읽을 때 오류로 보고한다.
+    /// 버전 8 → 9: 새 필드(clearedZones, gates)는 비어 있는 것으로 읽으므로 버전만 바꾼다.
     /// </summary>
-    private static string ConvertFromVersion7(string json)
+    private static string ConvertFromVersion8(string json)
     {
         var root = JsonNode.Parse(json)!.AsObject();
         root["version"] = CurrentVersion;
-        if (root["expedition"] is JsonObject expedition)
-        {
-            expedition.Remove("deaths");
-            if (expedition["lastBattle"] is JsonObject lastBattle)
-            {
-                lastBattle.Remove("deaths");
-                lastBattle.Remove("destroyed");
-                lastBattle.Remove("recovered");
-            }
-        }
-
         return root.ToJsonString();
     }
 
@@ -341,6 +348,28 @@ public static class SaveGame
             ValidateExpedition(expedition, file, data, errors);
         }
 
+        foreach (var zoneId in file.ClearedZones.Where(id => !data.Zones.ContainsKey(id)))
+        {
+            errors.Add($"save: clearedZones has unknown zone '{zoneId}'");
+        }
+
+        foreach (var (zoneId, record) in file.Gates)
+        {
+            if (!data.Zones.TryGetValue(zoneId, out var zone))
+            {
+                errors.Add($"save: gates has unknown zone '{zoneId}'");
+            }
+            else if (zone.Gate is null)
+            {
+                errors.Add($"save: gates has zone '{zoneId}' which has no gate");
+            }
+
+            if (record.Wins < 1 || record.FewestMembers < 1 || record.LowestGearTier < 0 || record.FewestDowned < 0)
+            {
+                errors.Add($"save: gate record of '{zoneId}' needs wins >= 1, fewestMembers >= 1, lowestGearTier >= 0 and fewestDowned >= 0");
+            }
+        }
+
         if (errors.Count > 0)
         {
             throw new SaveGameException(errors);
@@ -355,9 +384,14 @@ public static class SaveGame
         {
             errors.Add($"{at}: unknown zone '{expedition.ZoneId}'");
         }
-        else if (expedition.BattleIndex < 0 || expedition.BattleIndex >= zone.MaxBattles)
+        else if (expedition.Gate && zone.Gate is null)
         {
-            errors.Add($"{at}: battleIndex must be 0-{zone.MaxBattles - 1}, got {expedition.BattleIndex}");
+            errors.Add($"{at}: zone '{zone.Id}' has no gate");
+        }
+        else if (expedition.BattleIndex < 0 || expedition.BattleIndex >= (expedition.Gate ? 1 : zone.MaxBattles))
+        {
+            var max = expedition.Gate ? 1 : zone.MaxBattles;
+            errors.Add($"{at}: battleIndex must be 0-{max - 1}, got {expedition.BattleIndex}");
         }
 
         if (expedition.Members.All(m => m.Down))

@@ -286,7 +286,8 @@ public class GameDataLoaderTests
                 "rewards": { "goldMin": 10, "goldMax": 5, "itemDrops": [ { "itemId": "ghost_item", "chance": 101 } ],
                              "equipmentDrop": { "chance": 50, "minTier": 3, "maxTier": 2 } } },
               { "id": "z2", "name": "지역", "maxBattles": 1, "encounters": [ { "encounterId": "camp", "weight": 1 } ],
-                "rewards": { "equipmentDrop": { "chance": 50, "minTier": 4, "maxTier": 4 } } },
+                "rewards": { "equipmentDrop": { "chance": 50, "minTier": 4, "maxTier": 4 } },
+                "gate": { "encounterId": "ghost_boss", "firstWinGold": -1, "firstWinItems": [ "ghost_item" ] } },
               { "id": "empty", "name": "빈 지역", "maxBattles": 1, "encounters": [] } ]
             """;
         const string recruits = """
@@ -319,6 +320,9 @@ public class GameDataLoaderTests
         Assert.Contains("zones.json 'empty': needs at least one encounter", errors);
         Assert.Contains("zones.json 'z': equipmentDrop tiers must be 1-4 with min <= max, got 3-2", errors);
         Assert.Contains("zones.json 'z2': no equipment in tiers 4-4", errors);
+        Assert.Contains("zones.json 'z2': gate has unknown encounter 'ghost_boss'", errors);
+        Assert.Contains("zones.json 'z2': gate firstWinGold must not be negative, got -1", errors);
+        Assert.Contains("zones.json 'z2': gate gives unknown item 'ghost_item'", errors);
         Assert.Contains("recruits.json 'r': needs at least one name", errors);
         Assert.Contains("recruits.json 'r': statsMax must be at least statsMin for every stat", errors);
         Assert.Contains("recruits.json 'r': price must not be negative, got -1", errors);

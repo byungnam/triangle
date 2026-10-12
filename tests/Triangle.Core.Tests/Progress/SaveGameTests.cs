@@ -107,7 +107,7 @@ public sealed class SaveGameTests : IDisposable
     {
         var json = SaveGame.Serialize(SampleCompany());
 
-        Assert.Contains("\"version\": 8", json);
+        Assert.Contains("\"version\": 9", json);
         Assert.Contains("\"roster\"", json);
         Assert.DoesNotContain("\"party\"", json);
         Assert.Contains("\"name\": \"이졸데\"", json);
@@ -121,7 +121,7 @@ public sealed class SaveGameTests : IDisposable
     [Fact]
     public void Rejects_older_and_unknown_versions()
     {
-        foreach (var version in new[] { 1, 2, 3, 4, 5, 6, 99 })
+        foreach (var version in new[] { 1, 2, 3, 4, 5, 6, 7, 99 })
         {
             var e = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize($$"""{ "version": {{version}}, "party": [] }""", Data));
             Assert.Contains($"unsupported version {version}", Assert.Single(e.Errors));
@@ -129,27 +129,55 @@ public sealed class SaveGameTests : IDisposable
     }
 
     [Fact]
-    public void Converts_version_7_by_dropping_permadeath_records()
+    public void Converts_version_8_with_no_cleared_zones_or_gates()
     {
         var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
         var company = StartingCompany.Create(data, seed: 11);
-        ExpeditionRules.Start(company, data, data.Zones.Values.OrderBy(z => z.Difficulty).First().Id);
+        ExpeditionRules.Start(company, data, Depths.Ordered(data)[0].Id);
         ExpeditionRules.ApplyResult(company, data, ExpeditionRules.Fight(company, data));
-        var v7 = SaveGame.Serialize(company)
-            .Replace("\"version\": 8", "\"version\": 7")
-            .Replace("\"battleIndex\": 1,", "\"battleIndex\": 1, \"deaths\": [ \"이졸데\" ],")
-            .Replace("\"downed\": [", "\"deaths\": [], \"destroyed\": [ \"old_sword\" ], \"recovered\": [], \"downed\": [");
-        Assert.Contains("\"destroyed\"", v7);
-        Assert.Contains("\"deaths\": [ \"이졸데\" ]", v7);
+        var root = System.Text.Json.Nodes.JsonNode.Parse(SaveGame.Serialize(company))!.AsObject();
+        root["version"] = 8;
+        root.Remove("clearedZones");
+        root.Remove("gates");
+        var v8 = root.ToJsonString();
 
-        var loaded = SaveGame.Deserialize(v7, data);
+        var loaded = SaveGame.Deserialize(v8, data);
 
         Assert.Equal(company.Expedition!.Members, loaded.Expedition!.Members);
-        Assert.Equal(company.Expedition.LastBattle!.Downed, loaded.Expedition.LastBattle!.Downed);
-        var json = SaveGame.Serialize(loaded);
-        Assert.Contains("\"version\": 8", json);
-        Assert.DoesNotContain("\"deaths\"", json);
-        Assert.DoesNotContain("\"destroyed\"", json);
+        Assert.False(loaded.Expedition.Gate);
+        Assert.Empty(loaded.ClearedZones);
+        Assert.Empty(loaded.GateRecords);
+        Assert.Contains("\"version\": 9", SaveGame.Serialize(loaded));
+    }
+
+    [Fact]
+    public void Cleared_zones_gate_records_and_gate_expedition_round_trip()
+    {
+        var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
+        var first = Depths.Ordered(data)[0];
+        var company = StartingCompany.Create(data, seed: 11);
+        company.MarkCleared(first.Id);
+        company.RecordGateWin(first.Id, new GateResult(Members: 3, GearTier: 1, Downed: 1));
+        ExpeditionRules.Start(company, data, first.Id, gate: true);
+
+        var loaded = SaveGame.Deserialize(SaveGame.Serialize(company), data);
+
+        Assert.True(loaded.HasCleared(first.Id));
+        Assert.Equal(new GateRecord(1, 3, 1, 1), loaded.GateRecords[first.Id]);
+        Assert.True(loaded.Expedition!.Gate);
+        Assert.Equal(first.Gate!.EncounterId, ExpeditionRules.NextEncounter(loaded.Expedition, data));
+    }
+
+    [Fact]
+    public void Rejects_unknown_zones_in_progress()
+    {
+        var e = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(
+            Save(Member(""), extra: """, "clearedZones": [ "nowhere" ], "gates": { "elsewhere": { "wins": 0, "fewestMembers": 1, "lowestGearTier": 0, "fewestDowned": 0 } }"""),
+            Data));
+
+        Assert.Contains(e.Errors, x => x.Contains("clearedZones has unknown zone 'nowhere'"));
+        Assert.Contains(e.Errors, x => x.Contains("gates has unknown zone 'elsewhere'"));
+        Assert.Contains(e.Errors, x => x.Contains("gate record of 'elsewhere' needs wins >= 1"));
     }
 
     [Fact]

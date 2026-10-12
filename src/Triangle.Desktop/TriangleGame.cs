@@ -160,10 +160,10 @@ public class TriangleGame : Game
 
     private void OpenCraft() => _scene = new CraftScene(_ui, Session, Bounds, back: ShowHome);
 
-    /// <summary>출정한다. 원정 상태를 바로 저장한다.</summary>
-    private void Depart(string zoneId)
+    /// <summary>출정한다 (관문 도전이면 gate). 원정 상태를 바로 저장한다.</summary>
+    private void Depart(string zoneId, bool gate)
     {
-        ExpeditionRules.Start(Company, Data, zoneId);
+        ExpeditionRules.Start(Company, Data, zoneId, gate: gate);
         Session.AutoSave();
         ShowHome();
     }
@@ -175,9 +175,8 @@ public class TriangleGame : Game
     private void NextBattle()
     {
         var expedition = Company.Expedition!;
-        var zone = Data.Zones[expedition.ZoneId];
         var encounterId = ExpeditionRules.NextEncounter(expedition, Data);
-        var title = $"전투 {expedition.BattleIndex + 1}/{zone.MaxBattles}";
+        var title = expedition.Gate ? "관문" : $"전투 {expedition.BattleIndex + 1}/{ExpeditionRules.MaxBattles(expedition, Data)}";
 
         var result = ExpeditionRules.Fight(Company, Data);
         var summary = ExpeditionRules.ApplyResult(Company, Data, result);
@@ -190,6 +189,7 @@ public class TriangleGame : Game
         {
             var (text, color) = ExpeditionText.Summary(Data, summary);
             lines.Add(new LogLine(text, color));
+            lines.AddRange(ExpeditionText.GateWin(Data, summary));
             Session.Notice = (text, color);
         }
 

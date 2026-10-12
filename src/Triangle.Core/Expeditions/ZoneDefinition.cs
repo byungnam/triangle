@@ -21,6 +21,30 @@ public sealed record ZoneDefinition
     public required IReadOnlyList<ZoneEncounter> Encounters { get; init; }
 
     public ZoneRewards Rewards { get; init; } = new();
+
+    /// <summary>
+    /// 관문 보스. 지역을 한 번 클리어하면 도전할 수 있고, 이기면 다음 깊이(난이도가 다음인 지역)가 열린다.
+    /// 없으면 다음 깊이가 처음부터 열려 있다.
+    /// </summary>
+    public GateDefinition? Gate { get; init; }
+}
+
+/// <summary>
+/// 관문 보스: 늘 같은 적 조합 하나와 한 번 싸운다. 성장으로도, 전술로도 넘을 수 있다.
+/// 보상은 처음 이길 때만 받고, 다시 이기면 도전 기록(<see cref="Progress.GateRecord"/>)만 갱신한다.
+/// </summary>
+public sealed record GateDefinition
+{
+    public required string EncounterId { get; init; }
+
+    /// <summary>처음 이기면 보여주는 단서 ("왜 삼각형인가"를 조금씩 드러낸다).</summary>
+    public string? Clue { get; init; }
+
+    /// <summary>처음 이기면 받는 골드.</summary>
+    public int FirstWinGold { get; init; }
+
+    /// <summary>처음 이기면 받는 아이템 ID (같은 ID를 여러 번 적으면 그만큼).</summary>
+    public IReadOnlyList<string> FirstWinItems { get; init; } = [];
 }
 
 /// <param name="Weight">가중치 (1 이상). 지역의 가중치 합에 대한 비율로 나온다.</param>

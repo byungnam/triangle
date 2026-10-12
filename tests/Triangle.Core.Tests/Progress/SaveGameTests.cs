@@ -90,7 +90,7 @@ public sealed class SaveGameTests : IDisposable
             Assert.Equal(o.Equipment, l.Equipment);
             Assert.Equal(o.MasteryXp, l.MasteryXp);
             Assert.Equal(o.SkillLevels, l.SkillLevels);
-            for (var set = 0; set < PartyMember.TacticSetCount; set++)
+            for (var set = 0; set < original.TacticSetNames.Count; set++)
             {
                 Assert.Equal(o.TacticSets[set], l.TacticSets[set]);
             }
@@ -98,6 +98,7 @@ public sealed class SaveGameTests : IDisposable
 
         Assert.Equal(["b", "a"], loaded.Lineup);
         Assert.Equal((120, 1, 77), (loaded.Gold, loaded.ActiveTacticSet, loaded.NextSeed));
+        Assert.Equal(original.TacticSetNames, loaded.TacticSetNames);
         Assert.Equal(2, loaded.StashCount("silver_relic"));
     }
 
@@ -257,12 +258,42 @@ public sealed class SaveGameTests : IDisposable
     public void Rejects_bad_tactic_set_data()
     {
         var tooMany = Member(""", "tacticSets": [ [], [], [] ]""");
-        var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Save(tooMany), Data)).Errors;
-        Assert.Contains("save member 'a': at most 2 tactic sets, got 3", errors);
+        var named = Save(tooMany, extra: """, "tacticSetNames": [ "하나", "둘" ]""");
+        var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(named, Data)).Errors;
+        Assert.Contains("save member 'a': has 3 tactic sets but the company has 2", errors);
+
+        var badNames = Save(Member(""), extra: $$""", "tacticSetNames": [ " ", "{{new string('가', 21)}}" ]""");
+        errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(badNames, Data)).Errors;
+        Assert.Contains("save: tactic set name must not be empty", errors);
+        Assert.Contains(errors, e => e.Contains("longer than 20 characters"));
+
+        errors = Assert.Throws<SaveGameException>(() =>
+            SaveGame.Deserialize(Save(Member(""), extra: """, "tacticSetNames": []"""), Data)).Errors;
+        Assert.Contains("save: tacticSetNames needs at least one set", errors);
 
         var badActive = Save(Member(""), extra: """, "activeTacticSet": 5""");
         errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(badActive, Data)).Errors;
-        Assert.Contains("save: activeTacticSet must be 0-1, got 5", errors);
+        Assert.Contains("save: activeTacticSet must be 0-1, got 5", errors); // 이름이 없는 옛 파일은 두 벌
+    }
+
+    [Fact]
+    public void Files_without_set_names_load_as_set_1_and_2_and_more_sets_round_trip()
+    {
+        var member = Member(""", "tacticSets": [ [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "strike" } ] ]""");
+        var company = SaveGame.Deserialize(Save(member, extra: """, "activeTacticSet": 1"""), Data);
+
+        Assert.Equal(["세트 1", "세트 2"], company.TacticSetNames);
+        Assert.Equal(1, company.ActiveTacticSet);
+        Assert.Empty(company.Roster[0].TacticSets[1]);
+
+        company.AddTacticSet("보스전");
+        company.AddTacticSet();
+        company.RenameTacticSet(0, "외곽");
+        var loaded = SaveGame.Deserialize(SaveGame.Serialize(company), Data);
+
+        Assert.Equal(["외곽", "세트 2", "보스전", "세트 4"], loaded.TacticSetNames);
+        Assert.Equal(3, loaded.ActiveTacticSet);
+        Assert.Equal(4, loaded.Roster[0].TacticSets.Count);
     }
 
     [Fact]

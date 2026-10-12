@@ -15,6 +15,8 @@ internal static class TacticText
         Condition.AnyAllyMpAtLeast, Condition.AnyAllyMpAtMost, Condition.AnyAllyMpAmountAtLeast, Condition.AnyAllyMpAmountAtMost,
         Condition.AllyAverageHpAtLeast, Condition.AllyAverageHpAtMost, Condition.AllyAverageHpAmountAtLeast, Condition.AllyAverageHpAmountAtMost,
         Condition.AllyAverageMpAtLeast, Condition.AllyAverageMpAtMost, Condition.AllyAverageMpAmountAtLeast, Condition.AllyAverageMpAmountAtMost,
+        Condition.EnemyAliveAtLeast, Condition.EnemyAliveAtMost, Condition.EnemyDeadAtLeast, Condition.EnemyDeadAtMost,
+        Condition.EnemyFrontAtLeast, Condition.EnemyFrontAtMost, Condition.EnemyBackAtLeast, Condition.EnemyBackAtMost,
         Condition.MaxUses, Condition.FromTurn, Condition.UntilTurn, Condition.OnTurn, Condition.EveryNthTurn,
     ];
 
@@ -26,6 +28,7 @@ internal static class TacticText
         Condition.UntilTurn => "지정 턴까지",
         Condition.OnTurn => "지정 턴에만",
         Condition.EveryNthTurn => "턴 주기",
+        _ when condition.IsEnemyCount() => $"{EnemySubject(condition)} {(IsAtLeast(condition) ? "이상" : "이하")}",
         _ => $"{Subject(condition)} {(IsHp(condition) ? "HP" : "MP")} {(IsAtLeast(condition) ? "이상" : "이하")} ({(condition.IsAmount() ? "수치" : "%")})",
     };
 
@@ -36,6 +39,7 @@ internal static class TacticText
     {
         _ when condition.IsPercent() => "%",
         _ when condition.IsAmount() => IsHp(condition) ? "HP" : "MP",
+        _ when condition.IsEnemyCount() => "명",
         Condition.MaxUses => "회",
         Condition.EveryNthTurn => "턴마다",
         Condition.Always => "",
@@ -44,7 +48,7 @@ internal static class TacticText
 
     /// <summary>
     /// 입력한 값이 이 조건에 맞지 않으면 이유, 맞으면 null.
-    /// 백분율은 0–100, 턴 주기는 1 이상, 횟수·턴은 0 이상. 수치 조건은 검증하지 않는다.
+    /// 백분율은 0–100, 턴 주기는 1 이상, 횟수·턴·인원수는 0 이상. 수치 조건은 검증하지 않는다.
     /// </summary>
     public static string? ValidationError(Condition condition, int value) => condition switch
     {
@@ -60,6 +64,7 @@ internal static class TacticText
         Condition.Always => 0,
         _ when condition.IsPercent() => 50,
         _ when condition.IsAmount() => IsHp(condition) ? 300 : 50,
+        _ when condition.IsEnemyCount() => 2,
         Condition.EveryNthTurn => 2,
         _ => 1,
     };
@@ -73,6 +78,7 @@ internal static class TacticText
         Condition.Always => "none",
         _ when condition.IsPercent() => "percent",
         _ when condition.IsAmount() => IsHp(condition) ? "hp" : "mp",
+        _ when condition.IsEnemyCount() => "count",
         Condition.MaxUses => "uses",
         Condition.EveryNthTurn => "period",
         _ => "turn",
@@ -83,6 +89,14 @@ internal static class TacticText
         var n when n.StartsWith("Self") => "자신",
         var n when n.StartsWith("AnyAlly") => "아군 누군가",
         _ => "아군 평균",
+    };
+
+    private static string EnemySubject(Condition condition) => condition.ToString() switch
+    {
+        var n when n.StartsWith("EnemyAlive") => "살아있는 적",
+        var n when n.StartsWith("EnemyDead") => "쓰러진 적",
+        var n when n.StartsWith("EnemyFront") => "적 전열",
+        _ => "적 후열",
     };
 
     private static bool IsHp(Condition condition) => condition.ToString().Contains("Hp");

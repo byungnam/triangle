@@ -363,6 +363,12 @@ public sealed class CombatSimulator
         var percent = tactic.Value;
         var amount = tactic.Value;
         var allies = Living(actor.Side).ToList();
+        var enemySide = Opposite(actor.Side);
+
+        int Enemies(Func<Combatant, bool> match) => _combatants.Count(c => c.Side == enemySide && match(c));
+        int Alive() => Enemies(c => c.IsAlive);
+        int Dead() => Enemies(c => !c.IsAlive && !c.Dismissed); // 지속 시간이 끝나 사라진 소환물은 쓰러진 것이 아니다
+        int InRow(Row row) => Enemies(c => c.IsAlive && c.Row == row);
 
         int Hp(Combatant c) => Ratio.CompareToPercent(c.Hp, c.MaxHp, percent);
         int Mp(Combatant c) => Ratio.CompareToPercent(c.Mp, c.MaxMp, percent);
@@ -409,6 +415,15 @@ public sealed class CombatSimulator
             Condition.AllyAverageHpAmountAtMost => allies.Sum(a => (long)a.Hp) <= (long)amount * allies.Count,
             Condition.AllyAverageMpAmountAtLeast => allies.Sum(a => (long)a.Mp) >= (long)amount * allies.Count,
             Condition.AllyAverageMpAmountAtMost => allies.Sum(a => (long)a.Mp) <= (long)amount * allies.Count,
+
+            Condition.EnemyAliveAtLeast => Alive() >= tactic.Value,
+            Condition.EnemyAliveAtMost => Alive() <= tactic.Value,
+            Condition.EnemyDeadAtLeast => Dead() >= tactic.Value,
+            Condition.EnemyDeadAtMost => Dead() <= tactic.Value,
+            Condition.EnemyFrontAtLeast => InRow(Row.Front) >= tactic.Value,
+            Condition.EnemyFrontAtMost => InRow(Row.Front) <= tactic.Value,
+            Condition.EnemyBackAtLeast => InRow(Row.Back) >= tactic.Value,
+            Condition.EnemyBackAtMost => InRow(Row.Back) <= tactic.Value,
 
             _ => throw new InvalidOperationException($"Unknown condition {tactic.Condition}."),
         };

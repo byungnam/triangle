@@ -60,6 +60,8 @@ public static class DataReferences
             var at = $"{GameDataLoader.ZonesFile} '{z.Id}'";
             Add(z.Encounters.Any(e => e.EncounterId == id), $"{at}: encounters");
             Add(z.Rewards.ItemDrops.Any(d => d.ItemId == id), $"{at}: itemDrops");
+            Add(z.Boss?.EncounterId == id, $"{at}: boss");
+            Add(z.Boss?.FirstClearItems.Contains(id) == true, $"{at}: boss firstClearItems");
         }
 
         foreach (var r in data.Recipes.Values)

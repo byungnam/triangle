@@ -59,7 +59,9 @@ public static class DataLint
 
     private static void CheckEncounters(GameData data, List<string> warnings)
     {
-        var used = data.Zones.Values.SelectMany(z => z.Encounters).Select(e => e.EncounterId).ToHashSet();
+        var used = data.Zones.Values.SelectMany(z => z.Encounters).Select(e => e.EncounterId)
+            .Concat(data.Zones.Values.Select(z => z.Boss?.EncounterId).OfType<string>())
+            .ToHashSet();
         foreach (var encounter in data.Encounters.Values.Where(e => !used.Contains(e.Id)))
         {
             warnings.Add($"{GameDataLoader.EncountersFile} '{encounter.Id}': no zone uses it");
@@ -70,7 +72,9 @@ public static class DataLint
     private static void CheckItems(GameData data, List<string> warnings)
     {
         var rewards = data.Zones.Values.Select(z => z.Rewards).ToList();
-        var dropped = rewards.SelectMany(r => r.ItemDrops).Select(d => d.ItemId).ToHashSet();
+        var dropped = rewards.SelectMany(r => r.ItemDrops).Select(d => d.ItemId)
+            .Concat(data.Zones.Values.SelectMany(z => z.Boss?.FirstClearItems ?? []))
+            .ToHashSet();
         var tierDrops = rewards.Select(r => r.EquipmentDrop).OfType<TierDrop>().ToList();
         var recruitGear = data.Recruits.Values.SelectMany(r => r.Equipment.Values).ToHashSet();
         var materials = data.Recipes.Values.SelectMany(r => r.Materials).Select(m => m.ItemId).ToHashSet();

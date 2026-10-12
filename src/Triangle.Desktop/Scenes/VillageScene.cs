@@ -55,7 +55,9 @@ internal sealed class VillageScene : IScene
         _openCraft = openCraft;
         _depart = depart;
         _quit = quit;
-        _zoneId = session.Data.Zones.Values.OrderBy(z => z.Difficulty).First().Id;
+        _zoneId = Depths.Ordered(session.Data)
+            .LastOrDefault(z => Depths.WhyZoneLocked(session.Company, session.Data, z.Id) is null)?.Id
+            ?? Depths.Ordered(session.Data)[0].Id;
     }
 
     private Company Company => _session.Company;
@@ -238,28 +240,50 @@ internal sealed class VillageScene : IScene
     }
 
 
-    /// <summary>전투지역 목록 (난이도순). 고른 지역으로 출정한다.</summary>
+    /// <summary>
+    /// 전투지역 목록 (깊이순). 지역마다 보스, 잠긴 이유, 클리어 기록과 단서를 보여준다.
+    /// 잠긴 지역도 고를 수 있고, 출정 버튼 옆에 잠긴 이유를 보여준다.
+    /// </summary>
     private Widget BuildZones(Rectangle area)
     {
+        var data = _session.Data;
         var list = new VerticalStackPanel { Spacing = 8 };
         list.Widgets.Add(Label("전투지역", 20, Theme.Enemy, bold: true));
-        var rules = Label("출정하면 끝날 때까지 돌아오거나 전술을 바꿀 수 없습니다. 전멸해도 이미 얻은 전리품은 남고, 쓰러진 멤버는 원정이 끝나면 회복합니다.", 14, Theme.TextDim);
-        rules.Wrap = true;
-        rules.Width = area.Width - 20;
-        list.Widgets.Add(rules);
+        list.Widgets.Add(Wrapped("출정하면 끝날 때까지 돌아오거나 전술을 바꿀 수 없습니다. 전멸해도 이미 얻은 전리품은 남고, 쓰러진 멤버는 원정이 끝나면 회복합니다. 마지막 전투의 보스까지 이겨 지역을 클리어하면 다음 깊이가 열립니다.", 14, Theme.TextDim, area.Width - 20));
 
-        foreach (var zone in _session.Data.Zones.Values.OrderBy(z => z.Difficulty))
+        foreach (var zone in Depths.Ordered(data))
         {
+            var locked = Depths.WhyZoneLocked(Company, data, zone.Id);
             var selected = zone.Id == _zoneId;
+            var cleared = Company.ClearRecords.GetValueOrDefault(zone.Id);
             var content = new VerticalStackPanel { Spacing = 3 };
-            content.Widgets.Add(Label(zone.Name, 20, selected ? Theme.Text : Theme.Ally, bold: true));
-            content.Widgets.Add(Label($"난이도 {zone.Difficulty} · 전투 {zone.MaxBattles}회", 15, Theme.TextDim));
-            if (zone.Description is { } description)
+            var title = cleared is not null ? $"{zone.Name} · 클리어 {cleared.Clears}회" : zone.Name;
+            content.Widgets.Add(Label(title, 20, locked is not null ? Theme.TextDim : selected ? Theme.Text : Theme.Ally, bold: true));
+            var boss = zone.Boss is { } b ? $" · 보스 {data.Encounters[b.EncounterId].Name}" : "";
+            content.Widgets.Add(Label($"난이도 {zone.Difficulty} · 전투 {zone.MaxBattles}회{boss}", 15, Theme.TextDim));
+            if (locked is not null)
             {
-                var label = Label(description, 14, Theme.TextDim);
-                label.Wrap = true;
-                label.Width = area.Width - 40;
-                content.Widgets.Add(label);
+                content.Widgets.Add(Label($"잠김: {locked}", 14, Theme.Enemy));
+            }
+            else if (cleared is not null)
+            {
+                content.Widgets.Add(Label($"기록: {ExpeditionText.ClearRecord(cleared)}", 14, Theme.Cover));
+                if (zone.Boss?.Clue is { } clue)
+                {
+                    content.Widgets.Add(Wrapped($"단서: {clue}", 14, Theme.TextDim, area.Width - 40));
+                }
+            }
+            else
+            {
+                if (zone.Description is { } description)
+                {
+                    content.Widgets.Add(Wrapped(description, 14, Theme.TextDim, area.Width - 40));
+                }
+
+                if (zone.Boss is { } first && ExpeditionText.FirstClearReward(data, first) is { } reward)
+                {
+                    content.Widgets.Add(Label($"첫 클리어 보상: {reward}", 14, Theme.Cover));
+                }
             }
 
             var button = StyledButton(content, selected ? Theme.Selected : Theme.Panel, Theme.ButtonHover);
@@ -274,6 +298,14 @@ internal sealed class VillageScene : IScene
         }
 
         return new ScrollViewer { Content = list, ShowHorizontalScrollBar = false };
+    }
+
+    private Label Wrapped(string text, int size, Color color, int width)
+    {
+        var label = Label(text, size, color);
+        label.Wrap = true;
+        label.Width = width;
+        return label;
     }
 
     private Widget BuildBottomBar()

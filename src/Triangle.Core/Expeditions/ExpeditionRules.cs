@@ -9,6 +9,7 @@ namespace Triangle.Core.Expeditions;
 /// <summary>
 /// 원정 규칙. 상태는 <see cref="Company.Expedition"/>에 있고, 여기 함수들이 바꾼다.
 /// 흐름: <see cref="Start"/> → (<see cref="Fight"/> → <see cref="ApplyResult"/>) 반복 → 끝 (클리어, 전멸, 무승부).
+/// 보스가 있는 지역은 마지막 전투가 늘 보스다. 클리어하면 기록을 남기고 다음 깊이가 열린다(<see cref="Depths"/>).
 /// 출정한 뒤에는 중간에 돌아오거나 전술을 바꿀 수 없다: 전술은 출정 전에만 짠다.
 /// 같은 세이브에서 같은 선택을 하면 결과도 같다: 인카운터, 전투, 전리품의 시드가
 /// 모두 원정 시드와 전투 번호에서 나온다.
@@ -31,6 +32,11 @@ public static class ExpeditionRules
         if (!data.Zones.ContainsKey(zoneId))
         {
             return "없는 지역입니다";
+        }
+
+        if (Depths.WhyZoneLocked(company, data, zoneId) is { } locked)
+        {
+            return locked;
         }
 
         if (company.Lineup.Count == 0)
@@ -60,10 +66,22 @@ public static class ExpeditionRules
         return expedition;
     }
 
-    /// <summary>다음 전투에서 만날 인카운터. 지역의 가중치 목록에서 시드로 고른다 (결정적).</summary>
+    /// <summary>다음 전투가 지역 보스인가 (보스가 있는 지역의 마지막 전투).</summary>
+    public static bool IsBossBattle(Expedition expedition, GameData data)
+    {
+        var zone = data.Zones[expedition.ZoneId];
+        return zone.Boss is not null && expedition.BattleIndex == zone.MaxBattles - 1;
+    }
+
+    /// <summary>다음 전투에서 만날 인카운터. 지역의 가중치 목록에서 시드로 고른다 (결정적). 마지막 전투는 지역 보스다.</summary>
     public static string NextEncounter(Expedition expedition, GameData data)
     {
         var zone = data.Zones[expedition.ZoneId];
+        if (IsBossBattle(expedition, data))
+        {
+            return zone.Boss!.EncounterId;
+        }
+
         var random = new Random(StreamSeed(expedition, EncounterStream));
         var roll = random.Next(zone.Encounters.Sum(e => e.Weight));
         foreach (var encounter in zone.Encounters)
@@ -119,6 +137,7 @@ public static class ExpeditionRules
     /// - 이기면 전리품(골드, 정해진 아이템, 티어 범위의 장비)을 굴려 들고 있는 전리품에 더한다. 마지막 전투면 클리어 보너스를 받고 끝난다.
     /// - 쓰러진 멤버는 남은 전투에 나가지 못할 뿐 잃지 않는다. 장비도 그대로다.
     /// - 지면(전멸) 끝난다. 무승부는 강제 귀환이다. 어느 쪽이든 이미 얻은 전리품은 확정된다.
+    /// - 클리어하면 클리어 기록(인원, 장비 등급, 쓰러짐)을 남기고, 처음이면 보스의 첫 클리어 보상을 더 받는다.
     /// </summary>
     public static ExpeditionSummary? ApplyResult(Company company, GameData data, CombatResult result)
     {
@@ -166,9 +185,23 @@ public static class ExpeditionRules
             _ when number >= zone.MaxBattles => ExpeditionEnd.Cleared,
             _ => null,
         };
+        ZoneClear? clear = null;
         if (end == ExpeditionEnd.Cleared)
         {
             gold += zone.Rewards.ClearBonusGold;
+            var gearTier = expedition.Members
+                .SelectMany(m => company.Member(m.Id).WornItems(data))
+                .Select(w => w.Item.Tier)
+                .DefaultIfEmpty(0)
+                .Max();
+            var clearResult = new ClearResult(expedition.Members.Count, gearTier, expedition.Members.Count(m => m.Down));
+            var (first, improved) = company.RecordClear(zone.Id, clearResult);
+            clear = new ZoneClear(clearResult, first, improved);
+            if (first && zone.Boss is { } boss)
+            {
+                gold += boss.FirstClearGold;
+                drops.AddRange(boss.FirstClearItems);
+            }
         }
 
         expedition.CarriedGold += gold;
@@ -188,7 +221,7 @@ public static class ExpeditionRules
             Downed = downed.Select(m => m.Name).ToList(),
         };
 
-        return end is { } e ? Finish(company, data, e) : null;
+        return end is { } e ? Finish(company, data, e) with { Clear = clear } : null;
     }
 
     /// <summary>남은 전투가 있는가 (이겼고 마지막 전투가 아니면 계속할 수 있다).</summary>

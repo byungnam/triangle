@@ -105,5 +105,14 @@ public enum ExpeditionEnd
 
 /// <summary>끝난 원정의 결과 (마을에 보여준다).</summary>
 /// <param name="Gold">확정된 골드.</param>
-/// <param name="Items">확정된 아이템 ID별 개수.</param>
-public sealed record ExpeditionSummary(string ZoneId, ExpeditionEnd End, int Battles, int Gold, IReadOnlyDictionary<string, int> Items);
+/// <param name="Items">확정된 아이템 ID별 개수 (첫 클리어 보상 포함).</param>
+public sealed record ExpeditionSummary(string ZoneId, ExpeditionEnd End, int Battles, int Gold, IReadOnlyDictionary<string, int> Items)
+{
+    /// <summary>클리어 결과. 클리어했을 때만 있다.</summary>
+    public ZoneClear? Clear { get; init; }
+}
+
+/// <summary>클리어한 원정.</summary>
+/// <param name="FirstClear">처음 클리어했다 (첫 클리어 보상을 받고 다음 깊이가 열린다).</param>
+/// <param name="Improved">이번에 좋아진 클리어 기록 항목 (첫 클리어면 비어 있다).</param>
+public sealed record ZoneClear(Progress.ClearResult Result, bool FirstClear, IReadOnlyList<Progress.ClearRecordKind> Improved);

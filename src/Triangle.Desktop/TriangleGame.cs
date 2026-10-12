@@ -177,7 +177,9 @@ public class TriangleGame : Game
         var expedition = Company.Expedition!;
         var zone = Data.Zones[expedition.ZoneId];
         var encounterId = ExpeditionRules.NextEncounter(expedition, Data);
-        var title = $"전투 {expedition.BattleIndex + 1}/{zone.MaxBattles}";
+        var title = ExpeditionRules.IsBossBattle(expedition, Data)
+            ? $"전투 {expedition.BattleIndex + 1}/{zone.MaxBattles} · 보스"
+            : $"전투 {expedition.BattleIndex + 1}/{zone.MaxBattles}";
 
         var result = ExpeditionRules.Fight(Company, Data);
         var summary = ExpeditionRules.ApplyResult(Company, Data, result);
@@ -190,6 +192,7 @@ public class TriangleGame : Game
         {
             var (text, color) = ExpeditionText.Summary(Data, summary);
             lines.Add(new LogLine(text, color));
+            lines.AddRange(ExpeditionText.Clear(Data, summary));
             Session.Notice = (text, color);
         }
 

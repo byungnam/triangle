@@ -45,11 +45,15 @@ public sealed record SaveFile
     /// <summary>진행 중인 원정. 마을에 있으면 없다.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public SavedExpedition? Expedition { get; init; }
+
+    /// <summary>클리어한 지역의 기록 (지역 ID별).</summary>
+    public IReadOnlyDictionary<string, ClearRecord> Clears { get; init; } = new Dictionary<string, ClearRecord>();
 }
 
 public sealed record SavedExpedition
 {
     public required string ZoneId { get; init; }
+
     public required int Seed { get; init; }
     public required int BattleIndex { get; init; }
     public required IReadOnlyList<ExpeditionMember> Members { get; init; }
@@ -105,10 +109,12 @@ public static class SaveGame
     ///    사망·파괴·회수 목록(deaths, destroyed, recovered)을 버린다. 그 이전은 읽지 않는다.
     ///    2026-10-10: 전술 세트 수 제한(2벌)을 없애고 세트 이름(tacticSetNames)을 덧붙였다. 이전 파일은 그대로 읽히므로
     ///    버전은 올리지 않았다(이름이 없으면 "세트 1", "세트 2").
+    /// 9: 지역 보스와 깊이 (2026-10-12). 클리어한 지역의 기록(clears). 버전 8은 아무 지역도 클리어하지 않은 것으로 읽는다.
+    ///    그 이전은 읽지 않는다.
     /// </summary>
-    public const int CurrentVersion = 8;
+    public const int CurrentVersion = 9;
 
-    private const int OldestReadableVersion = 7;
+    private const int OldestReadableVersion = 8;
 
     public static string Serialize(Company company)
     {
@@ -134,6 +140,7 @@ public static class SaveGame
                 }
                 : null,
             Stash = new SortedDictionary<string, int>(company.Stash.ToDictionary()),
+            Clears = new SortedDictionary<string, ClearRecord>(company.ClearRecords.ToDictionary(), StringComparer.Ordinal),
             Lineup = company.Lineup.ToList(),
             Roster = company.Roster.Select(m => new SavedMember
             {
@@ -159,9 +166,9 @@ public static class SaveGame
             throw new SaveGameException([$"save: unsupported version {version} (expected {OldestReadableVersion}-{CurrentVersion})"]);
         }
 
-        if (version == 7)
+        if (version == 8)
         {
-            json = ConvertFromVersion7(json);
+            json = ConvertFromVersion8(json);
         }
 
         SaveFile? file;
@@ -196,7 +203,8 @@ public static class SaveGame
             saved is null
                 ? null
                 : new Expedition(saved.ZoneId, saved.Seed, saved.BattleIndex, saved.Members, saved.CarriedGold, saved.CarriedItems, saved.LastBattle),
-            TacticSetNames(file));
+            TacticSetNames(file),
+            file.Clears);
     }
 
     private static int ReadVersion(string json)
@@ -221,23 +229,12 @@ public static class SaveGame
     }
 
     /// <summary>
-    /// 버전 7 → 8: 영구 사망 기록을 버린다. 형식이 맞지 않는 부분은 그대로 두어 읽을 때 오류로 보고한다.
+    /// 버전 8 → 9: 새 필드(clears)는 비어 있는 것으로 읽으므로 버전만 바꾼다.
     /// </summary>
-    private static string ConvertFromVersion7(string json)
+    private static string ConvertFromVersion8(string json)
     {
         var root = JsonNode.Parse(json)!.AsObject();
         root["version"] = CurrentVersion;
-        if (root["expedition"] is JsonObject expedition)
-        {
-            expedition.Remove("deaths");
-            if (expedition["lastBattle"] is JsonObject lastBattle)
-            {
-                lastBattle.Remove("deaths");
-                lastBattle.Remove("destroyed");
-                lastBattle.Remove("recovered");
-            }
-        }
-
         return root.ToJsonString();
     }
 
@@ -339,6 +336,19 @@ public static class SaveGame
         if (file.Expedition is { } expedition)
         {
             ValidateExpedition(expedition, file, data, errors);
+        }
+
+        foreach (var (zoneId, record) in file.Clears)
+        {
+            if (!data.Zones.ContainsKey(zoneId))
+            {
+                errors.Add($"save: clears has unknown zone '{zoneId}'");
+            }
+
+            if (record.Clears < 1 || record.FewestMembers < 1 || record.LowestGearTier < 0 || record.FewestDowned < 0)
+            {
+                errors.Add($"save: clear record of '{zoneId}' needs clears >= 1, fewestMembers >= 1, lowestGearTier >= 0 and fewestDowned >= 0");
+            }
         }
 
         if (errors.Count > 0)

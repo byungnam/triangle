@@ -25,6 +25,7 @@ public sealed class Company
     private readonly Dictionary<string, int> _stash;
     private readonly List<RecruitOffer> _recruitOffers;
     private readonly List<string> _tacticSetNames;
+    private readonly Dictionary<string, ClearRecord> _clearRecords;
     private int _activeTacticSet;
 
     /// <param name="tacticSetNames">전술 세트 이름. null이면 멤버가 가진 세트 수만큼 "세트 1", "세트 2"…로 짓는다.</param>
@@ -38,7 +39,8 @@ public sealed class Company
         IEnumerable<RecruitOffer>? recruitOffers = null,
         int nextRecruitNumber = 1,
         Expedition? expedition = null,
-        IEnumerable<string>? tacticSetNames = null)
+        IEnumerable<string>? tacticSetNames = null,
+        IReadOnlyDictionary<string, ClearRecord>? clearRecords = null)
     {
         _roster = roster.ToList();
         _lineup = lineup.ToList();
@@ -78,6 +80,7 @@ public sealed class Company
         _recruitOffers = recruitOffers?.ToList() ?? [];
         NextRecruitNumber = nextRecruitNumber;
         Expedition = expedition;
+        _clearRecords = clearRecords?.ToDictionary() ?? [];
     }
 
     /// <summary>보유한 캐릭터 모두.</summary>
@@ -178,6 +181,25 @@ public sealed class Company
     public Expedition? Expedition { get; internal set; }
 
     public bool OnExpedition => Expedition is not null;
+
+    /// <summary>클리어한 지역의 기록 (지역 ID별). 기록이 있으면 그 지역을 클리어한 것이다.</summary>
+    public IReadOnlyDictionary<string, ClearRecord> ClearRecords => _clearRecords;
+
+    public bool HasCleared(string zoneId) => _clearRecords.ContainsKey(zoneId);
+
+    /// <summary>클리어한 원정을 기록한다. 첫 클리어인지와 좋아진 기록 항목을 돌려준다.</summary>
+    internal (bool FirstClear, IReadOnlyList<ClearRecordKind> Improved) RecordClear(string zoneId, ClearResult result)
+    {
+        if (!_clearRecords.TryGetValue(zoneId, out var record))
+        {
+            _clearRecords[zoneId] = ClearRecord.First(result);
+            return (true, []);
+        }
+
+        var (updated, improved) = record.Add(result);
+        _clearRecords[zoneId] = updated;
+        return (false, improved);
+    }
 
     public PartyMember Member(string id) => _roster.Single(m => m.Id == id);
 

@@ -67,8 +67,13 @@ public class ExpeditionTests
         new(id, id.ToUpperInvariant(), new Stats(10, 10, vital, 10, 10), Row.Front, FullGear,
             new Dictionary<string, int>(), new Dictionary<string, int>(), [[new Tactic(1, Condition.Always, 0, "strike")]]);
 
-    private static Company NewCompany(int gold = 0) =>
-        new([Member("a"), Member("b")], ["a", "b"], gold, new Dictionary<string, int>(), activeTacticSet: 0, nextSeed: 42);
+    /// <summary>모든 지역이 열린 회사 (깊이 잠김은 <see cref="ZoneBossTests"/>에서 본다).</summary>
+    private static Company NewCompany(int gold = 0)
+    {
+        var company = new Company([Member("a"), Member("b")], ["a", "b"], gold, new Dictionary<string, int>(), activeTacticSet: 0, nextSeed: 42);
+        Growth.UnlockAll(company, Data);
+        return company;
+    }
 
     private static int MaxHp(PartyMember m) => CombatRules.Default.MaxHp(m.Stats, new SkillSet(SkillSet.NoSkills, Data.Skills));
 
@@ -287,6 +292,7 @@ public class ExpeditionTests
         for (var seed = 0; seed < 40; seed++)
         {
             var company = new Company([Member("a")], ["a"], 0, new Dictionary<string, int>(), 0, seed);
+            Growth.UnlockAll(company, Data);
             ExpeditionRules.Start(company, Data, "vault");
             ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("a", 50, 5)));
             var drop = Assert.Single(company.Expedition!.LastBattle!.Drops);

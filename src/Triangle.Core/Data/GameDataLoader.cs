@@ -608,6 +608,20 @@ public static class GameDataLoader
                 errors.Add($"{at}: no equipment in tiers {tierDrop.MinTier}-{tierDrop.MaxTier}");
             }
         }
+
+        if (z.Boss is { } boss)
+        {
+            if (!encounters.ContainsKey(boss.EncounterId))
+            {
+                errors.Add($"{at}: boss has unknown encounter '{boss.EncounterId}'");
+            }
+
+            DataValidation.RequireNonNegative(boss.FirstClearGold, $"{at}: boss firstClearGold", errors);
+            foreach (var itemId in boss.FirstClearItems.Where(id => !items.ContainsKey(id)))
+            {
+                errors.Add($"{at}: boss gives unknown item '{itemId}'");
+            }
+        }
     }
 
     private static void ValidateRecruit(

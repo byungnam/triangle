@@ -11,7 +11,8 @@ namespace Triangle.Desktop.Scenes;
 
 /// <summary>
 /// 원정 중의 화면: 지역, 전투 n/최대, 출전 멤버의 HP·MP와 쓰러짐, 들고 있는 전리품, 직전 전투 요약.
-/// 다음 전투, 귀환, 전술 편집(전술·전열만)으로 이어진다. 원정 중에는 수동 저장이 없고 전투마다 자동 저장한다.
+/// 다음 전투로만 이어진다: 중간에 돌아오거나 전술을 바꿀 수 없다(출정 전에 짠다).
+/// 원정 중에는 수동 저장이 없고 전투마다 자동 저장한다.
 /// </summary>
 internal sealed class ExpeditionScene : IScene
 {
@@ -26,20 +27,16 @@ internal sealed class ExpeditionScene : IScene
     private readonly GameSession _session;
     private readonly Rectangle _bounds;
     private readonly Action _nextBattle;
-    private readonly Action _return;
-    private readonly Action _openEditor;
     private readonly MyraDesktop _desktop = new();
     private bool _dirty = true;
 
-    public ExpeditionScene(Ui ui, GameSession session, Rectangle bounds, Action nextBattle, Action @return, Action openEditor)
+    public ExpeditionScene(Ui ui, GameSession session, Rectangle bounds, Action nextBattle)
     {
         _ui = ui;
         _w = new Widgets(ui);
         _session = session;
         _bounds = bounds;
         _nextBattle = nextBattle;
-        _return = @return;
-        _openEditor = openEditor;
     }
 
     private Company Company => _session.Company;
@@ -103,12 +100,6 @@ internal sealed class ExpeditionScene : IScene
         var progress = $"전투 {Expedition.BattleIndex}/{Zone.MaxBattles}";
         var x = _bounds.Right - Margin - font.MeasureString(progress).X;
         _ui.Text(batch, font, progress, new Vector2(x, _bounds.Top + 24), Theme.Text);
-
-        var (badge, color) = Zone.Permadeath
-            ? ($"영구 사망 · 장비 파괴 {ExpeditionRules.EquipmentDestroyChance}%", Theme.Enemy)
-            : ("사망 페널티 없음", Theme.Heal);
-        var badgeFont = _ui.Font(17);
-        _ui.Text(batch, badgeFont, badge, new Vector2(x - 24 - badgeFont.MeasureString(badge).X, _bounds.Top + 28), color);
     }
 
     private void DrawMembers(SpriteBatch batch, Rectangle area)
@@ -141,11 +132,6 @@ internal sealed class ExpeditionScene : IScene
             _ui.Text(batch, _ui.Font(15), $"HP {state.Hp}/{maxHp}   MP {state.Mp}/{maxMp}", new Vector2(x, y), Theme.TextDim);
             y += 34;
         }
-
-        if (Expedition.Deaths.Count > 0)
-        {
-            _ui.Text(batch, _ui.Font(16), $"사망: {string.Join(", ", Expedition.Deaths)}", new Vector2(x, y), Theme.Enemy);
-        }
     }
 
     private void DrawReport(SpriteBatch batch, Rectangle area)
@@ -162,7 +148,7 @@ internal sealed class ExpeditionScene : IScene
         var items = Expedition.CarriedItems.Count == 0 ? "아이템 없음" : ExpeditionText.Items(data, Expedition.CarriedItems);
         _ui.Text(batch, _ui.Font(17), items, new Vector2(x, y), Theme.Text);
         y += 28;
-        _ui.Text(batch, _ui.Font(15), "귀환하거나 지역을 클리어해야 확정됩니다. 전멸하면 잃습니다.", new Vector2(x, y), Theme.TextDim);
+        _ui.Text(batch, _ui.Font(15), "원정이 끝나면 확정됩니다. 전멸해도 이미 얻은 것은 남습니다.", new Vector2(x, y), Theme.TextDim);
         y += 40;
 
         _ui.Fill(batch, new Rectangle(x, y, area.Width - 32, 1), Theme.PanelBorder);
@@ -193,32 +179,11 @@ internal sealed class ExpeditionScene : IScene
             VerticalAlignment = VerticalAlignment.Top,
         };
 
-        var locked = Company.WhyLineupCannotFight(_session.Data) is not null;
         var next = _w.TextButton("다음 전투  ▶", Theme.Accent, Theme.AccentHover, bold: true);
         next.Width = 180;
-        next.Enabled = ExpeditionRules.CanContinue(Company, _session.Data) && !locked;
+        next.Enabled = ExpeditionRules.CanContinue(Company, _session.Data);
         next.Click += (_, _) => _nextBattle();
         bar.Widgets.Add(next);
-
-        if (Zone.Permadeath)
-        {
-            bar.Widgets.Add(_w.Label("영구 사망 지역: 쓰러지면 캐릭터를 잃습니다", 16, Theme.Enemy));
-        }
-
-        var back = _w.TextButton("귀환", Theme.Button, Theme.ButtonHover);
-        back.Width = 100;
-        back.Click += (_, _) => _return();
-        bar.Widgets.Add(back);
-
-        var editor = _w.TextButton("전술 편집", Theme.Button, Theme.ButtonHover);
-        editor.Width = 130;
-        editor.Click += (_, _) => _openEditor();
-        bar.Widgets.Add(editor);
-
-        if (locked)
-        {
-            bar.Widgets.Add(_w.Label(Company.WhyLineupCannotFight(_session.Data)!, 16, Theme.Enemy));
-        }
 
         bar.Left = _bounds.Left + Margin;
         bar.Top = _bounds.Bottom - FooterHeight - BarHeight + 8;

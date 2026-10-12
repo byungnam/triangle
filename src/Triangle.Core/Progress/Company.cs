@@ -11,7 +11,7 @@ namespace Triangle.Core.Progress;
 /// - 골드와 창고(아이템 ID별 개수, 재료 포함). 장착과 해제는 창고와 오간다.
 /// - 전술 세트: 이름 붙은 전술 계획. 수에 제한이 없고 플레이어가 만들고 지운다. 멤버마다 세트별 전술 목록을 갖고,
 ///   출정 전에 고른 세트(<see cref="ActiveTacticSet"/>)로 출전 멤버 전원이 싸운다.
-/// - 모집 후보와 진행 중인 원정. 원정 중에는 명단, 장비, 모집을 바꿀 수 없다(전술과 전열만 바꾼다).
+/// - 모집 후보와 진행 중인 원정. 원정 중에는 명단, 장비, 모집을 바꿀 수 없다. 전술과 전열도 출정 전에만 짠다(원정 화면에서 편집기로 갈 수 없다).
 /// </summary>
 public sealed class Company
 {
@@ -417,24 +417,8 @@ public sealed class Company
         _recruitOffers.AddRange(Recruitment.Roll(data, TakeSeed()));
     }
 
-    /// <summary>
-    /// 후보의 고용 비용. 로스터가 비었고 가장 싼 후보도 못 살 만큼 골드가 없으면, 가장 싼 후보 한 명은 무료다
-    /// (영구 사망 지역에서 전멸해도 게임이 막히지 않도록).
-    /// </summary>
-    public int HirePrice(int offerIndex)
-    {
-        var price = _recruitOffers[offerIndex].Price;
-        if (_roster.Count > 0 || _recruitOffers.Count == 0)
-        {
-            return price;
-        }
-
-        var cheapest = _recruitOffers.Min(o => o.Price);
-        return Gold < cheapest && offerIndex == _recruitOffers.FindIndex(o => o.Price == cheapest) ? 0 : price;
-    }
-
     public bool CanHire(int offerIndex) =>
-        !OnExpedition && offerIndex >= 0 && offerIndex < _recruitOffers.Count && Gold >= HirePrice(offerIndex);
+        !OnExpedition && offerIndex >= 0 && offerIndex < _recruitOffers.Count && Gold >= _recruitOffers[offerIndex].Price;
 
     /// <summary>
     /// 후보를 고용한다: 골드를 내고 로스터에 넣는다. 출전 명단에 자리가 있으면 명단에도 넣는다.
@@ -457,7 +441,7 @@ public sealed class Company
         }
         while (_roster.Any(m => m.Id == id));
 
-        Gold -= HirePrice(offerIndex);
+        Gold -= offer.Price;
         _recruitOffers.RemoveAt(offerIndex);
         var member = new PartyMember(
             id, offer.Name, offer.Stats, template.Row, template.Equipment,
@@ -466,13 +450,6 @@ public sealed class Company
         _roster.Add(member);
         AddToLineup(id);
         return member;
-    }
-
-    /// <summary>영구 사망: 로스터와 출전 명단에서 뺀다.</summary>
-    internal void RemoveMember(string memberId)
-    {
-        _roster.RemoveAll(m => m.Id == memberId);
-        _lineup.Remove(memberId);
     }
 
     public IReadOnlyList<CombatantSetup> LineupSetups(GameData data) =>

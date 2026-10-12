@@ -48,8 +48,6 @@ public class ExpeditionTests
                          "itemDrops": [ { "itemId": "plate_armor", "chance": 100 } ] } },
           { "id": "mixed", "name": "갈림길", "maxBattles": 3,
             "encounters": [ { "encounterId": "dummy", "weight": 1 }, { "encounterId": "wall", "weight": 3 } ] },
-          { "id": "grave", "name": "묘지", "maxBattles": 3, "permadeath": true,
-            "encounters": [ { "encounterId": "dummy", "weight": 1 } ], "rewards": { "goldMin": 5, "goldMax": 5 } },
           { "id": "vault", "name": "보물고", "maxBattles": 3, "encounters": [ { "encounterId": "dummy", "weight": 1 } ],
             "rewards": { "equipmentDrop": { "chance": 100, "minTier": 2, "maxTier": 2 } } },
           { "id": "arena", "name": "투기장", "maxBattles": 3, "encounters": [ { "encounterId": "brute", "weight": 1 } ] } ]
@@ -61,9 +59,6 @@ public class ExpeditionTests
             "equipment": { "MainHand": "old_sword", "Body": "plate_armor" },
             "tactics": [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "strike" } ], "price": 100 } ]
         """);
-
-    /// <summary>부위 5개 모두 (부위 순서).</summary>
-    private static readonly string[] FullGearItems = ["old_sword", "old_shield", "plate_helm", "plate_armor", "plate_boots"];
 
     private static readonly Dictionary<Triangle.Core.Items.EquipmentSlot, string> FullGear =
         TestGear.Of(mainHand: "old_sword", offHand: "old_shield", head: "plate_helm", body: "plate_armor", feet: "plate_boots");
@@ -153,7 +148,7 @@ public class ExpeditionTests
     }
 
     [Fact]
-    public void Downed_members_sit_out_the_rest_and_recover_in_safe_zones()
+    public void Downed_members_sit_out_the_rest_and_recover_with_their_gear_when_it_ends()
     {
         var company = NewCompany();
         ExpeditionRules.Start(company, Data, "forest");
@@ -165,11 +160,13 @@ public class ExpeditionTests
         Assert.Equal(["b"], ExpeditionRules.Fight(company, Data).Combatants.Where(c => c.Side == CombatSide.Ally).Select(c => c.Id));
         Assert.Equal(["A"], company.Expedition.LastBattle!.Downed);
 
-        var summary = ExpeditionRules.Return(company, Data);
+        ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("b", 100, 10)));
+        var summary = ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("b", 100, 10)));
 
-        Assert.Equal(ExpeditionEnd.Returned, summary.End);
+        Assert.Equal(ExpeditionEnd.Cleared, summary!.End);
         Assert.Equal(2, company.Roster.Count);
         Assert.Equal(["a", "b"], company.Lineup);
+        Assert.Equal(FullGear, company.Member("a").Equipment);
         var next = ExpeditionRules.Start(company, Data, "forest");
         Assert.All(next.Members, m => Assert.False(m.Down));
         Assert.Equal(MaxHp(company.Member("a")), next.MemberState("a")!.Hp);
@@ -188,7 +185,7 @@ public class ExpeditionTests
     }
 
     [Fact]
-    public void Victory_loot_is_carried_then_confirmed_on_return()
+    public void Victory_loot_is_carried_then_confirmed_when_the_expedition_ends()
     {
         var company = NewCompany(gold: 7);
         ExpeditionRules.Start(company, Data, "forest");
@@ -202,10 +199,11 @@ public class ExpeditionTests
         Assert.Equal(2, expedition.CarriedItems["plate_armor"]);
         Assert.Equal(7, company.Gold);
         Assert.True(ExpeditionRules.CanContinue(company, Data));
+        Assert.Empty(company.Stash);
 
-        var summary = ExpeditionRules.Return(company, Data);
+        var summary = ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Draw, company, ("a", 50, 5), ("b", 50, 5)));
 
-        Assert.Equal((ExpeditionEnd.Returned, 2, 25), (summary.End, summary.Battles, summary.Gold));
+        Assert.Equal((ExpeditionEnd.ForcedReturn, 3, 25), (summary!.End, summary.Battles, summary.Gold));
         Assert.Equal(32, company.Gold);
         Assert.Equal(2, company.StashCount("plate_armor"));
         Assert.Null(company.Expedition);
@@ -232,7 +230,7 @@ public class ExpeditionTests
     }
 
     [Fact]
-    public void Wipe_loses_carried_loot()
+    public void Wipe_ends_the_expedition_but_keeps_loot_members_and_gear()
     {
         var company = NewCompany(gold: 7);
         ExpeditionRules.Start(company, Data, "forest");
@@ -240,10 +238,16 @@ public class ExpeditionTests
 
         var summary = ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Defeat, company, ("a", 0, 0), ("b", 0, 0)));
 
-        Assert.Equal((ExpeditionEnd.Wiped, 0), (summary!.End, summary.Gold));
-        Assert.Equal(7, company.Gold);
-        Assert.Empty(company.Stash);
-        Assert.Equal(2, company.Roster.Count); // 초보 지역: 아무도 죽지 않는다
+        Assert.Equal((ExpeditionEnd.Wiped, 2, 10), (summary!.End, summary.Battles, summary.Gold));
+        Assert.Null(company.Expedition);
+        Assert.Equal(17, company.Gold);
+        Assert.Equal(1, company.StashCount("plate_armor"));
+        Assert.Equal(["a", "b"], company.Lineup);
+        Assert.All(company.Roster, m => Assert.Equal(FullGear, m.Equipment));
+
+        // 다음 출정은 HP·MP가 가득 찬 상태로 시작한다.
+        var next = ExpeditionRules.Start(company, Data, "forest");
+        Assert.All(next.Members, m => Assert.Equal((false, MaxHp(company.Member(m.Id))), (m.Down, m.Hp)));
     }
 
     [Fact]
@@ -292,76 +296,6 @@ public class ExpeditionTests
 
         // T2 장비 둘 다 나온다 (재료와 T1은 나오지 않는다).
         Assert.Equal(new HashSet<string> { "steel_sword", "steel_helm" }, seen);
-    }
-
-    [Fact]
-    public void Permadeath_deletes_the_fallen_and_rolls_each_piece_of_their_gear()
-    {
-        var company = NewCompany();
-        ExpeditionRules.Start(company, Data, "grave");
-
-        ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("a", 0, 0), ("b", 50, 5)));
-
-        Assert.Equal(["b"], company.Roster.Select(m => m.Id));
-        Assert.Equal(["b"], company.Lineup);
-        var expedition = company.Expedition!;
-        Assert.Equal(["b"], expedition.Members.Select(m => m.Id));
-        var report = expedition.LastBattle!;
-        Assert.Equal(["A"], report.Deaths);
-        // 아이템마다 파괴 아니면 회수, 둘 중 하나다.
-        Assert.Equal(FullGearItems.Order(), report.Destroyed.Concat(report.Recovered).Order());
-
-        var summary = ExpeditionRules.Return(company, Data);
-
-        Assert.Equal(["A"], summary.Deaths);
-        Assert.All(report.Recovered, item => Assert.Equal(1, company.StashCount(item)));
-        Assert.All(report.Destroyed, item => Assert.Equal(0, company.StashCount(item)));
-    }
-
-    [Fact]
-    public void Destroy_chance_is_the_same_constant_rolled_per_item_with_the_expedition_seed()
-    {
-        // 결과는 시드가 같으면 같고, 여러 시드에 걸쳐 아이템마다 대략 상수 확률(50%)로 파괴된다.
-        IReadOnlyList<string> Destroyed(int seed)
-        {
-            var company = new Company([Member("a"), Member("b")], ["a", "b"], 0, new Dictionary<string, int>(), 0, seed);
-            ExpeditionRules.Start(company, Data, "grave");
-            ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("a", 0, 0), ("b", 50, 5)));
-            return company.Expedition!.LastBattle!.Destroyed;
-        }
-
-        Assert.Equal(Destroyed(3), Destroyed(3));
-        var counts = Enumerable.Range(0, 500).Select(seed => Destroyed(seed).Count).ToList();
-        var percent = counts.Sum() * 100 / (500 * FullGearItems.Length);
-        Assert.InRange(percent, ExpeditionRules.EquipmentDestroyChance - 5, ExpeditionRules.EquipmentDestroyChance + 5);
-        // 독립적으로 굴리므로 전부 파괴와 전부 회수가 모두 나온다.
-        Assert.Contains(FullGearItems.Length, counts);
-        Assert.Contains(0, counts);
-    }
-
-    [Fact]
-    public void Permadeath_wipe_deletes_everyone_and_the_cheapest_recruit_becomes_free()
-    {
-        var company = NewCompany(gold: 30);
-        ExpeditionRules.Start(company, Data, "grave");
-        ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("a", 50, 5), ("b", 50, 5)));
-
-        var summary = ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Defeat, company, ("a", 0, 0), ("b", 0, 0)));
-
-        Assert.Equal(ExpeditionEnd.Wiped, summary!.End);
-        Assert.Equal(["A", "B"], summary.Deaths);
-        Assert.Empty(company.Roster);
-        Assert.Empty(company.Lineup);
-        Assert.Empty(company.Stash); // 회수한 장비도 함께 잃는다
-        Assert.Equal(30, company.Gold);
-
-        Assert.Equal(0, company.HirePrice(0));
-        Assert.Equal(100, company.HirePrice(1));
-        var hired = company.Hire(0, Data);
-        Assert.NotNull(hired);
-        Assert.Equal(30, company.Gold);
-        Assert.Equal([hired.Id], company.Lineup);
-        Assert.Equal(100, company.HirePrice(0)); // 이제 로스터가 있다
     }
 
     [Fact]

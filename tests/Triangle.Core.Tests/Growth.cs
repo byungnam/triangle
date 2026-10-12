@@ -51,16 +51,12 @@ internal static class Growth
         }
     }
 
-    /// <summary>모든 지역을 클리어하고 모든 관문을 넘은 것으로 한다 (깊은 지역을 바로 재려고).</summary>
+    /// <summary>모든 지역을 클리어한 것으로 한다 (깊은 지역을 바로 재려고).</summary>
     public static void UnlockAll(Company company, GameData data)
     {
         foreach (var zone in data.Zones.Values)
         {
-            company.MarkCleared(zone.Id);
-            if (zone.Gate is not null)
-            {
-                company.RecordGateWin(zone.Id, new GateResult(1, 0, 0));
-            }
+            company.RecordClear(zone.Id, new ClearResult(1, 0, 0));
         }
     }
 

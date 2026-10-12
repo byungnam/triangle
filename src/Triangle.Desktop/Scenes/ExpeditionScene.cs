@@ -94,13 +94,12 @@ internal sealed class ExpeditionScene : IScene
 
     private void DrawHeader(SpriteBatch batch)
     {
-        var title = Expedition.Gate
-            ? $"관문 — {_session.Data.Encounters[Zone.Gate!.EncounterId].Name} ({Zone.Name})"
-            : $"원정 — {Zone.Name}";
-        _ui.Text(batch, _ui.BoldFont(28), title, new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
+        _ui.Text(batch, _ui.BoldFont(28), $"원정 — {Zone.Name}", new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
 
         var font = _ui.BoldFont(22);
-        var progress = $"전투 {Expedition.BattleIndex}/{ExpeditionRules.MaxBattles(Expedition, _session.Data)}";
+        var progress = ExpeditionRules.IsBossBattle(Expedition, _session.Data)
+            ? $"전투 {Expedition.BattleIndex}/{Zone.MaxBattles} · 다음은 보스"
+            : $"전투 {Expedition.BattleIndex}/{Zone.MaxBattles}";
         var x = _bounds.Right - Margin - font.MeasureString(progress).X;
         _ui.Text(batch, font, progress, new Vector2(x, _bounds.Top + 24), Theme.Text);
     }
@@ -182,7 +181,7 @@ internal sealed class ExpeditionScene : IScene
             VerticalAlignment = VerticalAlignment.Top,
         };
 
-        var next = _w.TextButton(Expedition.Gate ? "관문 전투  ▶" : "다음 전투  ▶", Theme.Accent, Theme.AccentHover, bold: true);
+        var next = _w.TextButton(ExpeditionRules.IsBossBattle(Expedition, _session.Data) ? "보스 전투  ▶" : "다음 전투  ▶", Theme.Accent, Theme.AccentHover, bold: true);
         next.Width = 180;
         next.Enabled = ExpeditionRules.CanContinue(Company, _session.Data);
         next.Click += (_, _) => _nextBattle();

@@ -60,7 +60,7 @@ public static class DataLint
     private static void CheckEncounters(GameData data, List<string> warnings)
     {
         var used = data.Zones.Values.SelectMany(z => z.Encounters).Select(e => e.EncounterId)
-            .Concat(data.Zones.Values.Select(z => z.Gate?.EncounterId).OfType<string>())
+            .Concat(data.Zones.Values.Select(z => z.Boss?.EncounterId).OfType<string>())
             .ToHashSet();
         foreach (var encounter in data.Encounters.Values.Where(e => !used.Contains(e.Id)))
         {
@@ -73,7 +73,7 @@ public static class DataLint
     {
         var rewards = data.Zones.Values.Select(z => z.Rewards).ToList();
         var dropped = rewards.SelectMany(r => r.ItemDrops).Select(d => d.ItemId)
-            .Concat(data.Zones.Values.SelectMany(z => z.Gate?.FirstWinItems ?? []))
+            .Concat(data.Zones.Values.SelectMany(z => z.Boss?.FirstClearItems ?? []))
             .ToHashSet();
         var tierDrops = rewards.Select(r => r.EquipmentDrop).OfType<TierDrop>().ToList();
         var recruitGear = data.Recruits.Values.SelectMany(r => r.Equipment.Values).ToHashSet();

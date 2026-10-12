@@ -19,11 +19,9 @@ public sealed class Expedition
         IEnumerable<ExpeditionMember> members,
         int carriedGold,
         IReadOnlyDictionary<string, int> carriedItems,
-        BattleReport? lastBattle,
-        bool gate = false)
+        BattleReport? lastBattle)
     {
         ZoneId = zoneId;
-        Gate = gate;
         Seed = seed;
         BattleIndex = battleIndex;
         _members = members.ToList();
@@ -33,9 +31,6 @@ public sealed class Expedition
     }
 
     public string ZoneId { get; }
-
-    /// <summary>관문 보스 도전이다: 지역의 인카운터 대신 관문 보스와 한 번 싸운다.</summary>
-    public bool Gate { get; }
 
     /// <summary>원정 시드. 인카운터, 전투, 전리품의 시드는 이 값과 전투 번호에서 나온다.</summary>
     public int Seed { get; }
@@ -110,15 +105,14 @@ public enum ExpeditionEnd
 
 /// <summary>끝난 원정의 결과 (마을에 보여준다).</summary>
 /// <param name="Gold">확정된 골드.</param>
-/// <param name="Items">확정된 아이템 ID별 개수.</param>
-/// <param name="Gate">관문 보스 도전이었다.</param>
-public sealed record ExpeditionSummary(string ZoneId, ExpeditionEnd End, int Battles, int Gold, IReadOnlyDictionary<string, int> Items, bool Gate = false)
+/// <param name="Items">확정된 아이템 ID별 개수 (첫 클리어 보상 포함).</param>
+public sealed record ExpeditionSummary(string ZoneId, ExpeditionEnd End, int Battles, int Gold, IReadOnlyDictionary<string, int> Items)
 {
-    /// <summary>관문 보스를 이긴 결과. 관문 도전에서 이겼을 때만 있다.</summary>
-    public GateWin? GateWin { get; init; }
+    /// <summary>클리어 결과. 클리어했을 때만 있다.</summary>
+    public ZoneClear? Clear { get; init; }
 }
 
-/// <summary>관문 보스를 이긴 판.</summary>
-/// <param name="FirstWin">처음 넘었다 (보상을 받고 다음 깊이가 열린다).</param>
-/// <param name="Improved">이번에 좋아진 도전 기록 항목 (첫 승리면 비어 있다).</param>
-public sealed record GateWin(Progress.GateResult Result, bool FirstWin, IReadOnlyList<Progress.GateRecordKind> Improved);
+/// <summary>클리어한 원정.</summary>
+/// <param name="FirstClear">처음 클리어했다 (첫 클리어 보상을 받고 다음 깊이가 열린다).</param>
+/// <param name="Improved">이번에 좋아진 클리어 기록 항목 (첫 클리어면 비어 있다).</param>
+public sealed record ZoneClear(Progress.ClearResult Result, bool FirstClear, IReadOnlyList<Progress.ClearRecordKind> Improved);

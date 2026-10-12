@@ -1004,18 +1004,18 @@
     ]
   },
   {
-    "id": "gate_scavenger_chief",
+    "id": "boss_scavenger_chief",
     "name": "넝마주이 우두머리",
-    "description": "관문 보스 (깊이 1, 근교 숲). 튼튼한 우두머리 하나를 앞에 세우고 뒤에서 투석꾼이 괴롭힌다. 임시 수치.",
+    "description": "지역 보스 (깊이 1, 근교 숲). 튼튼한 우두머리 하나를 앞에 세우고 뒤에서 투석꾼이 괴롭힌다. 임시 수치.",
     "units": [
       {
-        "id": "gate_chief",
+        "id": "boss_chief",
         "name": "넝마주이 우두머리",
         "stats": {
-          "str": 19,
+          "str": 17,
           "dex": 10,
-          "vital": 81,
-          "intel": 18,
+          "vital": 68,
+          "intel": 16,
           "speed": 10
         },
         "row": "Front",
@@ -1050,13 +1050,13 @@
         ]
       },
       {
-        "id": "gate_chief_guard",
+        "id": "boss_chief_guard",
         "name": "넝마주이",
         "stats": {
-          "str": 15,
+          "str": 13,
           "dex": 9,
-          "vital": 32,
-          "intel": 12,
+          "vital": 27,
+          "intel": 10,
           "speed": 10
         },
         "row": "Front",
@@ -1081,13 +1081,13 @@
         ]
       },
       {
-        "id": "gate_chief_slinger",
+        "id": "boss_chief_slinger",
         "name": "넝마주이 투석꾼",
         "stats": {
-          "str": 12,
+          "str": 10,
           "dex": 11,
-          "vital": 27,
-          "intel": 18,
+          "vital": 22,
+          "intel": 16,
           "speed": 11
         },
         "row": "Back",
@@ -1114,18 +1114,18 @@
     ]
   },
   {
-    "id": "gate_halted_regiment",
+    "id": "boss_halted_regiment",
     "name": "멈춘 연대 본대",
-    "description": "관문 보스 (깊이 2, 버려진 요새). 방패와 미늘창이 앞을 막고, 뒤에서 군목이 치료하고 머스킷병이 일제 사격한다. 임시 수치.",
+    "description": "지역 보스 (깊이 2, 버려진 요새). 방패와 미늘창이 앞을 막고, 뒤에서 군목이 치료하고 머스킷병이 일제 사격한다. 임시 수치.",
     "units": [
       {
-        "id": "gate_regiment_shield",
+        "id": "boss_regiment_shield",
         "name": "연대 방패병",
         "stats": {
-          "str": 22,
+          "str": 17,
           "dex": 10,
-          "vital": 50,
-          "intel": 25,
+          "vital": 35,
+          "intel": 20,
           "speed": 10
         },
         "row": "Front",
@@ -1155,13 +1155,13 @@
         ]
       },
       {
-        "id": "gate_regiment_halberd",
+        "id": "boss_regiment_halberd",
         "name": "연대 미늘창병",
         "stats": {
-          "str": 24,
+          "str": 19,
           "dex": 11,
-          "vital": 45,
-          "intel": 25,
+          "vital": 31,
+          "intel": 20,
           "speed": 11
         },
         "row": "Front",
@@ -1188,13 +1188,13 @@
         ]
       },
       {
-        "id": "gate_regiment_chaplain",
+        "id": "boss_regiment_chaplain",
         "name": "연대 군목",
         "stats": {
-          "str": 16,
+          "str": 12,
           "dex": 10,
-          "vital": 40,
-          "intel": 37,
+          "vital": 28,
+          "intel": 29,
           "speed": 11
         },
         "row": "Back",
@@ -1221,13 +1221,13 @@
         ]
       },
       {
-        "id": "gate_regiment_musketeer",
+        "id": "boss_regiment_musketeer",
         "name": "연대 머스킷병",
         "stats": {
-          "str": 18,
+          "str": 14,
           "dex": 12,
-          "vital": 35,
-          "intel": 29,
+          "vital": 24,
+          "intel": 23,
           "speed": 10
         },
         "row": "Back",
@@ -1254,18 +1254,18 @@
     ]
   },
   {
-    "id": "gate_triad_guardians",
+    "id": "boss_triad_guardians",
     "name": "삼인 수호자",
-    "description": "관문 보스 (깊이 3, 재의 왕도). 반드시 셋이 함께 다니는 삼각 가면의 수호자: 쇠(앞), 불(앞), 마력(뒤). 임시 수치.",
+    "description": "지역 보스 (깊이 3, 재의 왕도). 반드시 셋이 함께 다니는 삼각 가면의 수호자: 쇠(앞), 불(앞), 마력(뒤). 임시 수치.",
     "units": [
       {
-        "id": "gate_guardian_iron",
+        "id": "boss_guardian_iron",
         "name": "쇠의 수호자",
         "stats": {
-          "str": 19,
+          "str": 16,
           "dex": 12,
-          "vital": 46,
-          "intel": 23,
+          "vital": 32,
+          "intel": 19,
           "speed": 11
         },
         "row": "Front",
@@ -1295,13 +1295,13 @@
         ]
       },
       {
-        "id": "gate_guardian_fire",
+        "id": "boss_guardian_fire",
         "name": "불의 수호자",
         "stats": {
-          "str": 19,
+          "str": 16,
           "dex": 13,
-          "vital": 39,
-          "intel": 20,
+          "vital": 27,
+          "intel": 17,
           "speed": 13
         },
         "row": "Front",
@@ -1335,13 +1335,13 @@
         ]
       },
       {
-        "id": "gate_guardian_mana",
+        "id": "boss_guardian_mana",
         "name": "마력의 수호자",
         "stats": {
-          "str": 11,
+          "str": 9,
           "dex": 11,
-          "vital": 36,
-          "intel": 33,
+          "vital": 25,
+          "intel": 28,
           "speed": 12
         },
         "row": "Back",

@@ -25,8 +25,7 @@ public sealed class Company
     private readonly Dictionary<string, int> _stash;
     private readonly List<RecruitOffer> _recruitOffers;
     private readonly List<string> _tacticSetNames;
-    private readonly HashSet<string> _clearedZones;
-    private readonly Dictionary<string, GateRecord> _gateRecords;
+    private readonly Dictionary<string, ClearRecord> _clearRecords;
     private int _activeTacticSet;
 
     /// <param name="tacticSetNames">전술 세트 이름. null이면 멤버가 가진 세트 수만큼 "세트 1", "세트 2"…로 짓는다.</param>
@@ -41,8 +40,7 @@ public sealed class Company
         int nextRecruitNumber = 1,
         Expedition? expedition = null,
         IEnumerable<string>? tacticSetNames = null,
-        IEnumerable<string>? clearedZones = null,
-        IReadOnlyDictionary<string, GateRecord>? gateRecords = null)
+        IReadOnlyDictionary<string, ClearRecord>? clearRecords = null)
     {
         _roster = roster.ToList();
         _lineup = lineup.ToList();
@@ -82,8 +80,7 @@ public sealed class Company
         _recruitOffers = recruitOffers?.ToList() ?? [];
         NextRecruitNumber = nextRecruitNumber;
         Expedition = expedition;
-        _clearedZones = clearedZones?.ToHashSet() ?? [];
-        _gateRecords = gateRecords?.ToDictionary() ?? [];
+        _clearRecords = clearRecords?.ToDictionary() ?? [];
     }
 
     /// <summary>보유한 캐릭터 모두.</summary>
@@ -185,29 +182,22 @@ public sealed class Company
 
     public bool OnExpedition => Expedition is not null;
 
-    /// <summary>한 번이라도 클리어한 지역 ID. 관문 보스는 지역을 클리어한 뒤에 도전할 수 있다.</summary>
-    public IReadOnlySet<string> ClearedZones => _clearedZones;
+    /// <summary>클리어한 지역의 기록 (지역 ID별). 기록이 있으면 그 지역을 클리어한 것이다.</summary>
+    public IReadOnlyDictionary<string, ClearRecord> ClearRecords => _clearRecords;
 
-    /// <summary>넘은 관문의 도전 기록 (지역 ID별). 기록이 있으면 그 관문을 넘은 것이다.</summary>
-    public IReadOnlyDictionary<string, GateRecord> GateRecords => _gateRecords;
+    public bool HasCleared(string zoneId) => _clearRecords.ContainsKey(zoneId);
 
-    public bool HasCleared(string zoneId) => _clearedZones.Contains(zoneId);
-
-    public bool HasPassedGate(string zoneId) => _gateRecords.ContainsKey(zoneId);
-
-    internal void MarkCleared(string zoneId) => _clearedZones.Add(zoneId);
-
-    /// <summary>관문 보스를 이긴 판을 기록한다. 첫 승리인지와 좋아진 기록 항목을 돌려준다.</summary>
-    internal (bool FirstWin, IReadOnlyList<GateRecordKind> Improved) RecordGateWin(string zoneId, GateResult result)
+    /// <summary>클리어한 원정을 기록한다. 첫 클리어인지와 좋아진 기록 항목을 돌려준다.</summary>
+    internal (bool FirstClear, IReadOnlyList<ClearRecordKind> Improved) RecordClear(string zoneId, ClearResult result)
     {
-        if (!_gateRecords.TryGetValue(zoneId, out var record))
+        if (!_clearRecords.TryGetValue(zoneId, out var record))
         {
-            _gateRecords[zoneId] = GateRecord.First(result);
+            _clearRecords[zoneId] = ClearRecord.First(result);
             return (true, []);
         }
 
         var (updated, improved) = record.Add(result);
-        _gateRecords[zoneId] = updated;
+        _clearRecords[zoneId] = updated;
         return (false, improved);
     }
 

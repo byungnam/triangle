@@ -609,17 +609,17 @@ public static class GameDataLoader
             }
         }
 
-        if (z.Gate is { } gate)
+        if (z.Boss is { } boss)
         {
-            if (!encounters.ContainsKey(gate.EncounterId))
+            if (!encounters.ContainsKey(boss.EncounterId))
             {
-                errors.Add($"{at}: gate has unknown encounter '{gate.EncounterId}'");
+                errors.Add($"{at}: boss has unknown encounter '{boss.EncounterId}'");
             }
 
-            DataValidation.RequireNonNegative(gate.FirstWinGold, $"{at}: gate firstWinGold", errors);
-            foreach (var itemId in gate.FirstWinItems.Where(id => !items.ContainsKey(id)))
+            DataValidation.RequireNonNegative(boss.FirstClearGold, $"{at}: boss firstClearGold", errors);
+            foreach (var itemId in boss.FirstClearItems.Where(id => !items.ContainsKey(id)))
             {
-                errors.Add($"{at}: gate gives unknown item '{itemId}'");
+                errors.Add($"{at}: boss gives unknown item '{itemId}'");
             }
         }
     }

@@ -28,6 +28,11 @@ internal static class ExpeditionText
     public static IReadOnlyList<LogLine> Battle(GameData data, BattleReport report)
     {
         var lines = new List<LogLine>();
+        if (report.FirstMeet)
+        {
+            lines.Add(new LogLine($"처음 만난 적: {data.Encounters[report.EncounterId].Name} (탐사 기록에 남김)", Theme.Cover));
+        }
+
         foreach (var member in report.Xp.GroupBy(x => x.MemberId))
         {
             var parts = member.Select(x =>

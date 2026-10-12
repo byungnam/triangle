@@ -107,7 +107,7 @@ public sealed class SaveGameTests : IDisposable
     {
         var json = SaveGame.Serialize(SampleCompany());
 
-        Assert.Contains("\"version\": 9", json);
+        Assert.Contains("\"version\": 10", json);
         Assert.Contains("\"roster\"", json);
         Assert.DoesNotContain("\"party\"", json);
         Assert.Contains("\"name\": \"이졸데\"", json);
@@ -121,7 +121,7 @@ public sealed class SaveGameTests : IDisposable
     [Fact]
     public void Rejects_older_and_unknown_versions()
     {
-        foreach (var version in new[] { 1, 2, 3, 4, 5, 6, 7, 99 })
+        foreach (var version in new[] { 1, 2, 3, 4, 5, 6, 7, 8, 99 })
         {
             var e = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize($$"""{ "version": {{version}}, "party": [] }""", Data));
             Assert.Contains($"unsupported version {version}", Assert.Single(e.Errors));
@@ -129,22 +129,49 @@ public sealed class SaveGameTests : IDisposable
     }
 
     [Fact]
-    public void Converts_version_8_with_no_cleared_zones()
+    public void Converts_version_9_with_cleared_bosses_as_met_and_won()
     {
         var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
+        var first = Depths.Ordered(data)[0];
         var company = StartingCompany.Create(data, seed: 11);
-        ExpeditionRules.Start(company, data, Depths.Ordered(data)[0].Id);
+        company.RecordClear(first.Id, new ClearResult(Members: 3, GearTier: 1, Downed: 0));
+        company.RecordClear(first.Id, new ClearResult(Members: 3, GearTier: 1, Downed: 0));
+        ExpeditionRules.Start(company, data, first.Id);
         ExpeditionRules.ApplyResult(company, data, ExpeditionRules.Fight(company, data));
         var root = System.Text.Json.Nodes.JsonNode.Parse(SaveGame.Serialize(company))!.AsObject();
-        root["version"] = 8;
-        root.Remove("clears");
-        var v8 = root.ToJsonString();
+        root["version"] = 9;
+        root.Remove("encounters");
+        var v9 = root.ToJsonString();
 
-        var loaded = SaveGame.Deserialize(v8, data);
+        var loaded = SaveGame.Deserialize(v9, data);
 
         Assert.Equal(company.Expedition!.Members, loaded.Expedition!.Members);
-        Assert.Empty(loaded.ClearRecords);
-        Assert.Contains("\"version\": 9", SaveGame.Serialize(loaded));
+        Assert.Equal(new EncounterRecord(2, 2), Assert.Single(loaded.EncounterRecords, p => p.Key == first.Boss!.EncounterId).Value);
+        Assert.Single(loaded.EncounterRecords);
+        Assert.Contains("\"version\": 10", SaveGame.Serialize(loaded));
+    }
+
+    [Fact]
+    public void Encounter_records_round_trip()
+    {
+        var company = SampleCompany();
+        company.RecordEncounter("camp", won: false);
+        company.RecordEncounter("camp", won: true);
+
+        var loaded = SaveGame.Deserialize(SaveGame.Serialize(company), Data);
+
+        Assert.Equal(new EncounterRecord(2, 1), loaded.EncounterRecords["camp"]);
+    }
+
+    [Fact]
+    public void Rejects_unknown_encounters_and_bad_encounter_records()
+    {
+        var e = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(
+            Save(Member(""), extra: """, "encounters": { "nowhere": { "met": 1, "wins": 0 }, "camp": { "met": 1, "wins": 2 } }"""),
+            Data));
+
+        Assert.Contains(e.Errors, x => x.Contains("encounters has unknown encounter 'nowhere'"));
+        Assert.Contains(e.Errors, x => x.Contains("encounter record of 'camp' needs met >= 1"));
     }
 
     [Fact]

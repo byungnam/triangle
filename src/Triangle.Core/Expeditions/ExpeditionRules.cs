@@ -137,6 +137,7 @@ public static class ExpeditionRules
     /// - 이기면 전리품(골드, 정해진 아이템, 티어 범위의 장비)을 굴려 들고 있는 전리품에 더한다. 마지막 전투면 클리어 보너스를 받고 끝난다.
     /// - 쓰러진 멤버는 남은 전투에 나가지 못할 뿐 잃지 않는다. 장비도 그대로다.
     /// - 지면(전멸) 끝난다. 무승부는 강제 귀환이다. 어느 쪽이든 이미 얻은 전리품은 확정된다.
+    /// - 싸운 적 조합은 이기든 지든 탐사 기록에 남는다.
     /// - 클리어하면 클리어 기록(인원, 장비 등급, 쓰러짐)을 남기고, 처음이면 보스의 첫 클리어 보상을 더 받는다.
     /// </summary>
     public static ExpeditionSummary? ApplyResult(Company company, GameData data, CombatResult result)
@@ -156,6 +157,7 @@ public static class ExpeditionRules
         }
 
         var xp = GrantMasteryXp(company, result);
+        var firstMeet = company.RecordEncounter(encounterId, result.Outcome == CombatOutcome.Victory);
 
         var gold = 0;
         var drops = new List<string>();
@@ -215,6 +217,7 @@ public static class ExpeditionRules
             Number = number,
             EncounterId = encounterId,
             Outcome = result.Outcome,
+            FirstMeet = firstMeet,
             Xp = xp,
             Gold = gold,
             Drops = drops,

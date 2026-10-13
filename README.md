@@ -72,3 +72,5 @@ $D delete items rusty_sword                                       # 가리키는
 Apache License 2.0 — [LICENSE](LICENSE)
 
 나눔고딕 글꼴은 SIL Open Font License 1.1을 따른다 — [src/Triangle.Desktop/Fonts/OFL.txt](src/Triangle.Desktop/Fonts/OFL.txt)
+
+아이콘은 [game-icons.net](https://game-icons.net)의 그림으로 CC BY 3.0을 따른다 — 작가 목록 [src/Triangle.Desktop/Icons/CREDITS.md](src/Triangle.Desktop/Icons/CREDITS.md)

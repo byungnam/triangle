@@ -38,7 +38,9 @@ internal sealed class TacticEditorScene : IScene
     private const int Gap = 12;
 
     /// <summary>탭 줄과 이름 줄을 뺀 내용 높이.</summary>
-    private const int MemberHeaderHeight = 96;
+    private const int MemberHeaderHeight = 140;
+
+    private const int PortraitSize = 76;
 
     private enum Tab
     {
@@ -286,110 +288,161 @@ internal sealed class TacticEditorScene : IScene
         _desktop.Root = root;
     }
 
-    // ── 왼쪽: 세트와 멤버 (전위 · 후위 · 대기) ──────────────────
+    // ── 왼쪽: 전술 세트와 진형 판 (후위 · 전위 · 대기) ──────────────
+
+    private const int TokenSize = 56;
 
     private Widget BuildPartyList()
     {
         var list = new VerticalStackPanel
         {
-            Spacing = 8,
+            Spacing = 10,
             Width = PartyWidth,
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
         };
         list.Widgets.Add(BuildTacticSetSelector());
-        list.Widgets.Add(new HorizontalSeparator());
 
         var lineup = Members.Where(m => OnExpedition || _company.IsInLineup(m.Id)).ToList();
-        list.Widgets.Add(Label(OnExpedition ? $"출전 멤버 {lineup.Count}명" : $"출전 {lineup.Count}명", 18, Theme.Ally, bold: true));
-        foreach (var row in new[] { Row.Front, Row.Back })
-        {
-            var inRow = lineup.Where(m => m.Row == row).ToList();
-            var header = new HorizontalStackPanel { Spacing = 8 };
-            header.Widgets.Add(_widgets.Chip($"{RowLabel(row)} {inRow.Count}명", RowColor(row), 15));
-            header.Widgets.Add(Label(row == Row.Front ? "먼저 맞고 후위를 엄호" : "전위가 있으면 엄호받음", 13, Theme.TextDim));
-            list.Widgets.Add(header);
-            if (inRow.Count == 0)
-            {
-                list.Widgets.Add(Label(row == Row.Front ? "  전위가 없으면 후위가 바로 맞는다" : "  (없음)", 13, Theme.TextDim));
-            }
-
-            foreach (var member in inRow)
-            {
-                list.Widgets.Add(BuildMemberCard(member));
-            }
-        }
+        list.Widgets.Add(_widgets.Header("figure", $"진형 {lineup.Count}명", "오른쪽이 적 쪽"));
+        list.Widgets.Add(BuildFormationBoard(lineup));
 
         var bench = Members.Where(m => !lineup.Contains(m)).ToList();
         if (bench.Count > 0)
         {
-            list.Widgets.Add(new HorizontalSeparator());
-            list.Widgets.Add(Label($"대기 {bench.Count}명 (출전 안 함)", 16, Theme.TextDim, bold: true));
-            foreach (var member in bench)
+            list.Widgets.Add(_widgets.Header("portrait.none", $"대기 {bench.Count}명", "출전 안 함", size: 15));
+            const int perRow = 4;
+            for (var i = 0; i < bench.Count; i += perRow)
             {
-                list.Widgets.Add(BuildMemberCard(member));
+                var line = new HorizontalStackPanel { Spacing = 4 };
+                foreach (var member in bench.Skip(i).Take(perRow))
+                {
+                    line.Widgets.Add(BuildToken(member, 44, PartyWidth / perRow - 4));
+                }
+
+                list.Widgets.Add(line);
             }
         }
 
         return list;
     }
 
-    private Widget BuildMemberCard(PartyMember member)
+    /// <summary>
+    /// 진형 판: 왼쪽 칸이 후위, 오른쪽 칸이 전위(적 쪽). 칸마다 그 줄 색으로 칠하고, 말 아래 버튼으로 줄을 바꾼다 (원정 중에도 된다).
+    /// </summary>
+    private Widget BuildFormationBoard(IReadOnlyList<PartyMember> lineup)
+    {
+        var board = new HorizontalStackPanel { Spacing = 6 };
+        var columnWidth = (PartyWidth - 6) / 2;
+        foreach (var row in new[] { Row.Back, Row.Front })
+        {
+            var column = new VerticalStackPanel
+            {
+                Spacing = 8,
+                Width = columnWidth,
+                Padding = new Thickness(4, 6),
+                Background = new SolidBrush(RowColor(row) * 0.22f),
+                Border = new SolidBrush(RowColor(row)),
+                BorderThickness = new Thickness(1),
+            };
+
+            var title = Label(row == Row.Front ? "전위 ▶" : "후위", 17, Theme.Text, bold: true);
+            title.HorizontalAlignment = HorizontalAlignment.Center;
+            column.Widgets.Add(title);
+            var note = Label(row == Row.Front ? "먼저 맞고 엄호" : "전위가 엄호", 12, Theme.TextDim);
+            note.HorizontalAlignment = HorizontalAlignment.Center;
+            column.Widgets.Add(note);
+
+            var inRow = lineup.Where(m => m.Row == row).ToList();
+            if (inRow.Count == 0)
+            {
+                var empty = Label(row == Row.Front ? "비어 있음\n후위가 바로 맞는다" : "비어 있음", 12, Theme.TextDim);
+                empty.HorizontalAlignment = HorizontalAlignment.Center;
+                empty.Margin = new Thickness(0, 12);
+                column.Widgets.Add(empty);
+            }
+
+            foreach (var member in inRow)
+            {
+                var token = new VerticalStackPanel { Spacing = 2 };
+                token.Widgets.Add(BuildToken(member, TokenSize, columnWidth - 8));
+
+                var other = row == Row.Front ? Row.Back : Row.Front;
+                var move = _widgets.TextButton(other == Row.Back ? "◀ 후위로" : "전위로 ▶", Theme.Button, Theme.ButtonHover, size: 12);
+                move.Padding = new Thickness(0, 2);
+                move.Width = columnWidth - 8;
+                move.Click += (_, _) =>
+                {
+                    member.Row = other;
+                    MarkChanged();
+                };
+                token.Widgets.Add(move);
+                column.Widgets.Add(token);
+            }
+
+            board.Widgets.Add(column);
+        }
+
+        return board;
+    }
+
+    /// <summary>진형 판의 말: 주무기로 고른 초상, 이름, 문제(잠긴 전술·착용 불가)가 있으면 빨간 테두리와 한 줄.</summary>
+    private Widget BuildToken(PartyMember member, int size, int width)
     {
         var index = Members.ToList().IndexOf(member);
         var selected = member == Selected;
+        var locked = member.LockedTacticIndexes(_data, _company.ActiveTacticSet).Count;
+        var unwearable = member.UnwearableSlots(_data).Count;
+        var down = _company.Expedition?.MemberState(member.Id) is { Down: true };
+        var (icon, color) = GameIcons.Portrait(member.WeaponMastery(_data));
 
-        var content = new VerticalStackPanel { Spacing = 3 };
-        var title = new HorizontalStackPanel { Spacing = 6 };
-        title.Widgets.Add(Label(member.Name, 18, selected ? Theme.Text : Theme.Ally, bold: true));
-        title.Widgets.Add(_widgets.Chip(RowLabel(member.Row), RowColor(member.Row), 12));
-        content.Widgets.Add(title);
-        var state = _company.Expedition?.MemberState(member.Id) is { Down: true } ? " · 쓰러짐" : "";
-        content.Widgets.Add(Label($"{ItemText.Gear(member.Equipment, _data).Split(" / ")[0]} · 전술 {TacticsOf(member).Count}개{state}", 13, Theme.TextDim));
-        if (member.LockedTacticIndexes(_data, _company.ActiveTacticSet).Count is > 0 and var locked)
+        var content = new VerticalStackPanel { Spacing = 2, HorizontalAlignment = HorizontalAlignment.Center };
+        var tile = _widgets.IconTile(icon, size, down ? Theme.Death : color,
+            border: selected ? Theme.Gold : locked + unwearable > 0 ? Theme.Enemy : null,
+            background: selected ? Theme.Selected : Theme.BarBack, padding: 5);
+        tile.HorizontalAlignment = HorizontalAlignment.Center;
+        content.Widgets.Add(tile);
+
+        var name = Label(member.Name, size >= TokenSize ? 15 : 13, selected ? Theme.Gold : Theme.Text, bold: true);
+        name.HorizontalAlignment = HorizontalAlignment.Center;
+        content.Widgets.Add(name);
+
+        var problem = down ? "쓰러짐"
+            : locked > 0 ? $"잠긴 전술 {locked}"
+            : unwearable > 0 ? $"착용 불가 {unwearable}"
+            : null;
+        if (problem is not null)
         {
-            content.Widgets.Add(Label($"잠긴 전술 {locked}개", 13, Theme.Enemy));
+            var warning = Label(problem, 12, down ? Theme.Death : Theme.Enemy);
+            warning.HorizontalAlignment = HorizontalAlignment.Center;
+            content.Widgets.Add(warning);
         }
 
-        if (member.UnwearableSlots(_data).Count is > 0 and var unwearable)
+        var button = new Button
         {
-            content.Widgets.Add(Label($"착용 불가 장비 {unwearable}개", 13, Theme.Enemy));
-        }
-
-        var button = StyledButton(content, selected ? Theme.Selected : Theme.Panel, Theme.ButtonHover);
-        button.Width = PartyWidth - 56;
-        button.Padding = new Thickness(10, 7);
-        button.Click += (_, _) => Select(index);
-
-        // 줄 바꾸기: 원정 중에도 된다.
-        var other = member.Row == Row.Front ? Row.Back : Row.Front;
-        var move = _widgets.TextButton(other == Row.Back ? "후위로\n▼" : "전위로\n▲", Theme.Button, Theme.ButtonHover, size: 13);
-        move.Width = 50;
-        move.Padding = new Thickness(0, 4);
-        move.VerticalAlignment = VerticalAlignment.Stretch;
-        move.Click += (_, _) =>
-        {
-            member.Row = other;
-            MarkChanged();
+            Content = content,
+            Width = width,
+            Padding = new Thickness(0, 4),
+            Background = new SolidBrush(Color.Transparent),
+            OverBackground = new SolidBrush(Theme.ButtonHover * 0.6f),
+            PressedBackground = new SolidBrush(Theme.ButtonPressed),
         };
-
-        var row = new HorizontalStackPanel { Spacing = 6 };
-        row.Widgets.Add(button);
-        row.Widgets.Add(move);
-        return row;
+        button.Click += (_, _) => Select(index);
+        return button;
     }
 
     /// <summary>
     /// 전술 세트 선택과 관리. 세트는 이름 붙은 전술 계획이고 수에 제한이 없다.
     /// 고르면 파티 전원이 그 세트로 바뀌고, 편집도 전투도 그 세트로 한다. 고른 세트는 세이브에 함께 저장된다.
-    /// "새 세트"는 지금 세트를 복사해 만들고, 마지막 남은 세트는 지울 수 없다. 이름은 입력칸에서 바로 바꾼다.
+    /// "+"는 지금 세트를 복사해 만들고, 마지막 남은 세트는 지울 수 없다. 이름은 입력칸에서 바로 바꾼다.
     /// </summary>
     private Widget BuildTacticSetSelector()
     {
         var panel = new VerticalStackPanel { Spacing = 6, Width = PartyWidth };
-        panel.Widgets.Add(Label($"전술 세트 ({_company.TacticSetNames.Count}개)", 16, Theme.Text));
+        panel.Widgets.Add(_widgets.Header("tactics", "전술 세트", $"{_company.TacticSetNames.Count}개"));
 
-        var combo = Combo(_company.TacticSetNames, _company.ActiveTacticSet, PartyWidth);
+        var top = new HorizontalStackPanel { Spacing = 4 };
+        var combo = Combo(_company.TacticSetNames, _company.ActiveTacticSet, PartyWidth - 2 * 36 - 8);
         combo.SelectedIndexChanged += (_, _) =>
         {
             if (combo.SelectedIndex is { } index && index != _company.ActiveTacticSet)
@@ -399,16 +452,45 @@ internal sealed class TacticEditorScene : IScene
                 MarkChanged();
             }
         };
-        panel.Widgets.Add(combo);
+        top.Widgets.Add(combo);
+
+        var add = _widgets.TextButton("+", Theme.Button, Theme.ButtonHover, bold: true);
+        add.Width = 36;
+        add.Padding = new Thickness(0, 4);
+        add.Tooltip = "지금 세트를 복사해 새 세트를 만든다";
+        add.Click += (_, _) =>
+        {
+            _company.AddTacticSet();
+            MarkChanged();
+        };
+        top.Widgets.Add(add);
+
+        var remove = _widgets.TextButton("×", Theme.Button, Theme.ButtonHover, bold: true);
+        remove.Width = 36;
+        remove.Padding = new Thickness(0, 4);
+        remove.Tooltip = "이 세트를 지운다";
+        remove.Enabled = _company.TacticSetNames.Count > 1;
+        remove.Click += (_, _) =>
+        {
+            if (_company.RemoveTacticSet(_company.ActiveTacticSet))
+            {
+                _picking = null;
+                MarkChanged();
+            }
+        };
+        top.Widgets.Add(remove);
+        panel.Widgets.Add(top);
 
         var name = new TextBox
         {
             Text = _company.TacticSetNames[_company.ActiveTacticSet],
             Width = PartyWidth - 46,
-            Font = _ui.Font(17),
+            Font = _ui.Font(16),
             TextColor = Theme.Text,
             FocusedTextColor = Theme.Text,
             Background = new SolidBrush(Theme.BarBack),
+            Border = new SolidBrush(Theme.PanelBorder),
+            BorderThickness = new Thickness(1),
             Padding = new Thickness(6, 3),
         };
         name.ValueChanging += (_, e) =>
@@ -441,31 +523,9 @@ internal sealed class TacticEditorScene : IScene
             }
         };
         var nameRow = new HorizontalStackPanel { Spacing = 6 };
-        nameRow.Widgets.Add(Label("이름", 15, Theme.TextDim, width: 40));
+        nameRow.Widgets.Add(Label("이름", 14, Theme.TextDim, width: 40));
         nameRow.Widgets.Add(name);
         panel.Widgets.Add(nameRow);
-
-        var buttons = new HorizontalStackPanel { Spacing = 6 };
-        var add = _widgets.TextButton("+ 새 세트 (복사)", Theme.Button, Theme.ButtonHover, size: 15);
-        add.Click += (_, _) =>
-        {
-            _company.AddTacticSet();
-            MarkChanged();
-        };
-        buttons.Widgets.Add(add);
-
-        var remove = _widgets.TextButton("세트 삭제", Theme.Button, Theme.ButtonHover, size: 15);
-        remove.Enabled = _company.TacticSetNames.Count > 1;
-        remove.Click += (_, _) =>
-        {
-            if (_company.RemoveTacticSet(_company.ActiveTacticSet))
-            {
-                _picking = null;
-                MarkChanged();
-            }
-        };
-        buttons.Widgets.Add(remove);
-        panel.Widgets.Add(buttons);
 
         return panel;
     }
@@ -476,18 +536,7 @@ internal sealed class TacticEditorScene : IScene
     {
         var member = Selected;
         var panel = new VerticalStackPanel { Spacing = 10, Width = area.Width, Height = area.Height };
-
-        var title = new HorizontalStackPanel { Spacing = 12 };
-        title.Widgets.Add(Label(member.Name, 26, Theme.Text, bold: true));
-        title.Widgets.Add(BuildRowSelector(member));
-        if (!OnExpedition)
-        {
-            var training = TextButton("숙련·패시브 ▶", Theme.Button, Theme.ButtonHover);
-            training.Click += (_, _) => _openTraining(member);
-            title.Widgets.Add(training);
-        }
-
-        panel.Widgets.Add(title);
+        panel.Widgets.Add(BuildMemberHeader(member));
         panel.Widgets.Add(BuildTabs(member));
 
         var height = area.Height - MemberHeaderHeight;
@@ -503,21 +552,79 @@ internal sealed class TacticEditorScene : IScene
         return panel;
     }
 
+    /// <summary>큰 초상, 이름, 전위·후위, 숙련 버튼, 아이콘으로 된 능력치 줄 (자세한 것은 능력치 탭).</summary>
+    private Widget BuildMemberHeader(PartyMember member)
+    {
+        var header = new HorizontalStackPanel { Spacing = 14 };
+        var (icon, color) = GameIcons.Portrait(member.WeaponMastery(_data));
+        header.Widgets.Add(_widgets.IconTile(icon, PortraitSize, color, Theme.Gold, Theme.Selected, padding: 8));
+
+        var info = new VerticalStackPanel { Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        var title = new HorizontalStackPanel { Spacing = 12 };
+        title.Widgets.Add(Label(member.Name, 26, Theme.Text, bold: true));
+        title.Widgets.Add(BuildRowSelector(member));
+        if (!OnExpedition)
+        {
+            var content = new HorizontalStackPanel { Spacing = 6 };
+            content.Widgets.Add(_widgets.Icon("mastery", 18, Theme.Gold));
+            content.Widgets.Add(Label("숙련·패시브", 16, Theme.Text));
+            var training = StyledButton(content, Theme.Button, Theme.ButtonHover);
+            training.Padding = new Thickness(10, 5);
+            training.Click += (_, _) => _openTraining(member);
+            title.Widgets.Add(training);
+        }
+
+        info.Widgets.Add(title);
+
+        var unit = UnitPreview.For(_setup!, _data.Catalog, CombatRules.Default);
+        var s = member.Stats;
+        var strip = new HorizontalStackPanel { Spacing = 16 };
+        foreach (var (statIcon, iconColor, value, tip) in new[]
+                 {
+                     ("hp", Theme.HpBar, unit.MaxHp, "최대 HP"),
+                     ("mp", Theme.MpBar, unit.MaxMp, "최대 MP"),
+                     ("delay", Theme.Cover, (int)unit.BaseDelay, "행동 간격 (작을수록 자주 행동)"),
+                     ("stat.str", Theme.Damage, s.Str, "근력: 물리 위력과 물리 방어"),
+                     ("stat.dex", Theme.TextDim, s.Dex, "민첩: 아직 전투 규칙에 쓰이지 않는다"),
+                     ("stat.vital", Theme.Heal, s.Vital, "체력: 최대 HP"),
+                     ("stat.intel", Theme.Lightning, s.Intel, "지능: 마법·회복 위력, 마법 방어, 최대 MP"),
+                     ("stat.speed", Theme.Frost, s.Speed, "신속: 행동 간격"),
+                 })
+        {
+            var item = _widgets.IconText(statIcon, iconColor, $"{value}", 17, Theme.Text, bold: true);
+            item.Tooltip = tip;
+            strip.Widgets.Add(item);
+        }
+
+        info.Widgets.Add(strip);
+        header.Widgets.Add(info);
+        return header;
+    }
+
     private Widget BuildTabs(PartyMember member)
     {
         var tabs = new HorizontalStackPanel { Spacing = 6 };
         var locked = member.LockedTacticIndexes(_data, _company.ActiveTacticSet).Count;
         var unwearable = member.UnwearableSlots(_data).Count;
-        foreach (var (tab, label) in new[]
+        foreach (var (tab, icon, label, warn) in new[]
                  {
-                     (Tab.Equipment, unwearable > 0 ? $"장비 (착용 불가 {unwearable})" : "장비"),
-                     (Tab.Stats, "능력치"),
-                     (Tab.Tactics, locked > 0 ? $"전술 {TacticsOf(member).Count}개 (잠김 {locked})" : $"전술 {TacticsOf(member).Count}개"),
+                     (Tab.Equipment, "equipment", "장비", unwearable > 0 ? $"착용 불가 {unwearable}" : null),
+                     (Tab.Stats, "stats", "능력치", null),
+                     (Tab.Tactics, "tactics", $"전술 {TacticsOf(member).Count}", locked > 0 ? $"잠김 {locked}" : null),
                  })
         {
             var active = _tab == tab && _picking is null;
-            var button = _widgets.TextButton(label, active ? Theme.Selected : Theme.Button, Theme.ButtonHover, bold: active);
+            var content = new HorizontalStackPanel { Spacing = 6 };
+            content.Widgets.Add(_widgets.Icon(icon, 20, active ? Theme.Gold : Theme.TextDim));
+            content.Widgets.Add(Label(label, 17, active ? Theme.Text : Theme.TextDim, bold: active));
+            if (warn is not null)
+            {
+                content.Widgets.Add(Label(warn, 13, Theme.Enemy));
+            }
+
+            var button = StyledButton(content, active ? Theme.Selected : Theme.Button, Theme.ButtonHover);
             button.Width = 170;
+            button.Padding = new Thickness(12, 6);
             button.Click += (_, _) =>
             {
                 _tab = tab;
@@ -539,7 +646,7 @@ internal sealed class TacticEditorScene : IScene
     private Widget BuildRowSelector(PartyMember member)
     {
         var row = new HorizontalStackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
-        foreach (var option in new[] { Row.Front, Row.Back })
+        foreach (var option in new[] { Row.Back, Row.Front })
         {
             var active = member.Row == option;
             var button = _widgets.TextButton(RowLabel(option), active ? RowColor(option) : Theme.Button, Theme.ButtonHover, bold: active);
@@ -557,11 +664,22 @@ internal sealed class TacticEditorScene : IScene
 
     // ── 장비 탭 ────────────────────────────────────────────
 
-    private const int SlotColumnWidth = 290;
+    private const int DollWidth = 280;
+    private const int SlotTile = 60;
     private const int ItemColumnWidth = 300;
 
+    /// <summary>장비 인형의 칸 위치 (칸 묶음의 왼쪽 위). 머리·몸·발은 가운데 세로로, 주무기는 왼쪽, 보조는 오른쪽.</summary>
+    private static Point DollPosition(EquipmentSlot slot) => slot switch
+    {
+        EquipmentSlot.Head => new Point(94, 0),
+        EquipmentSlot.Body => new Point(94, 96),
+        EquipmentSlot.Feet => new Point(94, 192),
+        EquipmentSlot.MainHand => new Point(0, 96),
+        _ => new Point(188, 96),
+    };
+
     /// <summary>
-    /// 왼쪽: 부위 카드 5개와 고른 부위의 창고 아이템. 가운데: 보이는 아이템(미리 보기 또는 낀 것)의 설명과 행동.
+    /// 왼쪽: 장비 인형(부위 칸 5개)과 고른 부위의 창고 아이템 칸. 가운데: 보이는 아이템(미리 보기 또는 낀 것)의 설명과 행동.
     /// 오른쪽: 고른 행동의 설명 (낀 아이템이면 지금 장비·패시브 기준 예상치도).
     /// 고르면 창고에서 꺼내 끼고, 끼고 있던 것은 창고로 간다. 아이템을 바꾸면 그 행동을 쓰는 전술이 잠길 수 있다.
     /// </summary>
@@ -569,20 +687,15 @@ internal sealed class TacticEditorScene : IScene
     {
         var row = new HorizontalStackPanel { Spacing = Gap, Height = height };
 
-        var slots = new VerticalStackPanel { Spacing = 6, Width = SlotColumnWidth };
-        foreach (var slot in EquipmentSlots.All)
-        {
-            slots.Widgets.Add(BuildSlotCard(member, slot));
-        }
-
-        slots.Widgets.Add(Label(OnExpedition ? "원정 중에는 장비를 바꿀 수 없습니다" : $"{ItemText.SlotLabel(_slot)} 교체 (창고)", 15,
-            OnExpedition ? Theme.TextDim : Theme.Ally, bold: !OnExpedition));
+        var left = new VerticalStackPanel { Spacing = 6, Width = DollWidth };
+        left.Widgets.Add(BuildDoll(member));
+        left.Widgets.Add(_widgets.Header("equipment", OnExpedition ? "원정 중에는 장비를 바꿀 수 없다" : $"창고 · {ItemText.SlotLabel(_slot)}", size: 15));
         if (!OnExpedition)
         {
-            slots.Widgets.Add(new ScrollPane { Content = BuildCandidates(member), ShowHorizontalScrollBar = false, Height = height - 5 * 62 - 30 });
+            left.Widgets.Add(new ScrollPane { Content = BuildCandidates(member), ShowHorizontalScrollBar = false, Height = height - DollHeight - 36 });
         }
 
-        row.Widgets.Add(slots);
+        row.Widgets.Add(left);
 
         var shown = _candidate ?? member.ItemIn(_slot);
         var item = shown is null ? null : _data.Items[shown];
@@ -594,7 +707,7 @@ internal sealed class TacticEditorScene : IScene
             Height = height,
         });
 
-        var actionWidth = width - SlotColumnWidth - ItemColumnWidth - 18 - Gap * 2;
+        var actionWidth = width - DollWidth - ItemColumnWidth - 18 - Gap * 2;
         row.Widgets.Add(new ScrollPane
         {
             Content = BuildActionDetail(member, item, actionWidth - 18),
@@ -606,66 +719,105 @@ internal sealed class TacticEditorScene : IScene
         return row;
     }
 
-    private Widget BuildSlotCard(PartyMember member, EquipmentSlot slot)
+    private const int DollHeight = 192 + SlotTile + 20;
+
+    /// <summary>흐린 사람 그림 위에 부위 칸 5개. 칸 테두리는 등급색, 착용 불가면 빨강, 고른 칸은 금색.</summary>
+    private Widget BuildDoll(PartyMember member)
     {
+        var doll = new Panel { Width = DollWidth, Height = DollHeight };
+        var figure = _widgets.Icon("figure", DollHeight - 10, Theme.PanelBorder * 0.45f);
+        figure.HorizontalAlignment = HorizontalAlignment.Center;
+        figure.VerticalAlignment = VerticalAlignment.Top;
+        doll.Widgets.Add(figure);
+
+        foreach (var slot in EquipmentSlots.All)
+        {
+            var cell = BuildSlotCell(member, slot);
+            var position = DollPosition(slot);
+            cell.Left = position.X;
+            cell.Top = position.Y;
+            doll.Widgets.Add(cell);
+        }
+
+        return doll;
+    }
+
+    private Widget BuildSlotCell(PartyMember member, EquipmentSlot slot)
+    {
+        const int cellWidth = 92;
         var id = member.ItemIn(slot);
         var item = id is null ? null : _data.Items[id];
         var blockedByTwoHanded = slot == EquipmentSlot.OffHand && item is null
             && member.ItemIn(EquipmentSlot.MainHand) is { } main && _data.Items[main].TwoHanded;
         var why = member.WhyCannotWear(slot, _data);
 
-        var content = new VerticalStackPanel { Spacing = 2 };
-        var line = new HorizontalStackPanel { Spacing = 8 };
-        line.Widgets.Add(Label(ItemText.SlotLabel(slot), 14, Theme.TextDim, width: 44));
-        line.Widgets.Add(item is null
-            ? Label(blockedByTwoHanded ? "두손 무기 사용 중" : "비어 있음", 16, Theme.TextDim)
-            : Label(ItemText.ShortName(item), 17, why is null ? ItemText.TierColor(item.Tier) : Theme.Enemy, bold: true));
-        content.Widgets.Add(line);
-
-        var detail = item is null ? "" : why is not null ? $"착용 불가 — {why}"
-            : $"{ItemText.Kind(item, _data)} · 숙련 Lv{member.MasteryLevel(item.Mastery!)}{(item.Actions.Count > 0 ? $" · 행동 {item.Actions.Count}" : "")}";
-        content.Widgets.Add(Label(detail.Length > 0 ? detail : " ", 13, why is null ? Theme.TextDim : Theme.Enemy));
-
-        var button = StyledButton(content, slot == _slot ? Theme.Selected : Theme.Button, Theme.ButtonHover);
-        button.Width = SlotColumnWidth;
-        button.Padding = new Thickness(10, 6);
-        button.Click += (_, _) =>
+        var (icon, color) = item is not null ? GameIcons.Item(item)
+            : blockedByTwoHanded ? ("lock", Theme.TextDim)
+            : (GameIcons.EmptySlot(slot), Theme.PanelBorder);
+        var border = item is null ? Theme.PanelBorder : why is not null ? Theme.Enemy : ItemText.TierColor(item.Tier);
+        var tile = _widgets.IconButton(icon, SlotTile, color, border, slot == _slot);
+        tile.HorizontalAlignment = HorizontalAlignment.Center;
+        tile.Tooltip = item is null
+            ? $"{ItemText.SlotLabel(slot)}: {(blockedByTwoHanded ? "두손 무기 사용 중" : "비어 있음")}"
+            : $"{ItemText.SlotLabel(slot)}: {item.Name}{(why is null ? "" : $"\n착용 불가 — {why}")}";
+        tile.Click += (_, _) =>
         {
             _slot = slot;
             _candidate = null;
             _detailAction = null;
             MarkDirty();
         };
-        return button;
+
+        var cell = new VerticalStackPanel
+        {
+            Spacing = 2,
+            Width = cellWidth,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+        cell.Widgets.Add(tile);
+        var name = item is null
+            ? Label(blockedByTwoHanded ? "두손 사용 중" : ItemText.SlotLabel(slot), 13, Theme.TextDim)
+            : Label(item.Name, 13, why is null ? ItemText.TierColor(item.Tier) : Theme.Enemy, bold: true);
+        name.HorizontalAlignment = HorizontalAlignment.Center;
+        cell.Widgets.Add(name);
+        return cell;
     }
 
-    /// <summary>고른 부위에 낄 수 있는 창고 아이템 (데이터 순서). 누르면 가운데에서 미리 본다.</summary>
+    /// <summary>고른 부위에 낄 수 있는 창고 아이템 칸 (데이터 순서, 오른쪽 아래에 개수). 누르면 가운데에서 미리 본다.</summary>
     private Widget BuildCandidates(PartyMember member)
     {
-        var list = new VerticalStackPanel { Spacing = 4, Width = SlotColumnWidth };
+        const int size = 50;
+        const int perRow = 5;
+        var list = new VerticalStackPanel { Spacing = 5, Width = DollWidth };
         var current = member.ItemIn(_slot);
         var options = _data.ItemsFor(_slot).Where(i => i.Id != current && _company.StashCount(i.Id) > 0).ToList();
         if (options.Count == 0)
         {
-            list.Widgets.Add(Label("창고에 이 부위 아이템이 없습니다", 14, Theme.TextDim));
+            list.Widgets.Add(Label("창고에 이 부위 아이템이 없다", 14, Theme.TextDim));
         }
 
-        foreach (var item in options)
+        for (var i = 0; i < options.Count; i += perRow)
         {
-            var wearable = CanWear(member, item);
-            var content = new HorizontalStackPanel { Spacing = 8 };
-            content.Widgets.Add(Label(ItemText.ShortName(item), 15, wearable ? ItemText.TierColor(item.Tier) : Theme.Enemy, bold: true));
-            content.Widgets.Add(Label($"{item.TypeOrName} · {_company.StashCount(item.Id)}개", 13, Theme.TextDim));
-            var button = StyledButton(content, item.Id == _candidate ? Theme.Selected : Theme.Panel, Theme.ButtonHover);
-            button.Width = SlotColumnWidth - 4;
-            button.Padding = new Thickness(10, 4);
-            button.Click += (_, _) =>
+            var line = new HorizontalStackPanel { Spacing = 5 };
+            foreach (var item in options.Skip(i).Take(perRow))
             {
-                _candidate = item.Id;
-                _detailAction = null;
-                MarkDirty();
-            };
-            list.Widgets.Add(button);
+                var wearable = CanWear(member, item);
+                var (icon, color) = GameIcons.Item(item);
+                var count = _company.StashCount(item.Id);
+                var tile = _widgets.IconButton(icon, size, wearable ? color : Theme.Enemy, wearable ? ItemText.TierColor(item.Tier) : Theme.Enemy,
+                    item.Id == _candidate, count > 1 ? $"{count}" : null);
+                tile.Tooltip = $"{ItemText.ShortName(item)} · {item.TypeOrName}{(wearable ? "" : " (패시브 모자람)")}";
+                tile.Click += (_, _) =>
+                {
+                    _candidate = item.Id;
+                    _detailAction = null;
+                    MarkDirty();
+                };
+                line.Widgets.Add(tile);
+            }
+
+            list.Widgets.Add(line);
         }
 
         return list;
@@ -683,16 +835,25 @@ internal sealed class TacticEditorScene : IScene
         return actions;
     }
 
+    /// <summary>아이콘 칸 옆에 큰 이름과 흐린 한 줄 (아이템·행동 설명의 머리).</summary>
+    private Widget TitleWithIcon(string icon, Color iconColor, Color border, string title, Color titleColor, string subtitle, int width)
+    {
+        var row = new HorizontalStackPanel { Spacing = 10, Width = width };
+        row.Widgets.Add(_widgets.IconTile(icon, 56, iconColor, border));
+        var text = new VerticalStackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+        text.Widgets.Add(_widgets.Label(title, 19, titleColor, bold: true, width: width - 66, wrap: true));
+        text.Widgets.Add(_widgets.Label(subtitle, 13, Theme.TextDim, width: width - 66, wrap: true));
+        row.Widgets.Add(text);
+        return row;
+    }
+
     private Widget BuildItemColumn(PartyMember member, ItemDefinition? item)
     {
         var column = new VerticalStackPanel { Spacing = 8, Width = ItemColumnWidth };
         if (item is null)
         {
-            column.Widgets.Add(_widgets.Card(
-            [
-                new($"{ItemText.SlotLabel(_slot)} — 비어 있음", Theme.TextDim, 18, Bold: true),
-                new("왼쪽 아래 창고 목록에서 아이템을 고르면 여기서 설명을 보고 낄 수 있다.", Theme.TextDim, 14),
-            ], ItemColumnWidth));
+            column.Widgets.Add(TitleWithIcon(GameIcons.EmptySlot(_slot), Theme.PanelBorder, Theme.PanelBorder,
+                $"{ItemText.SlotLabel(_slot)} — 비어 있음", Theme.TextDim, "왼쪽 아래 창고 칸에서 아이템을 고르면 여기서 보고 낄 수 있다.", ItemColumnWidth));
             return column;
         }
 
@@ -700,17 +861,20 @@ internal sealed class TacticEditorScene : IScene
         var previewing = _candidate is not null;
         if (previewing)
         {
-            column.Widgets.Add(Label("미리 보기 (아직 끼지 않음)", 14, Theme.Cover, bold: true));
+            column.Widgets.Add(_widgets.Chip("미리 보기 · 아직 끼지 않음", Theme.Selected, 13, Theme.Gold));
         }
 
-        column.Widgets.Add(_widgets.Card(ItemText.Details(item, _data, member.MasteryLevel(item.Mastery!), skills, withActions: false), ItemColumnWidth));
+        var (icon, color) = GameIcons.Item(item);
+        var details = ItemText.Details(item, _data, member.MasteryLevel(item.Mastery!), skills, withActions: false);
+        column.Widgets.Add(TitleWithIcon(icon, color, ItemText.TierColor(item.Tier), details[0].Text, details[0].Color, details[1].Text, ItemColumnWidth));
+        if (details.Count > 2)
+        {
+            column.Widgets.Add(_widgets.Card(details.Skip(2), ItemColumnWidth));
+        }
 
         if (!previewing && member.WhyCannotWear(_slot, _data) is { } why)
         {
-            var label = Label($"착용 불가 — {why}", 14, Theme.Enemy);
-            label.Wrap = true;
-            label.Width = ItemColumnWidth;
-            column.Widgets.Add(label);
+            column.Widgets.Add(_widgets.Label($"착용 불가 — {why}", 14, Theme.Enemy, width: ItemColumnWidth, wrap: true));
         }
 
         var buttons = new HorizontalStackPanel { Spacing = 8 };
@@ -757,21 +921,25 @@ internal sealed class TacticEditorScene : IScene
             return column;
         }
 
-        column.Widgets.Add(Label("주는 행동 — 눌러서 설명 보기", 15, Theme.Ally, bold: true));
+        column.Widgets.Add(_widgets.Header("action.melee", $"행동 {actions.Count}개", "모두 쓸 수 있다 · 눌러서 설명", size: 15));
         var shownAction = _detailAction ?? actions[0].Id;
         foreach (var action in actions)
         {
             var meets = skills.Meets(action.Requirements);
-            var content = new VerticalStackPanel { Spacing = 1 };
+            var (actionIcon, actionColor) = GameIcons.Action(action, _data);
+            var content = new HorizontalStackPanel { Spacing = 8 };
+            content.Widgets.Add(_widgets.IconTile(meets ? actionIcon : "lock", 36, meets ? actionColor : Theme.Enemy, padding: 4));
+            var text = new VerticalStackPanel { Spacing = 1, VerticalAlignment = VerticalAlignment.Center };
             var top = new HorizontalStackPanel { Spacing = 8 };
-            top.Widgets.Add(Label(action.Name, 16, meets ? Theme.Text : Theme.Enemy, bold: true));
-            top.Widgets.Add(Label(ActionText.Cost(action), 13, Theme.Cover));
-            content.Widgets.Add(top);
-            content.Widgets.Add(Label(meets ? ActionText.Target(action, _data) : $"잠김: {LockReason(action, null, skills)}", 13, meets ? Theme.TextDim : Theme.Enemy));
+            top.Widgets.Add(Label(action.Name, 15, meets ? Theme.Text : Theme.Enemy, bold: true));
+            top.Widgets.Add(Label(ActionText.Cost(action), 12, Theme.Cover));
+            text.Widgets.Add(top);
+            text.Widgets.Add(Label(meets ? ActionText.Target(action, _data) : $"잠김: {LockReason(action, null, skills)}", 12, meets ? Theme.TextDim : Theme.Enemy));
+            content.Widgets.Add(text);
 
             var button = StyledButton(content, action.Id == shownAction ? Theme.Selected : Theme.Button, Theme.ButtonHover);
             button.Width = ItemColumnWidth;
-            button.Padding = new Thickness(10, 5);
+            button.Padding = new Thickness(5, 4);
             button.Click += (_, _) =>
             {
                 _detailAction = action.Id;
@@ -790,23 +958,20 @@ internal sealed class TacticEditorScene : IScene
         var action = _detailAction is { } id && actions.Any(a => a.Id == id) ? _data.Actions[id] : actions.FirstOrDefault();
         if (action is null)
         {
-            column.Widgets.Add(_widgets.Card(
-            [
-                new("행동 없음", Theme.TextDim, 18, Bold: true),
-                new(item is null ? "아이템을 끼면 그 아이템의 행동이 여기 나온다." : "이 아이템은 보너스만 준다.", Theme.TextDim, 14),
-            ], width));
+            column.Widgets.Add(TitleWithIcon("action.buff", Theme.PanelBorder, Theme.PanelBorder, "행동 없음", Theme.TextDim,
+                item is null ? "아이템을 끼면 그 아이템의 행동이 여기 나온다." : "이 아이템은 보너스만 준다.", width));
             return column;
         }
 
         // 낀 아이템의 행동만 지금 장비 기준 예상치를 보여 준다 (미리 보는 아이템은 끼면 달라진다).
         var preview = _candidate is null && member.WhyCannotWear(_slot, _data) is null ? Preview(action) : null;
-        column.Widgets.Add(_widgets.Card(ActionText.Details(action, _data, preview, member.Skills(_data)), width));
+        var details = ActionText.Details(action, _data, preview, member.Skills(_data));
+        var (icon, color) = GameIcons.Action(action, _data);
+        column.Widgets.Add(TitleWithIcon(icon, color, Theme.PanelBorder, details[0].Text, Theme.Text, details[1].Text, width));
+        column.Widgets.Add(_widgets.Card(details.Skip(2), width));
         if (preview is null)
         {
-            var note = Label("끼고 나면 이 멤버의 스탯·패시브로 계산한 예상치가 나온다.", 13, Theme.TextDim);
-            note.Wrap = true;
-            note.Width = width;
-            column.Widgets.Add(note);
+            column.Widgets.Add(_widgets.Label("끼고 나면 이 멤버의 스탯·패시브로 계산한 예상치가 나온다.", 13, Theme.TextDim, width: width, wrap: true));
         }
 
         return column;
@@ -834,88 +999,151 @@ internal sealed class TacticEditorScene : IScene
 
     // ── 능력치 탭 ──────────────────────────────────────────
 
-    /// <summary>기본 스탯과 그 효과, 전투 능력치, 패시브·장비 보너스 합계와 배운 패시브.</summary>
+    /// <summary>
+    /// 왼쪽: 기본 스탯(아이콘, 값, 그 효과). 가운데: 전투 능력치 타일(HP, MP, 행동 간격, 위력, 방어)과 진형 설명.
+    /// 오른쪽: 패시브·장비 보너스 합계와 배운 패시브.
+    /// </summary>
     private Widget BuildStatsTab(PartyMember member, int width, int height)
     {
         var rules = CombatRules.Default;
         var unit = UnitPreview.For(_setup!, _data.Catalog, rules);
         var s = member.Stats;
         var columnWidth = (width - Gap * 2) / 3;
+        var inner = columnWidth - 18;
 
-        var basics = new List<TextLine>
+        // 기본 스탯
+        var basics = new VerticalStackPanel { Spacing = 8, Width = inner };
+        basics.Widgets.Add(_widgets.Header("stats", "기본 스탯"));
+        foreach (var (icon, color, name, value, effect) in new[]
+                 {
+                     ("stat.str", Theme.Damage, "근력", s.Str, $"물리 위력 +{s.Str * rules.PowerScalingPercentPerPoint}% · 물리 방어 {s.Str}"),
+                     ("stat.dex", Theme.TextDim, "민첩", s.Dex, "아직 전투 규칙에 쓰이지 않는다"),
+                     ("stat.vital", Theme.Heal, "체력", s.Vital, $"최대 HP {s.Vital * rules.HpPerVital} (1당 {rules.HpPerVital})"),
+                     ("stat.intel", Theme.Lightning, "지능", s.Intel,
+                         $"마법·회복 위력 +{s.Intel * rules.PowerScalingPercentPerPoint}% · 마법 방어 {s.Intel} · 최대 MP {s.Intel * rules.MpPerIntel}"),
+                     ("stat.speed", Theme.Frost, "신속", s.Speed, $"기본 행동 간격 {rules.TimeConstant} ÷ {s.Speed} = {rules.TimeConstant / Math.Max(1, s.Speed)}"),
+                 })
         {
-            new("기본 스탯", Theme.Ally, 18, Bold: true),
-            new($"근력 {s.Str}", Theme.Text, 17, Bold: true),
-            new($"물리 위력 +{s.Str * rules.PowerScalingPercentPerPoint}% · 물리 방어 {s.Str}", Theme.TextDim, 14),
-            new($"민첩 {s.Dex}", Theme.Text, 17, Bold: true),
-            new("아직 전투 규칙에 쓰이지 않는다", Theme.TextDim, 14),
-            new($"체력 {s.Vital}", Theme.Text, 17, Bold: true),
-            new($"최대 HP {s.Vital * rules.HpPerVital} (체력 1당 {rules.HpPerVital})", Theme.TextDim, 14),
-            new($"지능 {s.Intel}", Theme.Text, 17, Bold: true),
-            new($"마법·회복 위력 +{s.Intel * rules.PowerScalingPercentPerPoint}% · 마법 방어 {s.Intel} · 최대 MP {s.Intel * rules.MpPerIntel}", Theme.TextDim, 14),
-            new($"신속 {s.Speed}", Theme.Text, 17, Bold: true),
-            new($"기본 행동 간격 {rules.TimeConstant} ÷ 신속 = {rules.TimeConstant / Math.Max(1, s.Speed)}", Theme.TextDim, 14),
-        };
+            var row = new HorizontalStackPanel { Spacing = 10 };
+            row.Widgets.Add(_widgets.IconTile(icon, 42, color, padding: 5));
+            var text = new VerticalStackPanel { Spacing = 1, VerticalAlignment = VerticalAlignment.Center };
+            var top = new HorizontalStackPanel { Spacing = 8 };
+            top.Widgets.Add(Label(name, 15, Theme.TextDim));
+            top.Widgets.Add(Label($"{value}", 20, Theme.Text, bold: true));
+            text.Widgets.Add(top);
+            text.Widgets.Add(_widgets.Label(effect, 12, Theme.TextDim, width: inner - 52, wrap: true));
+            row.Widgets.Add(text);
+            basics.Widgets.Add(row);
+        }
 
-        var combat = new List<TextLine>
+        // 전투 능력치 타일 (두 칸씩)
+        var combat = new VerticalStackPanel { Spacing = 8, Width = inner };
+        combat.Widgets.Add(_widgets.Header("power", "전투 능력치"));
+        var tiles = new (string Icon, Color Color, string Value, string Label)[]
         {
-            new("전투 능력치", Theme.Ally, 18, Bold: true),
-            new($"HP {unit.MaxHp}   MP {unit.MaxMp}", Theme.Heal, 17, Bold: true),
-            new($"행동 간격 {unit.BaseDelay}", Theme.Text, 17, Bold: true),
-            new("대기 수치 1000인 행동 뒤. 작을수록 자주 행동한다", Theme.TextDim, 14),
-            new($"물리 위력 ×{unit.PhysicalPowerPercent}%   마법·회복 ×{unit.MagicPowerPercent}%", Theme.Damage, 16),
-            new($"물리 방어 {unit.Defense} → 받는 물리 피해 -{unit.PhysicalReductionPercent}%", Theme.Text, 15),
-            new($"마법 방어 {unit.MagicDefense} → 받는 마법 피해 -{unit.MagicReductionPercent}%", Theme.Text, 15),
+            ("hp", Theme.HpBar, $"{unit.MaxHp}", "최대 HP"),
+            ("mp", Theme.MpBar, $"{unit.MaxMp}", "최대 MP"),
+            ("delay", Theme.Cover, $"{unit.BaseDelay}", "행동 간격"),
+            ("power", Theme.Damage, $"{unit.PhysicalPowerPercent}%", "물리 위력"),
+            ("action.magic", Theme.Lightning, $"{unit.MagicPowerPercent}%", "마법·회복 위력"),
+            ("defense", Theme.Text, $"-{unit.PhysicalReductionPercent}%", $"받는 물리 (방어 {unit.Defense})"),
+            ("magic-defense", Theme.Frost, $"-{unit.MagicReductionPercent}%", $"받는 마법 (방어 {unit.MagicDefense})"),
         };
+        var tileWidth = (inner - 8) / 2;
+        for (var i = 0; i < tiles.Length; i += 2)
+        {
+            var line = new HorizontalStackPanel { Spacing = 8 };
+            foreach (var tile in tiles.Skip(i).Take(2))
+            {
+                line.Widgets.Add(StatTile(tile.Icon, tile.Color, tile.Value, tile.Label, tileWidth));
+            }
 
+            combat.Widgets.Add(line);
+        }
+
+        var notes = new List<TextLine> { new("행동 간격: 대기 수치 1000인 행동 뒤. 작을수록 자주 행동한다", Theme.TextDim, 13) };
         if (unit.DamageTakenReductionPercent != 0)
         {
-            combat.Add(new($"방어 뒤 받는 피해 -{unit.DamageTakenReductionPercent}%", Theme.Text, 15));
+            notes.Add(new($"방어 뒤 받는 피해 -{unit.DamageTakenReductionPercent}%", Theme.Text, 14));
         }
 
         if (member.ItemIn(EquipmentSlot.MainHand) is { } mainId && _data.Items[mainId] is { } main)
         {
             if (main.PowerMultiplierPercent != 100)
             {
-                combat.Add(new($"무기 위력 ×{main.PowerMultiplierPercent / 100.0:0.##} ({_data.Masteries[main.Mastery!].Name} 행동)", Theme.Damage, 15));
+                notes.Add(new($"무기 위력 ×{main.PowerMultiplierPercent / 100.0:0.##} ({_data.Masteries[main.Mastery!].Name} 행동)", Theme.Damage, 14));
             }
 
             if (main.EffectDurationBonus > 0)
             {
-                combat.Add(new($"거는 효과 지속 +{main.EffectDurationBonus}턴", Theme.Damage, 15));
+                notes.Add(new($"거는 효과 지속 +{main.EffectDurationBonus}턴", Theme.Damage, 14));
             }
         }
 
-        combat.Add(new($"진형: {RowLabel(member.Row)}", Theme.Text, 17, Bold: true));
-        combat.Add(new(member.Row == Row.Front
+        notes.Add(new($"진형: {RowLabel(member.Row)}", Theme.Text, 15, Bold: true));
+        notes.Add(new(member.Row == Row.Front
             ? "적의 단일 공격이 후위를 노리면 전위 중 한 명이 대신 맞는다. 전위 우선 공격도 먼저 받는다."
-            : "살아 있는 전위가 있으면 단일 공격을 전위가 대신 맞는다 (엄호 무시·전체 공격 제외).", Theme.TextDim, 14));
+            : "살아 있는 전위가 있으면 단일 공격을 전위가 대신 맞는다 (엄호 무시·전체 공격 제외).", Theme.TextDim, 13));
+        combat.Widgets.Add(_widgets.Card(notes, inner));
 
-        var bonuses = new List<TextLine> { new("보너스 합계 (패시브 + 장비)", Theme.Ally, 18, Bold: true) };
+        // 보너스와 패시브
+        var bonuses = new VerticalStackPanel { Spacing = 8, Width = inner };
+        bonuses.Widgets.Add(_widgets.Header("power", "보너스 합계", "패시브 + 장비"));
         var totals = BonusTotals(member);
-        bonuses.AddRange(totals.Count == 0
+        bonuses.Widgets.Add(_widgets.Card(totals.Count == 0
             ? [new TextLine("아직 없음", Theme.TextDim, 14)]
-            : totals.Select(t => new TextLine(t, Theme.Text, 15)));
-        bonuses.Add(new("배운 패시브", Theme.Ally, 18, Bold: true));
+            : totals.Select(t => new TextLine(t, Theme.Text, 14)), inner));
+        bonuses.Widgets.Add(_widgets.Header("mastery", "배운 패시브"));
         var learned = _data.Skills.Values.Where(k => member.SkillLevels.GetValueOrDefault(k.Id) > 0).ToList();
-        bonuses.AddRange(learned.Count == 0
-            ? [new TextLine("배운 패시브 없음", Theme.TextDim, 14)]
-            : learned.Select(k => new TextLine(
-                $"{k.Name} {SkillText.LevelPips(member.SkillLevels[k.Id])} ({_data.Masteries[k.Mastery].Name})", Theme.Text, 15)));
-
-        var row = new HorizontalStackPanel { Spacing = Gap, Height = height };
-        foreach (var lines in new[] { basics, combat, bonuses })
+        if (learned.Count == 0)
         {
-            row.Widgets.Add(new ScrollPane
+            bonuses.Widgets.Add(Label("배운 패시브 없음", 14, Theme.TextDim));
+        }
+
+        foreach (var skill in learned)
+        {
+            var row = new HorizontalStackPanel { Spacing = 8 };
+            row.Widgets.Add(_widgets.IconTile(GameIcons.Mastery(skill.Mastery), 30, GameIcons.MasteryColor(skill.Mastery), padding: 4));
+            var text = new VerticalStackPanel { Spacing = 0, VerticalAlignment = VerticalAlignment.Center };
+            text.Widgets.Add(Label($"{skill.Name}  {SkillText.LevelPips(member.SkillLevels[skill.Id])}", 14, Theme.Text, bold: true));
+            text.Widgets.Add(Label(_data.Masteries[skill.Mastery].Name, 12, Theme.TextDim));
+            row.Widgets.Add(text);
+            bonuses.Widgets.Add(row);
+        }
+
+        var columns = new HorizontalStackPanel { Spacing = Gap, Height = height };
+        foreach (var content in new Widget[] { basics, combat, bonuses })
+        {
+            columns.Widgets.Add(new ScrollPane
             {
-                Content = _widgets.Card(lines, columnWidth - 18),
+                Content = content,
                 ShowHorizontalScrollBar = false,
                 Width = columnWidth,
                 Height = height,
             });
         }
 
-        return row;
+        return columns;
+    }
+
+    /// <summary>능력치 타일: 아이콘, 큰 숫자, 아래 작은 이름.</summary>
+    private Widget StatTile(string icon, Color color, string value, string label, int width)
+    {
+        var tile = new VerticalStackPanel
+        {
+            Spacing = 2,
+            Width = width,
+            Padding = new Thickness(8, 6),
+            Background = new SolidBrush(Theme.BarBack),
+            Border = new SolidBrush(Theme.PanelBorder),
+            BorderThickness = new Thickness(1),
+        };
+        var top = new HorizontalStackPanel { Spacing = 6 };
+        top.Widgets.Add(_widgets.Icon(icon, 24, color));
+        top.Widgets.Add(Label(value, 21, Theme.Text, bold: true));
+        tile.Widgets.Add(top);
+        tile.Widgets.Add(Label(label, 12, Theme.TextDim));
+        return tile;
     }
 
     /// <summary>"화염 위력 +23% (패시브 15 · 장비 8)"처럼 종류·태그별 합계.</summary>
@@ -1003,7 +1231,8 @@ internal sealed class TacticEditorScene : IScene
     private Widget BuildTacticHeader()
     {
         var header = new HorizontalStackPanel { Spacing = 8 };
-        header.Widgets.Add(Label("순위", 14, Theme.TextDim, width: 32));
+        header.Margin = new Thickness(9, 0, 0, 0);
+        header.Widgets.Add(Label("순위", 13, Theme.TextDim, width: 30));
         header.Widgets.Add(Label("조건 (무엇을 · 이상/이하 · %/수치)", 14, Theme.TextDim, width: SubjectWidth + CompareWidth * 2 + 16));
         header.Widgets.Add(Label("값", 14, Theme.TextDim, width: ValueColumnWidth));
         header.Widgets.Add(Label("행동 — 눌러서 고르기", 14, Theme.TextDim, width: ActionButtonWidth));
@@ -1031,7 +1260,17 @@ internal sealed class TacticEditorScene : IScene
             MarkChanged();
         }
 
-        row.Widgets.Add(Label($"{tactic.Priority}", 18, Theme.Text, bold: true, width: 32));
+        var badge = new Panel
+        {
+            Width = 30,
+            Height = 30,
+            Background = new SolidBrush(Theme.Gold),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var number = Label($"{tactic.Priority}", 17, Theme.BarBack, bold: true);
+        number.HorizontalAlignment = HorizontalAlignment.Center;
+        badge.Widgets.Add(number);
+        row.Widgets.Add(badge);
 
         // 조건: 무엇을 보는가 · 이상/이하 · %/수치
         var (subject, atLeast, percent) = TacticText.Split(tactic.Condition);
@@ -1082,12 +1321,14 @@ internal sealed class TacticEditorScene : IScene
         var granted = member.GrantedActions(_data);
         var action = _data.Actions.GetValueOrDefault(tactic.ActionId);
         var usable = action is not null && action.IsUsableBy(granted, skills);
+        var (actionIcon, actionColor) = action is null ? ("lock", Theme.Enemy) : GameIcons.Action(action, _data);
         var actionContent = new HorizontalStackPanel { Spacing = 6 };
+        actionContent.Widgets.Add(_widgets.Icon(usable ? actionIcon : "lock", 22, usable ? actionColor : Theme.Enemy));
         actionContent.Widgets.Add(Label(usable ? action!.Name : $"(잠김) {action?.Name ?? tactic.ActionId}", 16, usable ? Theme.Text : Theme.Enemy, bold: true));
         actionContent.Widgets.Add(Label("▾", 14, Theme.TextDim));
         var actionButton = StyledButton(actionContent, Theme.Button, Theme.ButtonHover);
         actionButton.Width = ActionButtonWidth;
-        actionButton.Padding = new Thickness(10, 5);
+        actionButton.Padding = new Thickness(8, 4);
         actionButton.Click += (_, _) =>
         {
             _picking = index;
@@ -1108,9 +1349,16 @@ internal sealed class TacticEditorScene : IScene
         var note = Label(summary, 13, usable ? Theme.TextDim : Theme.Enemy);
         note.Wrap = true;
         note.Width = 820;
-        note.Margin = new Thickness(40, 0, 0, 0);
+        note.Margin = new Thickness(38, 0, 0, 0);
 
-        var block = new VerticalStackPanel { Spacing = 2 };
+        var block = new VerticalStackPanel
+        {
+            Spacing = 3,
+            Padding = new Thickness(8, 6),
+            Background = new SolidBrush(Theme.BarBack * 0.7f),
+            Border = new SolidBrush(usable ? Theme.PanelBorder : Theme.Enemy),
+            BorderThickness = new Thickness(1),
+        };
         block.Widgets.Add(row);
         block.Widgets.Add(note);
         return block;
@@ -1207,30 +1455,30 @@ internal sealed class TacticEditorScene : IScene
 
         var sections = new VerticalStackPanel { Spacing = 10 };
         var shown = new HashSet<string>();
-        void Section(string title, IEnumerable<ActionDefinition> actions)
+        void Section(string title, IEnumerable<ActionDefinition> actions, string icon = "equipment")
         {
             var list = actions.Where(a => !a.SummonOnly && shown.Add(a.Id)).ToList();
             if (list.Count > 0)
             {
-                sections.Widgets.Add(Label(title, 16, Theme.Ally, bold: true));
+                sections.Widgets.Add(_widgets.Header(icon, title, size: 16));
                 sections.Widgets.Add(BuildActionGrid(member, index, list, width - 24));
             }
         }
 
         foreach (var (slot, item) in member.WornItems(_data))
         {
-            Section($"{ItemText.SlotLabel(slot)} · {ItemText.ShortName(item)}", item.Actions.Select(id => _data.Actions[id]));
+            Section($"{ItemText.SlotLabel(slot)} · {ItemText.ShortName(item)}", item.Actions.Select(id => _data.Actions[id]), GameIcons.Item(item).Icon);
         }
 
         if (member.WeaponMastery(_data) is { } weapon)
         {
-            Section($"{_data.Masteries[weapon].Name} 무기 계열", _data.Actions.Values.Where(a => a.Weapon == weapon));
+            Section($"{_data.Masteries[weapon].Name} 무기 계열", _data.Actions.Values.Where(a => a.Weapon == weapon), GameIcons.Mastery(weapon));
         }
 
-        Section("공용 (누구나)", _data.Actions.Values.Where(a => a.Universal));
+        Section("공용 (누구나)", _data.Actions.Values.Where(a => a.Universal), "figure");
         if (_data.Actions.TryGetValue(tactic.ActionId, out var chosen))
         {
-            Section("지금 고른 행동 (낀 장비가 주지 않음)", [chosen]);
+            Section("지금 고른 행동 (낀 장비가 주지 않음)", [chosen], "lock");
         }
 
         panel.Widgets.Add(new ScrollPane { Content = sections, ShowHorizontalScrollBar = false, Height = height - 44 });
@@ -1259,27 +1507,28 @@ internal sealed class TacticEditorScene : IScene
             var action = actions[i];
             var usable = action.IsUsableBy(granted, skills);
             var preview = usable ? Preview(action) : null;
-            var content = new VerticalStackPanel { Spacing = 2 };
+            const int iconSize = 44;
+            var textWidth = cellWidth - iconSize - 26;
+            var (icon, color) = GameIcons.Action(action, _data);
+            var content = new HorizontalStackPanel { Spacing = 8 };
+            var iconTile = _widgets.IconTile(usable ? icon : "lock", iconSize, usable ? color : Theme.Enemy, padding: 5);
+            iconTile.VerticalAlignment = VerticalAlignment.Top;
+            content.Widgets.Add(iconTile);
+            var text = new VerticalStackPanel { Spacing = 2 };
             var head = new HorizontalStackPanel { Spacing = 8 };
             head.Widgets.Add(Label(action.Name, 16, usable ? Theme.Text : Theme.Enemy, bold: true));
-            head.Widgets.Add(Label(ActionText.Cost(action, preview) is { Length: > 0 } cost ? cost : "비용 없음", 13, Theme.Cover));
-            content.Widgets.Add(head);
-
-            var summary = Label(ActionText.Summary(action, _data, preview), 13, Theme.TextDim);
-            summary.Wrap = true;
-            summary.Width = cellWidth - 20;
-            content.Widgets.Add(summary);
+            head.Widgets.Add(Label(ActionText.Cost(action, preview) is { Length: > 0 } cost ? cost : "비용 없음", 12, Theme.Cover));
+            text.Widgets.Add(head);
+            text.Widgets.Add(_widgets.Label(ActionText.Summary(action, _data, preview), 12, Theme.TextDim, width: textWidth, wrap: true));
             if (!usable)
             {
-                var reason = Label($"잠김: {LockReason(action, granted, skills)}", 13, Theme.Enemy);
-                reason.Wrap = true;
-                reason.Width = cellWidth - 20;
-                content.Widgets.Add(reason);
+                text.Widgets.Add(_widgets.Label($"잠김: {LockReason(action, granted, skills)}", 12, Theme.Enemy, width: textWidth, wrap: true));
             }
 
+            content.Widgets.Add(text);
             var button = StyledButton(content, action.Id == current ? Theme.Selected : Theme.Button, Theme.ButtonHover);
             button.Width = cellWidth;
-            button.Padding = new Thickness(10, 6);
+            button.Padding = new Thickness(6, 6);
             button.VerticalAlignment = VerticalAlignment.Stretch;
             button.Click += (_, _) =>
             {

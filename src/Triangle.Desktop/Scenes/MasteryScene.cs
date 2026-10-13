@@ -181,12 +181,16 @@ internal sealed class MasteryScene : IScene
         title.Widgets.Add(_w.Label(equipped ? "장착" : "", 14, Theme.Heal));
         content.Widgets.Add(title);
         var (current, needed) = XpProgress(mastery.Id);
-        content.Widgets.Add(Widgets.Bar(current, needed, ListWidth - 24, 4, equipped ? Theme.Heal : Theme.Cover));
+        content.Widgets.Add(Widgets.Bar(current, needed, ListWidth - 70, 4, equipped ? Theme.Heal : Theme.Cover));
         content.Widgets.Add(_w.Label(XpText(mastery.Id), 13, Theme.TextDim));
 
-        var button = Widgets.StyledButton(content, selected ? Theme.Selected : Theme.Panel, Theme.ButtonHover);
+        var withIcon = new HorizontalStackPanel { Spacing = 8 };
+        withIcon.Widgets.Add(_w.IconTile(GameIcons.Mastery(mastery.Id), 40, GameIcons.MasteryColor(mastery.Id),
+            border: equipped ? Theme.Heal : null, padding: 5));
+        withIcon.Widgets.Add(content);
+        var button = Widgets.StyledButton(withIcon, selected ? Theme.Selected : Theme.Panel, Theme.ButtonHover);
         button.Width = ListWidth;
-        button.Padding = new Thickness(12, 6);
+        button.Padding = new Thickness(6, 5);
         button.Click += (_, _) =>
         {
             _selected = mastery.Id;
@@ -285,7 +289,7 @@ internal sealed class MasteryScene : IScene
     {
         var panel = new VerticalStackPanel { Spacing = 6, Width = ActionColumnWidth };
         var related = RelatedActions(mastery);
-        panel.Widgets.Add(_w.Label("관련 행동 — 눌러서 설명 보기", 17, Theme.Ally, bold: true));
+        panel.Widgets.Add(_w.Header("action.melee", "관련 행동", "눌러서 설명 보기"));
         if (related.Count == 0)
         {
             panel.Widgets.Add(_w.Label("없음", 15, Theme.TextDim));
@@ -298,13 +302,15 @@ internal sealed class MasteryScene : IScene
         {
             var missing = set.Missing(action.Requirements);
             var content = new HorizontalStackPanel { Spacing = 8 };
+            var (icon, color) = GameIcons.Action(action, _data);
+            content.Widgets.Add(_w.IconTile(missing.Count == 0 ? icon : "lock", 30, missing.Count == 0 ? color : Theme.Enemy, padding: 4));
             content.Widgets.Add(_w.Label(action.Name, 15, missing.Count == 0 ? Theme.Heal : Theme.Text, bold: true));
             content.Widgets.Add(_w.Label(missing.Count == 0
                 ? "쓸 수 있음"
                 : string.Join(", ", missing.Select(m => $"{_data.Skills[m.SkillId].Name} {m.Level}")) + " 필요", 13, missing.Count == 0 ? Theme.TextDim : Theme.Enemy));
             var button = Widgets.StyledButton(content, action == shown ? Theme.Selected : Theme.Button, Theme.ButtonHover);
             button.Width = ActionColumnWidth;
-            button.Padding = new Thickness(10, 4);
+            button.Padding = new Thickness(5, 3);
             button.Click += (_, _) =>
             {
                 _action = action.Id;

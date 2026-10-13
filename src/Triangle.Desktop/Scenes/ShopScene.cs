@@ -146,7 +146,11 @@ internal sealed class ShopScene : IScene
     {
         var data = _session.Data;
         var row = new HorizontalStackPanel { Spacing = 10 };
-        var text = new VerticalStackPanel { Spacing = 1, Width = width - 110 };
+        var (icon, color) = GameIcons.Item(item);
+        var tile = _w.IconTile(icon, 48, color, ItemText.TierColor(item.Tier), padding: 6);
+        tile.VerticalAlignment = VerticalAlignment.Top;
+        row.Widgets.Add(tile);
+        var text = new VerticalStackPanel { Spacing = 1, Width = width - 168 };
         text.Widgets.Add(_w.Label($"{ItemText.SlotLabel(item.Slot)} · {ItemText.Title(item, data)}", 17, Theme.Text));
 
         var details = new List<string>();
@@ -231,7 +235,11 @@ internal sealed class ShopScene : IScene
         var data = _session.Data;
         var count = Company.StashCount(item.Id);
         var row = new HorizontalStackPanel { Spacing = 10 };
-        var text = new VerticalStackPanel { Spacing = 1, Width = width - 110 };
+        var (icon, color) = GameIcons.Item(item);
+        var tile = _w.IconTile(icon, 48, color, ItemText.TierColor(item.Tier), padding: 6);
+        tile.VerticalAlignment = VerticalAlignment.Top;
+        row.Widgets.Add(tile);
+        var text = new VerticalStackPanel { Spacing = 1, Width = width - 168 };
         var name = count == 1 ? ItemText.Title(item, data) : $"{ItemText.Title(item, data)} × {count}";
         text.Widgets.Add(_w.Label($"{ItemText.SlotLabel(item.Slot)} · {name}", 17, Theme.Text));
         if (item.Bonuses.Count > 0 || item.Requirements.Count > 0)

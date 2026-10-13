@@ -106,7 +106,7 @@ internal sealed class TacticEditorScene : IScene
             _dirty = false;
         }
 
-        batch.Begin();
+        batch.Begin(transformMatrix: _ui.Screen.Transform);
         var title = OnExpedition ? "전술 편집 — 원정 중 (전술과 전열만 바꿀 수 있습니다)" : "전술 편집";
         _ui.Text(batch, _ui.BoldFont(28), title, new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
         var help = OnExpedition
@@ -125,7 +125,7 @@ internal sealed class TacticEditorScene : IScene
         _ui.Panel(batch, new Rectangle(memberArea.X - 16, memberArea.Y - 12, memberArea.Width + 32, memberArea.Height + 24));
         batch.End();
 
-        _desktop.Render();
+        _ui.Screen.Render(_desktop);
     }
 
     private Rectangle MemberArea

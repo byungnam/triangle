@@ -70,7 +70,7 @@ internal sealed class CraftScene : IScene
         }
 
         var data = _session.Data;
-        batch.Begin();
+        batch.Begin(transformMatrix: _ui.Screen.Transform);
         _ui.Text(batch, _ui.BoldFont(28), "제작", new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
         var gold = $"골드 {Company.Gold}";
         var goldFont = _ui.BoldFont(24);
@@ -90,7 +90,7 @@ internal sealed class CraftScene : IScene
         }
 
         batch.End();
-        _desktop.Render();
+        _ui.Screen.Render(_desktop);
     }
 
     private void Rebuild()

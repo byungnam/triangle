@@ -13,7 +13,7 @@ internal sealed class ErrorScene(Ui ui, string title, IReadOnlyList<string> line
 
     public void Draw(SpriteBatch batch)
     {
-        batch.Begin();
+        batch.Begin(transformMatrix: ui.Screen.Transform);
         ui.Text(batch, ui.BoldFont(26), title, new Vector2(24, 24), Theme.Enemy);
         var y = 72f;
         foreach (var line in lines)

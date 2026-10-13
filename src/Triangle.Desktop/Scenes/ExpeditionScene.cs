@@ -70,7 +70,7 @@ internal sealed class ExpeditionScene : IScene
             _dirty = false;
         }
 
-        batch.Begin();
+        batch.Begin(transformMatrix: _ui.Screen.Transform);
         DrawHeader(batch);
 
         var top = _bounds.Top + HeaderHeight;
@@ -89,7 +89,7 @@ internal sealed class ExpeditionScene : IScene
         }
 
         batch.End();
-        _desktop.Render();
+        _ui.Screen.Render(_desktop);
     }
 
     private void DrawHeader(SpriteBatch batch)

@@ -74,7 +74,7 @@ internal sealed class MasteryScene : IScene
             _dirty = false;
         }
 
-        batch.Begin();
+        batch.Begin(transformMatrix: _ui.Screen.Transform);
         _ui.Text(batch, _ui.BoldFont(28), $"숙련·패시브 — {_member.Name}", new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
         var gear = $"장비: {ItemText.Gear(_member.Equipment, _data)}";
         _ui.Text(batch, _ui.Font(16), gear, new Vector2(_bounds.Left + Margin, _bounds.Top + 58), Theme.TextDim);
@@ -90,7 +90,7 @@ internal sealed class MasteryScene : IScene
         _ui.Panel(batch, TreeArea);
         batch.End();
 
-        _desktop.Render();
+        _ui.Screen.Render(_desktop);
     }
 
     private Rectangle TreeArea => new(

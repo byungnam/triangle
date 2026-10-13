@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using Myra;
 using Myra.Graphics2D.UI.Styles;
 using Triangle.Core.Combat;
@@ -27,13 +28,16 @@ public sealed record LaunchOptions(
 /// </summary>
 public class TriangleGame : Game
 {
-    private const int Width = 1280;
-    private const int Height = 720;
+    /// <summary>기본 창 크기 (QHD). 모니터에 들어가지 않으면 16:9를 지키며 줄인다.</summary>
+    private const int WindowWidth = 2560;
+    private const int WindowHeight = 1440;
     private const string TestEncounter = "training";
 
     private readonly GraphicsDeviceManager _graphics;
     private readonly Input _input = new();
     private readonly LaunchOptions _options;
+    private readonly Screen _screen = new();
+    private Point _windowedSize;
 
     private SpriteBatch _spriteBatch = null!;
     private Ui _ui = null!;
@@ -48,17 +52,57 @@ public class TriangleGame : Game
     public TriangleGame(LaunchOptions options)
     {
         _options = options;
+        _windowedSize = InitialWindowSize();
         _graphics = new GraphicsDeviceManager(this)
         {
-            PreferredBackBufferWidth = Width,
-            PreferredBackBufferHeight = Height,
+            PreferredBackBufferWidth = _windowedSize.X,
+            PreferredBackBufferHeight = _windowedSize.Y,
+            HardwareModeSwitch = false,
         };
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
         Window.Title = "Triangle";
+        Window.AllowUserResizing = true;
+        Window.ClientSizeChanged += OnClientSizeChanged;
     }
 
-    private static Rectangle Bounds => new(0, 0, Width, Height);
+    private static Rectangle Bounds => Screen.Bounds;
+
+    private static DisplayMode Display => GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+
+    /// <summary>QHD 창이 모니터에 들어가면 QHD, 아니면 모니터의 90% 안에 들어가는 가장 큰 16:9 창.</summary>
+    private static Point InitialWindowSize()
+    {
+        var display = Display;
+        var scale = Math.Min(1f, Math.Min(display.Width * 0.9f / WindowWidth, display.Height * 0.9f / WindowHeight));
+        return new Point((int)(WindowWidth * scale), (int)(WindowHeight * scale));
+    }
+
+    /// <summary>사용자가 창 크기를 바꿨다. 백버퍼를 창에 맞춘다 (화면 배율은 Update에서 맞춘다).</summary>
+    private void OnClientSizeChanged(object? sender, EventArgs e)
+    {
+        var size = Window.ClientBounds.Size;
+        if (_graphics.IsFullScreen || size.X <= 0 || size.Y <= 0
+            || (size.X == _graphics.PreferredBackBufferWidth && size.Y == _graphics.PreferredBackBufferHeight))
+        {
+            return;
+        }
+
+        _windowedSize = size;
+        _graphics.PreferredBackBufferWidth = size.X;
+        _graphics.PreferredBackBufferHeight = size.Y;
+        _graphics.ApplyChanges();
+    }
+
+    /// <summary>F11: 창 모드 ↔ 전체 화면 (모니터 해상도 그대로, 해상도 전환 없이).</summary>
+    private void ToggleFullScreen()
+    {
+        var size = _graphics.IsFullScreen ? _windowedSize : new Point(Display.Width, Display.Height);
+        _graphics.PreferredBackBufferWidth = size.X;
+        _graphics.PreferredBackBufferHeight = size.Y;
+        _graphics.IsFullScreen = !_graphics.IsFullScreen;
+        _graphics.ApplyChanges();
+    }
 
     private GameSession Session => _session!;
     private GameData Data => Session.Data;
@@ -67,7 +111,10 @@ public class TriangleGame : Game
     protected override void LoadContent()
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
-        _ui = new Ui(GraphicsDevice, Path.Combine(AppContext.BaseDirectory, "Fonts"));
+        // 글자는 화면 배율 이상의 해상도로 새겨 두어야 키워도 선명하다. 전체 화면까지 고려해 모니터 기준으로 정한다.
+        var fontResolution = Math.Max(2f, MathF.Ceiling(Math.Min(Display.Width / (float)Screen.Width, Display.Height / (float)Screen.Height)));
+        _screen.Resize(GraphicsDevice.PresentationParameters.BackBufferWidth, GraphicsDevice.PresentationParameters.BackBufferHeight);
+        _ui = new Ui(GraphicsDevice, _screen, Path.Combine(AppContext.BaseDirectory, "Fonts"), fontResolution);
         SetUpMyra();
         _scene = CreateFirstScene();
     }
@@ -244,6 +291,12 @@ public class TriangleGame : Game
     protected override void Update(GameTime gameTime)
     {
         _input.Update();
+        if (_input.Pressed(Keys.F11))
+        {
+            ToggleFullScreen();
+        }
+
+        _screen.Resize(GraphicsDevice.PresentationParameters.BackBufferWidth, GraphicsDevice.PresentationParameters.BackBufferHeight);
         _scene.Update(gameTime, _input);
         base.Update(gameTime);
     }
@@ -263,16 +316,18 @@ public class TriangleGame : Game
         base.Draw(gameTime);
     }
 
+    /// <summary>창 크기와 상관없이 QHD로 찍는다.</summary>
     private void SaveScreenshot(string path)
     {
-        using var target = new RenderTarget2D(GraphicsDevice, Width, Height);
+        using var target = new RenderTarget2D(GraphicsDevice, WindowWidth, WindowHeight);
         GraphicsDevice.SetRenderTarget(target);
         GraphicsDevice.Clear(Theme.Background);
+        _screen.Resize(WindowWidth, WindowHeight);
         _scene.Draw(_spriteBatch);
         GraphicsDevice.SetRenderTarget(null);
 
         using var file = File.Create(path);
-        target.SaveAsPng(file, Width, Height);
+        target.SaveAsPng(file, WindowWidth, WindowHeight);
     }
 
     protected override void UnloadContent()

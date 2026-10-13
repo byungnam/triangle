@@ -247,7 +247,7 @@ internal sealed class CombatLogScene : IScene
 
     public void Draw(SpriteBatch batch)
     {
-        batch.Begin(samplerState: SamplerState.PointClamp);
+        batch.Begin(transformMatrix: _ui.Screen.Transform);
 
         DrawHeader(batch);
 

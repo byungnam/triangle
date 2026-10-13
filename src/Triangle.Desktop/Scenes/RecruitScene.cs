@@ -65,7 +65,7 @@ internal sealed class RecruitScene : IScene
             _dirty = false;
         }
 
-        batch.Begin();
+        batch.Begin(transformMatrix: _ui.Screen.Transform);
         _ui.Text(batch, _ui.BoldFont(28), "모집", new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
         var gold = $"골드 {Company.Gold}";
         var goldFont = _ui.BoldFont(24);
@@ -79,7 +79,7 @@ internal sealed class RecruitScene : IScene
         }
 
         batch.End();
-        _desktop.Render();
+        _ui.Screen.Render(_desktop);
     }
 
     private IEnumerable<Rectangle> Cards()

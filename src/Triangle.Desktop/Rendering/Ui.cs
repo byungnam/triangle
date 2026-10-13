@@ -11,14 +11,18 @@ internal sealed class Ui : IDisposable
     private readonly FontSystem _regular;
     private readonly FontSystem _bold;
 
-    public Ui(GraphicsDevice device, string fontDirectory)
+    /// <param name="fontResolution">글자를 이 배수로 크게 새겨 두었다가 줄여 그린다. 화면을 키워도 글자가 흐려지지 않도록 화면 배율 이상으로 준다.</param>
+    public Ui(GraphicsDevice device, Screen screen, string fontDirectory, float fontResolution)
     {
+        Screen = screen;
         _pixel = new Texture2D(device, 1, 1);
         _pixel.SetData([Color.White]);
 
-        _regular = LoadFont(Path.Combine(fontDirectory, "NanumGothic-Regular.ttf"));
-        _bold = LoadFont(Path.Combine(fontDirectory, "NanumGothic-Bold.ttf"));
+        _regular = LoadFont(Path.Combine(fontDirectory, "NanumGothic-Regular.ttf"), fontResolution);
+        _bold = LoadFont(Path.Combine(fontDirectory, "NanumGothic-Bold.ttf"), fontResolution);
     }
+
+    public Screen Screen { get; }
 
     public SpriteFontBase Font(int size) => _regular.GetFont(size);
 
@@ -52,9 +56,14 @@ internal sealed class Ui : IDisposable
         _bold.Dispose();
     }
 
-    private static FontSystem LoadFont(string path)
+    private static FontSystem LoadFont(string path, float resolution)
     {
-        var system = new FontSystem();
+        var system = new FontSystem(new FontSystemSettings
+        {
+            FontResolutionFactor = resolution,
+            TextureWidth = 2048,
+            TextureHeight = 2048,
+        });
         system.AddFont(File.ReadAllBytes(path));
         return system;
     }

@@ -305,7 +305,7 @@ internal sealed class TacticEditorScene : IScene
         };
         tactics.Widgets.Add(addButton);
 
-        panel.Widgets.Add(new ScrollViewer
+        panel.Widgets.Add(new ScrollPane
         {
             Content = tactics,
             ShowHorizontalScrollBar = false,

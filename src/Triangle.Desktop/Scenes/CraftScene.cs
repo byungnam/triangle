@@ -135,7 +135,7 @@ internal sealed class CraftScene : IScene
             list.Widgets.Add(RecipeRow(recipe, item, area.Width - 60));
         }
 
-        panel.Widgets.Add(new ScrollViewer { Content = list, ShowHorizontalScrollBar = false });
+        panel.Widgets.Add(new ScrollPane { Content = list, ShowHorizontalScrollBar = false });
         StackPanel.SetProportionType(panel.Widgets[^1], ProportionType.Fill);
 
         var root = new Panel();

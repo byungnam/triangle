@@ -110,7 +110,7 @@ internal sealed class MasteryScene : IScene
         // 숙련이 21개라 화면 높이를 넘는다. 다시 만들어도 스크롤 위치를 지킨다.
         var area = TreeArea;
         var listPosition = _list?.ScrollPosition ?? Point.Zero;
-        _list = new ScrollViewer
+        _list = new ScrollPane
         {
             Content = BuildMasteryList(),
             ShowHorizontalScrollBar = false,
@@ -124,7 +124,7 @@ internal sealed class MasteryScene : IScene
         _list.ScrollPosition = listPosition;
         root.Widgets.Add(_list);
 
-        root.Widgets.Add(new ScrollViewer
+        root.Widgets.Add(new ScrollPane
         {
             Content = BuildTree(_data.Masteries[_selected]),
             ShowHorizontalScrollBar = false,

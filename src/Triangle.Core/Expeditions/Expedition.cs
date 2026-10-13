@@ -75,6 +75,9 @@ public sealed record BattleReport
     public required string EncounterId { get; init; }
     public required CombatOutcome Outcome { get; init; }
 
+    /// <summary>이 전투에서 처음 만난 적 조합이다 (탐사 기록에 새로 남았다).</summary>
+    public bool FirstMeet { get; init; }
+
     /// <summary>얻은 숙련 경험치.</summary>
     public IReadOnlyList<XpReport> Xp { get; init; } = [];
 

@@ -26,6 +26,7 @@ public sealed class Company
     private readonly List<RecruitOffer> _recruitOffers;
     private readonly List<string> _tacticSetNames;
     private readonly Dictionary<string, ClearRecord> _clearRecords;
+    private readonly Dictionary<string, EncounterRecord> _encounterRecords;
     private int _activeTacticSet;
 
     /// <param name="tacticSetNames">전술 세트 이름. null이면 멤버가 가진 세트 수만큼 "세트 1", "세트 2"…로 짓는다.</param>
@@ -40,7 +41,8 @@ public sealed class Company
         int nextRecruitNumber = 1,
         Expedition? expedition = null,
         IEnumerable<string>? tacticSetNames = null,
-        IReadOnlyDictionary<string, ClearRecord>? clearRecords = null)
+        IReadOnlyDictionary<string, ClearRecord>? clearRecords = null,
+        IReadOnlyDictionary<string, EncounterRecord>? encounterRecords = null)
     {
         _roster = roster.ToList();
         _lineup = lineup.ToList();
@@ -81,6 +83,7 @@ public sealed class Company
         NextRecruitNumber = nextRecruitNumber;
         Expedition = expedition;
         _clearRecords = clearRecords?.ToDictionary() ?? [];
+        _encounterRecords = encounterRecords?.ToDictionary() ?? [];
     }
 
     /// <summary>보유한 캐릭터 모두.</summary>
@@ -199,6 +202,19 @@ public sealed class Company
         var (updated, improved) = record.Add(result);
         _clearRecords[zoneId] = updated;
         return (false, improved);
+    }
+
+    /// <summary>탐사 기록: 원정에서 만난 적 조합 (인카운터 ID별). 기록이 없는 조합은 아직 모른다.</summary>
+    public IReadOnlyDictionary<string, EncounterRecord> EncounterRecords => _encounterRecords;
+
+    public bool HasMet(string encounterId) => _encounterRecords.ContainsKey(encounterId);
+
+    /// <summary>원정에서 싸운 적 조합을 기록한다. 처음 만났으면 true.</summary>
+    internal bool RecordEncounter(string encounterId, bool won)
+    {
+        var first = !_encounterRecords.TryGetValue(encounterId, out var record);
+        _encounterRecords[encounterId] = first ? new EncounterRecord(1, won ? 1 : 0) : record!.Add(won);
+        return first;
     }
 
     public PartyMember Member(string id) => _roster.Single(m => m.Id == id);

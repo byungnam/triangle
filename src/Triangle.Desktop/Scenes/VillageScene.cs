@@ -14,7 +14,7 @@ namespace Triangle.Desktop.Scenes;
 
 /// <summary>
 /// 마을 (첫 화면). 골드, 출전 명단(최대 5명), 로스터, 전투지역 목록을 보여주고
-/// 전술 편집, 모집, 출정, 저장으로 이어진다. 마을에서는 수동 저장이다.
+/// 전술 편집, 모집, 상점·창고, 제작, 탐사 기록, 출정, 저장으로 이어진다. 마을에서는 수동 저장이다.
 /// </summary>
 internal sealed class VillageScene : IScene
 {
@@ -32,6 +32,7 @@ internal sealed class VillageScene : IScene
     private readonly Action _openRecruit;
     private readonly Action _openShop;
     private readonly Action _openCraft;
+    private readonly Action _openExploration;
     private readonly Action<string> _depart;
     private readonly Action _quit;
     private readonly MyraDesktop _desktop = new();
@@ -43,7 +44,7 @@ internal sealed class VillageScene : IScene
     /// <param name="depart">출정 (지역 ID). 부르기 전에 출정할 수 있는지 확인한다.</param>
     /// <param name="quit">종료가 확인되었다 (저장했거나 버리기로 했다).</param>
     public VillageScene(
-        Ui ui, GameSession session, Rectangle bounds, Action openEditor, Action openRecruit, Action openShop, Action openCraft, Action<string> depart, Action quit)
+        Ui ui, GameSession session, Rectangle bounds, Action openEditor, Action openRecruit, Action openShop, Action openCraft, Action openExploration, Action<string> depart, Action quit)
     {
         _ui = ui;
         _w = new Widgets(ui);
@@ -53,6 +54,7 @@ internal sealed class VillageScene : IScene
         _openRecruit = openRecruit;
         _openShop = openShop;
         _openCraft = openCraft;
+        _openExploration = openExploration;
         _depart = depart;
         _quit = quit;
         _zoneId = Depths.Ordered(session.Data)
@@ -337,6 +339,11 @@ internal sealed class VillageScene : IScene
         craft.Width = 100;
         craft.Click += (_, _) => _openCraft();
         bar.Widgets.Add(craft);
+
+        var exploration = TextButton("탐사 기록", Theme.Button, Theme.ButtonHover);
+        exploration.Width = 130;
+        exploration.Click += (_, _) => _openExploration();
+        bar.Widgets.Add(exploration);
 
         var why = ExpeditionRules.WhyCannotStart(Company, _session.Data, _zoneId);
         var depart = TextButton($"{Korean.EuroRo(_session.Data.Zones[_zoneId].Name)} 출정  ▶", Theme.Accent, Theme.AccentHover, bold: true);

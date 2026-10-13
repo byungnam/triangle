@@ -48,6 +48,9 @@ public sealed record SaveFile
 
     /// <summary>클리어한 지역의 기록 (지역 ID별).</summary>
     public IReadOnlyDictionary<string, ClearRecord> Clears { get; init; } = new Dictionary<string, ClearRecord>();
+
+    /// <summary>탐사 기록: 원정에서 만난 적 조합 (인카운터 ID별).</summary>
+    public IReadOnlyDictionary<string, EncounterRecord> Encounters { get; init; } = new Dictionary<string, EncounterRecord>();
 }
 
 public sealed record SavedExpedition
@@ -111,10 +114,12 @@ public static class SaveGame
     ///    버전은 올리지 않았다(이름이 없으면 "세트 1", "세트 2").
     /// 9: 지역 보스와 깊이 (2026-10-12). 클리어한 지역의 기록(clears). 버전 8은 아무 지역도 클리어하지 않은 것으로 읽는다.
     ///    그 이전은 읽지 않는다.
+    /// 10: 탐사 기록 (2026-10-12). 만난 적 조합(encounters). 버전 9는 클리어한 지역의 보스만 클리어한 횟수만큼
+    ///    만나서 이긴 것으로 채운다(보스를 이겨야 클리어한다). 그 이전은 읽지 않는다.
     /// </summary>
-    public const int CurrentVersion = 9;
+    public const int CurrentVersion = 10;
 
-    private const int OldestReadableVersion = 8;
+    private const int OldestReadableVersion = 9;
 
     public static string Serialize(Company company)
     {
@@ -141,6 +146,7 @@ public static class SaveGame
                 : null,
             Stash = new SortedDictionary<string, int>(company.Stash.ToDictionary()),
             Clears = new SortedDictionary<string, ClearRecord>(company.ClearRecords.ToDictionary(), StringComparer.Ordinal),
+            Encounters = new SortedDictionary<string, EncounterRecord>(company.EncounterRecords.ToDictionary(), StringComparer.Ordinal),
             Lineup = company.Lineup.ToList(),
             Roster = company.Roster.Select(m => new SavedMember
             {
@@ -166,9 +172,9 @@ public static class SaveGame
             throw new SaveGameException([$"save: unsupported version {version} (expected {OldestReadableVersion}-{CurrentVersion})"]);
         }
 
-        if (version == 8)
+        if (version == 9)
         {
-            json = ConvertFromVersion8(json);
+            json = ConvertFromVersion9(json, data);
         }
 
         SaveFile? file;
@@ -204,7 +210,8 @@ public static class SaveGame
                 ? null
                 : new Expedition(saved.ZoneId, saved.Seed, saved.BattleIndex, saved.Members, saved.CarriedGold, saved.CarriedItems, saved.LastBattle),
             TacticSetNames(file),
-            file.Clears);
+            file.Clears,
+            file.Encounters);
     }
 
     private static int ReadVersion(string json)
@@ -229,12 +236,27 @@ public static class SaveGame
     }
 
     /// <summary>
-    /// 버전 8 → 9: 새 필드(clears)는 비어 있는 것으로 읽으므로 버전만 바꾼다.
+    /// 버전 9 → 10: 탐사 기록(encounters)을 채운다. 만난 적은 알 수 없지만, 클리어한 지역의 보스는 클리어한 횟수만큼
+    /// 만나서 이겼다. 모르는 지역은 그대로 두어 검증이 알리게 한다.
     /// </summary>
-    private static string ConvertFromVersion8(string json)
+    private static string ConvertFromVersion9(string json, GameData data)
     {
         var root = JsonNode.Parse(json)!.AsObject();
         root["version"] = CurrentVersion;
+        var encounters = new JsonObject();
+        if (root["clears"] is JsonObject clears)
+        {
+            foreach (var (zoneId, record) in clears)
+            {
+                if (data.Zones.TryGetValue(zoneId, out var zone) && zone.Boss is { } boss
+                    && record?["clears"] is JsonValue value && value.TryGetValue<int>(out var count) && count > 0)
+                {
+                    encounters[boss.EncounterId] = new JsonObject { ["met"] = count, ["wins"] = count };
+                }
+            }
+        }
+
+        root["encounters"] = encounters;
         return root.ToJsonString();
     }
 
@@ -348,6 +370,19 @@ public static class SaveGame
             if (record.Clears < 1 || record.FewestMembers < 1 || record.LowestGearTier < 0 || record.FewestDowned < 0)
             {
                 errors.Add($"save: clear record of '{zoneId}' needs clears >= 1, fewestMembers >= 1, lowestGearTier >= 0 and fewestDowned >= 0");
+            }
+        }
+
+        foreach (var (encounterId, record) in file.Encounters)
+        {
+            if (!data.Encounters.ContainsKey(encounterId))
+            {
+                errors.Add($"save: encounters has unknown encounter '{encounterId}'");
+            }
+
+            if (record.Met < 1 || record.Wins < 0 || record.Wins > record.Met)
+            {
+                errors.Add($"save: encounter record of '{encounterId}' needs met >= 1 and wins 0-met");
             }
         }
 

@@ -70,7 +70,7 @@ internal sealed class ExplorationScene : IScene
             _dirty = false;
         }
 
-        batch.Begin();
+        batch.Begin(transformMatrix: _ui.Screen.Transform);
         _ui.Text(batch, _ui.BoldFont(28), "탐사 기록", new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
         var met = Company.EncounterRecords.Count;
         var total = Depths.Ordered(Data).SelectMany(Exploration.Entries).Select(e => e.EncounterId).Distinct().Count();
@@ -86,7 +86,7 @@ internal sealed class ExplorationScene : IScene
         }
 
         batch.End();
-        _desktop.Render();
+        _ui.Screen.Render(_desktop);
     }
 
     private int ContentTop => _bounds.Top + HeaderHeight + 12;

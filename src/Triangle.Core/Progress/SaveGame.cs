@@ -116,10 +116,13 @@ public static class SaveGame
     ///    그 이전은 읽지 않는다.
     /// 10: 탐사 기록 (2026-10-12). 만난 적 조합(encounters). 버전 9는 클리어한 지역의 보스만 클리어한 횟수만큼
     ///    만나서 이긴 것으로 채운다(보스를 이겨야 클리어한다). 그 이전은 읽지 않는다.
+    /// 11: 신성 숙련(relic)을 치유·재생·보호막·축복 숙련으로 나누고 relic은 성물 숙련이 됨 (2026-10-13).
+    ///    버전 10의 relic 경험치는 relic에 남기고, 든 치유봉 종류의 숙련(치유봉이 아니면 치유)에도 같은 양을 준다.
+    ///    치유술·신성 마법 레벨은 그 숙련의 1단계·3단계 패시브로 옮긴다. 그 이전은 읽지 않는다.
     /// </summary>
-    public const int CurrentVersion = 10;
+    public const int CurrentVersion = 11;
 
-    private const int OldestReadableVersion = 9;
+    private const int OldestReadableVersion = 10;
 
     public static string Serialize(Company company)
     {
@@ -172,9 +175,9 @@ public static class SaveGame
             throw new SaveGameException([$"save: unsupported version {version} (expected {OldestReadableVersion}-{CurrentVersion})"]);
         }
 
-        if (version == 9)
+        if (version == 10)
         {
-            json = ConvertFromVersion9(json, data);
+            json = ConvertFromVersion10(json, data);
         }
 
         SaveFile? file;
@@ -236,27 +239,48 @@ public static class SaveGame
     }
 
     /// <summary>
-    /// 버전 9 → 10: 탐사 기록(encounters)을 채운다. 만난 적은 알 수 없지만, 클리어한 지역의 보스는 클리어한 횟수만큼
-    /// 만나서 이겼다. 모르는 지역은 그대로 두어 검증이 알리게 한다.
+    /// 버전 10 → 11: 신성 숙련을 치유봉 종류별 숙련으로 나눈다. 숙련 경험치는 relic(이제 성물)에 남기고
+    /// 주무기 치유봉 종류의 숙련(치유봉이 아니면 치유)에 같은 양을 준다. 치유술·신성 마법 레벨은 그 숙련의
+    /// 1단계·3단계 패시브로 옮긴다(포인트가 같다). 모르는 아이템은 그대로 두어 검증이 알리게 한다.
     /// </summary>
-    private static string ConvertFromVersion9(string json, GameData data)
+    private static string ConvertFromVersion10(string json, GameData data)
     {
+        // 숙련 → (치유술 자리, 신성 마법 자리).
+        var skills = new Dictionary<string, (string Core, string Advanced)>
+        {
+            ["restoration"] = ("healing", "holy_magic"),
+            ["renewal"] = ("renewal_magic", "life_cycle"),
+            ["warding"] = ("ward_magic", "sacred_barrier"),
+            ["blessing"] = ("blessing_magic", "grace"),
+        };
+
         var root = JsonNode.Parse(json)!.AsObject();
         root["version"] = CurrentVersion;
-        var encounters = new JsonObject();
-        if (root["clears"] is JsonObject clears)
+        foreach (var member in root["roster"]?.AsArray().OfType<JsonObject>() ?? [])
         {
-            foreach (var (zoneId, record) in clears)
+            var mainHand = member["equipment"]?["MainHand"]?.GetValue<string>();
+            var target = mainHand is not null && data.Items.TryGetValue(mainHand, out var item) && item.Mastery is { } m && skills.ContainsKey(m)
+                ? m
+                : "restoration";
+
+            if (member["masteryXp"] is JsonObject xp && xp["relic"] is JsonValue relic)
             {
-                if (data.Zones.TryGetValue(zoneId, out var zone) && zone.Boss is { } boss
-                    && record?["clears"] is JsonValue value && value.TryGetValue<int>(out var count) && count > 0)
+                xp[target] = relic.GetValue<int>();
+            }
+
+            if (target != "restoration" && member["skillLevels"] is JsonObject levels)
+            {
+                foreach (var (from, to) in new[] { ("healing", skills[target].Core), ("holy_magic", skills[target].Advanced) })
                 {
-                    encounters[boss.EncounterId] = new JsonObject { ["met"] = count, ["wins"] = count };
+                    if (levels[from] is { } level)
+                    {
+                        levels.Remove(from);
+                        levels[to] = level.DeepClone();
+                    }
                 }
             }
         }
 
-        root["encounters"] = encounters;
         return root.ToJsonString();
     }
 

@@ -107,7 +107,7 @@ public sealed class SaveGameTests : IDisposable
     {
         var json = SaveGame.Serialize(SampleCompany());
 
-        Assert.Contains("\"version\": 10", json);
+        Assert.Contains("\"version\": 11", json);
         Assert.Contains("\"roster\"", json);
         Assert.DoesNotContain("\"party\"", json);
         Assert.Contains("\"name\": \"이졸데\"", json);
@@ -121,7 +121,7 @@ public sealed class SaveGameTests : IDisposable
     [Fact]
     public void Rejects_older_and_unknown_versions()
     {
-        foreach (var version in new[] { 1, 2, 3, 4, 5, 6, 7, 8, 99 })
+        foreach (var version in new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 99 })
         {
             var e = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize($$"""{ "version": {{version}}, "party": [] }""", Data));
             Assert.Contains($"unsupported version {version}", Assert.Single(e.Errors));
@@ -129,26 +129,39 @@ public sealed class SaveGameTests : IDisposable
     }
 
     [Fact]
-    public void Converts_version_9_with_cleared_bosses_as_met_and_won()
+    public void Converts_version_10_by_splitting_the_holy_mastery_by_wand()
     {
         var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
-        var first = Depths.Ordered(data)[0];
         var company = StartingCompany.Create(data, seed: 11);
-        company.RecordClear(first.Id, new ClearResult(Members: 3, GearTier: 1, Downed: 0));
-        company.RecordClear(first.Id, new ClearResult(Members: 3, GearTier: 1, Downed: 0));
-        ExpeditionRules.Start(company, data, first.Id);
-        ExpeditionRules.ApplyResult(company, data, ExpeditionRules.Fight(company, data));
         var root = System.Text.Json.Nodes.JsonNode.Parse(SaveGame.Serialize(company))!.AsObject();
-        root["version"] = 9;
-        root.Remove("encounters");
-        var v9 = root.ToJsonString();
+        root["version"] = 10;
+        var roster = root["roster"]!.AsArray();
+        var xp = MasteryProgression.XpForLevel(6) + 7;
 
-        var loaded = SaveGame.Deserialize(v9, data);
+        // 보호막봉을 든 사제: 치유술 3, 신성 마법 1 (포인트 3 + 3).
+        var ward = roster[0]!.AsObject();
+        ward["equipment"]!["MainHand"] = "wooden_ward_wand";
+        ward["masteryXp"] = new System.Text.Json.Nodes.JsonObject { ["relic"] = xp };
+        ward["skillLevels"] = new System.Text.Json.Nodes.JsonObject { ["healing"] = 3, ["holy_magic"] = 1 };
 
-        Assert.Equal(company.Expedition!.Members, loaded.Expedition!.Members);
-        Assert.Equal(new EncounterRecord(2, 2), Assert.Single(loaded.EncounterRecords, p => p.Key == first.Boss!.EncounterId).Value);
-        Assert.Single(loaded.EncounterRecords);
-        Assert.Contains("\"version\": 10", SaveGame.Serialize(loaded));
+        // 치유봉이 아닌 무기를 든 대원: 치유 숙련으로 간다.
+        var other = roster[1]!.AsObject();
+        other["masteryXp"] = new System.Text.Json.Nodes.JsonObject { ["relic"] = xp };
+        other["skillLevels"] = new System.Text.Json.Nodes.JsonObject { ["healing"] = 2 };
+
+        var loaded = SaveGame.Deserialize(root.ToJsonString(), data);
+
+        var a = loaded.Roster[0];
+        Assert.Equal(new Dictionary<string, int> { ["ward_magic"] = 3, ["sacred_barrier"] = 1 }, a.SkillLevels);
+        Assert.Equal(6, a.MasteryLevel("warding"));
+        Assert.Equal(6, a.PointsAvailable("relic", data));
+        Assert.Equal(0, a.PointsAvailable("warding", data));
+
+        var b = loaded.Roster[1];
+        Assert.Equal(new Dictionary<string, int> { ["healing"] = 2 }, b.SkillLevels);
+        Assert.Equal(4, b.PointsAvailable("restoration", data));
+        Assert.Equal(6, b.PointsAvailable("relic", data));
+        Assert.Contains("\"version\": 11", SaveGame.Serialize(loaded));
     }
 
     [Fact]

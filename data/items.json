@@ -2475,7 +2475,7 @@
     "type": "치유봉",
     "description": "T1. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "restoration",
     "tier": 1,
     "price": 40,
     "bonuses": [
@@ -2497,7 +2497,7 @@
     "type": "치유봉",
     "description": "T2. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "restoration",
     "tier": 2,
     "price": 120,
     "requirements": [
@@ -2525,7 +2525,7 @@
     "type": "치유봉",
     "description": "T3. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "restoration",
     "tier": 3,
     "price": 320,
     "requirements": [
@@ -2553,7 +2553,7 @@
     "type": "치유봉",
     "description": "T4. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "restoration",
     "tier": 4,
     "price": 800,
     "requirements": [
@@ -2562,7 +2562,7 @@
         "level": 5
       },
       {
-        "skillId": "holy_magic",
+        "skillId": "restoration_efficiency",
         "level": 1
       }
     ],
@@ -2585,7 +2585,7 @@
     "type": "재생봉",
     "description": "T1. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "renewal",
     "tier": 1,
     "price": 40,
     "bonuses": [
@@ -2607,12 +2607,12 @@
     "type": "재생봉",
     "description": "T2. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "renewal",
     "tier": 2,
     "price": 120,
     "requirements": [
       {
-        "skillId": "healing",
+        "skillId": "renewal_magic",
         "level": 1
       }
     ],
@@ -2635,12 +2635,12 @@
     "type": "재생봉",
     "description": "T3. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "renewal",
     "tier": 3,
     "price": 320,
     "requirements": [
       {
-        "skillId": "healing",
+        "skillId": "renewal_magic",
         "level": 3
       }
     ],
@@ -2663,16 +2663,16 @@
     "type": "재생봉",
     "description": "T4. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "renewal",
     "tier": 4,
     "price": 800,
     "requirements": [
       {
-        "skillId": "healing",
+        "skillId": "renewal_magic",
         "level": 5
       },
       {
-        "skillId": "holy_magic",
+        "skillId": "renewal_efficiency",
         "level": 1
       }
     ],
@@ -2695,7 +2695,7 @@
     "type": "보호막봉",
     "description": "T1. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "warding",
     "tier": 1,
     "price": 40,
     "bonuses": [
@@ -2717,12 +2717,12 @@
     "type": "보호막봉",
     "description": "T2. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "warding",
     "tier": 2,
     "price": 120,
     "requirements": [
       {
-        "skillId": "healing",
+        "skillId": "ward_magic",
         "level": 1
       }
     ],
@@ -2745,12 +2745,12 @@
     "type": "보호막봉",
     "description": "T3. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "warding",
     "tier": 3,
     "price": 320,
     "requirements": [
       {
-        "skillId": "healing",
+        "skillId": "ward_magic",
         "level": 3
       }
     ],
@@ -2773,16 +2773,16 @@
     "type": "보호막봉",
     "description": "T4. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "warding",
     "tier": 4,
     "price": 800,
     "requirements": [
       {
-        "skillId": "healing",
+        "skillId": "ward_magic",
         "level": 5
       },
       {
-        "skillId": "holy_magic",
+        "skillId": "ward_efficiency",
         "level": 1
       }
     ],
@@ -2805,7 +2805,7 @@
     "type": "축복봉",
     "description": "T1. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "blessing",
     "tier": 1,
     "price": 40,
     "bonuses": [
@@ -2827,12 +2827,12 @@
     "type": "축복봉",
     "description": "T2. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "blessing",
     "tier": 2,
     "price": 120,
     "requirements": [
       {
-        "skillId": "healing",
+        "skillId": "blessing_magic",
         "level": 1
       }
     ],
@@ -2855,12 +2855,12 @@
     "type": "축복봉",
     "description": "T3. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "blessing",
     "tier": 3,
     "price": 320,
     "requirements": [
       {
-        "skillId": "healing",
+        "skillId": "blessing_magic",
         "level": 3
       }
     ],
@@ -2883,16 +2883,16 @@
     "type": "축복봉",
     "description": "T4. 임시 수치.",
     "slot": "MainHand",
-    "mastery": "relic",
+    "mastery": "blessing",
     "tier": 4,
     "price": 800,
     "requirements": [
       {
-        "skillId": "healing",
+        "skillId": "blessing_magic",
         "level": 5
       },
       {
-        "skillId": "holy_magic",
+        "skillId": "blessing_efficiency",
         "level": 1
       }
     ],
@@ -3186,7 +3186,7 @@
     "price": 90,
     "requirements": [
       {
-        "skillId": "healing",
+        "skillId": "devotion",
         "level": 1
       }
     ],
@@ -3218,7 +3218,7 @@
     "price": 240,
     "requirements": [
       {
-        "skillId": "healing",
+        "skillId": "devotion",
         "level": 3
       }
     ],
@@ -3250,11 +3250,11 @@
     "price": 600,
     "requirements": [
       {
-        "skillId": "healing",
+        "skillId": "devotion",
         "level": 5
       },
       {
-        "skillId": "holy_magic",
+        "skillId": "consecration",
         "level": 1
       }
     ],

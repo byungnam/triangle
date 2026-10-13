@@ -9,7 +9,9 @@ namespace Triangle.Core.Progress;
 /// 플레이어의 용병 회사. 세이브 데이터가 이 모델을 저장한다.
 /// - 로스터: 보유한 캐릭터 모두. 출전 명단은 그중 최대 <see cref="MaxLineup"/>명이다.
 /// - 골드와 창고(아이템 ID별 개수, 재료 포함). 장착과 해제는 창고와 오간다.
-/// - 모집 후보와 진행 중인 원정. 원정 중에는 명단, 장비, 모집을 바꿀 수 없다(전술과 전열만 바꾼다).
+/// - 전술 세트: 이름 붙은 전술 계획. 수에 제한이 없고 플레이어가 만들고 지운다. 멤버마다 세트별 전술 목록을 갖고,
+///   출정 전에 고른 세트(<see cref="ActiveTacticSet"/>)로 출전 멤버 전원이 싸운다.
+/// - 모집 후보와 진행 중인 원정. 원정 중에는 명단, 장비, 모집을 바꿀 수 없다. 전술과 전열도 출정 전에만 짠다(원정 화면에서 편집기로 갈 수 없다).
 /// </summary>
 public sealed class Company
 {
@@ -22,8 +24,12 @@ public sealed class Company
     private readonly List<string> _lineup;
     private readonly Dictionary<string, int> _stash;
     private readonly List<RecruitOffer> _recruitOffers;
+    private readonly List<string> _tacticSetNames;
+    private readonly Dictionary<string, ClearRecord> _clearRecords;
+    private readonly Dictionary<string, EncounterRecord> _encounterRecords;
     private int _activeTacticSet;
 
+    /// <param name="tacticSetNames">전술 세트 이름. null이면 멤버가 가진 세트 수만큼 "세트 1", "세트 2"…로 짓는다.</param>
     public Company(
         IEnumerable<PartyMember> roster,
         IEnumerable<string> lineup,
@@ -33,7 +39,10 @@ public sealed class Company
         int nextSeed,
         IEnumerable<RecruitOffer>? recruitOffers = null,
         int nextRecruitNumber = 1,
-        Expedition? expedition = null)
+        Expedition? expedition = null,
+        IEnumerable<string>? tacticSetNames = null,
+        IReadOnlyDictionary<string, ClearRecord>? clearRecords = null,
+        IReadOnlyDictionary<string, EncounterRecord>? encounterRecords = null)
     {
         _roster = roster.ToList();
         _lineup = lineup.ToList();
@@ -47,6 +56,25 @@ public sealed class Company
             throw new ArgumentException($"Lineup member '{unknown}' is not in the roster.", nameof(lineup));
         }
 
+        _tacticSetNames = tacticSetNames?.ToList()
+            ?? Enumerable.Range(1, Math.Max(1, _roster.Select(m => m.TacticSets.Count).DefaultIfEmpty(1).Max()))
+                .Select(DefaultTacticSetName)
+                .ToList();
+        if (_tacticSetNames.Count == 0)
+        {
+            throw new ArgumentException("A company needs at least one tactic set.", nameof(tacticSetNames));
+        }
+
+        if (_roster.FirstOrDefault(m => m.TacticSets.Count > _tacticSetNames.Count) is { } over)
+        {
+            throw new ArgumentException($"Member '{over.Id}' has more tactic sets than the company ({_tacticSetNames.Count}).", nameof(roster));
+        }
+
+        foreach (var member in _roster)
+        {
+            member.PadTacticSets(_tacticSetNames.Count);
+        }
+
         Gold = gold;
         _stash = new Dictionary<string, int>(stash.Where(p => p.Value > 0));
         ActiveTacticSet = activeTacticSet;
@@ -54,6 +82,8 @@ public sealed class Company
         _recruitOffers = recruitOffers?.ToList() ?? [];
         NextRecruitNumber = nextRecruitNumber;
         Expedition = expedition;
+        _clearRecords = clearRecords?.ToDictionary() ?? [];
+        _encounterRecords = encounterRecords?.ToDictionary() ?? [];
     }
 
     /// <summary>보유한 캐릭터 모두.</summary>
@@ -70,14 +100,76 @@ public sealed class Company
     /// <summary>창고: 아이템 ID별 개수 (0개인 항목은 없다).</summary>
     public IReadOnlyDictionary<string, int> Stash => _stash;
 
-    /// <summary>전투에 쓸 전술 세트 (0부터). 출전 멤버 전원이 같은 번호의 세트를 쓴다.</summary>
+    /// <summary>전술 세트 이름의 최대 길이.</summary>
+    public const int MaxTacticSetNameLength = 20;
+
+    /// <summary>전술 세트 이름 (세트 순서). 항상 하나 이상이다.</summary>
+    public IReadOnlyList<string> TacticSetNames => _tacticSetNames;
+
+    /// <summary>전투에 쓸 전술 세트 (0부터). 출전 멤버 전원이 같은 세트를 쓴다.</summary>
     public int ActiveTacticSet
     {
         get => _activeTacticSet;
-        set => _activeTacticSet = value is >= 0 and < PartyMember.TacticSetCount
+        set => _activeTacticSet = value >= 0 && value < _tacticSetNames.Count
             ? value
-            : throw new ArgumentOutOfRangeException(nameof(value), value, $"Tactic set must be 0-{PartyMember.TacticSetCount - 1}.");
+            : throw new ArgumentOutOfRangeException(nameof(value), value, $"Tactic set must be 0-{_tacticSetNames.Count - 1}.");
     }
+
+    /// <summary>이름이 없을 때 쓰는 세트 이름 (number는 1부터).</summary>
+    public static string DefaultTacticSetName(int number) => $"세트 {number}";
+
+    /// <summary>
+    /// 지금 고른 세트를 복사해 새 세트를 끝에 만들고 그 세트를 고른다. 새 세트의 번호를 돌려준다.
+    /// 이름이 비어 있으면 "세트 N"으로 짓는다.
+    /// </summary>
+    public int AddTacticSet(string? name = null)
+    {
+        foreach (var member in _roster)
+        {
+            member.AddTacticSet(member.TacticSets[ActiveTacticSet]);
+        }
+
+        _tacticSetNames.Add(CleanName(name) ?? DefaultTacticSetName(_tacticSetNames.Count + 1));
+        ActiveTacticSet = _tacticSetNames.Count - 1;
+        return ActiveTacticSet;
+    }
+
+    /// <summary>세트를 지운다. 마지막 남은 세트는 지울 수 없다(false). 고른 세트는 같은 세트를 가리키도록 옮긴다.</summary>
+    public bool RemoveTacticSet(int index)
+    {
+        if (_tacticSetNames.Count <= 1 || index < 0 || index >= _tacticSetNames.Count)
+        {
+            return false;
+        }
+
+        foreach (var member in _roster)
+        {
+            member.RemoveTacticSet(index);
+        }
+
+        _tacticSetNames.RemoveAt(index);
+        if (_activeTacticSet > index || _activeTacticSet == _tacticSetNames.Count)
+        {
+            _activeTacticSet--;
+        }
+
+        return true;
+    }
+
+    /// <summary>세트 이름을 바꾼다. 앞뒤 공백을 지우고 최대 길이로 자른다. 비어 있으면 false.</summary>
+    public bool RenameTacticSet(int index, string name)
+    {
+        if (index < 0 || index >= _tacticSetNames.Count || CleanName(name) is not { } clean)
+        {
+            return false;
+        }
+
+        _tacticSetNames[index] = clean;
+        return true;
+    }
+
+    private static string? CleanName(string? name) =>
+        string.IsNullOrWhiteSpace(name) ? null : name.Trim()[..Math.Min(name.Trim().Length, MaxTacticSetNameLength)];
 
     /// <summary>다음 무작위 시드. 원정과 모집이 <see cref="TakeSeed"/>로 꺼내 쓴다 (같은 세이브면 같은 결과).</summary>
     public int NextSeed { get; private set; }
@@ -92,6 +184,38 @@ public sealed class Company
     public Expedition? Expedition { get; internal set; }
 
     public bool OnExpedition => Expedition is not null;
+
+    /// <summary>클리어한 지역의 기록 (지역 ID별). 기록이 있으면 그 지역을 클리어한 것이다.</summary>
+    public IReadOnlyDictionary<string, ClearRecord> ClearRecords => _clearRecords;
+
+    public bool HasCleared(string zoneId) => _clearRecords.ContainsKey(zoneId);
+
+    /// <summary>클리어한 원정을 기록한다. 첫 클리어인지와 좋아진 기록 항목을 돌려준다.</summary>
+    internal (bool FirstClear, IReadOnlyList<ClearRecordKind> Improved) RecordClear(string zoneId, ClearResult result)
+    {
+        if (!_clearRecords.TryGetValue(zoneId, out var record))
+        {
+            _clearRecords[zoneId] = ClearRecord.First(result);
+            return (true, []);
+        }
+
+        var (updated, improved) = record.Add(result);
+        _clearRecords[zoneId] = updated;
+        return (false, improved);
+    }
+
+    /// <summary>탐사 기록: 원정에서 만난 적 조합 (인카운터 ID별). 기록이 없는 조합은 아직 모른다.</summary>
+    public IReadOnlyDictionary<string, EncounterRecord> EncounterRecords => _encounterRecords;
+
+    public bool HasMet(string encounterId) => _encounterRecords.ContainsKey(encounterId);
+
+    /// <summary>원정에서 싸운 적 조합을 기록한다. 처음 만났으면 true.</summary>
+    internal bool RecordEncounter(string encounterId, bool won)
+    {
+        var first = !_encounterRecords.TryGetValue(encounterId, out var record);
+        _encounterRecords[encounterId] = first ? new EncounterRecord(1, won ? 1 : 0) : record!.Add(won);
+        return first;
+    }
 
     public PartyMember Member(string id) => _roster.Single(m => m.Id == id);
 
@@ -331,24 +455,8 @@ public sealed class Company
         _recruitOffers.AddRange(Recruitment.Roll(data, TakeSeed()));
     }
 
-    /// <summary>
-    /// 후보의 고용 비용. 로스터가 비었고 가장 싼 후보도 못 살 만큼 골드가 없으면, 가장 싼 후보 한 명은 무료다
-    /// (영구 사망 지역에서 전멸해도 게임이 막히지 않도록).
-    /// </summary>
-    public int HirePrice(int offerIndex)
-    {
-        var price = _recruitOffers[offerIndex].Price;
-        if (_roster.Count > 0 || _recruitOffers.Count == 0)
-        {
-            return price;
-        }
-
-        var cheapest = _recruitOffers.Min(o => o.Price);
-        return Gold < cheapest && offerIndex == _recruitOffers.FindIndex(o => o.Price == cheapest) ? 0 : price;
-    }
-
     public bool CanHire(int offerIndex) =>
-        !OnExpedition && offerIndex >= 0 && offerIndex < _recruitOffers.Count && Gold >= HirePrice(offerIndex);
+        !OnExpedition && offerIndex >= 0 && offerIndex < _recruitOffers.Count && Gold >= _recruitOffers[offerIndex].Price;
 
     /// <summary>
     /// 후보를 고용한다: 골드를 내고 로스터에 넣는다. 출전 명단에 자리가 있으면 명단에도 넣는다.
@@ -371,21 +479,15 @@ public sealed class Company
         }
         while (_roster.Any(m => m.Id == id));
 
-        Gold -= HirePrice(offerIndex);
+        Gold -= offer.Price;
         _recruitOffers.RemoveAt(offerIndex);
         var member = new PartyMember(
             id, offer.Name, offer.Stats, template.Row, template.Equipment,
-            new Dictionary<string, int>(), new Dictionary<string, int>(), [template.Tactics, template.Tactics]);
+            new Dictionary<string, int>(), new Dictionary<string, int>(),
+            _tacticSetNames.Select(_ => template.Tactics).ToList()); // 모든 세트를 모집 템플릿의 전술로 시작한다
         _roster.Add(member);
         AddToLineup(id);
         return member;
-    }
-
-    /// <summary>영구 사망: 로스터와 출전 명단에서 뺀다.</summary>
-    internal void RemoveMember(string memberId)
-    {
-        _roster.RemoveAll(m => m.Id == memberId);
-        _lineup.Remove(memberId);
     }
 
     public IReadOnlyList<CombatantSetup> LineupSetups(GameData data) =>

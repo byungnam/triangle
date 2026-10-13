@@ -4,14 +4,13 @@ namespace Triangle.Core.Expeditions;
 
 /// <summary>
 /// 진행 중인 원정의 상태. 세이브에 그대로 들어간다. 규칙은 <see cref="ExpeditionRules"/>에 있다.
-/// - 출전 멤버의 HP·MP는 전투 사이에 이어진다. 쓰러진 멤버는 남은 전투에 나가지 못한다.
-/// - 전리품(골드, 아이템)은 들고 다니다가 귀환하거나 클리어해야 확정된다. 전멸하면 잃는다.
+/// - 출전 멤버의 HP·MP는 전투 사이에 이어지고, 다음 출정에서만 가득 찬다. 쓰러진 멤버는 남은 전투에 나가지 못한다.
+/// - 전리품(골드, 아이템)은 들고 다니다가 원정이 끝나면 확정된다. 전멸해도 이미 얻은 것은 남는다.
 /// </summary>
 public sealed class Expedition
 {
     private readonly List<ExpeditionMember> _members;
     private readonly Dictionary<string, int> _carriedItems;
-    private readonly List<string> _deaths;
 
     public Expedition(
         string zoneId,
@@ -20,10 +19,8 @@ public sealed class Expedition
         IEnumerable<ExpeditionMember> members,
         int carriedGold,
         IReadOnlyDictionary<string, int> carriedItems,
-        BattleReport? lastBattle,
-        IEnumerable<string>? deaths = null)
+        BattleReport? lastBattle)
     {
-        _deaths = deaths?.ToList() ?? [];
         ZoneId = zoneId;
         Seed = seed;
         BattleIndex = battleIndex;
@@ -41,7 +38,7 @@ public sealed class Expedition
     /// <summary>지금까지 치른 전투 수 (= 다음 전투의 번호, 0부터).</summary>
     public int BattleIndex { get; internal set; }
 
-    /// <summary>출전 멤버 (출정할 때의 명단 순서). 영구 사망한 멤버는 빠진다.</summary>
+    /// <summary>출전 멤버 (출정할 때의 명단 순서).</summary>
     public IReadOnlyList<ExpeditionMember> Members => _members;
 
     public int CarriedGold { get; internal set; }
@@ -52,9 +49,6 @@ public sealed class Expedition
     /// <summary>직전 전투의 요약. 아직 싸우지 않았으면 null.</summary>
     public BattleReport? LastBattle { get; internal set; }
 
-    /// <summary>이 원정에서 영구 사망한 멤버 이름 (사망 순서).</summary>
-    public IReadOnlyList<string> Deaths => _deaths;
-
     public IEnumerable<ExpeditionMember> Standing => _members.Where(m => !m.Down);
 
     public ExpeditionMember? MemberState(string memberId) => _members.FirstOrDefault(m => m.Id == memberId);
@@ -63,13 +57,6 @@ public sealed class Expedition
     {
         var index = _members.FindIndex(m => m.Id == state.Id);
         _members[index] = state;
-    }
-
-    /// <summary>영구 사망: 멤버를 원정에서 빼고 사망자 목록에 이름을 남긴다.</summary>
-    internal void RecordDeath(string memberId, string name)
-    {
-        _members.RemoveAll(m => m.Id == memberId);
-        _deaths.Add(name);
     }
 
     internal void Carry(string itemId, int count = 1) => _carriedItems[itemId] = _carriedItems.GetValueOrDefault(itemId) + count;
@@ -88,6 +75,9 @@ public sealed record BattleReport
     public required string EncounterId { get; init; }
     public required CombatOutcome Outcome { get; init; }
 
+    /// <summary>이 전투에서 처음 만난 적 조합이다 (탐사 기록에 새로 남았다).</summary>
+    public bool FirstMeet { get; init; }
+
     /// <summary>얻은 숙련 경험치.</summary>
     public IReadOnlyList<XpReport> Xp { get; init; } = [];
 
@@ -99,15 +89,6 @@ public sealed record BattleReport
 
     /// <summary>이 전투에서 쓰러진 멤버 이름.</summary>
     public IReadOnlyList<string> Downed { get; init; } = [];
-
-    /// <summary>영구 사망해 로스터에서 삭제된 멤버 이름.</summary>
-    public IReadOnlyList<string> Deaths { get; init; } = [];
-
-    /// <summary>사망자의 장비 중 파괴된 아이템 ID.</summary>
-    public IReadOnlyList<string> Destroyed { get; init; } = [];
-
-    /// <summary>사망자의 장비 중 회수해 들고 있는 전리품으로 옮긴 아이템 ID.</summary>
-    public IReadOnlyList<string> Recovered { get; init; } = [];
 }
 
 /// <param name="LevelsGained">오른 숙련 레벨 수 (= 새로 생긴 포인트).</param>
@@ -115,22 +96,26 @@ public sealed record XpReport(string MemberId, string MemberName, string Mastery
 
 public enum ExpeditionEnd
 {
-    /// <summary>스스로 귀환했다. 전리품 확정.</summary>
-    Returned,
-
-    /// <summary>무승부로 강제 귀환했다. 전리품 확정.</summary>
+    /// <summary>무승부로 강제 귀환했다.</summary>
     ForcedReturn,
 
-    /// <summary>마지막 전투까지 이겼다. 클리어 보너스와 함께 전리품 확정.</summary>
+    /// <summary>마지막 전투까지 이겼다. 클리어 보너스를 더 받는다.</summary>
     Cleared,
 
-    /// <summary>전멸했다. 전리품을 잃는다.</summary>
+    /// <summary>전멸했다. 이미 얻은 전리품은 남는다.</summary>
     Wiped,
 }
 
 /// <summary>끝난 원정의 결과 (마을에 보여준다).</summary>
-/// <param name="Gold">확정된 골드 (전멸이면 0).</param>
-/// <param name="Items">확정된 아이템 ID별 개수.</param>
-/// <param name="Deaths">이 원정에서 영구 사망한 멤버 이름.</param>
-public sealed record ExpeditionSummary(
-    string ZoneId, ExpeditionEnd End, int Battles, int Gold, IReadOnlyDictionary<string, int> Items, IReadOnlyList<string> Deaths);
+/// <param name="Gold">확정된 골드.</param>
+/// <param name="Items">확정된 아이템 ID별 개수 (첫 클리어 보상 포함).</param>
+public sealed record ExpeditionSummary(string ZoneId, ExpeditionEnd End, int Battles, int Gold, IReadOnlyDictionary<string, int> Items)
+{
+    /// <summary>클리어 결과. 클리어했을 때만 있다.</summary>
+    public ZoneClear? Clear { get; init; }
+}
+
+/// <summary>클리어한 원정.</summary>
+/// <param name="FirstClear">처음 클리어했다 (첫 클리어 보상을 받고 다음 깊이가 열린다).</param>
+/// <param name="Improved">이번에 좋아진 클리어 기록 항목 (첫 클리어면 비어 있다).</param>
+public sealed record ZoneClear(Progress.ClearResult Result, bool FirstClear, IReadOnlyList<Progress.ClearRecordKind> Improved);

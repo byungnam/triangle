@@ -14,7 +14,7 @@ namespace Triangle.Desktop.Scenes;
 
 /// <summary>
 /// 마을 (첫 화면). 골드, 출전 명단(최대 5명), 로스터, 전투지역 목록을 보여주고
-/// 전술 편집, 모집, 출정, 저장으로 이어진다. 마을에서는 수동 저장이다.
+/// 전술 편집, 모집, 상점·창고, 제작, 탐사 기록, 출정, 저장으로 이어진다. 마을에서는 수동 저장이다.
 /// </summary>
 internal sealed class VillageScene : IScene
 {
@@ -32,6 +32,7 @@ internal sealed class VillageScene : IScene
     private readonly Action _openRecruit;
     private readonly Action _openShop;
     private readonly Action _openCraft;
+    private readonly Action _openExploration;
     private readonly Action<string> _depart;
     private readonly Action _quit;
     private readonly MyraDesktop _desktop = new();
@@ -43,7 +44,7 @@ internal sealed class VillageScene : IScene
     /// <param name="depart">출정 (지역 ID). 부르기 전에 출정할 수 있는지 확인한다.</param>
     /// <param name="quit">종료가 확인되었다 (저장했거나 버리기로 했다).</param>
     public VillageScene(
-        Ui ui, GameSession session, Rectangle bounds, Action openEditor, Action openRecruit, Action openShop, Action openCraft, Action<string> depart, Action quit)
+        Ui ui, GameSession session, Rectangle bounds, Action openEditor, Action openRecruit, Action openShop, Action openCraft, Action openExploration, Action<string> depart, Action quit)
     {
         _ui = ui;
         _w = new Widgets(ui);
@@ -53,9 +54,12 @@ internal sealed class VillageScene : IScene
         _openRecruit = openRecruit;
         _openShop = openShop;
         _openCraft = openCraft;
+        _openExploration = openExploration;
         _depart = depart;
         _quit = quit;
-        _zoneId = session.Data.Zones.Values.OrderBy(z => z.Difficulty).First().Id;
+        _zoneId = Depths.Ordered(session.Data)
+            .LastOrDefault(z => Depths.WhyZoneLocked(session.Company, session.Data, z.Id) is null)?.Id
+            ?? Depths.Ordered(session.Data)[0].Id;
     }
 
     private Company Company => _session.Company;
@@ -238,27 +242,50 @@ internal sealed class VillageScene : IScene
     }
 
 
-    /// <summary>전투지역 목록 (난이도순). 고른 지역으로 출정한다. 영구 사망 지역은 빨간 경고를 단다.</summary>
+    /// <summary>
+    /// 전투지역 목록 (깊이순). 지역마다 보스, 잠긴 이유, 클리어 기록과 단서를 보여준다.
+    /// 잠긴 지역도 고를 수 있고, 출정 버튼 옆에 잠긴 이유를 보여준다.
+    /// </summary>
     private Widget BuildZones(Rectangle area)
     {
+        var data = _session.Data;
         var list = new VerticalStackPanel { Spacing = 8 };
         list.Widgets.Add(Label("전투지역", 20, Theme.Enemy, bold: true));
+        list.Widgets.Add(Wrapped("출정하면 끝날 때까지 돌아오거나 전술을 바꿀 수 없습니다. 전멸해도 이미 얻은 전리품은 남고, 쓰러진 멤버는 원정이 끝나면 회복합니다. 마지막 전투의 보스까지 이겨 지역을 클리어하면 다음 깊이가 열립니다.", 14, Theme.TextDim, area.Width - 20));
 
-        foreach (var zone in _session.Data.Zones.Values.OrderBy(z => z.Difficulty))
+        foreach (var zone in Depths.Ordered(data))
         {
+            var locked = Depths.WhyZoneLocked(Company, data, zone.Id);
             var selected = zone.Id == _zoneId;
+            var cleared = Company.ClearRecords.GetValueOrDefault(zone.Id);
             var content = new VerticalStackPanel { Spacing = 3 };
-            content.Widgets.Add(Label(zone.Name, 20, selected ? Theme.Text : Theme.Ally, bold: true));
-            content.Widgets.Add(Label($"난이도 {zone.Difficulty} · 전투 {zone.MaxBattles}회", 15, Theme.TextDim));
-            content.Widgets.Add(zone.Permadeath
-                ? Label($"영구 사망: 쓰러지면 캐릭터를 잃고, 장비가 {ExpeditionRules.EquipmentDestroyChance}% 확률로 파괴됩니다", 15, Theme.Enemy)
-                : Label("사망 페널티 없음: 쓰러져도 원정이 끝나면 회복합니다", 15, Theme.Heal));
-            if (zone.Description is { } description)
+            var title = cleared is not null ? $"{zone.Name} · 클리어 {cleared.Clears}회" : zone.Name;
+            content.Widgets.Add(Label(title, 20, locked is not null ? Theme.TextDim : selected ? Theme.Text : Theme.Ally, bold: true));
+            var boss = zone.Boss is { } b ? $" · 보스 {data.Encounters[b.EncounterId].Name}" : "";
+            content.Widgets.Add(Label($"난이도 {zone.Difficulty} · 전투 {zone.MaxBattles}회{boss}", 15, Theme.TextDim));
+            if (locked is not null)
             {
-                var label = Label(description, 14, Theme.TextDim);
-                label.Wrap = true;
-                label.Width = area.Width - 40;
-                content.Widgets.Add(label);
+                content.Widgets.Add(Label($"잠김: {locked}", 14, Theme.Enemy));
+            }
+            else if (cleared is not null)
+            {
+                content.Widgets.Add(Label($"기록: {ExpeditionText.ClearRecord(cleared)}", 14, Theme.Cover));
+                if (zone.Boss?.Clue is { } clue)
+                {
+                    content.Widgets.Add(Wrapped($"단서: {clue}", 14, Theme.TextDim, area.Width - 40));
+                }
+            }
+            else
+            {
+                if (zone.Description is { } description)
+                {
+                    content.Widgets.Add(Wrapped(description, 14, Theme.TextDim, area.Width - 40));
+                }
+
+                if (zone.Boss is { } first && ExpeditionText.FirstClearReward(data, first) is { } reward)
+                {
+                    content.Widgets.Add(Label($"첫 클리어 보상: {reward}", 14, Theme.Cover));
+                }
             }
 
             var button = StyledButton(content, selected ? Theme.Selected : Theme.Panel, Theme.ButtonHover);
@@ -273,6 +300,14 @@ internal sealed class VillageScene : IScene
         }
 
         return new ScrollViewer { Content = list, ShowHorizontalScrollBar = false };
+    }
+
+    private Label Wrapped(string text, int size, Color color, int width)
+    {
+        var label = Label(text, size, color);
+        label.Wrap = true;
+        label.Width = width;
+        return label;
     }
 
     private Widget BuildBottomBar()
@@ -304,6 +339,11 @@ internal sealed class VillageScene : IScene
         craft.Width = 100;
         craft.Click += (_, _) => _openCraft();
         bar.Widgets.Add(craft);
+
+        var exploration = TextButton("탐사 기록", Theme.Button, Theme.ButtonHover);
+        exploration.Width = 130;
+        exploration.Click += (_, _) => _openExploration();
+        bar.Widgets.Add(exploration);
 
         var why = ExpeditionRules.WhyCannotStart(Company, _session.Data, _zoneId);
         var depart = TextButton($"{Korean.EuroRo(_session.Data.Zones[_zoneId].Name)} 출정  ▶", Theme.Accent, Theme.AccentHover, bold: true);

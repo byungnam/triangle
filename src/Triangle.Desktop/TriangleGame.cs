@@ -15,11 +15,13 @@ namespace Triangle.Desktop;
 /// <param name="ScreenshotLines">전투 화면 스크린샷 전에 진행할 로그 줄 수. null이면 전투 끝까지.</param>
 /// <param name="StartInCombat">마을 대신 전투 화면으로 시작한다 (출전 명단과 훈련 부대의 시험 전투, 상태는 바꾸지 않는다).</param>
 /// <param name="SavePath">세이브 파일 경로. null이면 OS별 기본 위치.</param>
+/// <param name="StartInExploration">마을 대신 탐사 기록 화면으로 시작한다.</param>
 public sealed record LaunchOptions(
-    string? ScreenshotPath = null, int? ScreenshotLines = null, bool StartInCombat = false, string? SavePath = null);
+    string? ScreenshotPath = null, int? ScreenshotLines = null, bool StartInCombat = false, string? SavePath = null,
+    bool StartInExploration = false);
 
 /// <summary>
-/// 화면 흐름: 마을 ↔ (전술 편집, 숙련·패시브, 모집, 상점·창고, 제작), 마을 → 출정 → 원정 ↔ (전투 기록, 전술 편집) → 귀환 → 마을.
+/// 화면 흐름: 마을 ↔ (전술 편집, 숙련·패시브, 모집, 상점·창고, 제작, 탐사 기록), 마을 → 출정 → 원정 ↔ (전투 기록, 전술 편집) → 귀환 → 마을.
 /// 원정 중에는 전투가 끝날 때마다, 출정과 귀환 때 자동 저장하고, 종료하면 항상 저장한다.
 /// 마을에서는 수동 저장이고, 저장하지 않고 종료하면 확인 창을 띄운다.
 /// </summary>
@@ -99,9 +101,14 @@ public class TriangleGame : Game
         var loaded = store.Load(data, () => StartingCompany.Create(data, Random.Shared.Next()));
         _session = new GameSession(data, loaded.Company, store) { Notice = LoadNotice(loaded) };
 
-        _village = new VillageScene(_ui, Session, Bounds, OpenEditor, OpenRecruit, OpenShop, OpenCraft, Depart, ConfirmedExit);
-        _expedition = new ExpeditionScene(_ui, Session, Bounds, NextBattle, ReturnFromExpedition, OpenEditor);
+        _village = new VillageScene(_ui, Session, Bounds, OpenEditor, OpenRecruit, OpenShop, OpenCraft, OpenExploration, Depart, ConfirmedExit);
+        _expedition = new ExpeditionScene(_ui, Session, Bounds, NextBattle);
         _editor = new TacticEditorScene(_ui, Session, Bounds, OpenTraining, ShowHome);
+
+        if (_options.StartInExploration)
+        {
+            return new ExplorationScene(_ui, Session, Bounds, back: ShowHome);
+        }
 
         if (!_options.StartInCombat || Company.Lineup.Count == 0)
         {
@@ -158,6 +165,8 @@ public class TriangleGame : Game
 
     private void OpenShop() => _scene = new ShopScene(_ui, Session, Bounds, back: ShowHome);
 
+    private void OpenExploration() => _scene = new ExplorationScene(_ui, Session, Bounds, back: ShowHome);
+
     private void OpenCraft() => _scene = new CraftScene(_ui, Session, Bounds, back: ShowHome);
 
     /// <summary>출정한다. 원정 상태를 바로 저장한다.</summary>
@@ -177,7 +186,9 @@ public class TriangleGame : Game
         var expedition = Company.Expedition!;
         var zone = Data.Zones[expedition.ZoneId];
         var encounterId = ExpeditionRules.NextEncounter(expedition, Data);
-        var title = $"전투 {expedition.BattleIndex + 1}/{zone.MaxBattles}";
+        var title = ExpeditionRules.IsBossBattle(expedition, Data)
+            ? $"전투 {expedition.BattleIndex + 1}/{zone.MaxBattles} · 보스"
+            : $"전투 {expedition.BattleIndex + 1}/{zone.MaxBattles}";
 
         var result = ExpeditionRules.Fight(Company, Data);
         var summary = ExpeditionRules.ApplyResult(Company, Data, result);
@@ -190,21 +201,13 @@ public class TriangleGame : Game
         {
             var (text, color) = ExpeditionText.Summary(Data, summary);
             lines.Add(new LogLine(text, color));
+            lines.AddRange(ExpeditionText.Clear(Data, summary));
             Session.Notice = (text, color);
         }
 
         var combat = new CombatLogScene(_ui, Data, result, encounterId, title, Bounds, ShowHome, summary is null ? "원정으로" : "마을로");
         combat.SetRewardLines(lines);
         _scene = combat;
-    }
-
-    /// <summary>귀환한다. 들고 있던 전리품이 확정되고 저장한다.</summary>
-    private void ReturnFromExpedition()
-    {
-        var summary = ExpeditionRules.Return(Company, Data);
-        Session.AutoSave();
-        Session.Notice = ExpeditionText.Summary(Data, summary);
-        ShowHome();
     }
 
     /// <summary>마을이 종료를 확인했다 (저장했거나 버리기로 했다).</summary>

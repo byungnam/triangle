@@ -6,53 +6,77 @@ using Xunit.Abstractions;
 namespace Triangle.Core.Tests.Expeditions;
 
 /// <summary>
-/// 시작 회사로 지역마다 원정을 시드 여러 개로 끝까지(귀환하지 않고) 돌려 난이도 곡선을 잰다.
-/// 성장(숙련, 패시브, 모집) 없이 처음 상태 그대로 계속 싸운다.
+/// 지역마다 원정을 시드 여러 개로 끝까지 돌려 난이도 곡선을 잰다. 마지막 전투는 지역 보스다.
+/// 시작 회사와, 같은 회사를 키운 성장 상태(<see cref="Growth"/>)로 잰다. 원정 사이의 성장은 없다.
 /// </summary>
 public class DifficultyCurveTests(ITestOutputHelper output)
 {
     private static readonly GameData Data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
 
-    public sealed record ZoneStats(string ZoneId, double ClearRate, double AverageDeaths, double AverageBattles, double WipeRate);
+    private static readonly (string Name, int Tier, int Level)[] States = [("시작", 0, 0), ("T2 Lv5", 2, 5), ("T3 Lv12", 3, 12), ("T4 Lv20", 4, 20)];
 
-    public static ZoneStats Measure(GameData data, string zoneId, int seeds, int tacticSet = 0)
+    /// <param name="BossReachRate">보스 전투까지 간 비율 (%).</param>
+    public sealed record ZoneStats(string ZoneId, double ClearRate, double BossReachRate, double AverageDowned, double WipeRate);
+
+    public static ZoneStats Measure(GameData data, string zoneId, int seeds, int tacticSet = 0, int tier = 0, int masteryLevel = 0)
     {
-        var (clears, wipes, deaths, battles) = (0, 0, 0, 0);
+        var (clears, wipes, downed, reached) = (0, 0, 0, 0);
         for (var seed = 0; seed < seeds; seed++)
         {
             var company = StartingCompany.Create(data, seed);
             company.ActiveTacticSet = tacticSet;
-            ExpeditionRules.Start(company, data, zoneId);
+            if (tier > 0)
+            {
+                Growth.Grow(company, data, tier, masteryLevel);
+            }
+
+            Growth.UnlockAll(company, data);
+            var expedition = ExpeditionRules.Start(company, data, zoneId);
             ExpeditionSummary? summary = null;
             while (summary is null)
             {
+                reached += ExpeditionRules.IsBossBattle(expedition, data) ? 1 : 0;
                 summary = ExpeditionRules.ApplyResult(company, data, ExpeditionRules.Fight(company, data));
             }
 
             clears += summary.End == ExpeditionEnd.Cleared ? 1 : 0;
             wipes += summary.End == ExpeditionEnd.Wiped ? 1 : 0;
-            deaths += summary.Deaths.Count;
-            battles += summary.Battles;
+            downed += expedition.Members.Count(m => m.Down);
         }
 
-        return new ZoneStats(zoneId, 100.0 * clears / seeds, (double)deaths / seeds, (double)battles / seeds, 100.0 * wipes / seeds);
+        return new ZoneStats(zoneId, 100.0 * clears / seeds, 100.0 * reached / seeds, (double)downed / seeds, 100.0 * wipes / seeds);
     }
 
     [Fact]
-    public void Zones_get_harder_with_difficulty()
+    public void Each_depth_needs_tactics_or_growth()
     {
         const int seeds = 200;
-        var stats = Data.Zones.Values.OrderBy(z => z.Difficulty).Select(z => Measure(Data, z.Id, seeds)).ToList();
-        foreach (var s in stats)
+        var zones = Depths.Ordered(Data);
+        var rates = new Dictionary<(string Zone, string State, int Set), double>();
+        foreach (var zone in zones)
         {
-            output.WriteLine($"{s.ZoneId}: 클리어 {s.ClearRate:F0}%, 전멸 {s.WipeRate:F0}%, 평균 사망 {s.AverageDeaths:F2}, 평균 전투 {s.AverageBattles:F2}");
+            foreach (var (name, tier, level) in States)
+            {
+                var line = $"{zone.Name} · {name}:";
+                foreach (var set in new[] { 0, 1 })
+                {
+                    var s = Measure(Data, zone.Id, seeds, set, tier, level);
+                    rates[(zone.Id, name, set)] = s.ClearRate;
+                    line += $" 세트 {set + 1} 클리어 {s.ClearRate:F0}% (보스까지 {s.BossReachRate:F0}%, 쓰러짐 {s.AverageDowned:F2})";
+                }
+
+                output.WriteLine(line);
+            }
         }
 
-        // 수치는 임시다. 곡선의 모양만 지킨다: 초보는 거의 다 클리어하고, 어려울수록 덜 클리어한다.
-        Assert.True(stats[0].ClearRate >= 85, $"beginner clear rate {stats[0].ClearRate}%");
-        for (var i = 1; i < stats.Count; i++)
+        // 수치는 임시다. 모양만 지킨다: 깊이 n은 그 깊이의 성장 상태(깊이 1은 시작, 2는 T2, 3은 T3)의 기본 전술(세트 2)로는
+        // 쉽게 클리어하지 못하고, 한 단계 더 자란 상태는 대체로 클리어한다. 다듬은 전술(세트 1)은 그 사이에 있다.
+        var expected = new[] { ("시작", "T2 Lv5"), ("T2 Lv5", "T3 Lv12"), ("T3 Lv12", "T4 Lv20") };
+        for (var i = 0; i < zones.Count; i++)
         {
-            Assert.True(stats[i].ClearRate < stats[i - 1].ClearRate, $"{stats[i].ZoneId} should be harder than {stats[i - 1].ZoneId}");
+            var (current, grown) = expected[i];
+            Assert.True(rates[(zones[i].Id, current, 1)] < 50, $"{zones[i].Id} should not fall to {current} basic tactics");
+            Assert.True(rates[(zones[i].Id, grown, 0)] >= 70, $"{zones[i].Id} should fall to {grown} growth");
         }
     }
 }

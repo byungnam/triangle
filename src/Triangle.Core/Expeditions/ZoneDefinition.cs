@@ -18,18 +18,39 @@ public sealed record ZoneDefinition
     /// <summary>원정 한 번에 싸울 수 있는 최대 전투 수. 마지막 전투에서 이기면 지역 클리어.</summary>
     public required int MaxBattles { get; init; }
 
-    /// <summary>참이면 쓰러진 캐릭터가 로스터에서 삭제된다. 거짓이면 원정이 끝날 때 회복한다.</summary>
-    public bool Permadeath { get; init; }
-
     public required IReadOnlyList<ZoneEncounter> Encounters { get; init; }
 
     public ZoneRewards Rewards { get; init; } = new();
+
+    /// <summary>
+    /// 지역 보스. 있으면 원정의 마지막 전투(<see cref="MaxBattles"/>번째)는 늘 이 보스다.
+    /// 지역을 클리어(보스까지 이김)하면 다음 깊이가 열린다.
+    /// </summary>
+    public BossDefinition? Boss { get; init; }
+}
+
+/// <summary>
+/// 지역 보스: 원정의 마지막 전투에서 늘 같은 적 조합으로 나온다. 앞선 전투로 지친 상태에서 만나는 고비다.
+/// 처음 클리어하면 <see cref="FirstClearGold"/>, <see cref="FirstClearItems"/>, 단서를 받는다.
+/// </summary>
+public sealed record BossDefinition
+{
+    public required string EncounterId { get; init; }
+
+    /// <summary>처음 클리어하면 보여주는 단서 ("왜 삼각형인가"를 조금씩 드러낸다).</summary>
+    public string? Clue { get; init; }
+
+    /// <summary>처음 클리어하면 더 받는 골드.</summary>
+    public int FirstClearGold { get; init; }
+
+    /// <summary>처음 클리어하면 더 받는 아이템 ID (같은 ID를 여러 번 적으면 그만큼).</summary>
+    public IReadOnlyList<string> FirstClearItems { get; init; } = [];
 }
 
 /// <param name="Weight">가중치 (1 이상). 지역의 가중치 합에 대한 비율로 나온다.</param>
 public sealed record ZoneEncounter(string EncounterId, int Weight);
 
-/// <summary>전리품 규칙. 전투에서 이길 때마다 굴리고, 귀환하거나 클리어해야 확정된다.</summary>
+/// <summary>전리품 규칙. 전투에서 이길 때마다 굴리고, 원정이 끝나면 확정된다.</summary>
 public sealed record ZoneRewards
 {
     /// <summary>전투당 골드 (최소–최대, 균등).</summary>

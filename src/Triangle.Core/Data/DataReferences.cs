@@ -49,7 +49,7 @@ public static class DataReferences
             foreach (var u in e.Units)
             {
                 var at = $"{GameDataLoader.EncountersFile} '{e.Id}' unit '{u.Id}'";
-                Add(u.Weapon == id || u.Armor == id, $"{at}: equipment");
+                Add(u.Equipment.Values.Contains(id), $"{at}: equipment");
                 Add(u.Skills.ContainsKey(id), $"{at}: skills");
                 Add(u.Tactics.Any(t => t.ActionId == id), $"{at}: tactics");
             }
@@ -60,6 +60,8 @@ public static class DataReferences
             var at = $"{GameDataLoader.ZonesFile} '{z.Id}'";
             Add(z.Encounters.Any(e => e.EncounterId == id), $"{at}: encounters");
             Add(z.Rewards.ItemDrops.Any(d => d.ItemId == id), $"{at}: itemDrops");
+            Add(z.Boss?.EncounterId == id, $"{at}: boss");
+            Add(z.Boss?.FirstClearItems.Contains(id) == true, $"{at}: boss firstClearItems");
         }
 
         foreach (var r in data.Recipes.Values)

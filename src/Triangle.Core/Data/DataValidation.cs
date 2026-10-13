@@ -19,14 +19,6 @@ internal static class DataValidation
         RequireNonNegative(stats.Speed, $"{at}: speed", errors);
     }
 
-    /// <summary>적 장비: 무기 칸에는 무기 계열, 방어구 칸에는 방어구 계열이어야 한다. null은 맨손·맨몸.</summary>
-    public static void ValidateEquipment(
-        string? weapon, string? armor, string at, IReadOnlyDictionary<string, MasteryDefinition> masteries, List<string> errors)
-    {
-        RequireKind(weapon, MasteryKind.Weapon, $"{at}: weapon", masteries, errors);
-        RequireKind(armor, MasteryKind.Armor, $"{at}: armor", masteries, errors);
-    }
-
     public static void RequireKind(
         string? id, MasteryKind kind, string what, IReadOnlyDictionary<string, MasteryDefinition> masteries, List<string> errors)
     {

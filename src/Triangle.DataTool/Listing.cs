@@ -42,7 +42,7 @@ internal static class Listing
 
             "encounters" => data.Encounters.Values
                 .Where(e => Matches(e.Id, e.Name))
-                .Select(e => Row(e.Id, e.Name, string.Join(", ", e.Units.Select(u => $"{u.Name}({u.Weapon ?? "맨손"})"))))
+                .Select(e => Row(e.Id, e.Name, string.Join(", ", e.Units.Select(u => $"{u.Name}({(u.Equipment.TryGetValue(EquipmentSlot.MainHand, out var w) ? data.Items[w].TypeOrName : "맨손")})"))))
                 .ToList(),
 
             "zones" => data.Zones.Values

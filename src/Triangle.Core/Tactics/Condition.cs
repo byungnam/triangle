@@ -5,6 +5,7 @@ namespace Triangle.Core.Tactics;
 /// - 백분율 조건(…AtLeast/…AtMost): 값은 최대치 대비 %(0–100).
 /// - 수치 조건(…AmountAtLeast/…AmountAtMost): 값은 실제 HP·MP. 범위 제한이 없다.
 /// 턴 조건의 값은 해당 유닛 자신의 행동 횟수(1부터)다.
+/// 적 수 조건의 값은 인원수다. 적은 수와 상태로만 본다: 특정 적을 가리키는 조건은 두지 않는다(대상은 행동이 정한다).
 /// JSON에는 이름으로 저장되므로 새 조건은 끝에 덧붙인다.
 /// </summary>
 public enum Condition
@@ -51,6 +52,20 @@ public enum Condition
     AllyAverageHpAmountAtMost,
     AllyAverageMpAmountAtLeast,
     AllyAverageMpAmountAtMost,
+
+    /// <summary>살아있는 적(소환물 포함)의 수.</summary>
+    EnemyAliveAtLeast,
+    EnemyAliveAtMost,
+
+    /// <summary>쓰러진 적(소환물 포함)의 수.</summary>
+    EnemyDeadAtLeast,
+    EnemyDeadAtMost,
+
+    /// <summary>전열·후열에 살아있는 적의 수 (지금 줄 기준).</summary>
+    EnemyFrontAtLeast,
+    EnemyFrontAtMost,
+    EnemyBackAtLeast,
+    EnemyBackAtMost,
 }
 
 public static class ConditionKinds
@@ -62,4 +77,8 @@ public static class ConditionKinds
     /// <summary>값이 실제 HP·MP 수치인 조건 (범위 제한 없음).</summary>
     public static bool IsAmount(this Condition condition) =>
         condition is >= Condition.SelfHpAmountAtLeast and <= Condition.AllyAverageMpAmountAtMost;
+
+    /// <summary>값이 적 인원수인 조건 (0 이상).</summary>
+    public static bool IsEnemyCount(this Condition condition) =>
+        condition is >= Condition.EnemyAliveAtLeast and <= Condition.EnemyBackAtMost;
 }

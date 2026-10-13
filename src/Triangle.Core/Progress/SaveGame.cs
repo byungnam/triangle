@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Triangle.Core.Data;
 using Triangle.Core.Expeditions;
@@ -16,6 +17,13 @@ public sealed record SaveFile
 
     /// <summary>전투에 쓸 전술 세트 (0부터).</summary>
     public int ActiveTacticSet { get; init; }
+
+    /// <summary>
+    /// 전술 세트 이름 (세트 순서). 멤버의 tacticSets가 이 순서를 따른다.
+    /// 없으면(2026-10-10 이전 파일) 멤버의 세트 수만큼 "세트 1", "세트 2"…가 된다.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? TacticSetNames { get; init; }
 
     /// <summary>보유한 캐릭터 모두.</summary>
     public IReadOnlyList<SavedMember> Roster { get; init; } = [];
@@ -37,11 +45,18 @@ public sealed record SaveFile
     /// <summary>진행 중인 원정. 마을에 있으면 없다.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public SavedExpedition? Expedition { get; init; }
+
+    /// <summary>클리어한 지역의 기록 (지역 ID별).</summary>
+    public IReadOnlyDictionary<string, ClearRecord> Clears { get; init; } = new Dictionary<string, ClearRecord>();
+
+    /// <summary>탐사 기록: 원정에서 만난 적 조합 (인카운터 ID별).</summary>
+    public IReadOnlyDictionary<string, EncounterRecord> Encounters { get; init; } = new Dictionary<string, EncounterRecord>();
 }
 
 public sealed record SavedExpedition
 {
     public required string ZoneId { get; init; }
+
     public required int Seed { get; init; }
     public required int BattleIndex { get; init; }
     public required IReadOnlyList<ExpeditionMember> Members { get; init; }
@@ -50,8 +65,6 @@ public sealed record SavedExpedition
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public BattleReport? LastBattle { get; init; }
-
-    public IReadOnlyList<string> Deaths { get; init; } = [];
 }
 
 public sealed record SavedMember
@@ -61,19 +74,8 @@ public sealed record SavedMember
     public required Stats Stats { get; init; }
     public required Row Row { get; init; }
 
-    /// <summary>부위별 장착 아이템 ID (버전 6부터).</summary>
+    /// <summary>부위별 장착 아이템 ID.</summary>
     public IReadOnlyDictionary<EquipmentSlot, string> Equipment { get; init; } = new Dictionary<EquipmentSlot, string>();
-
-    /// <summary>버전 6의 행동 칸 선택. 버전 7부터 아이템 행동을 모두 쓰므로 읽을 때 버린다.</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public IReadOnlyDictionary<EquipmentSlot, IReadOnlyList<string>>? AbilityChoices { get; init; }
-
-    /// <summary>버전 5의 무기·방어구 아이템 ID. 읽을 때만 쓰고 주무기·몸통으로 옮긴다.</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Weapon { get; init; }
-
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Armor { get; init; }
 
     /// <summary>숙련 ID별 누적 경험치.</summary>
     public IReadOnlyDictionary<string, int> MasteryXp { get; init; } = new Dictionary<string, int>();
@@ -81,7 +83,7 @@ public sealed record SavedMember
     /// <summary>배운 스킬의 레벨.</summary>
     public IReadOnlyDictionary<string, int> SkillLevels { get; init; } = new Dictionary<string, int>();
 
-    /// <summary>전술 세트들.</summary>
+    /// <summary>전술 세트들 (회사의 tacticSetNames 순서).</summary>
     public IReadOnlyList<IReadOnlyList<Tactic>> TacticSets { get; init; } = [];
 }
 
@@ -106,10 +108,21 @@ public static class SaveGame
     ///    버전 5는 무기를 주무기로, 방어구를 몸통으로 옮기고 행동 칸은 첫 옵션으로 고른다. 그 이전은 읽지 않는다.
     /// 7: 무기 세분화로 지팡이 계열이 원소 계열이 되고, 행동 칸 선택이 없어짐 (2026-10-06). 버전 6의 staff 경험치는 fire로,
     ///    magic_control은 pyromancy로 옮기고 mana_efficiency는 지운다(포인트는 돌려받는다). abilityChoices는 버린다.
+    /// 8: 영구 사망과 장비 파괴가 없어짐 (2026-10-10). 버전 7의 원정 사망자(deaths)와 직전 전투의
+    ///    사망·파괴·회수 목록(deaths, destroyed, recovered)을 버린다. 그 이전은 읽지 않는다.
+    ///    2026-10-10: 전술 세트 수 제한(2벌)을 없애고 세트 이름(tacticSetNames)을 덧붙였다. 이전 파일은 그대로 읽히므로
+    ///    버전은 올리지 않았다(이름이 없으면 "세트 1", "세트 2").
+    /// 9: 지역 보스와 깊이 (2026-10-12). 클리어한 지역의 기록(clears). 버전 8은 아무 지역도 클리어하지 않은 것으로 읽는다.
+    ///    그 이전은 읽지 않는다.
+    /// 10: 탐사 기록 (2026-10-12). 만난 적 조합(encounters). 버전 9는 클리어한 지역의 보스만 클리어한 횟수만큼
+    ///    만나서 이긴 것으로 채운다(보스를 이겨야 클리어한다). 그 이전은 읽지 않는다.
+    /// 11: 신성 숙련(relic)을 치유·재생·보호막·축복 숙련으로 나누고 relic은 성물 숙련이 됨 (2026-10-13).
+    ///    버전 10의 relic 경험치는 relic에 남기고, 든 치유봉 종류의 숙련(치유봉이 아니면 치유)에도 같은 양을 준다.
+    ///    치유술·신성 마법 레벨은 그 숙련의 1단계·3단계 패시브로 옮긴다. 그 이전은 읽지 않는다.
     /// </summary>
-    public const int CurrentVersion = 7;
+    public const int CurrentVersion = 11;
 
-    private const int OldestReadableVersion = 5;
+    private const int OldestReadableVersion = 10;
 
     public static string Serialize(Company company)
     {
@@ -117,6 +130,7 @@ public static class SaveGame
         {
             Version = CurrentVersion,
             ActiveTacticSet = company.ActiveTacticSet,
+            TacticSetNames = company.TacticSetNames.ToList(),
             Gold = company.Gold,
             NextSeed = company.NextSeed,
             NextRecruitNumber = company.NextRecruitNumber,
@@ -131,10 +145,11 @@ public static class SaveGame
                     CarriedGold = e.CarriedGold,
                     CarriedItems = new SortedDictionary<string, int>(e.CarriedItems.ToDictionary()),
                     LastBattle = e.LastBattle,
-                    Deaths = e.Deaths.ToList(),
                 }
                 : null,
             Stash = new SortedDictionary<string, int>(company.Stash.ToDictionary()),
+            Clears = new SortedDictionary<string, ClearRecord>(company.ClearRecords.ToDictionary(), StringComparer.Ordinal),
+            Encounters = new SortedDictionary<string, EncounterRecord>(company.EncounterRecords.ToDictionary(), StringComparer.Ordinal),
             Lineup = company.Lineup.ToList(),
             Roster = company.Roster.Select(m => new SavedMember
             {
@@ -160,6 +175,11 @@ public static class SaveGame
             throw new SaveGameException([$"save: unsupported version {version} (expected {OldestReadableVersion}-{CurrentVersion})"]);
         }
 
+        if (version == 10)
+        {
+            json = ConvertFromVersion10(json, data);
+        }
+
         SaveFile? file;
         try
         {
@@ -174,16 +194,6 @@ public static class SaveGame
         if (file is null)
         {
             throw new SaveGameException(["save: expected an object, found null"]);
-        }
-
-        if (file.Version == 5)
-        {
-            file = ConvertFromVersion5(file);
-        }
-
-        if (file.Version == 6)
-        {
-            file = ConvertFromVersion6(file);
         }
 
         Validate(file, data);
@@ -201,7 +211,10 @@ public static class SaveGame
             file.NextRecruitNumber,
             saved is null
                 ? null
-                : new Expedition(saved.ZoneId, saved.Seed, saved.BattleIndex, saved.Members, saved.CarriedGold, saved.CarriedItems, saved.LastBattle, saved.Deaths));
+                : new Expedition(saved.ZoneId, saved.Seed, saved.BattleIndex, saved.Members, saved.CarriedGold, saved.CarriedItems, saved.LastBattle),
+            TacticSetNames(file),
+            file.Clears,
+            file.Encounters);
     }
 
     private static int ReadVersion(string json)
@@ -226,73 +239,87 @@ public static class SaveGame
     }
 
     /// <summary>
-    /// 버전 5 → 6: 무기 아이템은 주무기로, 방어구 아이템은 몸통으로 옮긴다. v5 기본 아이템 ID는 새 T1 아이템 ID와 같다.
-    /// 행동 칸 선택은 비워 두면 첫 옵션이 된다. 이제 쓸 수 없는 행동이 든 전술은 잠긴다(편집 화면에서 고친다).
+    /// 버전 10 → 11: 신성 숙련을 치유봉 종류별 숙련으로 나눈다. 숙련 경험치는 relic(이제 성물)에 남기고
+    /// 주무기 치유봉 종류의 숙련(치유봉이 아니면 치유)에 같은 양을 준다. 치유술·신성 마법 레벨은 그 숙련의
+    /// 1단계·3단계 패시브로 옮긴다(포인트가 같다). 모르는 아이템은 그대로 두어 검증이 알리게 한다.
     /// </summary>
-    private static SaveFile ConvertFromVersion5(SaveFile file)
+    private static string ConvertFromVersion10(string json, GameData data)
     {
-        static Dictionary<EquipmentSlot, string> ToEquipment(SavedMember m)
+        // 숙련 → (치유술 자리, 신성 마법 자리).
+        var skills = new Dictionary<string, (string Core, string Advanced)>
         {
-            var equipment = new Dictionary<EquipmentSlot, string>();
-            if (m.Weapon is not null)
-            {
-                equipment[EquipmentSlot.MainHand] = m.Weapon;
-            }
-
-            if (m.Armor is not null)
-            {
-                equipment[EquipmentSlot.Body] = m.Armor;
-            }
-
-            return equipment;
-        }
-
-        return file with
-        {
-            Version = 6,
-            Roster = file.Roster.Select(m => m with { Equipment = ToEquipment(m), Weapon = null, Armor = null }).ToList(),
+            ["restoration"] = ("healing", "holy_magic"),
+            ["renewal"] = ("renewal_magic", "life_cycle"),
+            ["warding"] = ("ward_magic", "sacred_barrier"),
+            ["blessing"] = ("blessing_magic", "grace"),
         };
-    }
 
-    /// <summary>버전 6 → 7: 사라진 숙련·스킬 ID를 새 ID로 옮기고 행동 칸 선택을 버린다.</summary>
-    private static SaveFile ConvertFromVersion6(SaveFile file)
-    {
-        static Dictionary<string, int> Rename(IReadOnlyDictionary<string, int> values, IReadOnlyDictionary<string, string?> renames)
+        var root = JsonNode.Parse(json)!.AsObject();
+        root["version"] = CurrentVersion;
+        foreach (var member in root["roster"]?.AsArray().OfType<JsonObject>() ?? [])
         {
-            var result = new Dictionary<string, int>();
-            foreach (var (id, value) in values)
+            var mainHand = member["equipment"]?["MainHand"]?.GetValue<string>();
+            var target = mainHand is not null && data.Items.TryGetValue(mainHand, out var item) && item.Mastery is { } m && skills.ContainsKey(m)
+                ? m
+                : "restoration";
+
+            if (member["masteryXp"] is JsonObject xp && xp["relic"] is JsonValue relic)
             {
-                var newId = renames.TryGetValue(id, out var renamed) ? renamed : id;
-                if (newId is not null)
+                xp[target] = relic.GetValue<int>();
+            }
+
+            if (target != "restoration" && member["skillLevels"] is JsonObject levels)
+            {
+                foreach (var (from, to) in new[] { ("healing", skills[target].Core), ("holy_magic", skills[target].Advanced) })
                 {
-                    result[newId] = result.GetValueOrDefault(newId) + value;
+                    if (levels[from] is { } level)
+                    {
+                        levels.Remove(from);
+                        levels[to] = level.DeepClone();
+                    }
                 }
             }
-
-            return result;
         }
 
-        var masteries = new Dictionary<string, string?> { ["staff"] = "fire" };
-        var skills = new Dictionary<string, string?> { ["magic_control"] = "pyromancy", ["mana_efficiency"] = null };
-        return file with
-        {
-            Version = CurrentVersion,
-            Roster = file.Roster.Select(m => m with
-            {
-                MasteryXp = Rename(m.MasteryXp, masteries),
-                SkillLevels = Rename(m.SkillLevels, skills),
-                AbilityChoices = null,
-            }).ToList(),
-        };
+        return root.ToJsonString();
     }
+
+    /// <summary>
+    /// 세트 이름. 이름이 없는 파일(2026-10-10 이전)은 세트가 늘 두 벌이었으므로 두 벌 이상(멤버가 가진 만큼)으로 본다.
+    /// </summary>
+    private static IReadOnlyList<string> TacticSetNames(SaveFile file) =>
+        file.TacticSetNames
+        ?? Enumerable.Range(1, Math.Max(2, file.Roster.Select(m => m.TacticSets.Count).DefaultIfEmpty(0).Max()))
+            .Select(Company.DefaultTacticSetName)
+            .ToList();
 
     private static void Validate(SaveFile file, GameData data)
     {
         var errors = new List<string>();
 
-        if (file.ActiveTacticSet is < 0 or >= PartyMember.TacticSetCount)
+        var setCount = TacticSetNames(file).Count;
+        if (file.TacticSetNames is { Count: 0 })
         {
-            errors.Add($"save: activeTacticSet must be 0-{PartyMember.TacticSetCount - 1}, got {file.ActiveTacticSet}");
+            errors.Add("save: tacticSetNames needs at least one set");
+        }
+
+        foreach (var name in file.TacticSetNames ?? [])
+        {
+            DataValidation.RequireText(name, "save: tactic set name", errors);
+            if (name.Length > Company.MaxTacticSetNameLength)
+            {
+                errors.Add($"save: tactic set name '{name}' is longer than {Company.MaxTacticSetNameLength} characters");
+            }
+        }
+
+        if (setCount > 0 && (file.ActiveTacticSet < 0 || file.ActiveTacticSet >= setCount))
+        {
+            errors.Add($"save: activeTacticSet must be 0-{setCount - 1}, got {file.ActiveTacticSet}");
+        }
+
+        foreach (var member in file.Roster.Where(m => m.TacticSets.Count > setCount))
+        {
+            errors.Add($"save member '{member.Id}': has {member.TacticSets.Count} tactic sets but the company has {setCount}");
         }
 
         DataValidation.RequireNonNegative(file.Gold, "save: gold", errors);
@@ -355,6 +382,32 @@ public static class SaveGame
         if (file.Expedition is { } expedition)
         {
             ValidateExpedition(expedition, file, data, errors);
+        }
+
+        foreach (var (zoneId, record) in file.Clears)
+        {
+            if (!data.Zones.ContainsKey(zoneId))
+            {
+                errors.Add($"save: clears has unknown zone '{zoneId}'");
+            }
+
+            if (record.Clears < 1 || record.FewestMembers < 1 || record.LowestGearTier < 0 || record.FewestDowned < 0)
+            {
+                errors.Add($"save: clear record of '{zoneId}' needs clears >= 1, fewestMembers >= 1, lowestGearTier >= 0 and fewestDowned >= 0");
+            }
+        }
+
+        foreach (var (encounterId, record) in file.Encounters)
+        {
+            if (!data.Encounters.ContainsKey(encounterId))
+            {
+                errors.Add($"save: encounters has unknown encounter '{encounterId}'");
+            }
+
+            if (record.Met < 1 || record.Wins < 0 || record.Wins > record.Met)
+            {
+                errors.Add($"save: encounter record of '{encounterId}' needs met >= 1 and wins 0-met");
+            }
         }
 
         if (errors.Count > 0)
@@ -423,17 +476,7 @@ public static class SaveGame
         DataValidation.RequireText(member.Id, "save: member id", errors);
         DataValidation.RequireText(member.Name, $"{at}: name", errors);
         DataValidation.ValidateStats(member.Stats, at, errors);
-        if (member.Weapon is not null || member.Armor is not null)
-        {
-            errors.Add($"{at}: 'weapon' and 'armor' are version 5 fields; use 'equipment'");
-        }
-
         DataValidation.ValidateEquipped(member.Equipment, $"{at}: equipment", data.Items, errors);
-        if (member.AbilityChoices is not null)
-        {
-            errors.Add($"{at}: 'abilityChoices' is a version 6 field; items now grant all their actions");
-        }
-
         foreach (var (masteryId, xp) in member.MasteryXp)
         {
             if (!data.Masteries.ContainsKey(masteryId))
@@ -457,11 +500,6 @@ public static class SaveGame
             {
                 errors.Add($"{at}: spent {spent} points in '{group.Key}' but mastery level is {earned}");
             }
-        }
-
-        if (member.TacticSets.Count > PartyMember.TacticSetCount)
-        {
-            errors.Add($"{at}: at most {PartyMember.TacticSetCount} tactic sets, got {member.TacticSets.Count}");
         }
 
         for (var set = 0; set < member.TacticSets.Count; set++)

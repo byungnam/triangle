@@ -1,6 +1,7 @@
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
 using Triangle.Core.Expeditions;
+using Triangle.Core.Progress;
 
 namespace Triangle.Desktop.Rendering;
 
@@ -23,17 +24,15 @@ internal static class ExpeditionText
 
     private static string Name(GameData data, string itemId) => ItemText.ShortName(data.Items[itemId]);
 
-    /// <summary>"주무기 T1 낡은 검, 몸통 T1 판금 갑옷"처럼 부위를 붙인 장비 목록 (부위 순서).</summary>
-    public static string Gear(GameData data, IEnumerable<string> itemIds) =>
-        string.Join(", ", itemIds
-            .Select(id => data.Items[id])
-            .OrderBy(i => i.Slot)
-            .Select(i => $"{ItemText.SlotLabel(i.Slot)} {ItemText.ShortName(i)}"));
-
-    /// <summary>전투 하나의 결과: 경험치, 전리품, 쓰러짐, 사망, 장비 파괴.</summary>
+    /// <summary>전투 하나의 결과: 경험치, 전리품, 쓰러짐.</summary>
     public static IReadOnlyList<LogLine> Battle(GameData data, BattleReport report)
     {
         var lines = new List<LogLine>();
+        if (report.FirstMeet)
+        {
+            lines.Add(new LogLine($"처음 만난 적: {data.Encounters[report.EncounterId].Name} (탐사 기록에 남김)", Theme.Cover));
+        }
+
         foreach (var member in report.Xp.GroupBy(x => x.MemberId))
         {
             var parts = member.Select(x =>
@@ -55,23 +54,9 @@ internal static class ExpeditionText
             lines.Add(new LogLine($"아이템: {Items(data, report.Drops)}", Theme.Cover));
         }
 
-        if (report.Deaths.Count > 0)
-        {
-            lines.Add(new LogLine($"사망 (로스터에서 삭제): {string.Join(", ", report.Deaths)}", Theme.Enemy));
-        }
-        else if (report.Downed.Count > 0)
+        if (report.Downed.Count > 0)
         {
             lines.Add(new LogLine($"쓰러짐 (남은 전투에 못 나감): {string.Join(", ", report.Downed)}", Theme.Damage));
-        }
-
-        if (report.Destroyed.Count > 0)
-        {
-            lines.Add(new LogLine($"파괴된 장비: {Gear(data, report.Destroyed)}", Theme.Enemy));
-        }
-
-        if (report.Recovered.Count > 0)
-        {
-            lines.Add(new LogLine($"회수한 장비: {Gear(data, report.Recovered)}", Theme.Cover));
         }
 
         return lines;
@@ -83,27 +68,81 @@ internal static class ExpeditionText
         var zone = data.Zones[summary.ZoneId].Name;
         var end = summary.End switch
         {
-            ExpeditionEnd.Cleared => "클리어",
-            ExpeditionEnd.Returned => "귀환",
+            ExpeditionEnd.Cleared => summary.Clear is { FirstClear: true } ? "첫 클리어" : "클리어",
             ExpeditionEnd.ForcedReturn => "무승부로 귀환",
-            _ => "전멸, 전리품을 잃었습니다",
+            _ => "전멸",
         };
-        var parts = new List<string> { $"{zone} 원정 {end} ({summary.Battles}전)" };
-        if (summary.End != ExpeditionEnd.Wiped)
+        var parts = new List<string> { $"{zone} 원정 {end} ({summary.Battles}전)", $"골드 +{summary.Gold}" };
+        if (summary.Items.Count > 0)
         {
-            parts.Add($"골드 +{summary.Gold}");
-            if (summary.Items.Count > 0)
-            {
-                parts.Add($"아이템: {Items(data, summary.Items)}");
-            }
+            parts.Add($"아이템: {Items(data, summary.Items)}");
         }
 
-        if (summary.Deaths.Count > 0)
-        {
-            parts.Add($"사망: {string.Join(", ", summary.Deaths)}");
-        }
-
-        var color = summary.End == ExpeditionEnd.Wiped || summary.Deaths.Count > 0 ? Theme.Enemy : Theme.Heal;
+        var color = summary.End == ExpeditionEnd.Wiped ? Theme.Enemy : Theme.Heal;
         return (string.Join(" · ", parts), color);
     }
+
+    /// <summary>클리어한 원정의 결과 줄: 이번 원정의 기록, 처음이면 다음 깊이와 단서, 아니면 새 기록.</summary>
+    public static IReadOnlyList<LogLine> Clear(GameData data, ExpeditionSummary summary)
+    {
+        if (summary.Clear is not { } clear)
+        {
+            return [];
+        }
+
+        var zone = data.Zones[summary.ZoneId];
+        var r = clear.Result;
+        var lines = new List<LogLine>
+        {
+            new($"이번 원정: {r.Members}명 · 장비 {Tier(r.GearTier)} · 쓰러짐 {r.Downed}명", Theme.TextDim),
+        };
+        if (clear.FirstClear)
+        {
+            if (Depths.Ordered(data).SkipWhile(z => z.Id != zone.Id).Skip(1).FirstOrDefault() is { } next)
+            {
+                lines.Add(new LogLine($"{Korean.IGa(next.Name)} 열렸습니다.", Theme.Heal));
+            }
+
+            if (zone.Boss?.Clue is { } clue)
+            {
+                lines.Add(new LogLine($"단서: {clue}", Theme.Cover));
+            }
+        }
+        else if (clear.Improved.Count > 0)
+        {
+            lines.Add(new LogLine($"새 기록: {Improved(clear)}", Theme.Heal));
+        }
+
+        return lines;
+    }
+
+    /// <summary>"최소 인원 3명 · 최저 장비 T1 · 최소 쓰러짐 0명".</summary>
+    public static string ClearRecord(ClearRecord record) =>
+        $"최소 인원 {record.FewestMembers}명 · 최저 장비 {Tier(record.LowestGearTier)} · 최소 쓰러짐 {record.FewestDowned}명";
+
+    /// <summary>보스의 첫 클리어 보상: "골드 150, 철 조각, 질긴 가죽". 없으면 null.</summary>
+    public static string? FirstClearReward(GameData data, BossDefinition boss)
+    {
+        var parts = new List<string>();
+        if (boss.FirstClearGold > 0)
+        {
+            parts.Add($"골드 {boss.FirstClearGold}");
+        }
+
+        if (boss.FirstClearItems.Count > 0)
+        {
+            parts.Add(Items(data, boss.FirstClearItems));
+        }
+
+        return parts.Count == 0 ? null : string.Join(", ", parts);
+    }
+
+    private static string Tier(int tier) => tier == 0 ? "없음" : $"T{tier}";
+
+    private static string Improved(ZoneClear clear) => string.Join(", ", clear.Improved.Select(k => k switch
+    {
+        ClearRecordKind.FewestMembers => $"{clear.Result.Members}명",
+        ClearRecordKind.LowestGearTier => $"장비 {Tier(clear.Result.GearTier)}",
+        _ => $"쓰러짐 {clear.Result.Downed}명",
+    }));
 }

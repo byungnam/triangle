@@ -87,26 +87,96 @@ public class PartyMemberTests
     }
 
     [Fact]
-    public void Members_always_have_two_independent_tactic_sets()
+    public void Member_without_tactic_sets_starts_with_one_empty_set()
     {
-        var m = Member(new Tactic(1, Condition.Always, 0, "a"));
+        var m = new PartyMember("m", "멤버", new Stats(10, 10, 20, 10, 10), Row.Front, TestGear.Of(),
+            new Dictionary<string, int>(), new Dictionary<string, int>(), []);
 
-        Assert.Equal(PartyMember.TacticSetCount, m.TacticSets.Count);
-        Assert.Empty(m.TacticSets[1]);
+        Assert.Empty(Assert.Single(m.TacticSets));
+    }
 
-        m.TacticSets[1].Add(Condition.Always, 0, "b");
-        Assert.Equal(["a"], m.TacticSets[0].Select(t => t.ActionId));
-        Assert.Equal(["b"], m.TacticSets[1].Select(t => t.ActionId));
+    private static Company CompanyWith(params PartyMember[] members) =>
+        new(members, members.Select(m => m.Id), gold: 0, new Dictionary<string, int>(), activeTacticSet: 0, nextSeed: 0);
+
+    [Fact]
+    public void Company_pads_every_member_to_its_tactic_set_count()
+    {
+        var other = new PartyMember("o", "다른", new Stats(10, 10, 20, 10, 10), Row.Front, TestGear.Of(),
+            new Dictionary<string, int>(), new Dictionary<string, int>(), [[], [], []]);
+        var company = CompanyWith(Member(new Tactic(1, Condition.Always, 0, "a")), other);
+
+        Assert.Equal(["세트 1", "세트 2", "세트 3"], company.TacticSetNames);
+        Assert.Equal(3, company.Member("m").TacticSets.Count);
+        Assert.Equal(["a"], company.Member("m").TacticSets[0].Select(t => t.ActionId));
+        Assert.Empty(company.Member("m").TacticSets[2]);
     }
 
     [Fact]
     public void Company_rejects_unknown_tactic_set()
     {
-        var company = new Company([Member()], ["m"], gold: 0, new Dictionary<string, int>(), activeTacticSet: 0, nextSeed: 0);
+        var company = CompanyWith(Member());
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => company.ActiveTacticSet = 2);
-        company.ActiveTacticSet = 1;
+        Assert.Throws<ArgumentOutOfRangeException>(() => company.ActiveTacticSet = 1);
+        Assert.Throws<ArgumentOutOfRangeException>(() => company.ActiveTacticSet = -1);
+    }
+
+    [Fact]
+    public void Tactic_sets_are_unlimited_and_new_sets_copy_the_active_one()
+    {
+        var company = CompanyWith(Member(new Tactic(1, Condition.Always, 0, "a")));
+        var m = company.Member("m");
+
+        for (var i = 0; i < 5; i++)
+        {
+            company.AddTacticSet();
+        }
+
+        Assert.Equal(6, company.TacticSetNames.Count);
+        Assert.Equal("세트 6", company.TacticSetNames[5]);
+        Assert.Equal(5, company.ActiveTacticSet);
+        Assert.Equal(6, m.TacticSets.Count);
+        Assert.Equal(["a"], m.TacticSets[5].Select(t => t.ActionId));
+
+        // 복사본은 따로 편집된다.
+        m.TacticSets[5].Add(Condition.Always, 0, "b");
+        Assert.Equal(["a"], m.TacticSets[0].Select(t => t.ActionId));
+
+        Assert.Equal(6, company.AddTacticSet("  보스전  "));
+        Assert.Equal("보스전", company.TacticSetNames[6]);
+    }
+
+    [Fact]
+    public void Removing_a_set_keeps_the_active_set_pointing_at_the_same_plan()
+    {
+        var company = CompanyWith(Member());
+        company.AddTacticSet("둘");
+        company.AddTacticSet("셋");
+        company.ActiveTacticSet = 2;
+
+        Assert.True(company.RemoveTacticSet(0));
+        Assert.Equal(["둘", "셋"], company.TacticSetNames);
         Assert.Equal(1, company.ActiveTacticSet);
+        Assert.Equal(2, company.Member("m").TacticSets.Count);
+
+        // 고른 세트를 지우면 다음 세트(없으면 이전 세트)를 고른다.
+        Assert.True(company.RemoveTacticSet(1));
+        Assert.Equal(0, company.ActiveTacticSet);
+
+        // 마지막 세트는 지울 수 없다.
+        Assert.False(company.RemoveTacticSet(0));
+        Assert.Single(company.TacticSetNames);
+    }
+
+    [Fact]
+    public void Rename_trims_and_rejects_empty_names()
+    {
+        var company = CompanyWith(Member());
+
+        Assert.False(company.RenameTacticSet(0, "   "));
+        Assert.True(company.RenameTacticSet(0, " 후열 집중 "));
+        Assert.Equal("후열 집중", company.TacticSetNames[0]);
+        Assert.True(company.RenameTacticSet(0, new string('가', 30)));
+        Assert.Equal(Company.MaxTacticSetNameLength, company.TacticSetNames[0].Length);
     }
 
     [Fact]

@@ -464,13 +464,34 @@
     "id": "healing",
     "name": "치유술",
     "description": "임시 수치",
-    "mastery": "relic",
+    "mastery": "restoration",
     "rank": 1,
     "prerequisites": [],
     "bonuses": [
       {
         "kind": "HealPercent",
-        "percentPerLevel": 5
+        "percentPerLevel": 5,
+        "tag": "restoration"
+      }
+    ]
+  },
+  {
+    "id": "restoration_efficiency",
+    "name": "치유 절약",
+    "description": "임시 수치",
+    "mastery": "restoration",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "healing",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MpCostReductionPercent",
+        "percentPerLevel": 5,
+        "tag": "restoration"
       }
     ]
   },
@@ -478,7 +499,7 @@
     "id": "holy_magic",
     "name": "신성 마법",
     "description": "임시 수치",
-    "mastery": "relic",
+    "mastery": "restoration",
     "rank": 3,
     "prerequisites": [
       {
@@ -490,7 +511,202 @@
       {
         "kind": "PowerPercent",
         "percentPerLevel": 5,
-        "tag": "relic"
+        "tag": "restoration"
+      }
+    ]
+  },
+  {
+    "id": "renewal_magic",
+    "name": "재생술",
+    "description": "임시 수치",
+    "mastery": "renewal",
+    "rank": 1,
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "DelayReductionPercent",
+        "percentPerLevel": 4,
+        "tag": "renewal"
+      }
+    ]
+  },
+  {
+    "id": "renewal_efficiency",
+    "name": "재생 절약",
+    "description": "임시 수치",
+    "mastery": "renewal",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "renewal_magic",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MpCostReductionPercent",
+        "percentPerLevel": 5,
+        "tag": "renewal"
+      }
+    ]
+  },
+  {
+    "id": "life_cycle",
+    "name": "생명의 순환",
+    "description": "임시 수치",
+    "mastery": "renewal",
+    "rank": 3,
+    "prerequisites": [
+      {
+        "skillId": "renewal_magic",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MaxMpPercent",
+        "percentPerLevel": 3
+      }
+    ]
+  },
+  {
+    "id": "ward_magic",
+    "name": "수호술",
+    "description": "임시 수치",
+    "mastery": "warding",
+    "rank": 1,
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percentPerLevel": 5,
+        "tag": "warding"
+      }
+    ]
+  },
+  {
+    "id": "ward_efficiency",
+    "name": "수호 절약",
+    "description": "임시 수치",
+    "mastery": "warding",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "ward_magic",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MpCostReductionPercent",
+        "percentPerLevel": 5,
+        "tag": "warding"
+      }
+    ]
+  },
+  {
+    "id": "sacred_barrier",
+    "name": "신성 결계",
+    "description": "임시 수치",
+    "mastery": "warding",
+    "rank": 3,
+    "prerequisites": [
+      {
+        "skillId": "ward_magic",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MaxMpPercent",
+        "percentPerLevel": 3
+      }
+    ]
+  },
+  {
+    "id": "blessing_magic",
+    "name": "축복술",
+    "description": "임시 수치",
+    "mastery": "blessing",
+    "rank": 1,
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "DelayReductionPercent",
+        "percentPerLevel": 4,
+        "tag": "blessing"
+      }
+    ]
+  },
+  {
+    "id": "blessing_efficiency",
+    "name": "축복 절약",
+    "description": "임시 수치",
+    "mastery": "blessing",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "blessing_magic",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MpCostReductionPercent",
+        "percentPerLevel": 5,
+        "tag": "blessing"
+      }
+    ]
+  },
+  {
+    "id": "grace",
+    "name": "은총",
+    "description": "임시 수치",
+    "mastery": "blessing",
+    "rank": 3,
+    "prerequisites": [
+      {
+        "skillId": "blessing_magic",
+        "level": 3
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MaxMpPercent",
+        "percentPerLevel": 3
+      }
+    ]
+  },
+  {
+    "id": "devotion",
+    "name": "헌신",
+    "description": "임시 수치",
+    "mastery": "relic",
+    "rank": 1,
+    "prerequisites": [],
+    "bonuses": [
+      {
+        "kind": "MaxMpPercent",
+        "percentPerLevel": 4
+      }
+    ]
+  },
+  {
+    "id": "consecration",
+    "name": "축성",
+    "description": "임시 수치",
+    "mastery": "relic",
+    "rank": 2,
+    "prerequisites": [
+      {
+        "skillId": "devotion",
+        "level": 2
+      }
+    ],
+    "bonuses": [
+      {
+        "kind": "MpCostReductionPercent",
+        "percentPerLevel": 3
       }
     ]
   },

@@ -66,10 +66,34 @@
     "description": "전기 마법봉·지팡이"
   },
   {
-    "id": "relic",
-    "name": "신성",
+    "id": "restoration",
+    "name": "치유",
     "kind": "Weapon",
-    "description": "힐러 마법봉 4종, 성물"
+    "description": "치유봉"
+  },
+  {
+    "id": "renewal",
+    "name": "재생",
+    "kind": "Weapon",
+    "description": "재생봉"
+  },
+  {
+    "id": "warding",
+    "name": "보호막",
+    "kind": "Weapon",
+    "description": "보호막봉"
+  },
+  {
+    "id": "blessing",
+    "name": "축복",
+    "kind": "Weapon",
+    "description": "축복봉"
+  },
+  {
+    "id": "relic",
+    "name": "성물",
+    "kind": "Weapon",
+    "description": "보조: 성물"
   },
   {
     "id": "shield",

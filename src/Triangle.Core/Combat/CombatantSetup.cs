@@ -22,7 +22,7 @@ public sealed record CombatantSetup(
     int? StartHp = null,
     int? StartMp = null)
 {
-    /// <summary>아이템 행동 칸에서 고른 행동 ID. null이면 아이템 제한이 없다 (적 유닛).</summary>
+    /// <summary>낀 아이템이 주는 행동 ID. null이면 아이템 제한이 없다 (규칙 시험용 유닛).</summary>
     public IReadOnlySet<string>? GrantedActions { get; init; }
 
     /// <summary>보조 아이템의 계열 ID (없으면 null). 주무기와 다르면 같은 무기 경험치를 받는다.</summary>

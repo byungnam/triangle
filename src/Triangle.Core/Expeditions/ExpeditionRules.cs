@@ -8,8 +8,10 @@ namespace Triangle.Core.Expeditions;
 
 /// <summary>
 /// 원정 규칙. 상태는 <see cref="Company.Expedition"/>에 있고, 여기 함수들이 바꾼다.
-/// 흐름: <see cref="Start"/> → (<see cref="Fight"/> → <see cref="ApplyResult"/>) 반복 → 끝 (귀환, 클리어, 전멸, 무승부).
-/// 같은 세이브에서 같은 선택을 하면 결과도 같다: 인카운터, 전투, 전리품, 사망 판정의 시드가
+/// 흐름: <see cref="Start"/> → (<see cref="Fight"/> → <see cref="ApplyResult"/>) 반복 → 끝 (클리어, 전멸, 무승부).
+/// 보스가 있는 지역은 마지막 전투가 늘 보스다. 클리어하면 기록을 남기고 다음 깊이가 열린다(<see cref="Depths"/>).
+/// 출정한 뒤에는 중간에 돌아오거나 전술을 바꿀 수 없다: 전술은 출정 전에만 짠다.
+/// 같은 세이브에서 같은 선택을 하면 결과도 같다: 인카운터, 전투, 전리품의 시드가
 /// 모두 원정 시드와 전투 번호에서 나온다.
 /// </summary>
 public static class ExpeditionRules
@@ -18,10 +20,6 @@ public static class ExpeditionRules
     private const int EncounterStream = 0;
     private const int CombatStream = 1;
     private const int LootStream = 2;
-    private const int DeathStream = 3;
-
-    /// <summary>영구 사망 때 쓰러진 멤버의 장착 아이템이 각각 파괴될 확률 (%). 모든 지역에서 같다.</summary>
-    public const int EquipmentDestroyChance = 50;
 
     /// <summary>출정할 수 없는 이유. null이면 출정할 수 있다.</summary>
     public static string? WhyCannotStart(Company company, GameData data, string zoneId)
@@ -34,6 +32,11 @@ public static class ExpeditionRules
         if (!data.Zones.ContainsKey(zoneId))
         {
             return "없는 지역입니다";
+        }
+
+        if (Depths.WhyZoneLocked(company, data, zoneId) is { } locked)
+        {
+            return locked;
         }
 
         if (company.Lineup.Count == 0)
@@ -63,10 +66,22 @@ public static class ExpeditionRules
         return expedition;
     }
 
-    /// <summary>다음 전투에서 만날 인카운터. 지역의 가중치 목록에서 시드로 고른다 (결정적).</summary>
+    /// <summary>다음 전투가 지역 보스인가 (보스가 있는 지역의 마지막 전투).</summary>
+    public static bool IsBossBattle(Expedition expedition, GameData data)
+    {
+        var zone = data.Zones[expedition.ZoneId];
+        return zone.Boss is not null && expedition.BattleIndex == zone.MaxBattles - 1;
+    }
+
+    /// <summary>다음 전투에서 만날 인카운터. 지역의 가중치 목록에서 시드로 고른다 (결정적). 마지막 전투는 지역 보스다.</summary>
     public static string NextEncounter(Expedition expedition, GameData data)
     {
         var zone = data.Zones[expedition.ZoneId];
+        if (IsBossBattle(expedition, data))
+        {
+            return zone.Boss!.EncounterId;
+        }
+
         var random = new Random(StreamSeed(expedition, EncounterStream));
         var roll = random.Next(zone.Encounters.Sum(e => e.Weight));
         foreach (var encounter in zone.Encounters)
@@ -81,12 +96,26 @@ public static class ExpeditionRules
         throw new InvalidOperationException("Unreachable: weights are positive.");
     }
 
-    /// <summary>다음 전투의 아군 입력: 쓰러지지 않은 출전 멤버, 시작 HP·MP는 이어진 값.</summary>
+    /// <summary>
+    /// 다음 전투의 아군 입력: 쓰러지지 않은 출전 멤버, 시작 HP·MP는 이어진 값.
+    /// 원정 중에는 전술을 고칠 수 없으므로, 원정 도중 게임 데이터가 바뀌어 잠긴 전술은 빼고 싸운다.
+    /// </summary>
     public static IReadOnlyList<CombatantSetup> AllySetups(Company company, GameData data)
     {
         var expedition = Active(company);
         return expedition.Standing
-            .Select(s => company.Member(s.Id).ToCombatantSetup(data, company.ActiveTacticSet) with { StartHp = s.Hp, StartMp = s.Mp })
+            .Select(s =>
+            {
+                var member = company.Member(s.Id);
+                var setup = member.ToCombatantSetup(data, company.ActiveTacticSet);
+                var locked = member.LockedTacticIndexes(data, company.ActiveTacticSet);
+                return setup with
+                {
+                    Tactics = setup.Tactics.Where((_, i) => !locked.Contains(i)).ToList(),
+                    StartHp = s.Hp,
+                    StartMp = s.Mp,
+                };
+            })
             .ToList();
     }
 
@@ -106,8 +135,10 @@ public static class ExpeditionRules
     /// 전투 결과를 반영한다. 원정이 끝났으면 그 요약을, 계속할 수 있으면 null을 돌려준다.
     /// - HP·MP를 갱신하고 쓰러진 멤버를 표시한다. 숙련 경험치는 바로 준다.
     /// - 이기면 전리품(골드, 정해진 아이템, 티어 범위의 장비)을 굴려 들고 있는 전리품에 더한다. 마지막 전투면 클리어 보너스를 받고 끝난다.
-    /// - 영구 사망 지역이면 쓰러진 멤버를 로스터에서 삭제한다. 장착 아이템(최대 5개)은 각각 따로 <see cref="EquipmentDestroyChance"/> 확률로 파괴되고, 남은 것은 들고 간다.
-    /// - 지면(전멸) 전리품을 잃고 끝난다. 무승부는 강제 귀환이다(전리품 확정).
+    /// - 쓰러진 멤버는 남은 전투에 나가지 못할 뿐 잃지 않는다. 장비도 그대로다.
+    /// - 지면(전멸) 끝난다. 무승부는 강제 귀환이다. 어느 쪽이든 이미 얻은 전리품은 확정된다.
+    /// - 싸운 적 조합은 이기든 지든 탐사 기록에 남는다.
+    /// - 클리어하면 클리어 기록(인원, 장비 등급, 쓰러짐)을 남기고, 처음이면 보스의 첫 클리어 보상을 더 받는다.
     /// </summary>
     public static ExpeditionSummary? ApplyResult(Company company, GameData data, CombatResult result)
     {
@@ -126,6 +157,7 @@ public static class ExpeditionRules
         }
 
         var xp = GrantMasteryXp(company, result);
+        var firstMeet = company.RecordEncounter(encounterId, result.Outcome == CombatOutcome.Victory);
 
         var gold = 0;
         var drops = new List<string>();
@@ -145,25 +177,6 @@ public static class ExpeditionRules
             }
         }
 
-        var destroyed = new List<string>();
-        var recovered = new List<string>();
-        var deaths = new List<string>();
-        if (zone.Permadeath)
-        {
-            var random = new Random(StreamSeed(expedition, DeathStream));
-            foreach (var member in downed)
-            {
-                foreach (var item in EquipmentSlots.All.Select(member.ItemIn).OfType<string>())
-                {
-                    (random.Next(100) < EquipmentDestroyChance ? destroyed : recovered).Add(item);
-                }
-
-                company.RemoveMember(member.Id);
-                expedition.RecordDeath(member.Id, member.Name);
-                deaths.Add(member.Name);
-            }
-        }
-
         var number = expedition.BattleIndex + 1;
         expedition.BattleIndex = number;
 
@@ -174,13 +187,27 @@ public static class ExpeditionRules
             _ when number >= zone.MaxBattles => ExpeditionEnd.Cleared,
             _ => null,
         };
+        ZoneClear? clear = null;
         if (end == ExpeditionEnd.Cleared)
         {
             gold += zone.Rewards.ClearBonusGold;
+            var gearTier = expedition.Members
+                .SelectMany(m => company.Member(m.Id).WornItems(data))
+                .Select(w => w.Item.Tier)
+                .DefaultIfEmpty(0)
+                .Max();
+            var clearResult = new ClearResult(expedition.Members.Count, gearTier, expedition.Members.Count(m => m.Down));
+            var (first, improved) = company.RecordClear(zone.Id, clearResult);
+            clear = new ZoneClear(clearResult, first, improved);
+            if (first && zone.Boss is { } boss)
+            {
+                gold += boss.FirstClearGold;
+                drops.AddRange(boss.FirstClearItems);
+            }
         }
 
         expedition.CarriedGold += gold;
-        foreach (var item in drops.Concat(recovered))
+        foreach (var item in drops)
         {
             expedition.Carry(item);
         }
@@ -190,44 +217,31 @@ public static class ExpeditionRules
             Number = number,
             EncounterId = encounterId,
             Outcome = result.Outcome,
+            FirstMeet = firstMeet,
             Xp = xp,
             Gold = gold,
             Drops = drops,
             Downed = downed.Select(m => m.Name).ToList(),
-            Deaths = deaths,
-            Destroyed = destroyed,
-            Recovered = recovered,
         };
 
-        return end is { } e ? Finish(company, data, e) : null;
+        return end is { } e ? Finish(company, data, e) with { Clear = clear } : null;
     }
 
     /// <summary>남은 전투가 있는가 (이겼고 마지막 전투가 아니면 계속할 수 있다).</summary>
     public static bool CanContinue(Company company, GameData data) =>
         company.Expedition is { } e && e.BattleIndex < data.Zones[e.ZoneId].MaxBattles && e.Standing.Any();
 
-    /// <summary>귀환한다. 들고 있던 전리품이 확정된다.</summary>
-    public static ExpeditionSummary Return(Company company, GameData data)
-    {
-        Active(company);
-        return Finish(company, data, ExpeditionEnd.Returned);
-    }
-
     /// <summary>
-    /// 원정을 끝낸다: 전멸이 아니면 전리품을 창고와 골드로 확정한다. 초보 지역에서 쓰러진 멤버는
-    /// 원정 상태와 함께 HP가 사라지므로 저절로 회복한다. 모집 후보를 새로 굴린다.
+    /// 원정을 끝낸다: 전리품을 창고와 골드로 확정한다(전멸해도 이미 얻은 것은 남는다). 쓰러진 멤버는
+    /// 원정 상태와 함께 HP가 사라지므로 저절로 회복한다(다음 출정에서 가득 찬다). 모집 후보를 새로 굴린다.
     /// </summary>
     private static ExpeditionSummary Finish(Company company, GameData data, ExpeditionEnd end)
     {
         var expedition = Active(company);
-        var kept = end != ExpeditionEnd.Wiped;
-        if (kept)
+        company.Gold += expedition.CarriedGold;
+        foreach (var (item, count) in expedition.CarriedItems)
         {
-            company.Gold += expedition.CarriedGold;
-            foreach (var (item, count) in expedition.CarriedItems)
-            {
-                company.AddToStash(item, count);
-            }
+            company.AddToStash(item, count);
         }
 
         company.Expedition = null;
@@ -236,9 +250,8 @@ public static class ExpeditionRules
             expedition.ZoneId,
             end,
             expedition.BattleIndex,
-            kept ? expedition.CarriedGold : 0,
-            kept ? new Dictionary<string, int>(expedition.CarriedItems) : new Dictionary<string, int>(),
-            expedition.Deaths.ToList());
+            expedition.CarriedGold,
+            new Dictionary<string, int>(expedition.CarriedItems));
     }
 
     /// <summary>주무기 계열, (주무기와 다르면) 보조 계열, 입은 방어구 재질 숙련에 경험치를 더한다.</summary>

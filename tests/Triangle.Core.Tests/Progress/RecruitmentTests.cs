@@ -40,6 +40,8 @@ public class RecruitmentTests
         var offer = company.RecruitOffers[1];
         var template = Data.Recruits[offer.TemplateId];
 
+        company.AddTacticSet();
+        company.AddTacticSet();
         var hired = company.Hire(1, Data);
 
         Assert.NotNull(hired);
@@ -50,8 +52,8 @@ public class RecruitmentTests
         Assert.Empty(company.Stash); // 창고에서 빼지 않는다
         Assert.Empty(hired.MasteryXp);
         Assert.Empty(hired.SkillLevels);
-        Assert.Equal(template.Tactics, hired.TacticSets[0]);
-        Assert.Equal(template.Tactics, hired.TacticSets[1]);
+        Assert.Equal(3, hired.TacticSets.Count); // 모든 세트를 템플릿 전술로 시작한다
+        Assert.All(hired.TacticSets, set => Assert.Equal(template.Tactics, set));
         Assert.Empty(hired.LockedTacticIndexes(Data, 0));
         Assert.Equal(["a", hired.Id], company.Lineup);
         Assert.Equal("recruit_1", hired.Id);
@@ -78,7 +80,10 @@ public class RecruitmentTests
 
         // 시작 회사의 전술을 쓰지 않는 멤버도 출정할 수 있다 (전술이 없으면 기다리기만 한다).
         ExpeditionRules.Start(company, Data, Data.Zones.Keys.First());
-        ExpeditionRules.Return(company, Data);
+        while (company.OnExpedition)
+        {
+            ExpeditionRules.ApplyResult(company, Data, ExpeditionRules.Fight(company, Data));
+        }
 
         Assert.Equal(Recruitment.OfferCount, company.RecruitOffers.Count);
         Assert.NotEqual(before, company.RecruitOffers);

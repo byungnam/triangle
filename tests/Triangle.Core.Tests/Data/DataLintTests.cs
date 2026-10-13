@@ -33,7 +33,7 @@ public class DataLintTests
 
     private const string Encounters = """
         [
-          { "id": "camp", "name": "야영지", "units": [ { "id": "e1", "name": "적", "row": "Front", "weapon": "sword",
+          { "id": "camp", "name": "야영지", "units": [ { "id": "e1", "name": "적", "row": "Front", "equipment": { "MainHand": "old_sword" },
             "stats": { "str": 10, "dex": 10, "vital": 20, "intel": 10, "speed": 10 },
             "tactics": [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "strike" } ] } ] },
           { "id": "lonely", "name": "아무 지역에도 없음", "units": [ { "id": "e1", "name": "적", "row": "Front",
@@ -70,7 +70,7 @@ public class DataLintTests
 
         Assert.Equal(
             [
-                "actions.json 'orphan': no item grants it and no enemy uses it",
+                "actions.json 'orphan': no item grants it",
                 "actions.json 'spirit_bite': summonOnly but no summon uses it",
                 "effects.json 'unused_buff': no action applies it",
                 "encounters.json 'lonely': no zone uses it",
@@ -104,9 +104,9 @@ public class DataLintTests
                 "items.json 'old_sword': mastery",
                 "items.json 'relic_sword': mastery",
                 "items.json 'crafted_sword': mastery",
-                "encounters.json 'camp' unit 'e1': equipment",
             ],
             DataReferences.Find(data, "sword").Where(r => !r.StartsWith("skills.json")).ToList());
+        Assert.Contains("encounters.json 'camp' unit 'e1': equipment", DataReferences.Find(data, "old_sword"));
         Assert.Empty(DataReferences.Find(data, "nothing"));
     }
 }

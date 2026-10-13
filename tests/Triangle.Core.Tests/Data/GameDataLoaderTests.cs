@@ -121,7 +121,8 @@ public class GameDataLoaderTests
         {
             ["sword"] = "swordsmanship", ["spear"] = "spearmanship", ["axe"] = "axemanship", ["mace"] = "mace_mastery",
             ["bow"] = "archery", ["crossbow"] = "crossbow_mastery", ["sling"] = "slinging", ["firearm"] = "gunnery",
-            ["fire"] = "pyromancy", ["frost"] = "cryomancy", ["lightning"] = "electromancy", ["relic"] = "healing",
+            ["fire"] = "pyromancy", ["frost"] = "cryomancy", ["lightning"] = "electromancy", ["relic"] = "devotion",
+            ["restoration"] = "healing", ["renewal"] = "renewal_magic", ["warding"] = "ward_magic", ["blessing"] = "blessing_magic",
             ["shield"] = "shield_mastery", ["tome"] = "tome_study",
             ["plate"] = "defense", ["leather"] = "mobility", ["cloth"] = "meditation",
         };

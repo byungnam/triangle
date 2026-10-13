@@ -34,6 +34,7 @@ internal sealed class MasteryScene : IScene
     private readonly MyraDesktop _desktop = new();
 
     private string _selected;
+    private ScrollViewer? _list;
     private bool _dirty = true;
     private (string Text, Color Color)? _notice;
 
@@ -106,12 +107,23 @@ internal sealed class MasteryScene : IScene
     {
         var root = new Panel();
 
-        var list = BuildMasteryList();
-        list.Left = _bounds.Left + Margin;
-        list.Top = _bounds.Top + HeaderHeight;
-        root.Widgets.Add(list);
-
+        // 숙련이 21개라 화면 높이를 넘는다. 다시 만들어도 스크롤 위치를 지킨다.
         var area = TreeArea;
+        var listPosition = _list?.ScrollPosition ?? Point.Zero;
+        _list = new ScrollViewer
+        {
+            Content = BuildMasteryList(),
+            ShowHorizontalScrollBar = false,
+            Left = _bounds.Left + Margin,
+            Top = area.Y,
+            Width = ListWidth + 16,
+            Height = area.Height,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+        _list.ScrollPosition = listPosition;
+        root.Widgets.Add(_list);
+
         root.Widgets.Add(new ScrollViewer
         {
             Content = BuildTree(_data.Masteries[_selected]),

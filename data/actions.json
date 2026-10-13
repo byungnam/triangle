@@ -1772,7 +1772,7 @@
     "tags": [],
     "requirements": [
       {
-        "skillId": "healing",
+        "skillId": "renewal_magic",
         "level": 2
       }
     ],
@@ -1800,7 +1800,7 @@
     "tags": [],
     "requirements": [
       {
-        "skillId": "holy_magic",
+        "skillId": "life_cycle",
         "level": 1
       }
     ],
@@ -1892,7 +1892,7 @@
     "tags": [],
     "requirements": [
       {
-        "skillId": "healing",
+        "skillId": "ward_magic",
         "level": 2
       }
     ],
@@ -1943,7 +1943,7 @@
     "tags": [],
     "requirements": [
       {
-        "skillId": "holy_magic",
+        "skillId": "sacred_barrier",
         "level": 1
       }
     ]
@@ -1965,7 +1965,7 @@
     "tags": [],
     "requirements": [
       {
-        "skillId": "healing",
+        "skillId": "blessing_magic",
         "level": 2
       }
     ],
@@ -2016,7 +2016,7 @@
     "tags": [],
     "requirements": [
       {
-        "skillId": "holy_magic",
+        "skillId": "grace",
         "level": 1
       }
     ],

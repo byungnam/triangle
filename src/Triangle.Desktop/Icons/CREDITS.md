@@ -1,0 +1,72 @@
+# 아이콘 출처
+
+모든 아이콘은 [game-icons.net](https://game-icons.net)의 것이며 [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) 라이선스다. 작가는 Lorc, Delapouite 외 game-icons.net 기여자들이며, 아이콘마다의 작가는 아래 이름으로 game-icons.net에서 찾을 수 있다. 흰색 PNG로 바꿔 게임에서 색을 입힌다 (`tools/icons/make_icons.py`).
+
+| 파일 | game-icons 이름 |
+|---|---|
+| `weapon.sword.png` | broadsword |
+| `weapon.greatsword.png` | relic-blade |
+| `weapon.spear.png` | barbed-spear |
+| `weapon.halberd.png` | halberd |
+| `weapon.hatchet.png` | hatchet |
+| `weapon.greataxe.png` | battle-axe |
+| `weapon.mace.png` | flanged-mace |
+| `weapon.warhammer.png` | warhammer |
+| `weapon.shortbow.png` | pocket-bow |
+| `weapon.longbow.png` | bow-arrow |
+| `weapon.crossbow.png` | crossbow |
+| `weapon.arbalest.png` | crossbow |
+| `weapon.sling.png` | sling |
+| `weapon.musket.png` | musket |
+| `weapon.handcannon.png` | pistol-gun |
+| `weapon.wand.png` | crystal-wand |
+| `weapon.staff.png` | wizard-staff |
+| `weapon.holywand.png` | orb-wand |
+| `offhand.shield.png` | round-shield |
+| `offhand.tome.png` | spell-book |
+| `offhand.relic.png` | holy-symbol |
+| `Head.plate.png` | visored-helm |
+| `Head.leather.png` | robin-hood-hat |
+| `Head.cloth.png` | hood |
+| `Body.plate.png` | breastplate |
+| `Body.leather.png` | leather-armor |
+| `Body.cloth.png` | robe |
+| `Feet.plate.png` | metal-boot |
+| `Feet.leather.png` | leather-boot |
+| `Feet.cloth.png` | boots |
+| `portrait.melee.png` | black-knight-helm |
+| `portrait.ranged.png` | bowman |
+| `portrait.mage.png` | wizard-face |
+| `portrait.healer.png` | sun-priest |
+| `portrait.none.png` | hooded-figure |
+| `figure.png` | person |
+| `stat.str.png` | biceps |
+| `stat.dex.png` | feather |
+| `stat.vital.png` | heart-plus |
+| `stat.intel.png` | brain |
+| `stat.speed.png` | run |
+| `hp.png` | hearts |
+| `mp.png` | crystal-ball |
+| `delay.png` | hourglass |
+| `defense.png` | checked-shield |
+| `magic-defense.png` | magic-shield |
+| `power.png` | sword-brandish |
+| `action.melee.png` | sword-brandish |
+| `action.sweep.png` | crossed-swords |
+| `action.ranged.png` | arrow-flights |
+| `action.shot.png` | bullseye |
+| `action.fire.png` | fire-ray |
+| `action.frost.png` | frozen-orb |
+| `action.lightning.png` | heavy-lightning |
+| `action.magic.png` | magic-swirl |
+| `action.heal.png` | health-increase |
+| `action.shield.png` | magic-shield |
+| `action.mana.png` | crystal-ball |
+| `action.summon.png` | ghost |
+| `action.buff.png` | upgrade |
+| `action.debuff.png` | broken-shield |
+| `tactics.png` | scroll-unfurled |
+| `equipment.png` | knapsack |
+| `stats.png` | muscle-up |
+| `mastery.png` | anvil |
+| `lock.png` | padlock |

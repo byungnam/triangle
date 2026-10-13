@@ -1,3 +1,4 @@
+using Microsoft.Xna.Framework;
 using Triangle.Core.Tactics;
 
 namespace Triangle.Desktop.Rendering;
@@ -102,4 +103,76 @@ internal static class TacticText
     private static bool IsHp(Condition condition) => condition.ToString().Contains("Hp");
 
     private static bool IsAtLeast(Condition condition) => condition.ToString().EndsWith("AtLeast");
+
+    // ── 조건을 세 칸(대상 · 이상/이하 · %/수치)으로 나눠 고르기 ─────────────
+
+    /// <summary>조건 칸의 첫 드롭다운: 무엇을 보는가. 이름 접두어와 표시 이름, 색.</summary>
+    public static readonly IReadOnlyList<(string Key, string Label, Color Color)> Subjects =
+    [
+        ("Always", "항상", Theme.Text),
+        ("SelfHp", "자신 HP", Theme.Text),
+        ("SelfMp", "자신 MP", Theme.Text),
+        ("AnyAllyHp", "아군 누군가 HP", Theme.Heal),
+        ("AnyAllyMp", "아군 누군가 MP", Theme.Heal),
+        ("AllyAverageHp", "아군 평균 HP", Theme.Heal),
+        ("AllyAverageMp", "아군 평균 MP", Theme.Heal),
+        ("EnemyAlive", "살아있는 적 수", Theme.Enemy),
+        ("EnemyDead", "쓰러진 적 수", Theme.Enemy),
+        ("EnemyFront", "적 전열 수", Theme.Enemy),
+        ("EnemyBack", "적 후열 수", Theme.Enemy),
+        ("MaxUses", "최대 사용 횟수", Theme.Cover),
+        ("FromTurn", "지정 턴부터", Theme.Cover),
+        ("UntilTurn", "지정 턴까지", Theme.Cover),
+        ("OnTurn", "지정 턴에만", Theme.Cover),
+        ("EveryNthTurn", "턴 주기", Theme.Cover),
+    ];
+
+    /// <summary>조건 → (대상 번호, 이상인가, %인가). 이상/이하나 %/수치가 없는 조건은 그 칸이 null.</summary>
+    public static (int Subject, bool? AtLeast, bool? Percent) Split(Condition condition)
+    {
+        var name = condition.ToString();
+        bool? atLeast = name.EndsWith("AtLeast") ? true : name.EndsWith("AtMost") ? false : null;
+        var stem = atLeast is null ? name : name[..^(atLeast.Value ? "AtLeast".Length : "AtMost".Length)];
+        bool? percent = null;
+        if (condition.IsPercent() || condition.IsAmount())
+        {
+            percent = condition.IsPercent();
+            stem = stem.Replace("Amount", "");
+        }
+
+        var index = Subjects.Select((s, i) => (s.Key, i)).First(s => s.Key == stem).i;
+        return (index, atLeast, percent);
+    }
+
+    /// <summary>세 칸의 선택을 조건으로. 대상에 없는 칸은 무시하고, 필요한데 없으면 이상·%로 본다.</summary>
+    public static Condition Compose(int subject, bool atLeast, bool percent)
+    {
+        var key = Subjects[subject].Key;
+        if (Enum.TryParse<Condition>(key, out var plain))
+        {
+            return plain;
+        }
+
+        var compare = atLeast ? "AtLeast" : "AtMost";
+        var isHpMp = key.EndsWith("Hp") || key.EndsWith("Mp");
+        return Enum.Parse<Condition>(isHpMp && !percent ? $"{key}Amount{compare}" : $"{key}{compare}");
+    }
+
+    /// <summary>"자신 HP 50% 이하"처럼 조건과 값을 한 문장으로.</summary>
+    public static string Sentence(Condition condition, int value)
+    {
+        var (subject, atLeast, _) = Split(condition);
+        var label = Subjects[subject].Label;
+        return condition switch
+        {
+            Condition.Always => "항상",
+            Condition.MaxUses => $"최대 {value}회",
+            Condition.FromTurn => $"{value}번째 턴부터",
+            Condition.UntilTurn => $"{value}번째 턴까지",
+            Condition.OnTurn => $"{value}번째 턴에만",
+            Condition.EveryNthTurn => $"{value}턴마다",
+            _ when condition.IsEnemyCount() => $"{label} {value}명 {(atLeast == true ? "이상" : "이하")}",
+            _ => $"{label} {value}{(condition.IsPercent() ? "%" : "")} {(atLeast == true ? "이상" : "이하")}",
+        };
+    }
 }

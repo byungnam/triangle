@@ -104,6 +104,7 @@ def main(icons_json: str) -> None:
 
     credits = ["# 아이콘 출처", "", "모든 아이콘은 [game-icons.net](https://game-icons.net)의 것이며 "
                "[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) 라이선스다. "
+               "작가는 Lorc, Delapouite 외 game-icons.net 기여자들이며, 아이콘마다의 작가는 아래 이름으로 game-icons.net에서 찾을 수 있다. "
                "흰색 PNG로 바꿔 게임에서 색을 입힌다 (`tools/icons/make_icons.py`).", "",
                "| 파일 | game-icons 이름 |", "|---|---|"]
     credits += [f"| `{name}.png` | {source} |" for name, source in ICONS.items()]

@@ -11,6 +11,7 @@ src/Triangle.Core/          게임 규칙 (MonoGame 의존 없음)
 src/Triangle.Desktop/       MonoGame DesktopGL 실행 프로젝트
 src/Triangle.DataTool/      게임 데이터 검사·조회·수정 명령줄 도구 (triangle-data)
 tests/Triangle.Core.Tests/  xUnit 테스트
+tools/sprite-prep/          AI 생성 이미지를 256×256 픽셀아트 스프라이트로 정리하는 도구 (Python)
 docs/                       설계 문서
 ```
 

@@ -143,7 +143,7 @@ internal sealed class ExplorationScene : IScene
             list.Widgets.Add(new HorizontalSeparator { Margin = new Thickness(0, 6) });
         }
 
-        return new ScrollViewer { Content = list, ShowHorizontalScrollBar = false };
+        return new ScrollPane { Content = list, ShowHorizontalScrollBar = false };
     }
 
     private Widget EntryButton(ZoneEntry entry, int width)
@@ -207,7 +207,7 @@ internal sealed class ExplorationScene : IScene
             }
         }
 
-        return new ScrollViewer { Content = panel, ShowHorizontalScrollBar = false };
+        return new ScrollPane { Content = panel, ShowHorizontalScrollBar = false };
     }
 
     private Label Wrapped(string text, int size, Color color, int width)

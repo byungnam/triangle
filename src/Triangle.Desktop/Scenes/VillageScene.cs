@@ -216,7 +216,7 @@ internal sealed class VillageScene : IScene
             list.Widgets.Add(MemberRow(member, "넣기", !full, () => Company.AddToLineup(member.Id), area.Width));
         }
 
-        return new ScrollViewer { Content = list, ShowHorizontalScrollBar = false };
+        return new ScrollPane { Content = list, ShowHorizontalScrollBar = false };
     }
 
     private Widget MemberRow(PartyMember member, string action, bool enabled, Func<bool> onClick, int width)
@@ -299,7 +299,7 @@ internal sealed class VillageScene : IScene
             list.Widgets.Add(button);
         }
 
-        return new ScrollViewer { Content = list, ShowHorizontalScrollBar = false };
+        return new ScrollPane { Content = list, ShowHorizontalScrollBar = false };
     }
 
     private Label Wrapped(string text, int size, Color color, int width)

@@ -137,7 +137,7 @@ internal sealed class ShopScene : IScene
             list.Widgets.Add(ShopRow(item, area.Width - 60));
         }
 
-        panel.Widgets.Add(new ScrollViewer { Content = list, ShowHorizontalScrollBar = false });
+        panel.Widgets.Add(new ScrollPane { Content = list, ShowHorizontalScrollBar = false });
         StackPanel.SetProportionType(panel.Widgets[^1], ProportionType.Fill);
         return panel;
     }
@@ -219,7 +219,7 @@ internal sealed class ShopScene : IScene
             list.Widgets.Add(StashRow(item, area.Width - 60));
         }
 
-        panel.Widgets.Add(new ScrollViewer { Content = list, ShowHorizontalScrollBar = false });
+        panel.Widgets.Add(new ScrollPane { Content = list, ShowHorizontalScrollBar = false });
         StackPanel.SetProportionType(panel.Widgets[^1], ProportionType.Fill);
         return panel;
     }

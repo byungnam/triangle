@@ -82,7 +82,7 @@ internal sealed class ShopScene : IScene
         _ui.Panel(batch, ShopArea);
         _ui.Panel(batch, StashArea);
 
-        var help = $"상점은 T1~T{Shop.MaxTier} 장비를 팝니다. 창고의 아이템은 가격의 {Shop.SellPercent}%에 팝니다. 낀 장비는 전술 편집에서 빼야 팔 수 있습니다.     Esc  마을로";
+        var help = $"상점은 T1~T{Shop.MaxTier} 장비를 팝니다. 창고의 아이템은 가격의 {Shop.SellPercent}%에 팝니다. 낀 장비는 편성·전술의 장비 탭에서 빼야 팔 수 있습니다.     Esc  마을로";
         _ui.Text(batch, _ui.Font(16), help, new Vector2(_bounds.Left + Margin, _bounds.Bottom - FooterHeight + 10), Theme.TextDim);
         if (_session.Notice is { } notice)
         {
@@ -167,6 +167,8 @@ internal sealed class ShopScene : IScene
             text.Widgets.Add(_w.Label(string.Join(" · ", details), 14, anyone ? Theme.TextDim : Theme.Damage));
         }
 
+        AddActions(text, item);
+
         row.Widgets.Add(text);
 
         var why = Company.WhyCannotBuy(item.Id, data);
@@ -238,6 +240,8 @@ internal sealed class ShopScene : IScene
             text.Widgets.Add(_w.Label(string.Join(" · ", details), 14, Theme.TextDim));
         }
 
+        AddActions(text, item);
+
         row.Widgets.Add(text);
 
         var price = Shop.SellPrice(item);
@@ -255,5 +259,17 @@ internal sealed class ShopScene : IScene
         };
         row.Widgets.Add(sell);
         return row;
+    }
+
+    /// <summary>아이템이 주는 행동 이름과 한 줄 설명 (끼면 모두 쓴다).</summary>
+    private void AddActions(VerticalStackPanel text, ItemDefinition item)
+    {
+        var data = _session.Data;
+        foreach (var action in item.Actions.Select(id => data.Actions[id]))
+        {
+            var cost = ActionText.Cost(action);
+            var line = $"· {action.Name}{(cost.Length > 0 ? $" ({cost})" : "")} — {ActionText.Summary(action, data)}";
+            text.Widgets.Add(_w.Label(line, 13, Theme.Ally, width: (int?)text.Width, wrap: true));
+        }
     }
 }

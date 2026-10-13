@@ -28,5 +28,9 @@ internal static class Theme
     public static readonly Color ButtonPressed = new(36, 41, 51);
     public static readonly Color Selected = new(52, 74, 112);
     public static readonly Color Accent = new(74, 128, 214);
+
+    /// <summary>전위·후위 꼬리표 바탕.</summary>
+    public static readonly Color FrontRow = new(168, 96, 52);
+    public static readonly Color BackRow = new(58, 96, 160);
     public static readonly Color AccentHover = new(94, 148, 234);
 }

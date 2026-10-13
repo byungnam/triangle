@@ -319,7 +319,7 @@ internal sealed class VillageScene : IScene
             VerticalAlignment = VerticalAlignment.Top,
         };
 
-        var editor = TextButton("전술 편집", Theme.Button, Theme.ButtonHover);
+        var editor = TextButton("편성·전술", Theme.Button, Theme.ButtonHover);
         editor.Width = 130;
         editor.Enabled = Company.Roster.Count > 0;
         editor.Click += (_, _) => _openEditor();

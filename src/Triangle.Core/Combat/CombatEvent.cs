@@ -42,8 +42,11 @@ public sealed record MpRestored(string TargetId, int Amount, int MpAfter) : Comb
 /// <param name="Refreshed">이미 걸려 있던 효과의 지속시간을 새로 시작했다.</param>
 public sealed record EffectApplied(string TargetId, string EffectId, int Duration, bool Refreshed) : CombatEvent;
 
-/// <summary>턴 시작의 지속 피해·회복. <paramref name="HpChange"/>가 음수면 피해.</summary>
-public sealed record EffectTicked(string TargetId, string EffectId, int HpChange, int HpAfter) : CombatEvent;
+/// <summary>
+/// 턴 시작의 지속 피해·회복. <paramref name="HpChange"/>가 음수면 피해.
+/// <paramref name="SourceId"/>는 그 효과를 (마지막으로) 건 유닛이다. 이미 쓰러졌거나 사라졌을 수 있다.
+/// </summary>
+public sealed record EffectTicked(string TargetId, string EffectId, int HpChange, int HpAfter, string SourceId) : CombatEvent;
 
 public sealed record EffectExpired(string TargetId, string EffectId) : CombatEvent;
 

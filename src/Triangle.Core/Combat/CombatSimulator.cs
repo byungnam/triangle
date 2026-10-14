@@ -231,7 +231,7 @@ public sealed class CombatSimulator
             var amount = Math.Max(1, Ratio.ApplyPercent(unit.MaxHp, Math.Abs(percent)));
             var change = percent < 0 ? -Math.Min(unit.Hp, amount) : Math.Min(unit.MaxHp - unit.Hp, amount);
             unit.Hp += change;
-            _events.Add(new EffectTicked(unit.Id, effect.Definition.Id, change, unit.Hp));
+            _events.Add(new EffectTicked(unit.Id, effect.Definition.Id, change, unit.Hp, effect.SourceId));
             if (!unit.IsAlive)
             {
                 Die(unit);
@@ -264,10 +264,11 @@ public sealed class CombatSimulator
             if (existing is not null)
             {
                 existing.Remaining = duration;
+                existing.SourceId = actor.Id;
             }
             else
             {
-                target.Effects.Add(new ActiveEffect(definition, duration));
+                target.Effects.Add(new ActiveEffect(definition, duration, actor.Id));
             }
 
             _events.Add(new EffectApplied(target.Id, definition.Id, duration, existing is not null));

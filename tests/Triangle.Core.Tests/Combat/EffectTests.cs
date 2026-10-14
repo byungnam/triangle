@@ -100,6 +100,37 @@ public class EffectTests
     }
 
     [Fact]
+    public void Ticks_name_whoever_applied_the_effect_last()
+    {
+        // a가 시각 0에 독을 걸고, 느린 b가 자기 두 번째 차례(시각 200)에 다시 건다. 그 사이 e의 틱은 a의 것이다.
+        var result = Run(
+            [Unit("a", tactics: Use("poison_hit", condition: Condition.MaxUses, value: 1)),
+             Unit("b", speed: 5, tactics: Use("poison_hit", condition: Condition.OnTurn, value: 2))],
+            [Unit("e", vital: 1000)],
+            maxActions: 30);
+
+        string? actor = null;
+        string? applier = null;
+        foreach (var e in result.Events)
+        {
+            switch (e)
+            {
+                case ActionUsed u:
+                    actor = u.ActorId;
+                    break;
+                case EffectApplied { TargetId: "e" }:
+                    applier = actor;
+                    break;
+                case EffectTicked { TargetId: "e" } tick:
+                    Assert.Equal(applier, tick.SourceId);
+                    break;
+            }
+        }
+
+        Assert.Equal(["a", "b"], result.Events.OfType<EffectTicked>().Select(t => t.SourceId).Distinct());
+    }
+
+    [Fact]
     public void Healing_over_time_is_capped_at_max_hp()
     {
         var result = Run([Unit("a", tactics: Use("regen_self"))], [Unit("e")], maxActions: 6);

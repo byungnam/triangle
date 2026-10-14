@@ -286,6 +286,15 @@ internal sealed class TacticEditorScene : IScene
         root.Widgets.Add(combatBar);
 
         _desktop.Root = root;
+
+        // 행동 고르기는 화면 위에 뜨는 팝업이다. 떠 있는 동안 뒤의 화면은 누를 수 없다.
+        _pickerDetail = null;
+        if (_picking is { } picking && picking < TacticsOf(Selected).Count)
+        {
+            var picker = BuildActionPicker(Selected, picking);
+            picker.IsModal = true;
+            _desktop.Widgets.Add(picker);
+        }
     }
 
     // ── 왼쪽: 전술 세트와 진형 판 (후위 · 전위 · 대기) ──────────────
@@ -540,9 +549,7 @@ internal sealed class TacticEditorScene : IScene
         panel.Widgets.Add(BuildTabs(member));
 
         var height = area.Height - MemberHeaderHeight;
-        panel.Widgets.Add(_picking is { } picking && picking < TacticsOf(member).Count
-            ? BuildActionPicker(member, picking, area.Width, height)
-            : _tab switch
+        panel.Widgets.Add(_tab switch
             {
                 Tab.Equipment => BuildEquipmentTab(member, area.Width, height),
                 Tab.Stats => BuildStatsTab(member, area.Width, height),
@@ -613,7 +620,7 @@ internal sealed class TacticEditorScene : IScene
                      (Tab.Tactics, "tactics", $"전술 {TacticsOf(member).Count}", locked > 0 ? $"잠김 {locked}" : null),
                  })
         {
-            var active = _tab == tab && _picking is null;
+            var active = _tab == tab;
             var content = new HorizontalStackPanel { Spacing = 6 };
             content.Widgets.Add(_widgets.Icon(icon, 20, active ? Theme.Gold : Theme.TextDim));
             content.Widgets.Add(Label(label, 17, active ? Theme.Text : Theme.TextDim, bold: active));
@@ -634,7 +641,7 @@ internal sealed class TacticEditorScene : IScene
             tabs.Widgets.Add(button);
         }
 
-        if (_tab == Tab.Tactics || _picking is not null)
+        if (_tab == Tab.Tactics)
         {
             tabs.Widgets.Add(Label($"  \"{_company.TacticSetNames[_company.ActiveTacticSet]}\" 세트 편집 중", 15, Theme.Cover));
         }
@@ -1430,38 +1437,87 @@ internal sealed class TacticEditorScene : IScene
         return group;
     }
 
-    // ── 행동 고르기 ────────────────────────────────────────
+    // ── 행동 고르기 (팝업) ──────────────────────────────────
+
+    private const int PickerWidth = 860;
+    private const int PickerHeight = 580;
+    private const int PickerListWidth = 400;
+
+    /// <summary>팝업 오른쪽의 행동 설명 칸. 목록에서 마우스를 올린 행동으로 바로 바꾼다(화면은 다시 만들지 않는다).</summary>
+    private VerticalStackPanel? _pickerDetail;
 
     /// <summary>
-    /// 전술 하나의 행동을 고르는 목록. 낀 장비별, 무기 계열, 공용으로 묶고 행동마다 비용과 한 줄 설명을 보여 준다.
-    /// 패시브가 모자란 행동은 빨간색이고 고를 수 없다. 지금 고른 행동이 장비에서 빠졌으면 따로 보여 준다.
+    /// 전술 하나의 행동을 고르는 팝업. 화면을 어둡게 덮고 가운데에 뜬다.
+    /// 왼쪽은 아이콘·이름·비용 목록(낀 장비별, 무기 계열, 공용으로 묶음), 오른쪽은 마우스를 올린 행동의 설명이다.
+    /// 누르면 그 행동으로 정하고 닫는다. 패시브나 장비가 모자란 행동은 빨간 자물쇠이고 고를 수 없다.
+    /// 지금 고른 행동이 장비에서 빠졌으면 따로 보여 준다. 닫기 버튼이나 Esc로 바꾸지 않고 닫는다.
     /// </summary>
-    private Widget BuildActionPicker(PartyMember member, int index, int width, int height)
+    private Widget BuildActionPicker(PartyMember member, int index)
     {
         var tactic = TacticsOf(member)[index];
-        var panel = new VerticalStackPanel { Spacing = 8, Height = height };
+        var overlay = new Panel
+        {
+            Left = _bounds.Left,
+            Top = _bounds.Top,
+            Width = _bounds.Width,
+            Height = _bounds.Height,
+            Background = new SolidBrush(Color.Black * 0.7f),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+        };
 
-        var top = new HorizontalStackPanel { Spacing = 12 };
-        top.Widgets.Add(Label($"{tactic.Priority}순위 행동 고르기", 20, Theme.Text, bold: true));
-        top.Widgets.Add(Label($"조건: {TacticText.Sentence(tactic.Condition, tactic.Value)}", 15, Theme.TextDim));
+        var popup = new VerticalStackPanel
+        {
+            Spacing = 10,
+            Width = PickerWidth,
+            Height = PickerHeight,
+            Padding = new Thickness(18, 14),
+            Background = new SolidBrush(Theme.Panel),
+            Border = new SolidBrush(Theme.Gold),
+            BorderThickness = new Thickness(2),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        overlay.Widgets.Add(popup);
+
+        // 머리: 제목, 조건, 닫기
+        var head = new HorizontalStackPanel { Spacing = 12 };
+        var titles = new VerticalStackPanel { Spacing = 2, Width = PickerWidth - 36 - 130 };
+        titles.Widgets.Add(_widgets.Header("tactics", $"{tactic.Priority}순위 전술 · 쓸 행동 고르기", size: 20));
+        titles.Widgets.Add(Label($"조건 \"{TacticText.Sentence(tactic.Condition, tactic.Value)}\"이 맞으면 이 행동을 쓴다. 눌러서 정한다.", 14, Theme.TextDim));
+        head.Widgets.Add(titles);
         var close = TextButton("닫기 (Esc)", Theme.Button, Theme.ButtonHover);
+        close.Width = 120;
+        close.VerticalAlignment = VerticalAlignment.Top;
         close.Click += (_, _) =>
         {
             _picking = null;
             MarkDirty();
         };
-        top.Widgets.Add(close);
-        panel.Widgets.Add(top);
+        head.Widgets.Add(close);
+        popup.Widgets.Add(head);
 
-        var sections = new VerticalStackPanel { Spacing = 10 };
+        // 몸통: 왼쪽 목록, 오른쪽 설명
+        var bodyHeight = PickerHeight - 28 - 60;
+        var body = new HorizontalStackPanel { Spacing = 14, Height = bodyHeight };
+        var list = new VerticalStackPanel { Spacing = 4, Width = PickerListWidth - 18 };
+        var skills = member.Skills(_data);
+        var granted = member.GrantedActions(_data);
         var shown = new HashSet<string>();
-        void Section(string title, IEnumerable<ActionDefinition> actions, string icon = "equipment")
+        void Section(string title, IEnumerable<ActionDefinition> actions, string icon)
         {
-            var list = actions.Where(a => !a.SummonOnly && shown.Add(a.Id)).ToList();
-            if (list.Count > 0)
+            var group = actions.Where(a => !a.SummonOnly && shown.Add(a.Id)).ToList();
+            if (group.Count == 0)
             {
-                sections.Widgets.Add(_widgets.Header(icon, title, size: 16));
-                sections.Widgets.Add(BuildActionGrid(member, index, list, width - 24));
+                return;
+            }
+
+            var header = _widgets.Header(icon, title, size: 15);
+            header.Margin = new Thickness(0, list.Widgets.Count == 0 ? 0 : 8, 0, 2);
+            list.Widgets.Add(header);
+            foreach (var action in group)
+            {
+                list.Widgets.Add(BuildPickerRow(member, index, action, granted, skills));
             }
         }
 
@@ -1481,72 +1537,74 @@ internal sealed class TacticEditorScene : IScene
             Section("지금 고른 행동 (낀 장비가 주지 않음)", [chosen], "lock");
         }
 
-        panel.Widgets.Add(new ScrollPane { Content = sections, ShowHorizontalScrollBar = false, Height = height - 44 });
-        return panel;
-    }
+        body.Widgets.Add(new ScrollPane { Content = list, ShowHorizontalScrollBar = false, Width = PickerListWidth, Height = bodyHeight });
 
-    private Widget BuildActionGrid(PartyMember member, int index, IReadOnlyList<ActionDefinition> actions, int width)
-    {
-        const int columns = 3;
-        const int spacing = 8;
-        var cellWidth = (width - spacing * (columns - 1)) / columns;
-        var skills = member.Skills(_data);
-        var granted = member.GrantedActions(_data);
-        var current = TacticsOf(member)[index].ActionId;
+        var detailWidth = PickerWidth - 36 - PickerListWidth - 14;
+        _pickerDetail = new VerticalStackPanel { Spacing = 8, Width = detailWidth - 18 };
+        body.Widgets.Add(new ScrollPane { Content = _pickerDetail, ShowHorizontalScrollBar = false, Width = detailWidth, Height = bodyHeight });
+        popup.Widgets.Add(body);
 
-        var grid = new VerticalStackPanel { Spacing = spacing };
-        HorizontalStackPanel? line = null;
-        for (var i = 0; i < actions.Count; i++)
+        var first = chosen ?? _data.Actions.Values.FirstOrDefault(a => shown.Contains(a.Id));
+        if (first is not null)
         {
-            if (i % columns == 0)
-            {
-                line = new HorizontalStackPanel { Spacing = spacing };
-                grid.Widgets.Add(line);
-            }
-
-            var action = actions[i];
-            var usable = action.IsUsableBy(granted, skills);
-            var preview = usable ? Preview(action) : null;
-            const int iconSize = 44;
-            var textWidth = cellWidth - iconSize - 26;
-            var (icon, color) = GameIcons.Action(action, _data);
-            var content = new HorizontalStackPanel { Spacing = 8 };
-            var iconTile = _widgets.IconTile(usable ? icon : "lock", iconSize, usable ? color : Theme.Enemy, padding: 5);
-            iconTile.VerticalAlignment = VerticalAlignment.Top;
-            content.Widgets.Add(iconTile);
-            var text = new VerticalStackPanel { Spacing = 2 };
-            var head = new HorizontalStackPanel { Spacing = 8 };
-            head.Widgets.Add(Label(action.Name, 16, usable ? Theme.Text : Theme.Enemy, bold: true));
-            head.Widgets.Add(Label(ActionText.Cost(action, preview) is { Length: > 0 } cost ? cost : "비용 없음", 12, Theme.Cover));
-            text.Widgets.Add(head);
-            text.Widgets.Add(_widgets.Label(ActionText.Summary(action, _data, preview), 12, Theme.TextDim, width: textWidth, wrap: true));
-            if (!usable)
-            {
-                text.Widgets.Add(_widgets.Label($"잠김: {LockReason(action, granted, skills)}", 12, Theme.Enemy, width: textWidth, wrap: true));
-            }
-
-            content.Widgets.Add(text);
-            var button = StyledButton(content, action.Id == current ? Theme.Selected : Theme.Button, Theme.ButtonHover);
-            button.Width = cellWidth;
-            button.Padding = new Thickness(6, 6);
-            button.VerticalAlignment = VerticalAlignment.Stretch;
-            button.Click += (_, _) =>
-            {
-                if (!usable)
-                {
-                    _session.Notice = ($"{action.Name}: {LockReason(action, granted, skills)}", Theme.Enemy);
-                    return;
-                }
-
-                var tactic = TacticsOf(member)[index];
-                TacticsOf(member).Replace(index, tactic.Condition, tactic.Value, action.Id);
-                _picking = null;
-                MarkChanged();
-            };
-            line!.Widgets.Add(button);
+            ShowPickerDetail(member, first, granted, skills);
         }
 
-        return grid;
+        return overlay;
+    }
+
+    /// <summary>목록 한 줄: 아이콘, 이름, 비용. 지금 고른 행동은 금색 테두리.</summary>
+    private Widget BuildPickerRow(PartyMember member, int index, ActionDefinition action, IReadOnlySet<string> granted, SkillSet skills)
+    {
+        var usable = action.IsUsableBy(granted, skills);
+        var (icon, color) = GameIcons.Action(action, _data);
+        var content = new HorizontalStackPanel { Spacing = 10 };
+        content.Widgets.Add(_widgets.IconTile(usable ? icon : "lock", 38, usable ? color : Theme.Enemy, padding: 5));
+        content.Widgets.Add(Label(action.Name, 17, usable ? Theme.Text : Theme.Enemy, bold: true, width: 170));
+        var preview = usable ? Preview(action) : null;
+        content.Widgets.Add(Label(ActionText.Cost(action, preview) is { Length: > 0 } cost ? cost : "비용 없음", 13, usable ? Theme.Cover : Theme.TextDim));
+
+        var current = TacticsOf(member)[index].ActionId == action.Id;
+        var button = StyledButton(content, current ? Theme.Selected : Theme.Button, Theme.ButtonHover);
+        button.Width = PickerListWidth - 22;
+        button.Padding = new Thickness(5, 4);
+        button.MouseEntered += (_, _) => ShowPickerDetail(member, action, granted, skills);
+        button.Click += (_, _) =>
+        {
+            if (!usable)
+            {
+                ShowPickerDetail(member, action, granted, skills);
+                return;
+            }
+
+            var tactic = TacticsOf(member)[index];
+            TacticsOf(member).Replace(index, tactic.Condition, tactic.Value, action.Id);
+            _picking = null;
+            MarkChanged();
+        };
+        return button;
+    }
+
+    private void ShowPickerDetail(PartyMember member, ActionDefinition action, IReadOnlySet<string> granted, SkillSet skills)
+    {
+        if (_pickerDetail is not { } detail)
+        {
+            return;
+        }
+
+        var width = detail.Width ?? 300;
+        var usable = action.IsUsableBy(granted, skills);
+        var lines = ActionText.Details(action, _data, usable ? Preview(action) : null, skills);
+        var (icon, color) = GameIcons.Action(action, _data);
+        detail.Widgets.Clear();
+        detail.Widgets.Add(TitleWithIcon(usable ? icon : "lock", usable ? color : Theme.Enemy, usable ? Theme.PanelBorder : Theme.Enemy,
+            lines[0].Text, usable ? Theme.Text : Theme.Enemy, lines[1].Text, width));
+        if (!usable)
+        {
+            detail.Widgets.Add(_widgets.Label($"고를 수 없음: {LockReason(action, granted, skills)}", 15, Theme.Enemy, width: width, wrap: true));
+        }
+
+        detail.Widgets.Add(_widgets.Card(lines.Skip(2), width));
     }
 
     private Widget BuildBottomBar()

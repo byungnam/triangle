@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Myra.Graphics2D;
 using Myra.Graphics2D.Brushes;
+using Myra.Graphics2D.TextureAtlases;
 using Myra.Graphics2D.UI;
 
 namespace Triangle.Desktop.Rendering;
@@ -8,12 +9,14 @@ namespace Triangle.Desktop.Rendering;
 /// <summary>Myra 위젯을 이 게임의 글꼴과 색으로 만드는 공용 도우미.</summary>
 internal sealed class Widgets(Ui ui)
 {
-    public Label Label(string text, int size, Color color, bool bold = false, int? width = null) => new()
+    /// <param name="wrap">참이면 넓이(<paramref name="width"/>)를 넘는 글을 줄바꿈한다.</param>
+    public Label Label(string text, int size, Color color, bool bold = false, int? width = null, bool wrap = false) => new()
     {
         Text = text,
         Font = bold ? ui.BoldFont(size) : ui.Font(size),
         TextColor = color,
         Width = width,
+        Wrap = wrap,
         VerticalAlignment = VerticalAlignment.Center,
     };
 
@@ -44,6 +47,7 @@ internal sealed class Widgets(Ui ui)
         return button;
     }
 
+    /// <summary>테두리가 있는 버튼. 고른 상태(Theme.Selected)면 금색 테두리다.</summary>
     public static Button StyledButton(Widget content, Color background, Color hover) => new()
     {
         Content = content,
@@ -51,5 +55,148 @@ internal sealed class Widgets(Ui ui)
         OverBackground = new SolidBrush(hover),
         PressedBackground = new SolidBrush(Theme.ButtonPressed),
         DisabledBackground = new SolidBrush(Theme.BarBack),
+        Border = new SolidBrush(background == Theme.Selected ? Theme.Gold : Theme.PanelBorder),
+        BorderThickness = new Thickness(1),
     };
+
+    /// <summary>흰 아이콘에 색을 입힌 그림. 아이콘 파일이 없으면 빈 칸.</summary>
+    public Widget Icon(string name, int size, Color color)
+    {
+        if (ui.Icon(name) is not { } texture)
+        {
+            return new Panel { Width = size, Height = size };
+        }
+
+        return new Image
+        {
+            Renderable = new TextureRegion(texture),
+            Width = size,
+            Height = size,
+            Color = color,
+            ResizeMode = ImageResizeMode.Stretch,
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+    }
+
+    /// <summary>테두리 친 네모 칸에 아이콘 (장비 칸, 초상, 행동 타일).</summary>
+    public Panel IconTile(string name, int size, Color color, Color? border = null, Color? background = null, int padding = 6)
+    {
+        var tile = new Panel
+        {
+            Width = size,
+            Height = size,
+            Background = new SolidBrush(background ?? Theme.BarBack),
+            Border = new SolidBrush(border ?? Theme.PanelBorder),
+            BorderThickness = new Thickness(border is null ? 1 : 2),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        tile.Widgets.Add(Icon(name, size - padding * 2, color));
+        return tile;
+    }
+
+    /// <summary>
+    /// 아이콘 칸 버튼 (장비 칸, 창고 아이템, 초상). 고르면 금색 테두리, 아니면 <paramref name="border"/>(등급색 등).
+    /// <paramref name="corner"/>가 있으면 오른쪽 아래에 작은 글자(개수 등)를 얹는다.
+    /// </summary>
+    public Button IconButton(string icon, int size, Color color, Color border, bool selected, string? corner = null, int padding = 7)
+    {
+        var content = new Panel { Width = size - 4, Height = size - 4 };
+        content.Widgets.Add(Icon(icon, size - padding * 2, color));
+        if (corner is not null)
+        {
+            var label = Label(corner, 12, Theme.Text, bold: true);
+            label.HorizontalAlignment = HorizontalAlignment.Right;
+            label.VerticalAlignment = VerticalAlignment.Bottom;
+            label.Background = new SolidBrush(Theme.BarBack * 0.8f);
+            label.Padding = new Thickness(3, 0);
+            content.Widgets.Add(label);
+        }
+
+        return new Button
+        {
+            Content = content,
+            Width = size,
+            Height = size,
+            Padding = new Thickness(0),
+            Background = new SolidBrush(selected ? Theme.Selected : Theme.BarBack),
+            OverBackground = new SolidBrush(Theme.ButtonHover),
+            PressedBackground = new SolidBrush(Theme.ButtonPressed),
+            Border = new SolidBrush(selected ? Theme.Gold : border),
+            BorderThickness = new Thickness(2),
+        };
+    }
+
+    /// <summary>금색 아이콘과 제목, 옆에 흐린 설명 (구역 머리글).</summary>
+    public Widget Header(string icon, string text, string? note = null, int size = 17)
+    {
+        var row = new HorizontalStackPanel { Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
+        row.Widgets.Add(Icon(icon, size + 3, Theme.Gold));
+        row.Widgets.Add(Label(text, size, Theme.Gold, bold: true));
+        if (note is not null)
+        {
+            row.Widgets.Add(Label(note, 13, Theme.TextDim));
+        }
+
+        return row;
+    }
+
+    /// <summary>아이콘과 글자 한 줄 (예: 하트 아이콘 + "HP 823").</summary>
+    public Widget IconText(string icon, Color iconColor, string text, int size, Color color, bool bold = false, int? width = null)
+    {
+        var row = new HorizontalStackPanel { Spacing = 5, Width = width, VerticalAlignment = VerticalAlignment.Center };
+        row.Widgets.Add(Icon(icon, size + 2, iconColor));
+        row.Widgets.Add(Label(text, size, color, bold));
+        return row;
+    }
+
+    /// <summary>설명 카드: 줄마다 라벨, 넓이를 넘으면 줄바꿈한다.</summary>
+    public Widget Card(IEnumerable<TextLine> lines, int width, Color? background = null)
+    {
+        var panel = new VerticalStackPanel
+        {
+            Spacing = 4,
+            Width = width,
+            Padding = new Thickness(12, 10),
+            Background = new SolidBrush(background ?? Theme.BarBack),
+            Border = new SolidBrush(Theme.PanelBorder),
+            BorderThickness = new Thickness(1),
+        };
+        foreach (var line in lines)
+        {
+            var label = Label(line.Text, line.Size, line.Color, line.Bold);
+            label.Wrap = true;
+            label.Width = width - 24;
+            panel.Widgets.Add(label);
+        }
+
+        return panel;
+    }
+
+    /// <summary>색 바탕의 작은 꼬리표, 예: "전위".</summary>
+    public Widget Chip(string text, Color background, int size = 14, Color? textColor = null)
+    {
+        var label = Label(text, size, textColor ?? Theme.Text, bold: true);
+        label.HorizontalAlignment = HorizontalAlignment.Center;
+        return new Panel
+        {
+            Background = new SolidBrush(background),
+            Padding = new Thickness(8, 2),
+            Widgets = { label },
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+    }
+
+    /// <summary>진행 막대 (값/최대).</summary>
+    public static Widget Bar(int value, int max, int width, int height, Color color)
+    {
+        var fill = max <= 0 ? 0 : (int)Math.Clamp((long)width * value / max, 0, width);
+        var bar = new Panel { Width = width, Height = height, Background = new SolidBrush(Theme.BarBack), VerticalAlignment = VerticalAlignment.Center };
+        if (fill > 0)
+        {
+            bar.Widgets.Add(new Panel { Width = fill, Height = height, Background = new SolidBrush(color), HorizontalAlignment = HorizontalAlignment.Left });
+        }
+
+        return bar;
+    }
 }

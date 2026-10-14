@@ -17,10 +17,13 @@ namespace Triangle.Desktop;
 /// <param name="StartInCombat">마을 대신 전투 화면으로 시작한다 (출전 명단과 훈련 부대의 시험 전투, 상태는 바꾸지 않는다).</param>
 /// <param name="SavePath">세이브 파일 경로. null이면 OS별 기본 위치.</param>
 /// <param name="StartInExploration">마을 대신 탐사 기록 화면으로 시작한다.</param>
+/// <param name="StartScene">
+/// 마을 대신 이 화면으로 시작한다 (확인·스크린샷용): editor, editor:equipment, editor:stats, editor:picker, editor:preview, training, shop.
+/// </param>
 /// <param name="StartInSummary">전투 화면으로 시작할 때 요약 탭을 연다.</param>
 public sealed record LaunchOptions(
     string? ScreenshotPath = null, int? ScreenshotLines = null, bool StartInCombat = false, string? SavePath = null,
-    bool StartInExploration = false, bool StartInSummary = false);
+    bool StartInExploration = false, string? StartScene = null, bool StartInSummary = false);
 
 /// <summary>
 /// 화면 흐름: 마을 ↔ (전술 편집, 숙련·패시브, 모집, 상점·창고, 제작, 탐사 기록), 마을 → 출정 → 원정 ↔ (전투 기록, 전술 편집) → 귀환 → 마을.
@@ -152,6 +155,17 @@ public class TriangleGame : Game
         _village = new VillageScene(_ui, Session, Bounds, OpenEditor, OpenRecruit, OpenShop, OpenCraft, OpenExploration, Depart, ConfirmedExit);
         _expedition = new ExpeditionScene(_ui, Session, Bounds, NextBattle);
         _editor = new TacticEditorScene(_ui, Session, Bounds, OpenTraining, ShowHome);
+
+        switch (_options.StartScene?.Split(':'))
+        {
+            case ["editor", .. var rest]:
+                _editor.Show(rest.FirstOrDefault());
+                return _editor;
+            case ["shop"]:
+                return new ShopScene(_ui, Session, Bounds, back: ShowHome);
+            case ["training"]:
+                return new MasteryScene(_ui, Data, Company.Roster[0], Bounds, back: OpenEditor, changed: Session.MarkChanged);
+        }
 
         if (_options.StartInExploration)
         {

@@ -199,22 +199,14 @@ public sealed class CombatSimulator
     /// 행동 뒤 대기. 방금 쓴 행동의 대기 수치(없으면 TimeConstant)를 속도로 나누고, 대기 감소 보너스는
     /// 태그 없는 것(전체 속도)과 방금 쓴 행동의 태그 것을 더한다. 행동하지 못한 턴은 기본 대기다.
     /// </summary>
-    private long ActionDelay(Combatant c, ActionDefinition? used)
-    {
-        var speed = Math.Max(1, c.Stats.Speed);
-        var baseDelay = (used?.Delay ?? _rules.TimeConstant) / speed;
-        var reduction = SignedReduction(
-            c.Skills.Bonus(BonusKind.DelayReductionPercent, used?.BonusTags(c.Weapon))
-            + c.EffectModifier(EffectModifierKind.DelayReductionPercent));
-        var delay = (long)baseDelay * (100 - reduction) / 100;
-        return Math.Max(1, delay);
-    }
+    private long ActionDelay(Combatant c, ActionDefinition? used) =>
+        CombatMath.Delay(used, c.Stats, c.Skills, c.Weapon, c.EffectModifier(EffectModifierKind.DelayReductionPercent), _rules);
 
     /// <summary>감소 보너스를 0 ~ 상한 사이로 자른다.</summary>
-    private int Reduction(int percent) => Math.Clamp(percent, 0, _rules.MaxReductionPercent);
+    private int Reduction(int percent) => CombatMath.Reduction(percent, _rules);
 
     /// <summary>디버프로 음수가 될 수 있는 감소(대기, 받는 피해). 최대 2배(−100%)까지 늘어난다.</summary>
-    private int SignedReduction(int percent) => Math.Clamp(percent, -100, _rules.MaxReductionPercent);
+    private int SignedReduction(int percent) => CombatMath.SignedReduction(percent, _rules);
 
     // ── 효과 ───────────────────────────────────────────────
 
@@ -309,11 +301,10 @@ public sealed class CombatSimulator
     }
 
     /// <summary>주무기 계열 태그가 붙은 행동인가 (무기 위력 배율과 효과 지속 보너스를 받는다).</summary>
-    private static bool WeaponBoosted(Combatant actor, ActionDefinition action) =>
-        actor.Weapon is not null && action.Tags.Contains(actor.Weapon);
+    private static bool WeaponBoosted(Combatant actor, ActionDefinition action) => CombatMath.WeaponBoosted(actor.Weapon, action);
 
     private static int Multiplier(Combatant actor, ActionDefinition action) =>
-        WeaponBoosted(actor, action) ? actor.PowerMultiplierPercent : 100;
+        CombatMath.Multiplier(actor.Weapon, actor.PowerMultiplierPercent, action);
 
     // ── 전술 ───────────────────────────────────────────────
 
@@ -434,7 +425,7 @@ public sealed class CombatSimulator
         actor.Mp >= MpCost(actor, action) && (action.HpCost == 0 || actor.Hp > action.HpCost);
 
     private int MpCost(Combatant actor, ActionDefinition action) =>
-        Ratio.ApplyPercent(action.MpCost, 100 - Reduction(actor.Skills.Bonus(BonusKind.MpCostReductionPercent, action.BonusTags(actor.Weapon))));
+        CombatMath.MpCost(action, actor.Skills, actor.Weapon, _rules);
 
     // ── 대상 ───────────────────────────────────────────────
 
@@ -622,7 +613,7 @@ public sealed class CombatSimulator
             }
             case ActionEffect.RestoreMp:
             {
-                var amount = Math.Min(target.MaxMp - target.Mp, Scaled(action.Power, actor.Stats.Intel));
+                var amount = Math.Min(target.MaxMp - target.Mp, CombatMath.RestoreMp(action, actor.Stats, _rules));
                 target.Mp += amount;
                 _events.Add(new MpRestored(target.Id, amount, target.Mp));
                 break;
@@ -685,13 +676,8 @@ public sealed class CombatSimulator
     }
 
     /// <summary>회복·보호막 양: 위력 × 지능 보정 × (회복 + 위력 보너스) × 무기 위력 배율.</summary>
-    private int HealAmount(Combatant actor, ActionDefinition action)
-    {
-        var tags = action.BonusTags(actor.Weapon);
-        var bonus = actor.Skills.Bonus(BonusKind.HealPercent, tags) + actor.Skills.Bonus(BonusKind.PowerPercent, tags);
-        var heal = Ratio.ApplyPercent(Scaled(action.Power, actor.Stats.Intel), 100 + bonus);
-        return Ratio.ApplyPercent(heal, Multiplier(actor, action));
-    }
+    private int HealAmount(Combatant actor, ActionDefinition action) =>
+        CombatMath.Heal(action, actor.Stats, actor.Skills, actor.Weapon, actor.PowerMultiplierPercent, _rules);
 
     /// <summary>
     /// 소환. 시전자가 이미 부른 유닛은 사라진다. 능력치(속도 제외) × 무기 위력 배율 × (100 + 스킬 레벨 × 레벨당 %).
@@ -736,16 +722,11 @@ public sealed class CombatSimulator
     /// </summary>
     private int DamageAmount(Combatant actor, ActionDefinition action, Combatant target)
     {
-        var (attackStat, defense) = action.DamageType == DamageType.Physical
-            ? (actor.Stats.Str, target.Defense)
-            : (actor.Stats.Intel, target.MagicDefense);
-
-        var powerBonus = actor.Skills.Bonus(BonusKind.PowerPercent, action.BonusTags(actor.Weapon))
-            + actor.EffectModifier(EffectModifierKind.PowerPercent)
+        var defense = action.DamageType == DamageType.Physical ? target.Defense : target.MagicDefense;
+        var extraBonus = actor.EffectModifier(EffectModifierKind.PowerPercent)
             + (int)((long)action.MissingHpBonusPercent * (target.MaxHp - target.Hp) / Math.Max(1, target.MaxHp))
             + (action.BonusAgainst is { } against && target.Effects.Any(e => e.Definition.Id == against.EffectId) ? against.Percent : 0);
-        var raw = Ratio.ApplyPercent(Scaled(action.Power, attackStat), Math.Max(0, 100 + powerBonus));
-        raw = Ratio.ApplyPercent(raw, Multiplier(actor, action));
+        var raw = CombatMath.RawDamage(action, actor.Stats, actor.Skills, actor.Weapon, actor.PowerMultiplierPercent, extraBonus, _rules);
         var effectiveDefense = Ratio.ApplyPercent(
             defense, Math.Max(0, 100 + target.Skills.Bonus(BonusKind.DefensePercent) + target.EffectModifier(EffectModifierKind.DefensePercent)));
         var mitigated = Ratio.DivideRounded((long)raw * 100, 100 + (long)effectiveDefense * _rules.DefenseReductionPercentPerPoint);
@@ -753,7 +734,4 @@ public sealed class CombatSimulator
             + target.EffectModifier(EffectModifierKind.DamageTakenReductionPercent);
         return Ratio.ApplyPercent(mitigated, 100 - SignedReduction(taken));
     }
-
-    private int Scaled(int power, int stat) =>
-        Ratio.ApplyPercent(power, 100 + stat * _rules.PowerScalingPercentPerPoint);
 }

@@ -33,6 +33,19 @@ internal static class TacticText
         _ => $"{Subject(condition)} {(IsHp(condition) ? "HP" : "MP")} {(IsAtLeast(condition) ? "이상" : "이하")} ({(condition.IsAmount() ? "수치" : "%")})",
     };
 
+    /// <summary>값까지 붙인 짧은 문장 (전투 요약용): "자신 HP 35% 이하", "살아있는 적 2명 이상", "4턴마다".</summary>
+    public static string Describe(Condition condition, int value) => condition switch
+    {
+        Condition.Always => "항상",
+        Condition.MaxUses => $"최대 {value}회",
+        Condition.FromTurn => $"{value}번째 턴부터",
+        Condition.UntilTurn => $"{value}번째 턴까지",
+        Condition.OnTurn => $"{value}번째 턴에만",
+        Condition.EveryNthTurn => $"{value}턴마다",
+        _ when condition.IsEnemyCount() => $"{EnemySubject(condition)} {value}명 {(IsAtLeast(condition) ? "이상" : "이하")}",
+        _ => $"{Subject(condition)} {(IsHp(condition) ? "HP" : "MP")} {value}{(condition.IsPercent() ? "%" : "")} {(IsAtLeast(condition) ? "이상" : "이하")}",
+    };
+
     public static bool HasValue(Condition condition) => condition != Condition.Always;
 
     /// <summary>입력칸 옆에 붙는 단위.</summary>

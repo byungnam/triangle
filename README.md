@@ -28,6 +28,7 @@ dotnet run --project src/Triangle.Desktop
 dotnet run --project src/Triangle.Desktop -- --screenshot shot.png                # 첫 화면(마을)을 PNG로 저장하고 종료
 dotnet run --project src/Triangle.Desktop -- --combat --screenshot shot.png       # 전투가 끝난 화면
 dotnet run --project src/Triangle.Desktop -- --combat --screenshot shot.png 40    # 로그 40줄까지 진행한 중간 화면
+dotnet run --project src/Triangle.Desktop -- --combat --summary --screenshot shot.png  # 전투 요약 탭
 dotnet run --project src/Triangle.Desktop -- --exploration --screenshot shot.png  # 탐사 기록 화면
 dotnet run --project src/Triangle.Desktop -- --scene editor:equipment --screenshot shot.png  # 편성 화면 장비 탭
 #   --scene: editor, editor:equipment, editor:preview, editor:stats, editor:picker, training, shop

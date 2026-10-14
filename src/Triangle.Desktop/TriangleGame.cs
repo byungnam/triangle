@@ -20,9 +20,10 @@ namespace Triangle.Desktop;
 /// <param name="StartScene">
 /// 마을 대신 이 화면으로 시작한다 (확인·스크린샷용): editor, editor:equipment, editor:stats, editor:picker, editor:preview, training, shop.
 /// </param>
+/// <param name="StartInSummary">전투 화면으로 시작할 때 요약 탭을 연다.</param>
 public sealed record LaunchOptions(
     string? ScreenshotPath = null, int? ScreenshotLines = null, bool StartInCombat = false, string? SavePath = null,
-    bool StartInExploration = false, string? StartScene = null);
+    bool StartInExploration = false, string? StartScene = null, bool StartInSummary = false);
 
 /// <summary>
 /// 화면 흐름: 마을 ↔ (전술 편집, 숙련·패시브, 모집, 상점·창고, 제작, 탐사 기록), 마을 → 출정 → 원정 ↔ (전투 기록, 전술 편집) → 귀환 → 마을.
@@ -183,6 +184,11 @@ public class TriangleGame : Game
         if (_options.ScreenshotPath is not null)
         {
             combat.RevealLines(_options.ScreenshotLines ?? int.MaxValue);
+        }
+
+        if (_options.StartInSummary)
+        {
+            combat.ShowSummary();
         }
 
         return combat;

@@ -135,7 +135,7 @@ internal sealed class CombatSummaryView
         _ui.Fill(batch, bar, Theme.BarBack);
         var used = BarWidth * t.Used / _scale;
         var blocked = BarWidth * t.Blocked / _scale;
-        _ui.Fill(batch, bar with { Width = used }, Theme.Accent);
+        _ui.Fill(batch, bar with { Width = used }, Theme.Gold);
         _ui.Fill(batch, new Rectangle(bar.X + used, bar.Y, blocked, bar.Height), Theme.Enemy);
 
         var count = t.Blocked > 0 ? $"{t.Used}회 · 막힘 {t.Blocked}" : $"{t.Used}회";

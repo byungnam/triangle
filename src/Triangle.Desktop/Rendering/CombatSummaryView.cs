@@ -200,7 +200,7 @@ internal sealed class CombatSummaryView
         var row = _combatants[unit.Id].StartRow == Row.Front ? "전위" : "후위";
         var (status, statusColor) = unit.DownedAt is { } turn
             ? ($"{turn}번째 차례에 쓰러짐", Theme.Death)
-            : ("끝까지 섰다", Theme.TextDim);
+            : ("생존", Theme.TextDim);
         return new HeadingLine(_names[unit.Id], row, color, status, statusColor);
     }
 

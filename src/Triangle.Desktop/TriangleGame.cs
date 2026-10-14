@@ -17,9 +17,10 @@ namespace Triangle.Desktop;
 /// <param name="StartInCombat">마을 대신 전투 화면으로 시작한다 (출전 명단과 훈련 부대의 시험 전투, 상태는 바꾸지 않는다).</param>
 /// <param name="SavePath">세이브 파일 경로. null이면 OS별 기본 위치.</param>
 /// <param name="StartInExploration">마을 대신 탐사 기록 화면으로 시작한다.</param>
+/// <param name="StartInSummary">전투 화면으로 시작할 때 요약 탭을 연다.</param>
 public sealed record LaunchOptions(
     string? ScreenshotPath = null, int? ScreenshotLines = null, bool StartInCombat = false, string? SavePath = null,
-    bool StartInExploration = false);
+    bool StartInExploration = false, bool StartInSummary = false);
 
 /// <summary>
 /// 화면 흐름: 마을 ↔ (전술 편집, 숙련·패시브, 모집, 상점·창고, 제작, 탐사 기록), 마을 → 출정 → 원정 ↔ (전투 기록, 전술 편집) → 귀환 → 마을.
@@ -169,6 +170,11 @@ public class TriangleGame : Game
         if (_options.ScreenshotPath is not null)
         {
             combat.RevealLines(_options.ScreenshotLines ?? int.MaxValue);
+        }
+
+        if (_options.StartInSummary)
+        {
+            combat.ShowSummary();
         }
 
         return combat;

@@ -36,6 +36,9 @@ internal sealed class Screen
         Transform = Matrix.CreateScale(Scale, Scale, 1f) * Matrix.CreateTranslation(Offset.X, Offset.Y, 0f);
     }
 
+    /// <summary>창 좌표(마우스 위치)를 설계 해상도 좌표로 바꾼다.</summary>
+    public Vector2 ToDesign(Point window) => new((window.X - Offset.X) / Scale, (window.Y - Offset.Y) / Scale);
+
     /// <summary>Myra 화면을 같은 변환으로 그린다 (마우스 위치도 Myra가 같은 변환으로 되돌린다).</summary>
     public void Render(MyraDesktop desktop)
     {

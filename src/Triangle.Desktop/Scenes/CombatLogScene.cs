@@ -14,6 +14,8 @@ namespace Triangle.Desktop.Scenes;
 /// 결과는 이미 확정되어 있으므로(원정에 반영하고 저장했다) 다시 하기는 없다.
 /// 로그는 두 칸이다. 행동한 쪽 칸(왼쪽 아군, 오른쪽 적)에 그 행동과 결과가 들어가고,
 /// 위에서 아래로 시간 순서를 유지한다.
+/// 가운데 칸은 "기록"과 "요약" 탭으로 바꿔 본다(Tab 또는 클릭). 요약은 전술별 사용 횟수와 잃은 차례를 보여준다.
+/// 휠로 지난 로그와 긴 요약을 스크롤한다.
 /// </summary>
 internal sealed class CombatLogScene : IScene
 {
@@ -29,6 +31,13 @@ internal sealed class CombatLogScene : IScene
     private const int LogPadding = 16;
     private const int LogIndent = 18;
     private const int BlockGap = 8;
+    private const int TabsHeight = 40;
+    private const int TabWidth = 76;
+    private const int TabHeight = 28;
+
+    /// <summary>휠 한 칸(120)에 로그 3줄, 요약 72픽셀.</summary>
+    private const int WheelPerStep = 40;
+    private const int SummaryPixelsPerStep = 24;
 
     private readonly Ui _ui;
     private readonly GameData _data;
@@ -49,10 +58,27 @@ internal sealed class CombatLogScene : IScene
 
     private readonly CombatResult _result;
     private readonly CombatLogFormatter _formatter;
+    private readonly CombatSummaryView _summary;
     private int _nextEvent;
     private double _timer;
     private CombatSide _actingSide;
     private bool _blockStarting;
+
+    private enum View
+    {
+        Log,
+        Summary,
+    }
+
+    private View _view = View.Log;
+    private Vector2 _mouse;
+    private int _wheel;
+
+    /// <summary>맨 아래에서 몇 줄 올려 보고 있는가 (0이면 최신 줄을 따라간다). 최대치는 그릴 때 정한다.</summary>
+    private int _logScroll;
+    private int _logMaxScroll;
+    private int _lastLogRows;
+    private int _summaryScroll;
 
     /// <param name="title">머리글 (예: "전투 2/3").</param>
     /// <param name="back">Esc/Backspace를 누르면 호출된다 (이전 화면으로).</param>
@@ -79,10 +105,9 @@ internal sealed class CombatLogScene : IScene
 
         AssignDisplayNames(_result.Combatants);
 
-        _formatter = new CombatLogFormatter(
-            _units.ToDictionary(u => u.Key, u => u.Value.Name),
-            _data.Actions.ToDictionary(a => a.Key, a => a.Value.Name),
-            _data.Effects);
+        var names = _units.ToDictionary(u => u.Key, u => u.Value.Name);
+        _formatter = new CombatLogFormatter(names, _data.Actions.ToDictionary(a => a.Key, a => a.Value.Name), _data.Effects);
+        _summary = new CombatSummaryView(_ui, _data, _result, names, EncounterName);
 
         _log.Add(new LogEntry(new LogLine($"{Korean.WaGwa(EncounterName)}의 전투 시작!", Theme.Text), null, true));
     }
@@ -97,6 +122,19 @@ internal sealed class CombatLogScene : IScene
     public void SetRewardLines(IReadOnlyList<LogLine> lines) => _rewardLines = lines;
 
     public void RevealAll() => RevealLines(int.MaxValue);
+
+    /// <summary>요약 탭을 연다. 재생 중이면 끝까지 보여준 뒤 연다.</summary>
+    public void ShowSummary() => Show(View.Summary);
+
+    private void Show(View view)
+    {
+        if (view == View.Summary)
+        {
+            RevealAll();
+        }
+
+        _view = view;
+    }
 
     public void RevealLines(int count)
     {
@@ -120,11 +158,50 @@ internal sealed class CombatLogScene : IScene
             return;
         }
 
+        _mouse = _ui.Screen.ToDesign(input.MousePosition);
+        if (input.Pressed(Keys.Tab))
+        {
+            Show(_view == View.Log ? View.Summary : View.Log);
+        }
+        else if (input.Clicked)
+        {
+            foreach (var view in new[] { View.Log, View.Summary })
+            {
+                if (TabRect(view).Contains(_mouse))
+                {
+                    Show(view);
+                }
+            }
+        }
+
+        Scroll(input.WheelDelta);
+
         _timer += gameTime.ElapsedGameTime.TotalSeconds;
         while (_timer >= SecondsPerLine && !Finished)
         {
             _timer -= SecondsPerLine;
             RevealNext();
+        }
+    }
+
+    /// <summary>휠을 위로 굴리면 지난 로그(요약은 위쪽)를, 아래로 굴리면 최신 줄(요약은 아래쪽)을 본다.</summary>
+    private void Scroll(int wheelDelta)
+    {
+        _wheel += wheelDelta;
+        var steps = _wheel / WheelPerStep;
+        _wheel -= steps * WheelPerStep;
+        if (steps == 0)
+        {
+            return;
+        }
+
+        if (_view == View.Log)
+        {
+            _logScroll = Math.Clamp(_logScroll + steps, 0, _logMaxScroll);
+        }
+        else
+        {
+            _summaryScroll = Math.Clamp(_summaryScroll - steps * SummaryPixelsPerStep, 0, _summary.MaxScroll(CenterContent));
         }
     }
 
@@ -245,24 +322,60 @@ internal sealed class CombatLogScene : IScene
 
     // ── 그리기 ─────────────────────────────────────────────
 
+    private int PanelTop => _bounds.Top + HeaderHeight;
+    private int PanelHeight => _bounds.Height - HeaderHeight - FooterHeight;
+    private Rectangle LeftPanel => new(_bounds.Left + Margin, PanelTop, SidePanelWidth, PanelHeight);
+    private Rectangle RightPanel => new(_bounds.Right - Margin - SidePanelWidth, PanelTop, SidePanelWidth, PanelHeight);
+    private Rectangle CenterPanel => new(LeftPanel.Right + Margin, PanelTop, RightPanel.Left - LeftPanel.Right - Margin * 2, PanelHeight);
+
+    /// <summary>가운데 칸에서 탭 줄 아래 (로그나 요약이 들어가는 곳).</summary>
+    private Rectangle CenterContent => CenterPanel with { Y = CenterPanel.Y + TabsHeight, Height = CenterPanel.Height - TabsHeight };
+
+    private Rectangle TabRect(View view) =>
+        new(CenterPanel.Left + 12 + (int)view * (TabWidth + 6), CenterPanel.Top + 8, TabWidth, TabHeight);
+
     public void Draw(SpriteBatch batch)
     {
         batch.Begin(transformMatrix: _ui.Screen.Transform);
 
         DrawHeader(batch);
+        DrawTeam(batch, LeftPanel, "아군", Theme.Ally, _allies);
+        DrawTeam(batch, RightPanel, EncounterName, Theme.Enemy, _enemies);
 
-        var top = _bounds.Top + HeaderHeight;
-        var height = _bounds.Height - HeaderHeight - FooterHeight;
-        var left = new Rectangle(_bounds.Left + Margin, top, SidePanelWidth, height);
-        var right = new Rectangle(_bounds.Right - Margin - SidePanelWidth, top, SidePanelWidth, height);
-        var center = new Rectangle(left.Right + Margin, top, right.Left - left.Right - Margin * 2, height);
+        _ui.Panel(batch, CenterPanel);
+        DrawTabs(batch);
+        if (_view == View.Log)
+        {
+            DrawLog(batch, CenterContent);
+        }
+        else
+        {
+            var content = CenterContent;
+            _summaryScroll = Math.Clamp(_summaryScroll, 0, _summary.MaxScroll(content));
+            _summary.Draw(batch, content, _summaryScroll);
+        }
 
-        DrawTeam(batch, left, "아군", Theme.Ally, _allies);
-        DrawTeam(batch, right, EncounterName, Theme.Enemy, _enemies);
-        DrawLog(batch, center);
         DrawFooter(batch);
 
         batch.End();
+    }
+
+    /// <summary>"기록 | 요약" 탭. 고른 탭은 강조하고, 마우스가 올라간 탭은 밝게 그린다.</summary>
+    private void DrawTabs(SpriteBatch batch)
+    {
+        var font = _ui.BoldFont(16);
+        foreach (var (view, label) in new[] { (View.Log, "기록"), (View.Summary, "요약") })
+        {
+            var rect = TabRect(view);
+            var selected = _view == view;
+            _ui.Fill(batch, rect, selected ? Theme.Selected : rect.Contains(_mouse) ? Theme.ButtonHover : Theme.Button);
+            var size = font.MeasureString(label);
+            _ui.Text(batch, font, label, new Vector2(rect.Center.X - size.X / 2, rect.Y + 5), selected ? Theme.Text : Theme.TextDim);
+        }
+
+        var hint = _ui.Font(14);
+        _ui.Text(batch, hint, "Tab", new Vector2(TabRect(View.Summary).Right + 10, CenterPanel.Top + 14), Theme.TextDim);
+        _ui.Fill(batch, new Rectangle(CenterPanel.Left + 1, CenterPanel.Top + TabsHeight - 1, CenterPanel.Width - 2, 1), Theme.PanelBorder);
     }
 
     private void DrawHeader(SpriteBatch batch)
@@ -345,8 +458,6 @@ internal sealed class CombatLogScene : IScene
 
     private void DrawLog(SpriteBatch batch, Rectangle area)
     {
-        _ui.Panel(batch, area);
-
         var mid = area.Center.X;
         var columnWidth = area.Width / 2 - LogPadding * 2;
         var leftX = area.Left + LogPadding;
@@ -367,7 +478,7 @@ internal sealed class CombatLogScene : IScene
         {
             var indent = entry.Line.Indented ? LogIndent : 0;
             var width = entry.Side is null ? area.Width - LogPadding * 2 : columnWidth - indent;
-            var wrapped = Wrap(font, entry.Line.Text, width);
+            var wrapped = TextLayout.Wrap(font, entry.Line.Text, width);
 
             for (var i = 0; i < wrapped.Count; i++)
             {
@@ -383,7 +494,19 @@ internal sealed class CombatLogScene : IScene
         }
 
         var available = area.Bottom - LogPadding - contentTop;
-        var first = rows.Count;
+
+        // 위로 올려 보는 동안 새 줄이 생기면 그만큼 더 올려서 보던 곳에 머문다.
+        if (_logScroll > 0)
+        {
+            _logScroll += rows.Count - _lastLogRows;
+        }
+
+        _lastLogRows = rows.Count;
+        _logMaxScroll = rows.Count - FittingRows(rows.Select(r => r.GapBefore), available);
+        _logScroll = Math.Clamp(_logScroll, 0, _logMaxScroll);
+
+        var end = rows.Count - _logScroll;
+        var first = end;
         var used = 0;
         while (first > 0 && used + LogLineHeight + rows[first - 1].GapBefore <= available)
         {
@@ -393,7 +516,7 @@ internal sealed class CombatLogScene : IScene
 
         // 구분선은 두 칸으로 나뉜 줄에만 그린다 (전투 시작/종료 줄은 가로지르지 않는다).
         var y = contentTop - 6;
-        for (var i = first; i < rows.Count; i++)
+        for (var i = first; i < end; i++)
         {
             var gap = i > first ? rows[i].GapBefore : 0;
             if (!rows[i].Spans)
@@ -405,34 +528,40 @@ internal sealed class CombatLogScene : IScene
             _ui.Text(batch, font, rows[i].Text, new Vector2(rows[i].X, y + 6), rows[i].Color);
             y += LogLineHeight;
         }
+
+        if (_logScroll > 0)
+        {
+            var hintFont = _ui.Font(14);
+            var hint = $"▼ 아래로 {_logScroll}줄 더 (휠)";
+            var size = hintFont.MeasureString(hint);
+            var at = new Vector2(area.Right - LogPadding - size.X, area.Bottom - LogPadding - size.Y);
+            _ui.Fill(batch, new Rectangle((int)at.X - 6, (int)at.Y - 2, (int)size.X + 12, (int)size.Y + 4), Theme.Panel);
+            _ui.Text(batch, hintFont, hint, at, Theme.Cover);
+        }
     }
 
-    /// <summary>폭을 넘으면 공백 단위로 줄을 바꾼다. 공백 없는 긴 단어는 그대로 둔다.</summary>
-    private static List<string> Wrap(FontStashSharp.SpriteFontBase font, string text, float width)
+    /// <summary>맨 위부터 칸에 들어가는 화면 줄 수 (스크롤 최대치를 정한다).</summary>
+    private static int FittingRows(IEnumerable<int> gaps, int available)
     {
-        var lines = new List<string>();
-        var current = "";
-        foreach (var word in text.Split(' '))
+        var count = 0;
+        var used = 0;
+        foreach (var gap in gaps)
         {
-            var candidate = current.Length == 0 ? word : current + " " + word;
-            if (current.Length > 0 && font.MeasureString(candidate).X > width)
+            if (used + LogLineHeight + gap > available)
             {
-                lines.Add(current);
-                current = word;
+                break;
             }
-            else
-            {
-                current = candidate;
-            }
+
+            used += LogLineHeight + gap;
+            count++;
         }
 
-        lines.Add(current);
-        return lines;
+        return count;
     }
 
     private void DrawFooter(SpriteBatch batch)
     {
-        var help = $"Space  끝까지 보기     Esc  {_backLabel}";
+        var help = $"Space  끝까지 보기     Tab  기록·요약     휠  스크롤     Esc  {_backLabel}";
         _ui.Text(batch, _ui.Font(16), help, new Vector2(_bounds.Left + Margin, _bounds.Bottom - FooterHeight + 10), Theme.TextDim);
     }
 

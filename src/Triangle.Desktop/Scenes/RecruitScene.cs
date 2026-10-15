@@ -139,9 +139,7 @@ internal sealed class RecruitScene : IScene
         panel.Widgets.Add(_w.Label("기본 전술", 16, Theme.Text));
         foreach (var tactic in template.Tactics.OrderBy(t => t.Priority))
         {
-            var condition = TacticText.ConditionLabel(tactic.Condition);
-            var value = TacticText.HasValue(tactic.Condition) ? $" {tactic.Value}" : "";
-            panel.Widgets.Add(_w.Label($"  {tactic.Priority}. {condition}{value} → {data.Actions[tactic.ActionId].Name}", 15, Theme.TextDim));
+            panel.Widgets.Add(_w.Label($"  {tactic.Priority}. {TacticText.Sentence(tactic)} → {data.Actions[tactic.ActionId].Name}", 15, Theme.TextDim));
         }
 
         if (template.Description is { } description)

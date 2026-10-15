@@ -6,57 +6,17 @@ namespace Triangle.Desktop.Rendering;
 /// <summary>전술 조건과 값의 화면 표시, 기본값, 입력 검증.</summary>
 internal static class TacticText
 {
-    /// <summary>드롭다운 순서: 같은 대상끼리 %와 수치를 나란히 둔다.</summary>
-    public static readonly IReadOnlyList<Condition> Conditions =
-    [
-        Condition.Always,
-        Condition.SelfHpAtLeast, Condition.SelfHpAtMost, Condition.SelfHpAmountAtLeast, Condition.SelfHpAmountAtMost,
-        Condition.SelfMpAtLeast, Condition.SelfMpAtMost, Condition.SelfMpAmountAtLeast, Condition.SelfMpAmountAtMost,
-        Condition.AnyAllyHpAtLeast, Condition.AnyAllyHpAtMost, Condition.AnyAllyHpAmountAtLeast, Condition.AnyAllyHpAmountAtMost,
-        Condition.AnyAllyMpAtLeast, Condition.AnyAllyMpAtMost, Condition.AnyAllyMpAmountAtLeast, Condition.AnyAllyMpAmountAtMost,
-        Condition.AllyAverageHpAtLeast, Condition.AllyAverageHpAtMost, Condition.AllyAverageHpAmountAtLeast, Condition.AllyAverageHpAmountAtMost,
-        Condition.AllyAverageMpAtLeast, Condition.AllyAverageMpAtMost, Condition.AllyAverageMpAmountAtLeast, Condition.AllyAverageMpAmountAtMost,
-        Condition.EnemyAliveAtLeast, Condition.EnemyAliveAtMost, Condition.EnemyDeadAtLeast, Condition.EnemyDeadAtMost,
-        Condition.EnemyFrontAtLeast, Condition.EnemyFrontAtMost, Condition.EnemyBackAtLeast, Condition.EnemyBackAtMost,
-        Condition.MaxUses, Condition.FromTurn, Condition.UntilTurn, Condition.OnTurn, Condition.EveryNthTurn,
-    ];
-
-    public static string ConditionLabel(Condition condition) => condition switch
-    {
-        Condition.Always => "항상",
-        Condition.MaxUses => "최대 사용 횟수",
-        Condition.FromTurn => "지정 턴부터",
-        Condition.UntilTurn => "지정 턴까지",
-        Condition.OnTurn => "지정 턴에만",
-        Condition.EveryNthTurn => "턴 주기",
-        _ when condition.IsEnemyCount() => $"{EnemySubject(condition)} {(IsAtLeast(condition) ? "이상" : "이하")}",
-        _ => $"{Subject(condition)} {(IsHp(condition) ? "HP" : "MP")} {(IsAtLeast(condition) ? "이상" : "이하")} ({(condition.IsAmount() ? "수치" : "%")})",
-    };
-
-    /// <summary>값까지 붙인 짧은 문장 (전투 요약용): "자신 HP 35% 이하", "살아있는 적 2명 이상", "4턴마다".</summary>
-    public static string Describe(Condition condition, int value) => condition switch
-    {
-        Condition.Always => "항상",
-        Condition.MaxUses => $"최대 {value}회",
-        Condition.FromTurn => $"{value}번째 턴부터",
-        Condition.UntilTurn => $"{value}번째 턴까지",
-        Condition.OnTurn => $"{value}번째 턴에만",
-        Condition.EveryNthTurn => $"{value}턴마다",
-        _ when condition.IsEnemyCount() => $"{EnemySubject(condition)} {value}명 {(IsAtLeast(condition) ? "이상" : "이하")}",
-        _ => $"{Subject(condition)} {(IsHp(condition) ? "HP" : "MP")} {value}{(condition.IsPercent() ? "%" : "")} {(IsAtLeast(condition) ? "이상" : "이하")}",
-    };
-
-    public static bool HasValue(Condition condition) => condition != Condition.Always;
+    public static bool HasValue(Condition condition) => condition.HasValue();
 
     /// <summary>입력칸 옆에 붙는 단위.</summary>
     public static string Unit(Condition condition) => condition switch
     {
         _ when condition.IsPercent() => "%",
         _ when condition.IsAmount() => IsHp(condition) ? "HP" : "MP",
-        _ when condition.IsEnemyCount() => "명",
+        _ when condition.IsEnemyCount() || condition.IsAllyCount() => "명",
+        _ when !condition.HasValue() => "",
         Condition.MaxUses => "회",
         Condition.EveryNthTurn => "턴마다",
-        Condition.Always => "",
         _ => "번째 턴",
     };
 
@@ -66,19 +26,21 @@ internal static class TacticText
     /// </summary>
     public static string? ValidationError(Condition condition, int value) => condition switch
     {
+        _ when !condition.HasValue() => null,
         _ when condition.IsPercent() => value is < 0 or > 100 ? "0~100만" : null,
         _ when condition.IsAmount() => null,
         Condition.EveryNthTurn => value < 1 ? "1 이상만" : null,
-        Condition.Always => null,
         _ => value < 0 ? "0 이상만" : null,
     };
 
     public static int DefaultValue(Condition condition) => condition switch
     {
-        Condition.Always => 0,
+        _ when !condition.HasValue() => 0,
+        Condition.AnyEnemyHpAtMost or Condition.AnyEnemyHpAtLeast => 30,
         _ when condition.IsPercent() => 50,
         _ when condition.IsAmount() => IsHp(condition) ? 300 : 50,
         _ when condition.IsEnemyCount() => 2,
+        _ when condition.IsAllyCount() => 1,
         Condition.EveryNthTurn => 2,
         _ => 1,
     };
@@ -89,33 +51,16 @@ internal static class TacticText
 
     private static string Kind(Condition condition) => condition switch
     {
-        Condition.Always => "none",
+        _ when !condition.HasValue() => "none",
         _ when condition.IsPercent() => "percent",
         _ when condition.IsAmount() => IsHp(condition) ? "hp" : "mp",
-        _ when condition.IsEnemyCount() => "count",
+        _ when condition.IsEnemyCount() || condition.IsAllyCount() => "count",
         Condition.MaxUses => "uses",
         Condition.EveryNthTurn => "period",
         _ => "turn",
     };
 
-    private static string Subject(Condition condition) => condition.ToString() switch
-    {
-        var n when n.StartsWith("Self") => "자신",
-        var n when n.StartsWith("AnyAlly") => "아군 누군가",
-        _ => "아군 평균",
-    };
-
-    private static string EnemySubject(Condition condition) => condition.ToString() switch
-    {
-        var n when n.StartsWith("EnemyAlive") => "살아있는 적",
-        var n when n.StartsWith("EnemyDead") => "쓰러진 적",
-        var n when n.StartsWith("EnemyFront") => "적 전열",
-        _ => "적 후열",
-    };
-
     private static bool IsHp(Condition condition) => condition.ToString().Contains("Hp");
-
-    private static bool IsAtLeast(Condition condition) => condition.ToString().EndsWith("AtLeast");
 
     // ── 조건을 세 칸(대상 · 이상/이하 · %/수치)으로 나눠 고르기 ─────────────
 
@@ -129,6 +74,12 @@ internal static class TacticText
         ("AnyAllyMp", "아군 누군가 MP", Theme.Heal),
         ("AllyAverageHp", "아군 평균 HP", Theme.Heal),
         ("AllyAverageMp", "아군 평균 MP", Theme.Heal),
+        ("AllyDown", "쓰러진 아군 수", Theme.Heal),
+        ("AnyAllyHasDebuff", "디버프 걸린 아군 있음", Theme.Heal),
+        ("AnyAllyLacksActionEffect", "효과 없는 아군 있음", Theme.Heal),
+        ("SelfLacksActionEffect", "자신에게 효과 없음", Theme.Text),
+        ("AnyEnemyHp", "적 누군가 HP", Theme.Enemy),
+        ("AnyEnemyLacksActionEffect", "효과 없는 적 있음", Theme.Enemy),
         ("EnemyAlive", "살아있는 적 수", Theme.Enemy),
         ("EnemyDead", "쓰러진 적 수", Theme.Enemy),
         ("EnemyFront", "적 전열 수", Theme.Enemy),
@@ -171,11 +122,16 @@ internal static class TacticText
         return Enum.Parse<Condition>(isHpMp && !percent ? $"{key}Amount{compare}" : $"{key}{compare}");
     }
 
-    /// <summary>"자신 HP 50% 이하"처럼 조건과 값을 한 문장으로.</summary>
-    public static string Sentence(Condition condition, int value)
+    /// <summary>
+    /// "자신 HP 50% 이하"처럼 조건과 값을 한 문장으로. 효과 조건은 <paramref name="effectName"/>(그 줄 행동이 거는 첫 효과)이
+    /// 있으면 "자신에게 방패 벽 없음"처럼 효과 이름을 넣는다.
+    /// </summary>
+    public static string Sentence(Condition condition, int value, string? effectName = null)
     {
         var (subject, atLeast, _) = Split(condition);
         var label = Subjects[subject].Label;
+        var effect = effectName ?? "이 행동의 효과";
+        var compare = atLeast == true ? "이상" : "이하";
         return condition switch
         {
             Condition.Always => "항상",
@@ -184,8 +140,17 @@ internal static class TacticText
             Condition.UntilTurn => $"{value}번째 턴까지",
             Condition.OnTurn => $"{value}번째 턴에만",
             Condition.EveryNthTurn => $"{value}턴마다",
-            _ when condition.IsEnemyCount() => $"{label} {value}명 {(atLeast == true ? "이상" : "이하")}",
-            _ => $"{label} {value}{(condition.IsPercent() ? "%" : "")} {(atLeast == true ? "이상" : "이하")}",
+            Condition.SelfLacksActionEffect => $"자신에게 {effect} 없음",
+            Condition.AnyAllyLacksActionEffect => $"{effect} 없는 아군 있음",
+            Condition.AnyEnemyLacksActionEffect => $"{effect} 없는 적 있음",
+            Condition.AnyAllyHasDebuff => "디버프 걸린 아군 있음",
+            // "살아있는 적 수 2명 이상"이 아니라 "살아있는 적 2명 이상"
+            _ when condition.IsEnemyCount() || condition.IsAllyCount() => $"{label[..^2]} {value}명 {compare}",
+            _ => $"{label} {value}{(condition.IsPercent() ? "%" : "")} {compare}",
         };
     }
+
+    /// <summary>전술 한 줄의 모든 조건: "4턴마다 그리고 자신 MP 35 이상".</summary>
+    public static string Sentence(Tactic tactic, string? effectName = null) =>
+        string.Join(" 그리고 ", tactic.Conditions.Select(c => Sentence(c.Condition, c.Value, effectName)));
 }

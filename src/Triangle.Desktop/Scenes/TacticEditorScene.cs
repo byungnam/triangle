@@ -174,8 +174,8 @@ internal sealed class TacticEditorScene : IScene
         var title = OnExpedition ? "편성 — 원정 중 (전술과 전열만 바꿀 수 있습니다)" : "편성 · 전술";
         _ui.Text(batch, _ui.BoldFont(28), title, new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
         var help = OnExpedition
-            ? "조건이 참인 첫 전술을 쓴다. 대상은 행동이 정한다.     Esc  원정으로"
-            : "조건이 참인 첫 전술을 쓴다. 대상은 행동이 정한다.     Ctrl+S  저장     Esc  마을로";
+            ? "조건이 모두 참인 첫 전술을 쓴다. 대상은 행동이 정한다.     Esc  원정으로"
+            : "조건이 모두 참인 첫 전술을 쓴다. 대상은 행동이 정한다.     Ctrl+S  저장     Esc  마을로";
         _ui.Text(batch, _ui.Font(16), help, new Vector2(_bounds.Left + Margin, _bounds.Bottom - FooterHeight + 10), Theme.TextDim);
 
         if (_session.Notice is { } notice)
@@ -1195,7 +1195,10 @@ internal sealed class TacticEditorScene : IScene
 
     // ── 전술 탭 ────────────────────────────────────────────
 
-    private const int SubjectWidth = 150;
+    private const int SubjectWidth = 170;
+
+    /// <summary>조건 빼기(×) 칸. 조건이 하나뿐이어도 자리를 비워 두어 행동 버튼 위치를 맞춘다.</summary>
+    private const int RemoveConditionWidth = 28;
     private const int CompareWidth = 64;
     private const int ValueColumnWidth = 104;
     private const int ActionButtonWidth = 230;
@@ -1241,7 +1244,7 @@ internal sealed class TacticEditorScene : IScene
         header.Margin = new Thickness(9, 0, 0, 0);
         header.Widgets.Add(Label("순위", 13, Theme.TextDim, width: 30));
         header.Widgets.Add(Label("조건 (무엇을 · 이상/이하 · %/수치)", 14, Theme.TextDim, width: SubjectWidth + CompareWidth * 2 + 16));
-        header.Widgets.Add(Label("값", 14, Theme.TextDim, width: ValueColumnWidth));
+        header.Widgets.Add(Label("값", 14, Theme.TextDim, width: ValueColumnWidth + 8 + RemoveConditionWidth));
         header.Widgets.Add(Label("행동 — 눌러서 고르기", 14, Theme.TextDim, width: ActionButtonWidth));
         return header;
     }
@@ -1249,24 +1252,14 @@ internal sealed class TacticEditorScene : IScene
     private Widget BuildTacticRow(PartyMember member, int index)
     {
         var tactic = TacticsOf(member)[index];
-        var row = new HorizontalStackPanel { Spacing = 8 };
+        var conditions = tactic.Conditions;
+        var skills = member.Skills(_data);
+        var granted = member.GrantedActions(_data);
+        var action = _data.Actions.GetValueOrDefault(tactic.ActionId);
+        var usable = action is not null && action.IsUsableBy(granted, skills);
 
-        // 값 입력은 화면을 다시 만들지 않고 바로 반영하므로, 핸들러에서는 항상 현재 전술을 다시 읽는다.
-        Tactic Current() => TacticsOf(member)[index];
-
-        void SetCondition(Condition next)
-        {
-            var current = Current();
-            if (next == current.Condition)
-            {
-                return;
-            }
-
-            var value = TacticText.ValueAfterConditionChange(current.Condition, next, current.Value);
-            TacticsOf(member).Replace(index, next, value, current.ActionId);
-            MarkChanged();
-        }
-
+        // 첫 줄: 순위 · 첫 조건 · 행동 · 순서/삭제
+        var first = new HorizontalStackPanel { Spacing = 8 };
         var badge = new Panel
         {
             Width = 30,
@@ -1277,10 +1270,115 @@ internal sealed class TacticEditorScene : IScene
         var number = Label($"{tactic.Priority}", 17, Theme.BarBack, bold: true);
         number.HorizontalAlignment = HorizontalAlignment.Center;
         badge.Widgets.Add(number);
-        row.Widgets.Add(badge);
+        first.Widgets.Add(badge);
+        AddConditionEditor(first, member, index, 0);
 
-        // 조건: 무엇을 보는가 · 이상/이하 · %/수치
-        var (subject, atLeast, percent) = TacticText.Split(tactic.Condition);
+        // 행동: 누르면 장비별 목록에서 고른다.
+        var (actionIcon, actionColor) = action is null ? ("lock", Theme.Enemy) : GameIcons.Action(action, _data);
+        var actionContent = new HorizontalStackPanel { Spacing = 6 };
+        actionContent.Widgets.Add(_widgets.Icon(usable ? actionIcon : "lock", 22, usable ? actionColor : Theme.Enemy));
+        actionContent.Widgets.Add(Label(usable ? action!.Name : $"(잠김) {action?.Name ?? tactic.ActionId}", 16, usable ? Theme.Text : Theme.Enemy, bold: true));
+        actionContent.Widgets.Add(Label("▾", 14, Theme.TextDim));
+        var actionButton = StyledButton(actionContent, Theme.Button, Theme.ButtonHover);
+        actionButton.Width = ActionButtonWidth;
+        actionButton.Padding = new Thickness(8, 4);
+        actionButton.Click += (_, _) =>
+        {
+            _picking = index;
+            MarkDirty();
+        };
+        first.Widgets.Add(actionButton);
+
+        // 순서 / 삭제
+        first.Widgets.Add(SmallButton("▲", index > 0, () => TacticsOf(member).Move(index, -1)));
+        first.Widgets.Add(SmallButton("▼", index < TacticsOf(member).Count - 1, () => TacticsOf(member).Move(index, 1)));
+        first.Widgets.Add(SmallButton("삭제", true, () => TacticsOf(member).Remove(index), width: 52));
+
+        var block = new VerticalStackPanel
+        {
+            Spacing = 3,
+            Padding = new Thickness(8, 6),
+            Background = new SolidBrush(Theme.BarBack * 0.7f),
+            Border = new SolidBrush(usable ? Theme.PanelBorder : Theme.Enemy),
+            BorderThickness = new Thickness(1),
+        };
+        block.Widgets.Add(first);
+
+        // 더 건 조건: 모두 참이어야 한다.
+        for (var k = 1; k < conditions.Count; k++)
+        {
+            var row = new HorizontalStackPanel { Spacing = 8 };
+            var and = Label("그리고", 12, Theme.Gold, bold: true, width: 30);
+            and.VerticalAlignment = VerticalAlignment.Center;
+            row.Widgets.Add(and);
+            AddConditionEditor(row, member, index, k);
+            block.Widgets.Add(row);
+        }
+
+        // 아래 줄: 조건 더하기 · 이 전술이 하는 일
+        var bottom = new HorizontalStackPanel { Spacing = 8, Margin = new Thickness(38, 0, 0, 0) };
+        if (conditions.Count < Tactic.MaxConditions)
+        {
+            var add = _widgets.TextButton("+ 그리고", Theme.Button, Theme.ButtonHover, size: 13);
+            add.Width = 76;
+            add.VerticalAlignment = VerticalAlignment.Top;
+            add.Click += (_, _) =>
+            {
+                if (TacticsOf(member).AddCondition(index, Condition.Always, 0))
+                {
+                    MarkChanged();
+                }
+            };
+            bottom.Widgets.Add(add);
+        }
+
+        var effectName = EffectName(action);
+        var summary = action is null ? "없는 행동입니다 (데이터에서 지워짐)"
+            : usable ? $"{TacticText.Sentence(tactic, effectName)} → {ActionText.Summary(action, _data, Preview(action))}"
+                + (ActionText.Cost(action, Preview(action)) is { Length: > 0 } cost ? $" · {cost}" : "")
+            : $"잠김: {LockReason(action, granted, skills)}";
+        var note = Label(summary, 13, usable ? Theme.TextDim : Theme.Enemy);
+        note.Wrap = true;
+        note.Width = conditions.Count < Tactic.MaxConditions ? 736 : 820;
+        bottom.Widgets.Add(note);
+        block.Widgets.Add(bottom);
+
+        // 효과를 걸지 않는 행동에 효과 조건을 걸면 그 줄은 쓰이지 않는다.
+        if (action is not null && effectName is null && conditions.Any(c => c.Condition.UsesActionEffect()))
+        {
+            var warning = Label("이 행동은 효과를 걸지 않아 '효과 없음' 조건이 늘 거짓이다. 이 줄은 쓰이지 않는다.", 13, Theme.Enemy);
+            warning.Margin = new Thickness(38, 0, 0, 0);
+            block.Widgets.Add(warning);
+        }
+
+        return block;
+    }
+
+    /// <summary>
+    /// 조건 하나의 편집 칸: 무엇을 보는가 · 이상/이하 · %/수치 · 값 · 빼기.
+    /// 빼기(×)는 조건이 둘 이상일 때만 누를 수 있고, 첫 조건을 빼면 다음 조건이 첫 조건이 된다.
+    /// </summary>
+    private void AddConditionEditor(HorizontalStackPanel row, PartyMember member, int index, int conditionIndex)
+    {
+        var condition = TacticsOf(member)[index].Conditions[conditionIndex];
+
+        // 값 입력은 화면을 다시 만들지 않고 바로 반영하므로, 핸들러에서는 항상 현재 조건을 다시 읽는다.
+        TacticCondition Current() => TacticsOf(member)[index].Conditions[conditionIndex];
+
+        void SetCondition(Condition next)
+        {
+            var current = Current();
+            if (next == current.Condition)
+            {
+                return;
+            }
+
+            var value = TacticText.ValueAfterConditionChange(current.Condition, next, current.Value);
+            TacticsOf(member).SetCondition(index, conditionIndex, next, value);
+            MarkChanged();
+        }
+
+        var (subject, atLeast, percent) = TacticText.Split(condition.Condition);
         var subjectCombo = Combo(TacticText.Subjects.Select(s => (s.Label, s.Color)), subject, SubjectWidth);
         subjectCombo.DropdownMaximumHeight = 470;
         subjectCombo.SelectedIndexChanged += (_, _) =>
@@ -1288,7 +1386,7 @@ internal sealed class TacticEditorScene : IScene
             var next = subjectCombo.SelectedIndex ?? 0;
             var (_, a, p) = TacticText.Split(Current().Condition);
             var key = TacticText.Subjects[next].Key;
-            // HP·MP는 보통 "이하", 적 수는 "이상"으로 시작한다.
+            // HP·MP는 보통 "이하", 수는 "이상"으로 시작한다.
             var hpMp = key.EndsWith("Hp") || key.EndsWith("Mp");
             SetCondition(TacticText.Compose(next, a ?? !hpMp, p ?? true));
         };
@@ -1318,58 +1416,23 @@ internal sealed class TacticEditorScene : IScene
             row.Widgets.Add(new Panel { Width = CompareWidth });
         }
 
-        // 값
-        row.Widgets.Add(TacticText.HasValue(tactic.Condition)
-            ? BuildValueInput(member, index)
+        row.Widgets.Add(TacticText.HasValue(condition.Condition)
+            ? BuildValueInput(member, index, conditionIndex)
             : Label("—", 17, Theme.TextDim, width: ValueColumnWidth));
 
-        // 행동: 누르면 장비별 목록에서 고른다.
-        var skills = member.Skills(_data);
-        var granted = member.GrantedActions(_data);
-        var action = _data.Actions.GetValueOrDefault(tactic.ActionId);
-        var usable = action is not null && action.IsUsableBy(granted, skills);
-        var (actionIcon, actionColor) = action is null ? ("lock", Theme.Enemy) : GameIcons.Action(action, _data);
-        var actionContent = new HorizontalStackPanel { Spacing = 6 };
-        actionContent.Widgets.Add(_widgets.Icon(usable ? actionIcon : "lock", 22, usable ? actionColor : Theme.Enemy));
-        actionContent.Widgets.Add(Label(usable ? action!.Name : $"(잠김) {action?.Name ?? tactic.ActionId}", 16, usable ? Theme.Text : Theme.Enemy, bold: true));
-        actionContent.Widgets.Add(Label("▾", 14, Theme.TextDim));
-        var actionButton = StyledButton(actionContent, Theme.Button, Theme.ButtonHover);
-        actionButton.Width = ActionButtonWidth;
-        actionButton.Padding = new Thickness(8, 4);
-        actionButton.Click += (_, _) =>
+        if (TacticsOf(member)[index].Conditions.Count > 1)
         {
-            _picking = index;
-            MarkDirty();
-        };
-        row.Widgets.Add(actionButton);
-
-        // 순서 / 삭제
-        row.Widgets.Add(SmallButton("▲", index > 0, () => TacticsOf(member).Move(index, -1)));
-        row.Widgets.Add(SmallButton("▼", index < TacticsOf(member).Count - 1, () => TacticsOf(member).Move(index, 1)));
-        row.Widgets.Add(SmallButton("삭제", true, () => TacticsOf(member).Remove(index), width: 52));
-
-        // 둘째 줄: 이 전술이 하는 일
-        var summary = action is null ? "없는 행동입니다 (데이터에서 지워짐)"
-            : usable ? $"{TacticText.Sentence(tactic.Condition, tactic.Value)} → {ActionText.Summary(action, _data, Preview(action))}"
-                + (ActionText.Cost(action, Preview(action)) is { Length: > 0 } cost ? $" · {cost}" : "")
-            : $"잠김: {LockReason(action, granted, skills)}";
-        var note = Label(summary, 13, usable ? Theme.TextDim : Theme.Enemy);
-        note.Wrap = true;
-        note.Width = 820;
-        note.Margin = new Thickness(38, 0, 0, 0);
-
-        var block = new VerticalStackPanel
+            row.Widgets.Add(SmallButton("×", true, () => TacticsOf(member).RemoveCondition(index, conditionIndex), width: RemoveConditionWidth));
+        }
+        else
         {
-            Spacing = 3,
-            Padding = new Thickness(8, 6),
-            Background = new SolidBrush(Theme.BarBack * 0.7f),
-            Border = new SolidBrush(usable ? Theme.PanelBorder : Theme.Enemy),
-            BorderThickness = new Thickness(1),
-        };
-        block.Widgets.Add(row);
-        block.Widgets.Add(note);
-        return block;
+            row.Widgets.Add(new Panel { Width = RemoveConditionWidth });
+        }
     }
+
+    /// <summary>행동이 거는 첫 효과의 이름 (효과 조건의 문장에 쓴다). 효과를 걸지 않으면 null.</summary>
+    private string? EffectName(ActionDefinition? action) =>
+        action?.Applies.FirstOrDefault() is { } applied && _data.Effects.TryGetValue(applied.EffectId, out var effect) ? effect.Name : null;
 
     /// <summary>
     /// 값 입력칸. 정수만 입력할 수 있다(수치 조건은 음수도).
@@ -1377,9 +1440,9 @@ internal sealed class TacticEditorScene : IScene
     /// 올바른 값은 바로 반영하고(화면은 다시 만들지 않는다 — 입력칸 포커스를 지키려고),
     /// 잘못된 값은 빨간색으로 표시하고 반영하지 않는다.
     /// </summary>
-    private Widget BuildValueInput(PartyMember member, int index)
+    private Widget BuildValueInput(PartyMember member, int index, int conditionIndex)
     {
-        var tactic = TacticsOf(member)[index];
+        var tactic = TacticsOf(member)[index].Conditions[conditionIndex];
         var group = new HorizontalStackPanel { Spacing = 6, Width = ValueColumnWidth };
 
         var box = new TextBox
@@ -1408,7 +1471,7 @@ internal sealed class TacticEditorScene : IScene
 
         box.TextChangedByUser += (_, _) =>
         {
-            var current = TacticsOf(member)[index];
+            var current = TacticsOf(member)[index].Conditions[conditionIndex];
             var error = int.TryParse(box.Text, out var value)
                 ? TacticText.ValidationError(current.Condition, value)
                 : "숫자만";
@@ -1427,7 +1490,7 @@ internal sealed class TacticEditorScene : IScene
             hint.TextColor = Theme.TextDim;
             if (value != current.Value)
             {
-                TacticsOf(member).Replace(index, current.Condition, value, current.ActionId);
+                TacticsOf(member).SetCondition(index, conditionIndex, current.Condition, value);
                 MarkChangedInPlace();
             }
         };
@@ -1484,7 +1547,7 @@ internal sealed class TacticEditorScene : IScene
         var head = new HorizontalStackPanel { Spacing = 12 };
         var titles = new VerticalStackPanel { Spacing = 2, Width = PickerWidth - 36 - 130 };
         titles.Widgets.Add(_widgets.Header("tactics", $"{tactic.Priority}순위 전술 · 쓸 행동 고르기", size: 20));
-        titles.Widgets.Add(Label($"조건 \"{TacticText.Sentence(tactic.Condition, tactic.Value)}\"이 맞으면 이 행동을 쓴다. 눌러서 정한다.", 14, Theme.TextDim));
+        titles.Widgets.Add(Label($"조건 \"{TacticText.Sentence(tactic)}\"이 모두 맞으면 이 행동을 쓴다. 눌러서 정한다.", 14, Theme.TextDim));
         head.Widgets.Add(titles);
         var close = TextButton("닫기 (Esc)", Theme.Button, Theme.ButtonHover);
         close.Width = 120;
@@ -1578,7 +1641,7 @@ internal sealed class TacticEditorScene : IScene
             }
 
             var tactic = TacticsOf(member)[index];
-            TacticsOf(member).Replace(index, tactic.Condition, tactic.Value, action.Id);
+            TacticsOf(member).SetAction(index, action.Id);
             _picking = null;
             MarkChanged();
         };

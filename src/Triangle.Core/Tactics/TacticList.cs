@@ -27,9 +27,49 @@ public sealed class TacticList : IReadOnlyList<Tactic>
     public void Add(Condition condition, int value, string actionId) =>
         _tactics.Add(new Tactic(_tactics.Count + 1, condition, value, actionId));
 
-    /// <summary>index 위치의 전술 내용을 바꾼다. 우선순위는 위치를 따른다.</summary>
+    /// <summary>index 위치의 전술을 조건 하나짜리로 바꾼다. 우선순위는 위치를 따른다.</summary>
     public void Replace(int index, Condition condition, int value, string actionId) =>
         _tactics[index] = new Tactic(index + 1, condition, value, actionId);
+
+    /// <summary>행동만 바꾼다. 조건은 그대로 둔다.</summary>
+    public void SetAction(int index, string actionId) =>
+        _tactics[index] = _tactics[index] with { ActionId = actionId };
+
+    /// <summary>index 위치 전술의 conditionIndex번째 조건을 바꾼다 (0이 첫 조건).</summary>
+    public void SetCondition(int index, int conditionIndex, Condition condition, int value)
+    {
+        var conditions = _tactics[index].Conditions.ToList();
+        conditions[conditionIndex] = new TacticCondition(condition, value);
+        _tactics[index] = Tactic.Create(index + 1, conditions, _tactics[index].ActionId);
+    }
+
+    /// <summary>조건을 끝에 더한다 (모두 참이어야 한다). 이미 <see cref="Tactic.MaxConditions"/>개면 false.</summary>
+    public bool AddCondition(int index, Condition condition, int value)
+    {
+        var conditions = _tactics[index].Conditions.ToList();
+        if (conditions.Count >= Tactic.MaxConditions)
+        {
+            return false;
+        }
+
+        conditions.Add(new TacticCondition(condition, value));
+        _tactics[index] = Tactic.Create(index + 1, conditions, _tactics[index].ActionId);
+        return true;
+    }
+
+    /// <summary>조건을 뺀다. 첫 조건을 빼면 다음 조건이 첫 조건이 된다. 하나만 남았으면 빼지 않고 false.</summary>
+    public bool RemoveCondition(int index, int conditionIndex)
+    {
+        var conditions = _tactics[index].Conditions.ToList();
+        if (conditions.Count <= 1)
+        {
+            return false;
+        }
+
+        conditions.RemoveAt(conditionIndex);
+        _tactics[index] = Tactic.Create(index + 1, conditions, _tactics[index].ActionId);
+        return true;
+    }
 
     public void Remove(int index)
     {

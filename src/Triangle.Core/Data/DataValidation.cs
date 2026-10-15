@@ -117,14 +117,27 @@ internal static class DataValidation
             errors.Add($"{at}: unknown action '{tactic.ActionId}'");
         }
 
-        switch (tactic.Condition)
+        if (tactic.Conditions.Count > Tactic.MaxConditions)
         {
-            case Condition.Always:
+            errors.Add($"{at}: at most {Tactic.MaxConditions} conditions, got {tactic.Conditions.Count}");
+        }
+
+        foreach (var (condition, value) in tactic.Conditions)
+        {
+            ValidateCondition(condition, value, at, errors);
+        }
+    }
+
+    private static void ValidateCondition(Condition condition, int value, string at, List<string> errors)
+    {
+        switch (condition)
+        {
+            case var c when !c.HasValue():
                 break;
             case var c when c.IsPercent():
-                if (tactic.Value is < 0 or > 100)
+                if (value is < 0 or > 100)
                 {
-                    errors.Add($"{at}: {tactic.Condition} value must be a percent 0-100, got {tactic.Value}");
+                    errors.Add($"{at}: {condition} value must be a percent 0-100, got {value}");
                 }
 
                 break;
@@ -132,14 +145,14 @@ internal static class DataValidation
                 // 실제 HP·MP 수치: 범위 제한이 없다.
                 break;
             case Condition.EveryNthTurn:
-                if (tactic.Value <= 0)
+                if (value <= 0)
                 {
-                    errors.Add($"{at}: {tactic.Condition} value must be positive, got {tactic.Value}");
+                    errors.Add($"{at}: {condition} value must be positive, got {value}");
                 }
 
                 break;
             default:
-                RequireNonNegative(tactic.Value, $"{at}: {tactic.Condition} value", errors);
+                RequireNonNegative(value, $"{at}: {condition} value", errors);
                 break;
         }
     }

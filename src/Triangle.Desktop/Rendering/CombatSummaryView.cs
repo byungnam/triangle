@@ -170,7 +170,9 @@ internal sealed class CombatSummaryView
             Text(Stats(unit), Theme.Text);
             foreach (var usage in unit.Tactics)
             {
-                var label = $"{TacticText.Describe(usage.Tactic.Condition, usage.Tactic.Value)} → {ActionName(usage.Tactic.ActionId)}";
+                var action = _data.Actions.GetValueOrDefault(usage.Tactic.ActionId);
+                var effect = action?.Applies.FirstOrDefault() is { } applied ? _data.Effects.GetValueOrDefault(applied.EffectId)?.Name : null;
+                var label = $"{TacticText.Sentence(usage.Tactic, effect)} → {action?.Name ?? usage.Tactic.ActionId}";
                 lines.Add(new TacticLine(usage.Tactic.Priority, TextLayout.Truncate(font, label, labelWidth), usage.Used, usage.BlockedTotal));
             }
 
@@ -255,9 +257,7 @@ internal sealed class CombatSummaryView
         WaitReason.NotEnoughResource => "자원 부족",
         WaitReason.NoTarget => "대상 없음",
         WaitReason.Stunned => "기절",
-        WaitReason.AlreadyUsed => "이미 쓴 행동",
         _ => "맞는 전술 없음",
     };
 
-    private string ActionName(string actionId) => _data.Actions.TryGetValue(actionId, out var action) ? action.Name : actionId;
 }

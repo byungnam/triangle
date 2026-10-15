@@ -217,11 +217,33 @@ public class ActionMechanicsTests
     }
 
     [Fact]
-    public void Once_per_battle_actions_wait_after_use()
+    public void Once_per_battle_actions_are_skipped_after_use()
     {
-        var result = Run([Unit("a", actions: "once")], [Unit("e", vital: 1000)], maxActions: 6);
-        Assert.Single(Of<ActionUsed>(result), u => u.ActorId == "a");
-        Assert.Contains(Of<Waited>(result), w => w is { ActorId: "a", Reason: WaitReason.AlreadyUsed });
+        // 쓴 뒤로는 그 줄을 건너뛰고 다음 줄을 쓴다 (2026-10-15 전에는 차례마다 차례를 잃었다).
+        var result = Run([Unit("a", actions: ["once", "hit"])], [Unit("e", vital: 1000)], maxActions: 6);
+        var used = Of<ActionUsed>(result).Where(u => u.ActorId == "a").Select(u => u.ActionId).ToList();
+        Assert.Equal("once", used[0]);
+        Assert.All(used.Skip(1), a => Assert.Equal("hit", a));
+        Assert.DoesNotContain(Of<Waited>(result), w => w.ActorId == "a");
+
+        // 다음 줄이 없으면 맞는 전술이 없어 기다린다.
+        var alone = Run([Unit("a", actions: "once")], [Unit("e", vital: 1000)], maxActions: 6);
+        Assert.Single(Of<ActionUsed>(alone), u => u.ActorId == "a");
+        Assert.All(Of<Waited>(alone).Where(w => w.ActorId == "a"), w => Assert.Equal(WaitReason.NoMatchingTactic, w.Reason));
+    }
+
+    [Fact]
+    public void A_chant_counts_as_one_use_for_max_uses()
+    {
+        // "최대 1회 → 영창 3번" 줄이 영창 도중 끊기지 않고 끝까지 간다. 끝난 뒤에는 다시 쓰지 않는다.
+        var caster = Unit("a", vital: 1000) with { Tactics = [Once("big_spell"), new Tactic(2, Condition.Always, 0, "hit")] };
+        var result = Run([caster], [Unit("e", vital: 1000)], maxActions: 16);
+
+        Assert.Equal([1, 2, 3], Of<Chanting>(result).Where(c => c.ActorId == "a").Select(c => c.Count));
+        Assert.DoesNotContain(Of<ChantBroken>(result), b => b.ActorId == "a");
+        var used = Of<ActionUsed>(result).Where(u => u.ActorId == "a").Select(u => u.ActionId).ToList();
+        Assert.Equal(["big_spell", "big_spell", "big_spell"], used.Take(3));
+        Assert.All(used.Skip(3), a => Assert.Equal("hit", a));
     }
 
     [Fact]

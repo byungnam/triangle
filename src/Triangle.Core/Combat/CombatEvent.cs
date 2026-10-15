@@ -18,9 +18,6 @@ public enum WaitReason
 
     /// <summary>기절해서 행동하지 못한다.</summary>
     Stunned,
-
-    /// <summary>전투당 한 번인 행동을 이미 썼다.</summary>
-    AlreadyUsed,
 }
 
 /// <summary>행동하지 못하고 턴을 넘겼다. <paramref name="TacticPriority"/>는 선택됐지만 실패한 전술이다.</summary>

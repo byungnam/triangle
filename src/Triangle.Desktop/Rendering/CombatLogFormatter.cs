@@ -25,7 +25,6 @@ internal sealed class CombatLogFormatter(
             WaitReason.NotEnoughResource => $"{EunNeun(Name(w.ActorId))} 자원이 부족해 행동하지 못했다.",
             WaitReason.NoTarget => $"{EunNeun(Name(w.ActorId))} 대상이 없어 행동하지 못했다.",
             WaitReason.Stunned => $"{EunNeun(Name(w.ActorId))} 기절해 행동하지 못했다.",
-            WaitReason.AlreadyUsed => $"{EunNeun(Name(w.ActorId))} 이미 쓴 행동이라 기다린다.",
             _ => $"{EunNeun(Name(w.ActorId))} 기다린다.",
         }, Theme.TextDim),
 

@@ -12,7 +12,7 @@ namespace Triangle.Core.Combat;
 /// <remarks>
 /// 행동 순서는 ATB 방식이다. 다음 행동 시각이 가장 이른 유닛이 행동하고,
 /// 행동 후 (행동의 delay, 없으면 TimeConstant) / speed 만큼(스킬의 대기 감소 적용) 뒤로 밀린다.
-/// 턴이 오면 전술을 우선순위 순으로 훑어 조건이 참인 첫 전술의 행동을 쓴다.
+/// 턴이 오면 전술을 우선순위 순으로 훑어 조건이 모두 참인 첫 전술의 행동을 쓴다.
 /// 그 행동의 비용을 낼 수 없거나 대상이 없으면 턴을 잃는다.
 /// 스킬과 장비는 패시브 보너스(위력, 회복, MP 소모, 대기, 최대 HP/MP, 받는 피해, 방어)로만 작용한다.
 /// </remarks>
@@ -308,29 +308,35 @@ public sealed class CombatSimulator
 
     // ── 전술 ───────────────────────────────────────────────
 
-    private sealed record Plan(Tactic Tactic, ActionDefinition Action, IReadOnlyList<Combatant> Targets);
+    private sealed record Plan(Tactic Tactic, int TacticIndex, ActionDefinition Action, IReadOnlyList<Combatant> Targets);
 
     /// <summary>
-    /// 조건이 참인 첫 전술을 고른다. 그 전술의 비용을 낼 수 없거나 대상이 없으면
+    /// 조건이 모두 참인 첫 전술을 고른다. 그 전술의 비용을 낼 수 없거나 대상이 없으면
     /// 다음 전술로 넘어가지 않고 턴을 잃는다 (레거시 동작).
+    /// 이미 쓴 전투당 한 번인 행동의 전술은 조건이 거짓인 것처럼 건너뛴다(2026-10-15).
     /// </summary>
     private (Plan? Plan, Waited? Waited) ChooseAction(Combatant actor)
     {
         for (var i = 0; i < actor.Tactics.Count; i++)
         {
             var tactic = actor.Tactics[i];
-            if (!ConditionHolds(actor, i, tactic))
+            var action = _catalog.Actions[tactic.ActionId];
+            if (action.OncePerBattle && actor.UsedOnce.Contains(action.Id))
+            {
+                continue;
+            }
+
+            // 이 전술로 시작한 영창을 이어 가는 차례는 같은 1회다: 최대 횟수를 다시 세지 않는다.
+            var continuingChant = actor.ChantActionId == action.Id && actor.ChantTactic == i;
+            if (!tactic.Conditions.All(c => ConditionHolds(actor, i, c, action, continuingChant)))
             {
                 continue;
             }
 
             // 레거시와 같이 조건이 참으로 판정된 시점에 센다. 이후 턴을 잃어도 1회로 친다.
-            actor.AddUse(i);
-
-            var action = _catalog.Actions[tactic.ActionId];
-            if (action.OncePerBattle && actor.UsedOnce.Contains(action.Id))
+            if (!continuingChant)
             {
-                return (null, new Waited(actor.Id, WaitReason.AlreadyUsed, tactic.Priority));
+                actor.AddUse(i);
             }
 
             if (!CanPay(actor, action))
@@ -344,30 +350,36 @@ public sealed class CombatSimulator
                 return (null, new Waited(actor.Id, WaitReason.NoTarget, tactic.Priority));
             }
 
-            return (new Plan(tactic, action, targets), null);
+            return (new Plan(tactic, i, action, targets), null);
         }
 
         return (null, new Waited(actor.Id, WaitReason.NoMatchingTactic, null));
     }
 
-    private bool ConditionHolds(Combatant actor, int tacticIndex, Tactic tactic)
+    /// <param name="continuingChant">이 전술로 시작한 영창을 이어 가는 차례 (그 영창은 이미 1회로 셌다).</param>
+    private bool ConditionHolds(Combatant actor, int tacticIndex, TacticCondition condition, ActionDefinition action, bool continuingChant)
     {
-        var percent = tactic.Value;
-        var amount = tactic.Value;
+        var value = condition.Value;
+        var percent = value;
+        var amount = value;
         var allies = Living(actor.Side).ToList();
         var enemySide = Opposite(actor.Side);
+        var enemies = Living(enemySide).ToList();
 
-        int Enemies(Func<Combatant, bool> match) => _combatants.Count(c => c.Side == enemySide && match(c));
-        int Alive() => Enemies(c => c.IsAlive);
-        int Dead() => Enemies(c => !c.IsAlive && !c.Dismissed); // 지속 시간이 끝나 사라진 소환물은 쓰러진 것이 아니다
-        int InRow(Row row) => Enemies(c => c.IsAlive && c.Row == row);
+        // 쓰러진 수: 지속 시간이 끝나 사라진 소환물은 쓰러진 것이 아니다.
+        int Down(CombatSide side) => _combatants.Count(c => c.Side == side && !c.IsAlive && !c.Dismissed);
+        int InRow(Row row) => enemies.Count(c => c.Row == row);
+
+        // 행동이 거는 첫 효과 (효과 조건용). 효과를 걸지 않는 행동이면 효과 조건은 늘 거짓이다.
+        var effectId = action.Applies.FirstOrDefault()?.EffectId;
+        bool Lacks(Combatant c) => effectId is not null && !c.HasEffect(d => d.Id == effectId);
 
         int Hp(Combatant c) => Ratio.CompareToPercent(c.Hp, c.MaxHp, percent);
         int Mp(Combatant c) => Ratio.CompareToPercent(c.Mp, c.MaxMp, percent);
         int AverageHp() => Ratio.CompareAverageToPercent(allies.Select(a => (a.Hp, a.MaxHp)).ToList(), percent);
         int AverageMp() => Ratio.CompareAverageToPercent(allies.Select(a => (a.Mp, a.MaxMp)).ToList(), percent);
 
-        return tactic.Condition switch
+        return condition.Condition switch
         {
             Condition.Always => true,
 
@@ -386,11 +398,11 @@ public sealed class CombatSimulator
             Condition.AllyAverageMpAtLeast => AverageMp() >= 0,
             Condition.AllyAverageMpAtMost => AverageMp() <= 0,
 
-            Condition.MaxUses => actor.GetUses(tacticIndex) < tactic.Value,
-            Condition.FromTurn => actor.TurnCount >= tactic.Value,
-            Condition.UntilTurn => actor.TurnCount <= tactic.Value,
-            Condition.OnTurn => actor.TurnCount == tactic.Value,
-            Condition.EveryNthTurn => tactic.Value > 0 && actor.TurnCount % tactic.Value == 0,
+            Condition.MaxUses => actor.GetUses(tacticIndex) - (continuingChant ? 1 : 0) < value,
+            Condition.FromTurn => actor.TurnCount >= value,
+            Condition.UntilTurn => actor.TurnCount <= value,
+            Condition.OnTurn => actor.TurnCount == value,
+            Condition.EveryNthTurn => value > 0 && actor.TurnCount % value == 0,
 
             Condition.SelfHpAmountAtLeast => actor.Hp >= amount,
             Condition.SelfHpAmountAtMost => actor.Hp <= amount,
@@ -408,16 +420,29 @@ public sealed class CombatSimulator
             Condition.AllyAverageMpAmountAtLeast => allies.Sum(a => (long)a.Mp) >= (long)amount * allies.Count,
             Condition.AllyAverageMpAmountAtMost => allies.Sum(a => (long)a.Mp) <= (long)amount * allies.Count,
 
-            Condition.EnemyAliveAtLeast => Alive() >= tactic.Value,
-            Condition.EnemyAliveAtMost => Alive() <= tactic.Value,
-            Condition.EnemyDeadAtLeast => Dead() >= tactic.Value,
-            Condition.EnemyDeadAtMost => Dead() <= tactic.Value,
-            Condition.EnemyFrontAtLeast => InRow(Row.Front) >= tactic.Value,
-            Condition.EnemyFrontAtMost => InRow(Row.Front) <= tactic.Value,
-            Condition.EnemyBackAtLeast => InRow(Row.Back) >= tactic.Value,
-            Condition.EnemyBackAtMost => InRow(Row.Back) <= tactic.Value,
+            Condition.EnemyAliveAtLeast => enemies.Count >= value,
+            Condition.EnemyAliveAtMost => enemies.Count <= value,
+            Condition.EnemyDeadAtLeast => Down(enemySide) >= value,
+            Condition.EnemyDeadAtMost => Down(enemySide) <= value,
+            Condition.EnemyFrontAtLeast => InRow(Row.Front) >= value,
+            Condition.EnemyFrontAtMost => InRow(Row.Front) <= value,
+            Condition.EnemyBackAtLeast => InRow(Row.Back) >= value,
+            Condition.EnemyBackAtMost => InRow(Row.Back) <= value,
 
-            _ => throw new InvalidOperationException($"Unknown condition {tactic.Condition}."),
+            Condition.AnyEnemyHpAtLeast => enemies.Any(e => Hp(e) >= 0),
+            Condition.AnyEnemyHpAtMost => enemies.Any(e => Hp(e) <= 0),
+            Condition.AnyEnemyHpAmountAtLeast => enemies.Any(e => e.Hp >= amount),
+            Condition.AnyEnemyHpAmountAtMost => enemies.Any(e => e.Hp <= amount),
+
+            Condition.AllyDownAtLeast => Down(actor.Side) >= value,
+            Condition.AllyDownAtMost => Down(actor.Side) <= value,
+
+            Condition.SelfLacksActionEffect => Lacks(actor),
+            Condition.AnyAllyLacksActionEffect => allies.Any(Lacks),
+            Condition.AnyEnemyLacksActionEffect => enemies.Any(Lacks),
+            Condition.AnyAllyHasDebuff => allies.Any(a => a.HasEffect(d => d.Kind == EffectKind.Debuff)),
+
+            _ => throw new InvalidOperationException($"Unknown condition {condition.Condition}."),
         };
     }
 
@@ -509,6 +534,7 @@ public sealed class CombatSimulator
         if (action.Chant > 1)
         {
             actor.ChantActionId = action.Id;
+            actor.ChantTactic = plan.TacticIndex;
             actor.ChantCount++;
             _events.Add(new Chanting(actor.Id, action.Id, actor.ChantCount, action.Chant));
             if (actor.ChantCount < action.Chant)

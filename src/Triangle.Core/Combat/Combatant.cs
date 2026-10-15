@@ -86,14 +86,16 @@ public sealed class Combatant
     /// <summary>소환 유닛의 남은 행동 횟수. null이면 전투 끝까지.</summary>
     internal int? SummonRemaining { get; set; }
 
-    /// <summary>영창 중인 행동과 지금까지 한 횟수.</summary>
+    /// <summary>영창 중인 행동과 지금까지 한 횟수, 그 영창을 이어 가는 전술(순서 번호, 0부터).</summary>
     internal string? ChantActionId { get; set; }
     internal int ChantCount { get; set; }
+    internal int ChantTactic { get; set; } = -1;
 
     internal void ResetChant()
     {
         ChantActionId = null;
         ChantCount = 0;
+        ChantTactic = -1;
     }
 
     /// <summary>전투당 한 번인 행동 중 이미 쓴 것.</summary>

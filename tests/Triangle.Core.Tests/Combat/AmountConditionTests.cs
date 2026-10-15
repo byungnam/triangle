@@ -82,10 +82,14 @@ public class AmountConditionTests
     {
         foreach (var condition in Enum.GetValues<Condition>())
         {
-            Assert.False(condition.IsPercent() && condition.IsAmount(), condition.ToString());
+            var kinds = new[] { condition.IsPercent(), condition.IsAmount(), condition.IsEnemyCount(), condition.IsAllyCount() }.Count(k => k);
+            Assert.True(kinds <= 1, condition.ToString());
+            Assert.True(condition.HasValue() || kinds == 0, condition.ToString()); // 값이 없는 조건은 값 종류도 없다
         }
 
-        Assert.Equal(12, Enum.GetValues<Condition>().Count(c => c.IsPercent()));
-        Assert.Equal(12, Enum.GetValues<Condition>().Count(c => c.IsAmount()));
+        Assert.Equal(14, Enum.GetValues<Condition>().Count(c => c.IsPercent()));
+        Assert.Equal(14, Enum.GetValues<Condition>().Count(c => c.IsAmount()));
+        Assert.Equal(2, Enum.GetValues<Condition>().Count(c => c.IsAllyCount()));
+        Assert.Equal(5, Enum.GetValues<Condition>().Count(c => !c.HasValue()));
     }
 }

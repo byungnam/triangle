@@ -152,7 +152,7 @@ public class TriangleGame : Game
         var loaded = store.Load(data, () => StartingCompany.Create(data, Random.Shared.Next()));
         _session = new GameSession(data, loaded.Company, store) { Notice = LoadNotice(loaded) };
 
-        _village = new VillageScene(_ui, Session, Bounds, OpenEditor, OpenRecruit, OpenShop, OpenCraft, OpenExploration, Depart, ConfirmedExit);
+        _village = new VillageScene(_ui, Session, Bounds, OpenEditor, OpenRecruit, OpenShop, OpenCraft, OpenExploration, OpenInfirmary, Depart, ConfirmedExit);
         _expedition = new ExpeditionScene(_ui, Session, Bounds, NextBattle);
         _editor = new TacticEditorScene(_ui, Session, Bounds, OpenTraining, ShowHome);
 
@@ -163,8 +163,10 @@ public class TriangleGame : Game
                 return _editor;
             case ["shop"]:
                 return new ShopScene(_ui, Session, Bounds, back: ShowHome);
+            case ["infirmary"]:
+                return new InfirmaryScene(_ui, Session, Bounds, back: ShowHome);
             case ["training"]:
-                return new MasteryScene(_ui, Data, Company.Roster[0], Bounds, back: OpenEditor, changed: Session.MarkChanged);
+                return new MasteryScene(_ui, Session, Company.Roster[0], Bounds, back: OpenEditor);
         }
 
         if (_options.StartInExploration)
@@ -226,7 +228,7 @@ public class TriangleGame : Game
     }
 
     private void OpenTraining(PartyMember member) =>
-        _scene = new MasteryScene(_ui, Data, member, Bounds, back: OpenEditor, changed: Session.MarkChanged);
+        _scene = new MasteryScene(_ui, Session, member, Bounds, back: OpenEditor);
 
     private void OpenRecruit() => _scene = new RecruitScene(_ui, Session, Bounds, back: ShowHome);
 
@@ -235,6 +237,8 @@ public class TriangleGame : Game
     private void OpenExploration() => _scene = new ExplorationScene(_ui, Session, Bounds, back: ShowHome);
 
     private void OpenCraft() => _scene = new CraftScene(_ui, Session, Bounds, back: ShowHome);
+
+    private void OpenInfirmary() => _scene = new InfirmaryScene(_ui, Session, Bounds, back: ShowHome);
 
     /// <summary>출정한다. 원정 상태를 바로 저장한다.</summary>
     private void Depart(string zoneId)
@@ -268,6 +272,7 @@ public class TriangleGame : Game
         {
             var (text, color) = ExpeditionText.Summary(Data, summary);
             lines.Add(new LogLine(text, color));
+            lines.AddRange(ExpeditionText.Injuries(summary));
             lines.AddRange(ExpeditionText.Clear(Data, summary));
             Session.Notice = (text, color);
         }

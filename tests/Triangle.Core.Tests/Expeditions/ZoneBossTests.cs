@@ -93,6 +93,7 @@ public class ZoneBossTests
         Assert.False(company.HasCleared("outer"));
         Assert.NotNull(ExpeditionRules.WhyCannotStart(company, Data, "middle"));
 
+        company.HealInjured(company.Roster, 9); // 쓰러져 다친 a를 낫게 한다 (부상은 VillageTests에서 본다)
         ClearOuter(company, ("a", 50));
 
         Assert.Null(ExpeditionRules.WhyCannotStart(company, Data, "middle"));
@@ -116,6 +117,7 @@ public class ZoneBossTests
 
         // 강철 검을 든 b를 빼고 a 혼자 쓰러지지 않고 클리어하면: 인원·등급·쓰러짐 기록이 모두 좋아진다. 보스 보상은 없다.
         company.RemoveFromLineup("b");
+        company.HealInjured(company.Roster, 9); // 첫 클리어에서 쓰러져 다친 a를 낫게 한다
         var second = ClearOuter(company, ("a", 50));
 
         Assert.False(second.Clear!.FirstClear);

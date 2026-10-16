@@ -150,7 +150,7 @@ internal sealed class ExpeditionScene : IScene
         var items = Expedition.CarriedItems.Count == 0 ? "아이템 없음" : ExpeditionText.Items(data, Expedition.CarriedItems);
         _ui.Text(batch, _ui.Font(17), items, new Vector2(x, y), Theme.Text);
         y += 28;
-        _ui.Text(batch, _ui.Font(15), "원정이 끝나면 확정됩니다. 전멸해도 이미 얻은 것은 남습니다.", new Vector2(x, y), Theme.TextDim);
+        _ui.Text(batch, _ui.Font(15), "원정이 끝나면 확정됩니다. 전멸하면 그 전투의 보상은 없지만 이미 얻은 것은 남습니다.", new Vector2(x, y), Theme.TextDim);
         y += 40;
 
         _ui.Fill(batch, new Rectangle(x, y, area.Width - 32, 1), Theme.PanelBorder);

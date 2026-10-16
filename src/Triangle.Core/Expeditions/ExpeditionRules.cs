@@ -44,6 +44,12 @@ public static class ExpeditionRules
             return "출전 명단이 비어 있습니다";
         }
 
+        var injured = company.LineupMembers.Where(m => m.Injured).ToList();
+        if (injured.Count > 0)
+        {
+            return $"다친 멤버는 출전할 수 없습니다: {string.Join(", ", injured.Select(m => $"{m.Name}(부상 {m.Injury})"))}";
+        }
+
         return company.WhyLineupCannotFight(data);
     }
 
@@ -156,7 +162,8 @@ public static class ExpeditionRules
             }
         }
 
-        var xp = GrantMasteryXp(company, result);
+        // 전멸한 전투는 아무 보상도 없다: 전리품(이기지 못했으므로)도 숙련 경험치도 없다 (2026-10-16).
+        var xp = result.Outcome == CombatOutcome.Defeat ? [] : GrantMasteryXp(company, result);
         var firstMeet = company.RecordEncounter(encounterId, result.Outcome == CombatOutcome.Victory);
 
         var gold = 0;
@@ -232,8 +239,9 @@ public static class ExpeditionRules
         company.Expedition is { } e && e.BattleIndex < data.Zones[e.ZoneId].MaxBattles && e.Standing.Any();
 
     /// <summary>
-    /// 원정을 끝낸다: 전리품을 창고와 골드로 확정한다(전멸해도 이미 얻은 것은 남는다). 쓰러진 멤버는
-    /// 원정 상태와 함께 HP가 사라지므로 저절로 회복한다(다음 출정에서 가득 찬다). 모집 후보를 새로 굴린다.
+    /// 원정을 끝낸다: 전리품을 창고와 골드로 확정한다(전멸해도 앞선 전투에서 얻은 것은 남는다).
+    /// 원정에 나가지 않은 다친 멤버는 <see cref="Company.ExpeditionRecovery"/>단계 낫고, 이번 원정에서 쓰러진 멤버는
+    /// 그 지역 난이도만큼 다친다(2026-10-16). HP·MP는 원정 상태와 함께 사라지므로 다음 출정에서 가득 찬다. 모집 후보를 새로 굴린다.
     /// </summary>
     private static ExpeditionSummary Finish(Company company, GameData data, ExpeditionEnd end)
     {
@@ -244,6 +252,17 @@ public static class ExpeditionRules
             company.AddToStash(item, count);
         }
 
+        var participants = expedition.Members.Select(m => m.Id).ToHashSet();
+        var recovered = company.HealInjured(company.Roster.Where(m => !participants.Contains(m.Id)), company.ExpeditionRecovery);
+        var steps = Math.Max(1, data.Zones[expedition.ZoneId].Difficulty);
+        var injuries = new List<InjuryReport>();
+        foreach (var down in expedition.Members.Where(m => m.Down))
+        {
+            var member = company.Member(down.Id);
+            member.Injure(steps);
+            injuries.Add(new InjuryReport(member.Id, member.Name, member.Injury));
+        }
+
         company.Expedition = null;
         company.RerollRecruits(data);
         return new ExpeditionSummary(
@@ -251,7 +270,11 @@ public static class ExpeditionRules
             end,
             expedition.BattleIndex,
             expedition.CarriedGold,
-            new Dictionary<string, int>(expedition.CarriedItems));
+            new Dictionary<string, int>(expedition.CarriedItems))
+        {
+            Injuries = injuries,
+            Recovered = recovered.Select(m => m.Name).ToList(),
+        };
     }
 
     /// <summary>주무기 계열, (주무기와 다르면) 보조 계열, 입은 방어구 재질 숙련에 경험치를 더한다.</summary>

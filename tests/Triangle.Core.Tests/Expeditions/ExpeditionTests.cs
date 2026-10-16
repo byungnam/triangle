@@ -50,7 +50,8 @@ public class ExpeditionTests
             "encounters": [ { "encounterId": "dummy", "weight": 1 }, { "encounterId": "wall", "weight": 3 } ] },
           { "id": "vault", "name": "보물고", "maxBattles": 3, "encounters": [ { "encounterId": "dummy", "weight": 1 } ],
             "rewards": { "equipmentDrop": { "chance": 100, "minTier": 2, "maxTier": 2 } } },
-          { "id": "arena", "name": "투기장", "maxBattles": 3, "encounters": [ { "encounterId": "brute", "weight": 1 } ] } ]
+          { "id": "arena", "name": "투기장", "maxBattles": 3, "encounters": [ { "encounterId": "brute", "weight": 1 } ] },
+          { "id": "deep", "name": "심연", "difficulty": 3, "maxBattles": 3, "encounters": [ { "encounterId": "dummy", "weight": 1 } ] } ]
         """,
         recruitsJson: """
         [ { "id": "rookie", "name": "신입", "names": [ "가", "나", "다" ], "row": "Front",
@@ -153,7 +154,7 @@ public class ExpeditionTests
     }
 
     [Fact]
-    public void Downed_members_sit_out_the_rest_and_recover_with_their_gear_when_it_ends()
+    public void Downed_members_sit_out_the_rest_and_come_back_injured()
     {
         var company = NewCompany();
         ExpeditionRules.Start(company, Data, "forest");
@@ -172,21 +173,59 @@ public class ExpeditionTests
         Assert.Equal(2, company.Roster.Count);
         Assert.Equal(["a", "b"], company.Lineup);
         Assert.Equal(FullGear, company.Member("a").Equipment);
+
+        // 클리어했어도 쓰러진 멤버는 다친다 (난이도가 없는 지역은 1단계). 다 나을 때까지 출정할 수 없다.
+        Assert.Equal(new InjuryReport("a", "A", 1), Assert.Single(summary.Injuries));
+        Assert.Equal(1, company.Member("a").Injury);
+        Assert.False(company.Member("b").Injured);
+        Assert.Equal("다친 멤버는 출전할 수 없습니다: A(부상 1)", ExpeditionRules.WhyCannotStart(company, Data, "forest"));
+
+        // b만 다녀오면 나가지 않은 a가 낫는다. 다음 출정은 HP·MP가 가득 찬 상태로 시작한다.
+        company.RemoveFromLineup("a");
+        ExpeditionRules.Start(company, Data, "forest");
+        summary = ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Draw, company, ("b", 100, 10)));
+        Assert.Equal(["A"], summary!.Recovered);
+        Assert.False(company.Member("a").Injured);
+        company.AddToLineup("a");
         var next = ExpeditionRules.Start(company, Data, "forest");
         Assert.All(next.Members, m => Assert.False(m.Down));
         Assert.Equal(MaxHp(company.Member("a")), next.MemberState("a")!.Hp);
     }
 
     [Fact]
-    public void Mastery_xp_is_granted_every_battle_even_if_the_expedition_is_lost()
+    public void Injury_lasts_as_many_steps_as_the_zone_difficulty()
+    {
+        var company = NewCompany();
+        ExpeditionRules.Start(company, Data, "deep");
+        ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("a", 0, 0), ("b", 100, 10)));
+        ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Draw, company, ("b", 100, 10)));
+        Assert.Equal(3, company.Member("a").Injury);
+
+        // 다시 다치면 더 긴 쪽이 남는다: 3단계 부상 중에 1단계 부상을 입어도 3이다.
+        company.Member("a").Injure(1);
+        Assert.Equal(3, company.Member("a").Injury);
+
+        company.RemoveFromLineup("a");
+        for (var expected = 2; expected >= 0; expected--)
+        {
+            ExpeditionRules.Start(company, Data, "forest");
+            ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Draw, company, ("b", 100, 10)));
+            Assert.Equal(expected, company.Member("a").Injury);
+        }
+    }
+
+    [Fact]
+    public void A_wiped_battle_gives_no_mastery_xp_but_earlier_battles_keep_theirs()
     {
         var company = NewCompany();
         ExpeditionRules.Start(company, Data, "forest");
+        ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("a", 50, 5), ("b", 50, 5)));
+        Assert.Equal(100, company.Member("a").MasteryXp["sword"]);
 
         ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Defeat, company, ("a", 0, 0), ("b", 0, 0)));
 
-        Assert.Equal(30, company.Member("a").MasteryXp["sword"]);
-        Assert.Equal(30, company.Member("b").MasteryXp["plate"]);
+        Assert.Equal(100, company.Member("a").MasteryXp["sword"]);
+        Assert.Equal(100, company.Member("b").MasteryXp["plate"]);
     }
 
     [Fact]
@@ -235,7 +274,7 @@ public class ExpeditionTests
     }
 
     [Fact]
-    public void Wipe_ends_the_expedition_but_keeps_loot_members_and_gear()
+    public void Wipe_ends_the_expedition_keeps_earlier_loot_and_gear_and_injures_everyone()
     {
         var company = NewCompany(gold: 7);
         ExpeditionRules.Start(company, Data, "forest");
@@ -249,6 +288,12 @@ public class ExpeditionTests
         Assert.Equal(1, company.StashCount("plate_armor"));
         Assert.Equal(["a", "b"], company.Lineup);
         Assert.All(company.Roster, m => Assert.Equal(FullGear, m.Equipment));
+
+        // 모두 쓰러졌으므로 모두 다친다. 나갈 사람이 없으면 마을에서 쉬어 낫는다 (골드 40 × 2명).
+        Assert.All(company.Roster, m => Assert.Equal(1, m.Injury));
+        Assert.Equal(80, company.RestCost);
+        Assert.Equal(2, company.Rest().Count);
+        Assert.Equal(0, company.Gold); // 17골드밖에 없어 가진 골드를 모두 냈다
 
         // 다음 출정은 HP·MP가 가득 찬 상태로 시작한다.
         var next = ExpeditionRules.Start(company, Data, "forest");

@@ -188,6 +188,35 @@ public sealed class SaveGameTests : IDisposable
     }
 
     [Fact]
+    public void Injuries_and_facilities_round_trip()
+    {
+        var company = SampleCompany();
+        company.Member("c").Injure(2);
+        company.Gold = 1000;
+        company.Upgrade(Facilities.Infirmary);
+
+        var json = SaveGame.Serialize(company);
+        var loaded = SaveGame.Deserialize(json, Data);
+
+        Assert.Equal(2, loaded.Member("c").Injury);
+        Assert.Equal(0, loaded.Member("a").Injury);
+        Assert.Equal(1, loaded.FacilityLevel(Facilities.Infirmary));
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(json, "\"injury\"")); // 다치지 않은 멤버는 쓰지 않는다
+    }
+
+    [Fact]
+    public void Rejects_bad_facilities_and_injuries()
+    {
+        var e = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(
+            Save(Member(""", "injury": -1"""), extra: """, "facilities": { "tavern": 1, "infirmary": 9 }"""),
+            Data));
+
+        Assert.Contains(e.Errors, x => x.Contains("facilities has unknown facility 'tavern'"));
+        Assert.Contains(e.Errors, x => x.Contains("facility 'infirmary' level must be 1-3, got 9"));
+        Assert.Contains(e.Errors, x => x.Contains("injury must not be negative"));
+    }
+
+    [Fact]
     public void Clear_records_round_trip()
     {
         var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
@@ -412,6 +441,13 @@ public sealed class SaveGameTests : IDisposable
         Assert.Contains($"save expedition: lineup member '{lineup[0]}' is not on the expedition", errors);
         Assert.Contains($"save expedition member '{lineup[1]}': mp must not be negative, got -1", errors);
         Assert.Contains("save expedition: carries unknown item 'ghost_item'", errors);
+
+        // 다친 멤버는 원정에 나가 있을 수 없다.
+        var company = StartingCompany.Create(data, seed: 1);
+        ExpeditionRules.Start(company, data, zone.Id);
+        company.Member(lineup[0]).Injure(1);
+        errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(SaveGame.Serialize(company), data)).Errors;
+        Assert.Contains($"save expedition: member '{lineup[0]}' is injured", errors);
 
         var unknownZone = json.Replace("\"version\"", """ "expedition": { "zoneId": "nowhere", "seed": 1, "battleIndex": 0, "members": [] }, "version" """);
         errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(unknownZone, data)).Errors;

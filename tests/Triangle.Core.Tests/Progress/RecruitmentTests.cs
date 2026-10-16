@@ -49,7 +49,9 @@ public class RecruitmentTests
         Assert.Equal(2, company.RecruitOffers.Count);
         Assert.Equal((offer.Name, offer.Stats, template.Row), (hired.Name, hired.Stats, template.Row));
         Assert.Equal(template.Equipment, hired.Equipment);
-        Assert.Empty(company.Stash); // 창고에서 빼지 않는다
+        Assert.All(hired.Gear.Values, g => Assert.Equal(Data.Items[g.ItemId].Tier, g.Level)); // 새 장비, 아이템 레벨은 티어
+        Assert.Equal(company.Roster.SelectMany(m => m.Gear.Values).Count(), company.Roster.SelectMany(m => m.Gear.Values).DistinctBy(g => g.Uid).Count());
+        Assert.Equal(0, company.StashTotal); // 창고에서 빼지 않는다
         Assert.Empty(hired.MasteryXp);
         Assert.Empty(hired.SkillLevels);
         Assert.Equal(3, hired.TacticSets.Count); // 모든 세트를 템플릿 전술로 시작한다
@@ -94,7 +96,7 @@ public class RecruitmentTests
     {
         foreach (var template in Data.Recruits.Values)
         {
-            var member = new PartyMember("r", "r", template.StatsMin, template.Row, template.Equipment,
+            var member = new PartyMember("r", "r", template.StatsMin, template.Row, TestGear.Pieces(template.Equipment),
                 new Dictionary<string, int>(), new Dictionary<string, int>(), [template.Tactics]);
             Assert.Empty(member.LockedTacticIndexes(Data, 0));
             Assert.Contains(template.Tactics, t => t.Condition == Condition.Always);

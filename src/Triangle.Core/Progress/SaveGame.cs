@@ -33,8 +33,14 @@ public sealed record SaveFile
 
     public int Gold { get; init; }
 
-    /// <summary>창고: 아이템 ID별 개수.</summary>
-    public IReadOnlyDictionary<string, int> Stash { get; init; } = new Dictionary<string, int>();
+    /// <summary>창고의 재료: 아이템 ID별 개수.</summary>
+    public IReadOnlyDictionary<string, int> Materials { get; init; } = new Dictionary<string, int>();
+
+    /// <summary>창고의 장비 (한 점씩).</summary>
+    public IReadOnlyList<ItemInstance> Gear { get; init; } = [];
+
+    /// <summary>다음 장비 번호.</summary>
+    public int NextItemUid { get; init; } = 1;
 
     public int NextSeed { get; init; }
 
@@ -77,8 +83,8 @@ public sealed record SavedMember
     public required Stats Stats { get; init; }
     public required Row Row { get; init; }
 
-    /// <summary>부위별 장착 아이템 ID.</summary>
-    public IReadOnlyDictionary<EquipmentSlot, string> Equipment { get; init; } = new Dictionary<EquipmentSlot, string>();
+    /// <summary>부위별 장착 장비.</summary>
+    public IReadOnlyDictionary<EquipmentSlot, ItemInstance> Equipment { get; init; } = new Dictionary<EquipmentSlot, ItemInstance>();
 
     /// <summary>숙련 ID별 누적 경험치.</summary>
     public IReadOnlyDictionary<string, int> MasteryXp { get; init; } = new Dictionary<string, int>();
@@ -128,10 +134,13 @@ public static class SaveGame
     ///    치유술·신성 마법 레벨은 그 숙련의 1단계·3단계 패시브로 옮긴다. 그 이전은 읽지 않는다.
     ///    2026-10-16: 멤버의 부상(injury)과 마을 시설(facilities)을 덧붙였다. 없으면 다치지 않았고 아무것도 짓지 않은 것이라
     ///    이전 파일이 그대로 읽히므로 버전은 올리지 않았다.
+    /// 12: 장비를 한 점씩 저장 (2026-10-16, 반복 파밍 계획 1단위). 창고(stash)를 재료(materials, 아이템 ID별 개수)와
+    ///    장비(gear, 번호·아이템 ID·아이템 레벨)로 나누고, 멤버의 장비(equipment)도 한 점씩, 다음 번호(nextItemUid)를 둔다.
+    ///    버전 11의 장비는 아이템 레벨 = 티어가 된다. 그 이전은 읽지 않는다.
     /// </summary>
-    public const int CurrentVersion = 11;
+    public const int CurrentVersion = 12;
 
-    private const int OldestReadableVersion = 10;
+    private const int OldestReadableVersion = 11;
 
     public static string Serialize(Company company)
     {
@@ -156,7 +165,9 @@ public static class SaveGame
                     LastBattle = e.LastBattle,
                 }
                 : null,
-            Stash = new SortedDictionary<string, int>(company.Stash.ToDictionary()),
+            Materials = new SortedDictionary<string, int>(company.Materials.ToDictionary()),
+            Gear = company.Gear.ToList(),
+            NextItemUid = company.NextItemUid,
             Clears = new SortedDictionary<string, ClearRecord>(company.ClearRecords.ToDictionary(), StringComparer.Ordinal),
             Encounters = new SortedDictionary<string, EncounterRecord>(company.EncounterRecords.ToDictionary(), StringComparer.Ordinal),
             Facilities = new SortedDictionary<string, int>(company.FacilityLevels.ToDictionary(), StringComparer.Ordinal),
@@ -167,7 +178,7 @@ public static class SaveGame
                 Name = m.Name,
                 Stats = m.Stats,
                 Row = m.Row,
-                Equipment = new SortedDictionary<EquipmentSlot, string>(m.Equipment.ToDictionary()),
+                Equipment = new SortedDictionary<EquipmentSlot, ItemInstance>(m.Gear.ToDictionary()),
                 MasteryXp = new SortedDictionary<string, int>(m.MasteryXp.ToDictionary()),
                 SkillLevels = new SortedDictionary<string, int>(m.SkillLevels.ToDictionary()),
                 TacticSets = m.TacticSets.Select(set => (IReadOnlyList<Tactic>)set.ToList()).ToList(),
@@ -186,9 +197,9 @@ public static class SaveGame
             throw new SaveGameException([$"save: unsupported version {version} (expected {OldestReadableVersion}-{CurrentVersion})"]);
         }
 
-        if (version == 10)
+        if (version == 11)
         {
-            json = ConvertFromVersion10(json, data);
+            json = ConvertFromVersion11(json, data);
         }
 
         SaveFile? file;
@@ -215,7 +226,7 @@ public static class SaveGame
                 new PartyMember(m.Id, m.Name, m.Stats, m.Row, m.Equipment, m.MasteryXp, m.SkillLevels, m.TacticSets, m.Injury)),
             file.Lineup,
             file.Gold,
-            file.Stash,
+            file.Materials,
             file.ActiveTacticSet,
             file.NextSeed,
             file.RecruitOffers,
@@ -226,7 +237,9 @@ public static class SaveGame
             TacticSetNames(file),
             file.Clears,
             file.Encounters,
-            file.Facilities);
+            file.Facilities,
+            file.Gear,
+            file.NextItemUid);
     }
 
     private static int ReadVersion(string json)
@@ -251,48 +264,68 @@ public static class SaveGame
     }
 
     /// <summary>
-    /// 버전 10 → 11: 신성 숙련을 치유봉 종류별 숙련으로 나눈다. 숙련 경험치는 relic(이제 성물)에 남기고
-    /// 주무기 치유봉 종류의 숙련(치유봉이 아니면 치유)에 같은 양을 준다. 치유술·신성 마법 레벨은 그 숙련의
-    /// 1단계·3단계 패시브로 옮긴다(포인트가 같다). 모르는 아이템은 그대로 두어 검증이 알리게 한다.
+    /// 버전 11 → 12: 장비를 한 점씩 저장한다. 창고(stash)의 장비는 개수만큼 한 점씩 장비(gear)로, 재료는 재료(materials)로
+    /// 나누고, 멤버가 낀 장비도 한 점이 된다. 아이템 레벨은 티어다. 번호는 로스터 순서와 부위 순서로 먼저 붙이고,
+    /// 그다음 창고(아이템 ID 순서)에 1부터 이어 붙인다. 모르는 아이템과 1보다 작은 개수는 재료에 두어 검증이 알리게 한다.
     /// </summary>
-    private static string ConvertFromVersion10(string json, GameData data)
+    private static string ConvertFromVersion11(string json, GameData data)
     {
-        // 숙련 → (치유술 자리, 신성 마법 자리).
-        var skills = new Dictionary<string, (string Core, string Advanced)>
-        {
-            ["restoration"] = ("healing", "holy_magic"),
-            ["renewal"] = ("renewal_magic", "life_cycle"),
-            ["warding"] = ("ward_magic", "sacred_barrier"),
-            ["blessing"] = ("blessing_magic", "grace"),
-        };
-
         var root = JsonNode.Parse(json)!.AsObject();
         root["version"] = CurrentVersion;
+        var uid = 0;
+        JsonObject Piece(string itemId) => new()
+        {
+            ["uid"] = ++uid,
+            ["itemId"] = itemId,
+            ["level"] = data.Items.TryGetValue(itemId, out var item) ? Math.Max(1, item.Tier) : 1,
+        };
+
         foreach (var member in root["roster"]?.AsArray().OfType<JsonObject>() ?? [])
         {
-            var mainHand = member["equipment"]?["MainHand"]?.GetValue<string>();
-            var target = mainHand is not null && data.Items.TryGetValue(mainHand, out var item) && item.Mastery is { } m && skills.ContainsKey(m)
-                ? m
-                : "restoration";
-
-            if (member["masteryXp"] is JsonObject xp && xp["relic"] is JsonValue relic)
+            if (member["equipment"] is not JsonObject equipment)
             {
-                xp[target] = relic.GetValue<int>();
+                continue;
             }
 
-            if (target != "restoration" && member["skillLevels"] is JsonObject levels)
+            var slots = equipment
+                .OrderBy(p => Enum.TryParse<EquipmentSlot>(p.Key, out var slot) ? (int)slot : int.MaxValue)
+                .ThenBy(p => p.Key, StringComparer.Ordinal)
+                .ToList();
+            var converted = new JsonObject();
+            foreach (var (slot, value) in slots)
             {
-                foreach (var (from, to) in new[] { ("healing", skills[target].Core), ("holy_magic", skills[target].Advanced) })
-                {
-                    if (levels[from] is { } level)
-                    {
-                        levels.Remove(from);
-                        levels[to] = level.DeepClone();
-                    }
-                }
+                converted[slot] = value is JsonValue v && v.TryGetValue<string>(out var itemId) ? Piece(itemId) : value?.DeepClone();
             }
+
+            member["equipment"] = converted;
         }
 
+        var materials = new JsonObject();
+        var gear = new JsonArray();
+        if (root["stash"] is JsonObject stash)
+        {
+            foreach (var (itemId, value) in stash.OrderBy(p => p.Key, StringComparer.Ordinal))
+            {
+                if (data.Items.TryGetValue(itemId, out var item) && item.IsEquipment
+                    && value is JsonValue v && v.TryGetValue<int>(out var count) && count >= 1)
+                {
+                    for (var i = 0; i < count; i++)
+                    {
+                        gear.Add(Piece(itemId));
+                    }
+                }
+                else
+                {
+                    materials[itemId] = value?.DeepClone();
+                }
+            }
+
+            root.Remove("stash");
+        }
+
+        root["materials"] = materials;
+        root["gear"] = gear;
+        root["nextItemUid"] = uid + 1;
         return root.ToJsonString();
     }
 
@@ -336,17 +369,37 @@ public static class SaveGame
 
         DataValidation.RequireNonNegative(file.Gold, "save: gold", errors);
 
-        foreach (var (itemId, count) in file.Stash)
+        foreach (var (itemId, count) in file.Materials)
         {
-            if (!data.Items.ContainsKey(itemId))
+            if (!data.Items.TryGetValue(itemId, out var item))
             {
-                errors.Add($"save: stash has unknown item '{itemId}'");
+                errors.Add($"save: materials has unknown item '{itemId}'");
+            }
+            else if (item.IsEquipment)
+            {
+                errors.Add($"save: materials has equipment '{itemId}' (equipment is saved one piece at a time in gear)");
             }
 
             if (count < 1)
             {
-                errors.Add($"save: stash count of '{itemId}' must be at least 1, got {count}");
+                errors.Add($"save: material count of '{itemId}' must be at least 1, got {count}");
             }
+        }
+
+        foreach (var gear in file.Gear)
+        {
+            ValidateGear(gear, $"save gear {gear.Uid}", data, errors);
+        }
+
+        var uids = file.Roster.SelectMany(m => m.Equipment.Values).Concat(file.Gear).Select(g => g.Uid);
+        foreach (var duplicate in uids.GroupBy(u => u).Where(g => g.Count() > 1))
+        {
+            errors.Add($"save: item uid {duplicate.Key} is used by more than one piece");
+        }
+
+        if (file.NextItemUid < 1)
+        {
+            errors.Add($"save: nextItemUid must be at least 1, got {file.NextItemUid}");
         }
 
         foreach (var duplicate in file.Roster.GroupBy(m => m.Id).Where(g => g.Count() > 1))
@@ -505,13 +558,48 @@ public static class SaveGame
         }
     }
 
+    /// <summary>창고의 장비 한 점: 아는 장비 아이템이어야 한다. 낀 장비의 아이템과 부위는 <see cref="DataValidation.ValidateEquipped"/>가 본다.</summary>
+    private static void ValidateGear(ItemInstance gear, string at, GameData data, List<string> errors)
+    {
+        if (!data.Items.TryGetValue(gear.ItemId, out var item))
+        {
+            errors.Add($"{at}: unknown item '{gear.ItemId}'");
+        }
+        else if (!item.IsEquipment)
+        {
+            errors.Add($"{at}: '{gear.ItemId}' is not equipment (materials are saved as counts)");
+        }
+
+        ValidatePiece(gear, at, errors);
+    }
+
+    /// <summary>장비 한 점의 번호와 아이템 레벨: 둘 다 1 이상.</summary>
+    private static void ValidatePiece(ItemInstance gear, string at, List<string> errors)
+    {
+        if (gear.Uid < 1)
+        {
+            errors.Add($"{at}: uid must be at least 1, got {gear.Uid}");
+        }
+
+        if (gear.Level < 1)
+        {
+            errors.Add($"{at}: level must be at least 1, got {gear.Level}");
+        }
+    }
+
     private static void ValidateMember(SavedMember member, GameData data, List<string> errors)
     {
         var at = $"save member '{member.Id}'";
         DataValidation.RequireText(member.Id, "save: member id", errors);
         DataValidation.RequireText(member.Name, $"{at}: name", errors);
         DataValidation.ValidateStats(member.Stats, at, errors);
-        DataValidation.ValidateEquipped(member.Equipment, $"{at}: equipment", data.Items, errors);
+        DataValidation.ValidateEquipped(
+            member.Equipment.ToDictionary(p => p.Key, p => p.Value.ItemId), $"{at}: equipment", data.Items, errors);
+        foreach (var (slot, gear) in member.Equipment)
+        {
+            ValidatePiece(gear, $"{at}: equipment {slot}", errors);
+        }
+
         foreach (var (masteryId, xp) in member.MasteryXp)
         {
             if (!data.Masteries.ContainsKey(masteryId))

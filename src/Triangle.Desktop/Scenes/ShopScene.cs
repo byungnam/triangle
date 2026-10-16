@@ -205,10 +205,12 @@ internal sealed class ShopScene : IScene
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
         };
-        panel.Widgets.Add(_w.Label($"창고 ({Company.Stash.Values.Sum()}개)", 22, Theme.Ally, bold: true));
+        panel.Widgets.Add(_w.Label($"창고 ({Company.StashTotal}개)", 22, Theme.Ally, bold: true));
 
         var list = new VerticalStackPanel { Spacing = 6 };
-        var items = Company.Stash.Keys
+        var items = Company.Materials.Keys
+            .Concat(Company.Gear.Select(g => g.ItemId))
+            .Distinct()
             .Select(id => data.Items[id])
             .OrderBy(i => i.Slot)
             .ThenBy(i => i.Mastery)
@@ -258,7 +260,11 @@ internal sealed class ShopScene : IScene
         sell.Enabled = !Company.OnExpedition;
         sell.Click += (_, _) =>
         {
-            if (Company.Sell(item.Id, data))
+            // 같은 장비가 여럿이면 아이템 레벨이 가장 낮은 한 점을 판다.
+            var sold = item.IsEquipment
+                ? Company.WorstGear(item.Id) is { } gear && Company.Sell(gear.Uid, data)
+                : Company.SellMaterial(item.Id, data);
+            if (sold)
             {
                 _session.MarkChanged();
                 _session.Notice = ($"{ItemText.ShortName(item)} 판매 (+{price}골드)", Theme.Cover);

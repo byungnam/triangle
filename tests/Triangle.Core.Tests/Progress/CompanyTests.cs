@@ -32,8 +32,8 @@ public class CompanyTests
     public void Equip_takes_from_stash_and_returns_the_old_item()
     {
         var company = Company(Member("a"));
-        company.AddToStash("hunting_bow");
-        company.AddToStash("plate_armor", 2);
+        company.AddToStash("hunting_bow", Data);
+        company.AddToStash("plate_armor", Data, 2);
 
         Assert.True(company.Equip("a", "hunting_bow", Data));
         Assert.True(company.Equip("a", "plate_armor", Data));
@@ -43,7 +43,7 @@ public class CompanyTests
         Assert.Equal(1, company.StashCount("old_sword"));
         Assert.Equal(0, company.StashCount("hunting_bow"));
         Assert.Equal(1, company.StashCount("plate_armor"));
-        Assert.False(company.Stash.ContainsKey("hunting_bow"));
+        Assert.DoesNotContain(company.Gear, g => g.ItemId == "hunting_bow");
         Assert.Equal("bow", member.ToCombatantSetup(Data, 0).Weapon);
     }
 
@@ -55,7 +55,7 @@ public class CompanyTests
         Assert.False(company.Equip("a", "hunting_bow", Data));
         Assert.True(company.Equip("a", "old_sword", Data)); // 이미 낀 아이템
         Assert.Equal("old_sword", company.Member("a").ItemIn(EquipmentSlot.MainHand));
-        Assert.Empty(company.Stash);
+        Assert.Equal(0, company.StashTotal);
     }
 
     [Fact]

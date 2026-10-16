@@ -12,7 +12,7 @@ namespace Triangle.Core.Progress;
 /// 플레이어 파티의 유닛 한 명.
 /// - 전열과 전술을 편집한다. 전술은 회사의 전술 세트마다 한 벌씩 저장하고(세트 수 제한 없음),
 ///   세트를 만들고 지우고 고르는 것은 회사가 한다(<see cref="Company.TacticSetNames"/>, <see cref="Company.ActiveTacticSet"/>).
-/// - 부위 5개(주무기, 보조, 머리, 몸통, 신발)에 아이템을 하나씩 낀다. 장착과 해제는 회사 창고와 오간다
+/// - 부위 5개(주무기, 보조, 머리, 몸통, 신발)에 장비를 한 점씩 낀다(<see cref="ItemInstance"/>). 장착과 해제는 회사 창고와 오간다
 ///   (<see cref="Company.Equip"/>). 낀 아이템이 주는 행동(<see cref="GrantedActions"/>)과 공용 행동만 전술에 쓸 수 있다.
 /// - 착용 조건(패시브 레벨)을 못 채운 아이템이나 두손 무기와 같이 낀 보조는 "착용 불가"다.
 ///   보너스와 행동을 주지 않고, 출정을 막는다.
@@ -24,9 +24,9 @@ public sealed class PartyMember
     private readonly List<TacticList> _tacticSets;
     private readonly Dictionary<string, int> _masteryXp;
     private readonly Dictionary<string, int> _skillLevels;
-    private readonly Dictionary<EquipmentSlot, string> _equipment;
+    private readonly Dictionary<EquipmentSlot, ItemInstance> _equipment;
 
-    /// <param name="equipment">부위별 아이템 ID.</param>
+    /// <param name="equipment">부위별 장비. 번호(<see cref="ItemInstance.Uid"/>)는 회사 안에서 겹치지 않아야 한다.</param>
     /// <param name="tacticSets">세트별 전술. 비어 있으면 빈 세트 하나로 시작한다. 회사가 세트 수를 맞춘다.</param>
     /// <param name="injury">남은 부상 단계 (0이면 다치지 않았다).</param>
     public PartyMember(
@@ -34,7 +34,7 @@ public sealed class PartyMember
         string name,
         Stats stats,
         Row row,
-        IReadOnlyDictionary<EquipmentSlot, string> equipment,
+        IReadOnlyDictionary<EquipmentSlot, ItemInstance> equipment,
         IReadOnlyDictionary<string, int> masteryXp,
         IReadOnlyDictionary<string, int> skillLevels,
         IReadOnlyList<IEnumerable<Tactic>> tacticSets,
@@ -45,7 +45,7 @@ public sealed class PartyMember
         Name = name;
         Stats = stats;
         Row = row;
-        _equipment = new Dictionary<EquipmentSlot, string>(equipment);
+        _equipment = new Dictionary<EquipmentSlot, ItemInstance>(equipment);
         _masteryXp = new Dictionary<string, int>(masteryXp);
         _skillLevels = new Dictionary<string, int>(skillLevels.Where(p => p.Value > 0));
         _tacticSets = tacticSets.Select(set => new TacticList(set)).ToList();
@@ -80,11 +80,17 @@ public sealed class PartyMember
         return !Injured;
     }
 
-    /// <summary>부위별 장착 아이템 ID.</summary>
-    public IReadOnlyDictionary<EquipmentSlot, string> Equipment => _equipment;
+    /// <summary>부위별 장착 장비.</summary>
+    public IReadOnlyDictionary<EquipmentSlot, ItemInstance> Gear => _equipment;
+
+    /// <summary>부위별 장착 아이템 ID (표시용).</summary>
+    public IReadOnlyDictionary<EquipmentSlot, string> Equipment => _equipment.ToDictionary(p => p.Key, p => p.Value.ItemId);
+
+    /// <summary>그 부위의 장비 (비었으면 null).</summary>
+    public ItemInstance? GearIn(EquipmentSlot slot) => _equipment.GetValueOrDefault(slot);
 
     /// <summary>그 부위의 아이템 ID (비었으면 null).</summary>
-    public string? ItemIn(EquipmentSlot slot) => _equipment.GetValueOrDefault(slot);
+    public string? ItemIn(EquipmentSlot slot) => GearIn(slot)?.ItemId;
 
     /// <summary>그 부위 아이템이 주는 행동. 아이템이 없으면 빈 목록.</summary>
     public IReadOnlyList<string> ItemActions(EquipmentSlot slot, GameData data) =>
@@ -139,18 +145,18 @@ public sealed class PartyMember
     public string? ArmorMastery(GameData data) => Loadout(data).ArmorMastery;
 
     /// <summary>
-    /// 그 부위에 아이템을 넣는다(창고와 오가는 것은 <see cref="Company"/>가 한다).
+    /// 그 부위에 장비를 넣는다(창고와 오가는 것은 <see cref="Company"/>가 한다).
     /// null이면 비운다.
     /// </summary>
-    internal void SetItem(EquipmentSlot slot, string? itemId, GameData data)
+    internal void SetGear(EquipmentSlot slot, ItemInstance? gear)
     {
-        if (itemId is null)
+        if (gear is null)
         {
             _equipment.Remove(slot);
             return;
         }
 
-        _equipment[slot] = itemId;
+        _equipment[slot] = gear;
     }
 
     /// <summary>전술 세트들. 회사에 속하면 회사의 세트 수(<see cref="Company.TacticSetNames"/>)와 같다.</summary>

@@ -130,7 +130,7 @@ public class VillageTests
         var company = NewCompany(1000, Member("a"));
         var a = company.Member("a");
         a.Learn("archery", Data);
-        company.AddToStash("long_bow");
+        company.AddToStash("long_bow", Data);
         Assert.True(company.Equip("a", "long_bow", Data));
 
         company.Gold = 10;

@@ -28,8 +28,8 @@ public class CraftTests
             [new PartyMember("a", "A", new Stats(10, 10, 10, 10, 10), Row.Front, TestGear.Of("old_sword"),
                 new Dictionary<string, int>(), new Dictionary<string, int>(), [])],
             ["a"], gold, new Dictionary<string, int>(), 0, 1);
-        company.AddToStash("iron", iron);
-        company.AddToStash("shard", shard);
+        company.AddToStash("iron", Data, iron);
+        company.AddToStash("shard", Data, shard);
         return company;
     }
 
@@ -42,6 +42,7 @@ public class CraftTests
 
         Assert.Equal(10, company.Gold);
         Assert.Equal((1, 0, 1), (company.StashCount("iron"), company.StashCount("shard"), company.StashCount("knight_sword")));
+        Assert.Equal(3, Assert.Single(company.Gear).Level); // 만든 장비의 아이템 레벨은 티어
     }
 
     [Fact]

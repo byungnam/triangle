@@ -13,7 +13,7 @@ public class SelfRecoveryTests
 {
     private static readonly GameData Data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
 
-    private static PartyMember Member(Dictionary<EquipmentSlot, string> gear) =>
+    private static PartyMember Member(Dictionary<EquipmentSlot, ItemInstance> gear) =>
         new("a", "A", new Stats(10, 10, 20, 15, 10), Row.Front, gear,
             new Dictionary<string, int>(), new Dictionary<string, int>(),
             [[

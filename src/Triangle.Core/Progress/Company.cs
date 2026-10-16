@@ -8,7 +8,8 @@ namespace Triangle.Core.Progress;
 /// <summary>
 /// 플레이어의 용병 회사. 세이브 데이터가 이 모델을 저장한다.
 /// - 로스터: 보유한 캐릭터 모두. 출전 명단은 그중 최대 <see cref="MaxLineup"/>명이다.
-/// - 골드와 창고(아이템 ID별 개수, 재료 포함). 장착과 해제는 창고와 오간다.
+/// - 골드와 창고. 재료는 아이템 ID별 개수, 장비는 한 점씩(<see cref="ItemInstance"/>) 둔다. 장착과 해제는 창고와 오간다.
+///   새 장비(구매, 제작, 전리품, 모집 장비)에는 회사가 겹치지 않는 번호를 붙인다.
 /// - 전술 세트: 이름 붙은 전술 계획. 수에 제한이 없고 플레이어가 만들고 지운다. 멤버마다 세트별 전술 목록을 갖고,
 ///   출정 전에 고른 세트(<see cref="ActiveTacticSet"/>)로 출전 멤버 전원이 싸운다.
 /// - 모집 후보와 진행 중인 원정. 원정 중에는 명단, 장비, 모집을 바꿀 수 없다. 전술과 전열도 출정 전에만 짠다(원정 화면에서 편집기로 갈 수 없다).
@@ -22,7 +23,8 @@ public sealed class Company
 
     private readonly List<PartyMember> _roster;
     private readonly List<string> _lineup;
-    private readonly Dictionary<string, int> _stash;
+    private readonly Dictionary<string, int> _materials;
+    private readonly List<ItemInstance> _gear;
     private readonly List<RecruitOffer> _recruitOffers;
     private readonly List<string> _tacticSetNames;
     private readonly Dictionary<string, ClearRecord> _clearRecords;
@@ -30,12 +32,15 @@ public sealed class Company
     private readonly Dictionary<string, int> _facilities;
     private int _activeTacticSet;
 
+    /// <param name="materials">창고의 재료 (아이템 ID별 개수).</param>
     /// <param name="tacticSetNames">전술 세트 이름. null이면 멤버가 가진 세트 수만큼 "세트 1", "세트 2"…로 짓는다.</param>
+    /// <param name="gear">창고의 장비. 번호는 멤버가 낀 장비와도 겹치지 않아야 한다.</param>
+    /// <param name="nextItemUid">다음 장비 번호. 이미 쓴 번호보다 작으면 그 다음 번호로 올린다.</param>
     public Company(
         IEnumerable<PartyMember> roster,
         IEnumerable<string> lineup,
         int gold,
-        IReadOnlyDictionary<string, int> stash,
+        IReadOnlyDictionary<string, int> materials,
         int activeTacticSet,
         int nextSeed,
         IEnumerable<RecruitOffer>? recruitOffers = null,
@@ -44,7 +49,9 @@ public sealed class Company
         IEnumerable<string>? tacticSetNames = null,
         IReadOnlyDictionary<string, ClearRecord>? clearRecords = null,
         IReadOnlyDictionary<string, EncounterRecord>? encounterRecords = null,
-        IReadOnlyDictionary<string, int>? facilities = null)
+        IReadOnlyDictionary<string, int>? facilities = null,
+        IEnumerable<ItemInstance>? gear = null,
+        int nextItemUid = 1)
     {
         _roster = roster.ToList();
         _lineup = lineup.ToList();
@@ -77,8 +84,17 @@ public sealed class Company
             member.PadTacticSets(_tacticSetNames.Count);
         }
 
+        _gear = gear?.ToList() ?? [];
+        var uids = _roster.SelectMany(m => m.Gear.Values).Concat(_gear).Select(g => g.Uid).ToList();
+        if (uids.GroupBy(u => u).FirstOrDefault(g => g.Count() > 1) is { } duplicate)
+        {
+            throw new ArgumentException($"Item uid {duplicate.Key} is used more than once.", nameof(gear));
+        }
+
+        NextItemUid = Math.Max(nextItemUid, uids.DefaultIfEmpty(0).Max() + 1);
+
         Gold = gold;
-        _stash = new Dictionary<string, int>(stash.Where(p => p.Value > 0));
+        _materials = new Dictionary<string, int>(materials.Where(p => p.Value > 0));
         ActiveTacticSet = activeTacticSet;
         NextSeed = nextSeed;
         _recruitOffers = recruitOffers?.ToList() ?? [];
@@ -100,8 +116,17 @@ public sealed class Company
 
     public int Gold { get; set; }
 
-    /// <summary>창고: 아이템 ID별 개수 (0개인 항목은 없다).</summary>
-    public IReadOnlyDictionary<string, int> Stash => _stash;
+    /// <summary>창고의 재료: 아이템 ID별 개수 (0개인 항목은 없다).</summary>
+    public IReadOnlyDictionary<string, int> Materials => _materials;
+
+    /// <summary>창고의 장비 (들어온 순서).</summary>
+    public IReadOnlyList<ItemInstance> Gear => _gear;
+
+    /// <summary>다음에 만들 장비의 번호.</summary>
+    public int NextItemUid { get; private set; }
+
+    /// <summary>창고에 든 아이템 수 (재료 개수 + 장비 점 수).</summary>
+    public int StashTotal => _materials.Values.Sum() + _gear.Count;
 
     /// <summary>전술 세트 이름의 최대 길이.</summary>
     public const int MaxTacticSetNameLength = 20;
@@ -246,63 +271,91 @@ public sealed class Company
 
     public bool RemoveFromLineup(string memberId) => !OnExpedition && _lineup.Remove(memberId);
 
-    public int StashCount(string itemId) => _stash.GetValueOrDefault(itemId);
+    /// <summary>창고에 든 그 아이템의 수 (재료면 개수, 장비면 점 수).</summary>
+    public int StashCount(string itemId) => _materials.GetValueOrDefault(itemId) + _gear.Count(g => g.ItemId == itemId);
 
-    public void AddToStash(string itemId, int count = 1)
+    /// <summary>창고의 그 번호 장비. 없으면 null.</summary>
+    public ItemInstance? StashGear(int uid) => _gear.FirstOrDefault(g => g.Uid == uid);
+
+    /// <summary>창고에 있는 그 아이템의 장비 중 가장 좋은 한 점 (레벨이 높은 것, 같으면 먼저 들어온 것). 없으면 null.</summary>
+    public ItemInstance? BestGear(string itemId) =>
+        _gear.Where(g => g.ItemId == itemId).OrderByDescending(g => g.Level).FirstOrDefault();
+
+    /// <summary>창고에 있는 그 아이템의 장비 중 가장 나쁜 한 점 (레벨이 낮은 것, 같으면 나중에 들어온 것). 없으면 null.</summary>
+    public ItemInstance? WorstGear(string itemId) =>
+        _gear.Where(g => g.ItemId == itemId).OrderBy(g => g.Level).ThenByDescending(g => g.Uid).FirstOrDefault();
+
+    /// <summary>
+    /// 창고에 넣는다. 재료는 개수를 더하고, 장비는 새 장비를 count점 만든다(레벨을 주지 않으면 그 아이템의 티어).
+    /// 만든 장비를 돌려준다 (재료면 빈 목록).
+    /// </summary>
+    public IReadOnlyList<ItemInstance> AddToStash(string itemId, GameData data, int count = 1, int? level = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(count);
-        if (count > 0)
+        var item = data.Items[itemId];
+        if (!item.IsEquipment)
         {
-            _stash[itemId] = StashCount(itemId) + count;
+            if (count > 0)
+            {
+                _materials[itemId] = _materials.GetValueOrDefault(itemId) + count;
+            }
+
+            return [];
         }
+
+        var made = Enumerable.Range(0, count).Select(_ => NewGear(itemId, level ?? item.Tier)).ToList();
+        _gear.AddRange(made);
+        return made;
     }
 
-    /// <summary>창고에서 꺼낸다. 모자라면 false.</summary>
-    public bool TakeFromStash(string itemId)
+    private ItemInstance NewGear(string itemId, int level) => new(NextItemUid++, itemId, Math.Max(1, level));
+
+    /// <summary>창고에서 재료를 꺼낸다. 모자라면 아무것도 꺼내지 않고 false.</summary>
+    private bool TakeMaterial(string itemId, int count = 1)
     {
-        var count = StashCount(itemId);
-        if (count == 0)
+        var have = _materials.GetValueOrDefault(itemId);
+        if (have < count)
         {
             return false;
         }
 
-        if (count == 1)
+        if (have == count)
         {
-            _stash.Remove(itemId);
+            _materials.Remove(itemId);
         }
         else
         {
-            _stash[itemId] = count - 1;
+            _materials[itemId] = have - count;
         }
 
         return true;
     }
 
     /// <summary>
-    /// 창고의 아이템을 장착할 수 없는 이유. null이면 장착할 수 있다.
+    /// 창고의 장비를 장착할 수 없는 이유. null이면 장착할 수 있다(이미 그 멤버가 낀 장비도 null).
     /// 원정 중, 창고에 없음, 장비가 아님, 착용 조건(패시브 레벨) 미달, 두손 무기를 낀 채 보조.
     /// </summary>
-    public string? WhyCannotEquip(string memberId, string itemId, GameData data)
+    public string? WhyCannotEquip(string memberId, int uid, GameData data)
     {
         if (OnExpedition)
         {
             return "원정 중에는 장비를 바꿀 수 없습니다";
         }
 
-        if (!data.Items.TryGetValue(itemId, out var item) || !item.IsEquipment)
-        {
-            return "장비가 아닙니다";
-        }
-
         var member = Member(memberId);
-        if (member.ItemIn(item.Slot) == itemId)
+        if (member.Gear.Values.Any(g => g.Uid == uid))
         {
             return null;
         }
 
-        if (StashCount(itemId) == 0)
+        if (StashGear(uid) is not { } gear)
         {
             return "창고에 없습니다";
+        }
+
+        if (!data.Items.TryGetValue(gear.ItemId, out var item) || !item.IsEquipment)
+        {
+            return "장비가 아닙니다";
         }
 
         var missing = member.Skills(data).Missing(item.Requirements);
@@ -320,46 +373,47 @@ public sealed class Company
     }
 
     /// <summary>
-    /// 창고의 아이템을 그 부위에 장착한다. 끼고 있던 아이템은 창고로 돌아가고, 행동 칸은 첫 옵션으로 고른다.
-    /// 두손 무기를 끼면 보조도 창고로 돌아간다. 이미 낀 아이템이면 아무것도 하지 않고 true.
+    /// 창고의 장비를 그 부위에 장착한다. 끼고 있던 장비는 창고로 돌아간다.
+    /// 두손 무기를 끼면 보조도 창고로 돌아간다. 이미 낀 장비면 아무것도 하지 않고 true.
     /// 장착할 수 없으면(<see cref="WhyCannotEquip"/>) false.
     /// </summary>
-    public bool Equip(string memberId, string itemId, GameData data)
+    public bool Equip(string memberId, int uid, GameData data)
     {
-        if (WhyCannotEquip(memberId, itemId, data) is not null)
+        if (WhyCannotEquip(memberId, uid, data) is not null)
         {
             return false;
         }
 
         var member = Member(memberId);
-        var item = data.Items[itemId];
-        if (member.ItemIn(item.Slot) == itemId)
+        if (member.Gear.Values.Any(g => g.Uid == uid))
         {
             return true;
         }
 
-        TakeFromStash(itemId);
+        var gear = StashGear(uid)!;
+        var item = data.Items[gear.ItemId];
+        _gear.Remove(gear);
         Unequip(memberId, item.Slot, data);
         if (item.TwoHanded)
         {
             Unequip(memberId, EquipmentSlot.OffHand, data);
         }
 
-        member.SetItem(item.Slot, itemId, data);
+        member.SetGear(item.Slot, gear);
         return true;
     }
 
-    /// <summary>그 부위의 아이템을 빼서 창고에 넣는다. 원정 중이거나 비어 있으면 false.</summary>
+    /// <summary>그 부위의 장비를 빼서 창고에 넣는다. 원정 중이거나 비어 있으면 false.</summary>
     public bool Unequip(string memberId, EquipmentSlot slot, GameData data)
     {
         var member = Member(memberId);
-        if (OnExpedition || member.ItemIn(slot) is not { } current)
+        if (OnExpedition || member.GearIn(slot) is not { } current)
         {
             return false;
         }
 
-        member.SetItem(slot, null, data);
-        AddToStash(current);
+        member.SetGear(slot, null);
+        _gear.Add(current);
         return true;
     }
 
@@ -379,7 +433,7 @@ public sealed class Company
         return Gold < item.Price ? "골드가 모자랍니다" : null;
     }
 
-    /// <summary>정가에 사서 창고에 넣는다. 살 수 없으면(<see cref="WhyCannotBuy"/>) false.</summary>
+    /// <summary>정가에 사서 창고에 넣는다(아이템 레벨 = 티어). 살 수 없으면(<see cref="WhyCannotBuy"/>) false.</summary>
     public bool Buy(string itemId, GameData data)
     {
         if (WhyCannotBuy(itemId, data) is not null)
@@ -388,14 +442,27 @@ public sealed class Company
         }
 
         Gold -= data.Items[itemId].Price;
-        AddToStash(itemId);
+        AddToStash(itemId, data);
         return true;
     }
 
-    /// <summary>창고의 아이템 하나를 판다(<see cref="Shop.SellPrice"/>). 원정 중이거나 창고에 없으면 false.</summary>
-    public bool Sell(string itemId, GameData data)
+    /// <summary>창고의 장비 한 점을 판다(<see cref="Shop.SellPrice"/>). 원정 중이거나 창고에 없으면 false.</summary>
+    public bool Sell(int uid, GameData data)
     {
-        if (OnExpedition || !data.Items.TryGetValue(itemId, out var item) || !TakeFromStash(itemId))
+        if (OnExpedition || StashGear(uid) is not { } gear || !data.Items.TryGetValue(gear.ItemId, out var item))
+        {
+            return false;
+        }
+
+        _gear.Remove(gear);
+        Gold += Shop.SellPrice(item);
+        return true;
+    }
+
+    /// <summary>창고의 재료 하나를 판다(<see cref="Shop.SellPrice"/>). 원정 중이거나 창고에 없으면 false.</summary>
+    public bool SellMaterial(string itemId, GameData data)
+    {
+        if (OnExpedition || !data.Items.TryGetValue(itemId, out var item) || !TakeMaterial(itemId))
         {
             return false;
         }
@@ -429,7 +496,9 @@ public sealed class Company
         return Gold < recipe.Gold ? "골드가 모자랍니다" : null;
     }
 
-    /// <summary>재료와 골드를 내고 장비를 만들어 창고에 넣는다. 만들 수 없으면(<see cref="WhyCannotCraft"/>) false.</summary>
+    /// <summary>
+    /// 재료와 골드를 내고 장비를 만들어 창고에 넣는다(아이템 레벨 = 티어). 만들 수 없으면(<see cref="WhyCannotCraft"/>) false.
+    /// </summary>
     public bool Craft(string resultId, GameData data)
     {
         if (WhyCannotCraft(resultId, data) is not null)
@@ -440,14 +509,11 @@ public sealed class Company
         var recipe = data.Recipes[resultId];
         foreach (var material in recipe.Materials)
         {
-            for (var i = 0; i < material.Count; i++)
-            {
-                TakeFromStash(material.ItemId);
-            }
+            TakeMaterial(material.ItemId, material.Count);
         }
 
         Gold -= recipe.Gold;
-        AddToStash(resultId);
+        AddToStash(resultId, data);
         return true;
     }
 
@@ -596,7 +662,7 @@ public sealed class Company
 
     /// <summary>
     /// 후보를 고용한다: 골드를 내고 로스터에 넣는다. 출전 명단에 자리가 있으면 명단에도 넣는다.
-    /// 시작 장비는 새로 생긴다. 숙련 0, 패시브 없음, 두 전술 세트 모두 템플릿의 기본 전술.
+    /// 시작 장비는 새로 생긴다(아이템 레벨 = 티어). 숙련 0, 패시브 없음, 모든 전술 세트가 템플릿의 기본 전술.
     /// 골드가 모자라거나 원정 중이면 null.
     /// </summary>
     public PartyMember? Hire(int offerIndex, GameData data)
@@ -617,8 +683,9 @@ public sealed class Company
 
         Gold -= offer.Price;
         _recruitOffers.RemoveAt(offerIndex);
+        var gear = template.Equipment.ToDictionary(p => p.Key, p => NewGear(p.Value, data.Items[p.Value].Tier));
         var member = new PartyMember(
-            id, offer.Name, offer.Stats, template.Row, template.Equipment,
+            id, offer.Name, offer.Stats, template.Row, gear,
             new Dictionary<string, int>(), new Dictionary<string, int>(),
             _tacticSetNames.Select(_ => template.Tactics).ToList()); // 모든 세트를 모집 템플릿의 전술로 시작한다
         _roster.Add(member);

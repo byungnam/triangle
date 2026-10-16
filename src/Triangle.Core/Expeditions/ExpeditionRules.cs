@@ -239,22 +239,24 @@ public static class ExpeditionRules
         company.Expedition is { } e && e.BattleIndex < data.Zones[e.ZoneId].MaxBattles && e.Standing.Any();
 
     /// <summary>
-    /// 원정을 끝낸다: 전리품을 창고와 골드로 확정한다(전멸해도 앞선 전투에서 얻은 것은 남는다).
+    /// 원정을 끝낸다: 전리품을 창고와 골드로 확정한다(전멸해도 앞선 전투에서 얻은 것은 남는다). 장비는 이때 한 점씩 생기고,
+    /// 아이템 레벨은 그 지역의 깊이(난이도)다.
     /// 원정에 나가지 않은 다친 멤버는 <see cref="Company.ExpeditionRecovery"/>단계 낫고, 이번 원정에서 쓰러진 멤버는
     /// 그 지역 난이도만큼 다친다(2026-10-16). HP·MP는 원정 상태와 함께 사라지므로 다음 출정에서 가득 찬다. 모집 후보를 새로 굴린다.
     /// </summary>
     private static ExpeditionSummary Finish(Company company, GameData data, ExpeditionEnd end)
     {
         var expedition = Active(company);
+        var depth = data.Zones[expedition.ZoneId].Difficulty;
         company.Gold += expedition.CarriedGold;
         foreach (var (item, count) in expedition.CarriedItems)
         {
-            company.AddToStash(item, count);
+            company.AddToStash(item, data, count, level: depth);
         }
 
         var participants = expedition.Members.Select(m => m.Id).ToHashSet();
         var recovered = company.HealInjured(company.Roster.Where(m => !participants.Contains(m.Id)), company.ExpeditionRecovery);
-        var steps = Math.Max(1, data.Zones[expedition.ZoneId].Difficulty);
+        var steps = Math.Max(1, depth);
         var injuries = new List<InjuryReport>();
         foreach (var down in expedition.Members.Where(m => m.Down))
         {

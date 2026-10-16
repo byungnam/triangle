@@ -20,7 +20,16 @@ public static class StartingCompany
 {
     private static int Xp(int level) => MasteryProgression.XpForLevel(level);
 
-    private static Dictionary<EquipmentSlot, string> Gear(string mainHand, string material, string? offHand = null)
+    /// <summary>부위별 시작 장비. 번호는 1부터 차례로, 아이템 레벨은 티어다.</summary>
+    private sealed class GearMaker(GameData data)
+    {
+        private int _uid;
+
+        public Dictionary<EquipmentSlot, ItemInstance> Of(string mainHand, string material, string? offHand = null) =>
+            Ids(mainHand, material, offHand).ToDictionary(p => p.Key, p => new ItemInstance(++_uid, p.Value, data.Items[p.Value].Tier));
+    }
+
+    private static Dictionary<EquipmentSlot, string> Ids(string mainHand, string material, string? offHand)
     {
         var (head, body, feet) = material switch
         {
@@ -48,17 +57,17 @@ public static class StartingCompany
     /// <param name="seed">회사의 첫 시드 (원정과 모집이 이어서 쓴다).</param>
     public static Company Create(GameData data, int seed)
     {
-        var members = Members();
+        var members = Members(new GearMaker(data));
         var company = new Company(members, members.Select(m => m.Id), Company.StartingGold, new Dictionary<string, int>(), activeTacticSet: 0, seed);
         company.RerollRecruits(data);
         return company;
     }
 
-    private static List<PartyMember> Members() =>
+    private static List<PartyMember> Members(GearMaker gear) =>
     [
         // 전위 탱커: 받는 피해를 줄이고(방어 기술) 최대 HP를 늘린다(체력 단련). 공격은 기본 공격뿐이다.
         // HP가 35% 이하면 방패의 응급 처치로 버틴다.
-        new PartyMember("ally_godric", "고드릭", new Stats(15, 12, 26, 20, 12), Row.Front, Gear("old_sword", "plate", offHand: "wooden_shield"),
+        new PartyMember("ally_godric", "고드릭", new Stats(15, 12, 26, 20, 12), Row.Front, gear.Of("old_sword", "plate", offHand: "wooden_shield"),
             new Dictionary<string, int> { ["plate"] = Xp(4) },
             new Dictionary<string, int> { ["defense"] = 2, ["endurance"] = 1 },
             [
@@ -70,7 +79,7 @@ public static class StartingCompany
             ]),
 
         // 후위 궁수: 첫 턴과 4턴마다 독화살(없는 적 우선), 그 외 화살. MP가 15% 이하면 정신 집중으로 채운다.
-        new PartyMember("ally_elsbeth", "엘스베트", new Stats(10, 14, 20, 24, 13), Row.Back, Gear("hunting_bow", "leather"),
+        new PartyMember("ally_elsbeth", "엘스베트", new Stats(10, 14, 20, 24, 13), Row.Back, gear.Of("hunting_bow", "leather"),
             new Dictionary<string, int> { ["bow"] = Xp(2) },
             new Dictionary<string, int> { ["archery"] = 2 },
             [
@@ -87,7 +96,7 @@ public static class StartingCompany
 
         // 후위 화염 마법사: 화염구(지속 피해)를 주로 쓰고, 4턴마다 재의 폭풍으로 적 전체를 태운다.
         // MP가 25% 이하면 정신 집중으로 채운다.
-        new PartyMember("ally_morwen", "모르웬", new Stats(9, 11, 19, 27, 12), Row.Back, Gear("apprentice_staff", "cloth"),
+        new PartyMember("ally_morwen", "모르웬", new Stats(9, 11, 19, 27, 12), Row.Back, gear.Of("apprentice_staff", "cloth"),
             new Dictionary<string, int> { ["fire"] = Xp(3), ["cloth"] = Xp(2) },
             new Dictionary<string, int> { ["pyromancy"] = 3, ["meditation"] = 2 },
             [

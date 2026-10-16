@@ -42,7 +42,7 @@ internal static class Growth
 
             foreach (var item in targets.Where(i => member.ItemIn(i.Slot) != i.Id))
             {
-                company.AddToStash(item.Id);
+                company.AddToStash(item.Id, data);
                 if (!company.Equip(member.Id, item.Id, data))
                 {
                     throw new InvalidOperationException($"{member.Name} cannot wear {item.Id}: {company.WhyCannotEquip(member.Id, item.Id, data)}");

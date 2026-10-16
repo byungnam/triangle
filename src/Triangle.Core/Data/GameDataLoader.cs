@@ -24,6 +24,7 @@ public static class GameDataLoader
     public const string ZonesFile = "zones.json";
     public const string RecruitsFile = "recruits.json";
     public const string RecipesFile = "recipes.json";
+    public const string AffixesFile = "affixes.json";
 
     public static GameData LoadDirectory(string directory)
     {
@@ -52,16 +53,17 @@ public static class GameDataLoader
         var zones = Read(ZonesFile);
         var recruits = Read(RecruitsFile);
         var recipes = Read(RecipesFile);
+        var affixes = Read(AffixesFile);
         if (errors.Count > 0)
         {
             throw new GameDataException(errors);
         }
 
-        return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, recruits!, recipes!);
+        return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, recruits!, recipes!, affixes!);
     }
 
     public static GameData Parse(string masteriesJson, string skillsJson, string actionsJson, string encountersJson, string effectsJson = "[]",
-        string itemsJson = "[]", string zonesJson = "[]", string recruitsJson = "[]", string recipesJson = "[]")
+        string itemsJson = "[]", string zonesJson = "[]", string recruitsJson = "[]", string recipesJson = "[]", string affixesJson = "[]")
     {
         var errors = new List<string>();
 
@@ -74,6 +76,7 @@ public static class GameDataLoader
         var zones = Deserialize<ZoneDefinition>(zonesJson, ZonesFile, errors);
         var recruits = Deserialize<RecruitTemplate>(recruitsJson, RecruitsFile, errors);
         var recipes = Deserialize<RecipeDefinition>(recipesJson, RecipesFile, errors);
+        var affixes = Deserialize<AffixDefinition>(affixesJson, AffixesFile, errors);
 
         // 형식 오류가 있으면 참조 검증은 의미가 없다.
         if (errors.Count > 0)
@@ -99,6 +102,7 @@ public static class GameDataLoader
         var itemMap = ToMap(items!, i => i.Id, ItemsFile, errors);
         var zoneMap = ToMap(zones!, z => z.Id, ZonesFile, errors);
         var recruitMap = ToMap(recruits!, r => r.Id, RecruitsFile, errors);
+        var affixMap = ToMap(affixes!, a => a.Id, AffixesFile, errors);
         var recipeMap = new Dictionary<string, RecipeDefinition>();
         foreach (var recipe in recipes!)
         {
@@ -164,12 +168,17 @@ public static class GameDataLoader
             ValidateRecipe(recipe, itemMap, errors);
         }
 
+        foreach (var affix in affixes!)
+        {
+            ValidateAffix(affix, masteryMap, errors);
+        }
+
         if (errors.Count > 0)
         {
             throw new GameDataException(errors);
         }
 
-        return new GameData(masteryMap, skillMap, actionMap, effectMap, encounterMap, itemMap, zoneMap, recruitMap, recipeMap);
+        return new GameData(masteryMap, skillMap, actionMap, effectMap, encounterMap, itemMap, zoneMap, recruitMap, recipeMap, affixMap);
     }
 
     private static List<T>? Deserialize<T>(string json, string fileName, List<string> errors)
@@ -429,6 +438,55 @@ public static class GameDataLoader
         foreach (var duplicate in item.Actions.GroupBy(a => a).Where(g => g.Count() > 1))
         {
             errors.Add($"{at}: lists action '{duplicate.Key}' more than once");
+        }
+    }
+
+    private static void ValidateAffix(AffixDefinition affix, IReadOnlyDictionary<string, MasteryDefinition> masteries, List<string> errors)
+    {
+        var at = $"{AffixesFile} '{affix.Id}'";
+        DataValidation.RequireText(affix.Id, $"{AffixesFile}: id", errors);
+        DataValidation.RequireText(affix.Name, $"{at}: name", errors);
+        if (!Enum.IsDefined(affix.Kind))
+        {
+            errors.Add($"{at}: unknown kind {affix.Kind}");
+        }
+
+        if (affix.ItemMasteryTag && affix.Tag is not null)
+        {
+            errors.Add($"{at}: itemMasteryTag and tag cannot be used together");
+        }
+
+        if (affix.Min < 1 || affix.Max < affix.Min)
+        {
+            errors.Add($"{at}: needs 1 <= min <= max, got {affix.Min}..{affix.Max}");
+        }
+
+        if (affix.PerLevel < 0)
+        {
+            errors.Add($"{at}: perLevel must not be negative, got {affix.PerLevel}");
+        }
+
+        if (affix.MemberCap is < 1)
+        {
+            errors.Add($"{at}: memberCap must be at least 1, got {affix.MemberCap}");
+        }
+
+        if (affix.On.Count == 0)
+        {
+            errors.Add($"{at}: needs at least one target in 'on'");
+        }
+
+        foreach (var target in affix.On)
+        {
+            if (!target.Slot.IsEquipment())
+            {
+                errors.Add($"{at}: target slot must be equipment, got {target.Slot}");
+            }
+
+            foreach (var mastery in target.Masteries.Where(m => !masteries.ContainsKey(m)))
+            {
+                errors.Add($"{at}: target has unknown mastery '{mastery}'");
+            }
         }
     }
 

@@ -31,7 +31,15 @@ public class ExpeditionTests
           { "id": "ore", "name": "광석", "slot": "Material" } ]
         """;
 
-    private static readonly GameData Data = GameDataLoader.Parse(
+    private static readonly GameData Data = Build();
+
+    /// <summary>무작위 옵션이 있는 데이터 (나머지는 <see cref="Data"/>와 같다).</summary>
+    private static readonly GameData AffixData = Build("""
+        [ { "id": "might", "name": "위력", "kind": "PowerPercent", "on": [ { "slot": "MainHand" }, { "slot": "Body" } ], "min": 1, "max": 3, "perLevel": 1 },
+          { "id": "guard", "name": "방어", "kind": "DefensePercent", "on": [ { "slot": "Body" } ], "min": 2, "max": 4, "perLevel": 1 } ]
+        """);
+
+    private static GameData Build(string affixesJson = "[]") => GameDataLoader.Parse(
         """
         [ { "id": "sword", "name": "검", "kind": "Weapon" },
           { "id": "plate", "name": "판금", "kind": "Armor" } ]
@@ -61,7 +69,8 @@ public class ExpeditionTests
             "statsMax": { "str": 12, "dex": 12, "vital": 12, "intel": 12, "speed": 12 },
             "equipment": { "MainHand": "old_sword", "Body": "plate_armor" },
             "tactics": [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "strike" } ], "price": 100 } ]
-        """);
+        """,
+        affixesJson: affixesJson);
 
     private static readonly Dictionary<Triangle.Core.Items.EquipmentSlot, string> FullGear =
         TestGear.Of(mainHand: "old_sword", offHand: "old_shield", head: "plate_helm", body: "plate_armor", feet: "plate_boots")
@@ -243,7 +252,8 @@ public class ExpeditionTests
         // 골드 10, 깊이 보너스 50%: 10 + 15.
         var expedition = company.Expedition!;
         Assert.Equal(25, expedition.CarriedGold);
-        Assert.Equal(2, expedition.CarriedItems["plate_armor"]);
+        Assert.Equal(["plate_armor", "plate_armor"], expedition.CarriedGear.Select(g => g.ItemId));
+        Assert.Empty(expedition.CarriedItems); // 장비는 떨어질 때 한 점씩 만들어 따로 든다
         Assert.Equal(7, company.Gold);
         Assert.True(ExpeditionRules.CanContinue(company, Data));
         Assert.Equal(0, company.StashTotal);
@@ -273,6 +283,38 @@ public class ExpeditionTests
         Assert.Equal(
             [new ItemInstance(before, "plate_armor", 3), new ItemInstance(before + 1, "plate_armor", 3), new ItemInstance(before + 2, "plate_armor", 3)],
             company.Gear);
+    }
+
+    [Fact]
+    public void Dropped_equipment_rolls_options_without_changing_what_drops()
+    {
+        var rarities = new HashSet<ItemRarity>();
+        for (var seed = 0; seed < 30; seed++)
+        {
+            var (plain, rolled) = (new List<ItemInstance>(), new List<ItemInstance>());
+            foreach (var (data, drops) in new[] { (Data, plain), (AffixData, rolled) })
+            {
+                var company = new Company([Member("a")], ["a"], 0, new Dictionary<string, int>(), 0, seed);
+                Growth.UnlockAll(company, data);
+                ExpeditionRules.Start(company, data, "deep");
+                while (company.Expedition is { } expedition)
+                {
+                    ExpeditionRules.ApplyResult(company, data, Result(CombatOutcome.Victory, company, ("a", 50, 5)));
+                    drops.AddRange(expedition.LastBattle!.GearDrops);
+                }
+
+                Assert.Equal(drops, company.Gear); // 원정이 끝나면 든 장비가 그대로 창고에 들어간다
+            }
+
+            // 옵션은 따로 굴리므로 무엇이 떨어지는지(아이템·레벨)는 옵션이 있든 없든 같다.
+            Assert.Equal(plain.Select(g => (g.ItemId, g.Level)), rolled.Select(g => (g.ItemId, g.Level)));
+            Assert.All(plain, g => Assert.Empty(g.Affixes));
+            Assert.All(rolled, g => Assert.InRange(g.Affixes.Count, 0, 2)); // 판금 갑옷에 붙는 옵션은 둘
+            Assert.All(rolled.SelectMany(g => g.Affixes), o => Assert.InRange(o.Percent, 3, 6)); // 깊이 3: 범위 + 2
+            rarities.UnionWith(rolled.Select(g => g.Rarity));
+        }
+
+        Assert.Equal(new HashSet<ItemRarity> { ItemRarity.Common, ItemRarity.Magic, ItemRarity.Rare }, rarities);
     }
 
     [Fact]
@@ -362,7 +404,9 @@ public class ExpeditionTests
             Growth.UnlockAll(company, Data);
             ExpeditionRules.Start(company, Data, "vault");
             ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("a", 50, 5)));
-            var drop = Assert.Single(company.Expedition!.LastBattle!.Drops);
+            var battle = company.Expedition!.LastBattle!;
+            Assert.Empty(battle.Drops);
+            var drop = Assert.Single(battle.GearDrops).ItemId;
             Assert.Equal(2, Data.Items[drop].Tier);
             seen.Add(drop);
         }

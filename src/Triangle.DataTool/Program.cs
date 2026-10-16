@@ -8,7 +8,7 @@ const string Usage = """
 
     명령:
       validate [--strict]        로더 검증(오류)과 추가 검사(경고)를 돌린다. --strict면 경고도 실패로 본다.
-      list <종류> [필터…]        종류: masteries skills actions effects items encounters zones recipes recruits
+      list <종류> [필터…]        종류: masteries skills actions effects items encounters zones recipes recruits affixes
                                  필터: --search <글자> (id·이름·종류에 포함)
                                        items: --mastery <id> --slot <부위> --tier <n> --type <종류>
                                        actions: --mastery <id> (그 계열 아이템이 주거나 그 계열 무기 행동)

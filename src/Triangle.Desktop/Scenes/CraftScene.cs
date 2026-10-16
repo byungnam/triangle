@@ -172,10 +172,10 @@ internal sealed class CraftScene : IScene
         craft.Enabled = Company.WhyCannotCraft(recipe.Result, data) is null;
         craft.Click += (_, _) =>
         {
-            if (Company.Craft(recipe.Result, data))
+            if (Company.Craft(recipe.Result, data) is { } made)
             {
                 _session.MarkChanged();
-                _session.Notice = ($"{ItemText.ShortName(item)} 제작 (창고로)", Theme.Heal);
+                _session.Notice = ($"{ItemText.PieceSummary(made, data)} 제작 (창고로)", ItemText.RarityColor(made.Rarity));
                 _dirty = true;
             }
         };

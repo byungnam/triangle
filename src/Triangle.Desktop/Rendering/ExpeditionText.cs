@@ -1,6 +1,7 @@
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
 using Triangle.Core.Expeditions;
+using Triangle.Core.Items;
 using Triangle.Core.Progress;
 
 namespace Triangle.Desktop.Rendering;
@@ -49,6 +50,12 @@ internal static class ExpeditionText
             lines.Add(new LogLine($"골드 +{report.Gold} (들고 있는 전리품)", Theme.Cover));
         }
 
+        foreach (var gear in report.GearDrops)
+        {
+            var color = gear.Rarity == ItemRarity.Common ? Theme.Cover : ItemText.RarityColor(gear.Rarity);
+            lines.Add(new LogLine($"장비: {ItemText.PieceSummary(gear, data)}", color));
+        }
+
         if (report.Drops.Count > 0)
         {
             lines.Add(new LogLine($"아이템: {Items(data, report.Drops)}", Theme.Cover));
@@ -73,6 +80,14 @@ internal static class ExpeditionText
             _ => "전멸",
         };
         var parts = new List<string> { $"{zone} 원정 {end} ({summary.Battles}전)", $"골드 +{summary.Gold}" };
+        if (summary.Gear.Count > 0)
+        {
+            var best = summary.Gear.Max(g => g.Rarity);
+            parts.Add(best == ItemRarity.Common
+                ? $"장비 {summary.Gear.Count}점"
+                : $"장비 {summary.Gear.Count}점 (최고 {ItemText.RarityName(best)})");
+        }
+
         if (summary.Items.Count > 0)
         {
             parts.Add($"아이템: {Items(data, summary.Items)}");

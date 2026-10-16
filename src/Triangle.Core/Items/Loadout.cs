@@ -9,13 +9,18 @@ namespace Triangle.Core.Items;
 /// </summary>
 public sealed class Loadout
 {
-    public Loadout(IEnumerable<(EquipmentSlot Slot, ItemDefinition Item)> worn)
+    /// <param name="optionBonuses">낀 장비의 무작위 옵션 보너스 (<see cref="Affixes.Bonuses"/>). 적은 없다.</param>
+    public Loadout(IEnumerable<(EquipmentSlot Slot, ItemDefinition Item)> worn, IReadOnlyList<ItemBonus>? optionBonuses = null)
     {
         Worn = worn.OrderBy(w => w.Slot).ToList();
+        OptionBonuses = optionBonuses ?? [];
     }
 
     /// <summary>부위 순서로 착용한 아이템.</summary>
     public IReadOnlyList<(EquipmentSlot Slot, ItemDefinition Item)> Worn { get; }
+
+    /// <summary>낀 장비의 무작위 옵션 보너스 (숙련 아이템 파워를 받지 않는다).</summary>
+    public IReadOnlyList<ItemBonus> OptionBonuses { get; }
 
     public ItemDefinition? MainHand => In(EquipmentSlot.MainHand);
 
@@ -43,9 +48,9 @@ public sealed class Loadout
         return granted;
     }
 
-    /// <summary>착용 중인 아이템의 보너스. masteryLevel은 계열 ID별 숙련 레벨 (숙련 아이템 파워).</summary>
+    /// <summary>착용 중인 아이템의 보너스와 옵션 보너스. masteryLevel은 계열 ID별 숙련 레벨 (숙련 아이템 파워, 옵션에는 붙지 않는다).</summary>
     public IReadOnlyList<ItemBonus> ItemBonuses(Func<string, int> masteryLevel) =>
-        Worn.SelectMany(w => w.Item.BonusesAt(masteryLevel(w.Item.Mastery!))).ToList();
+        Worn.SelectMany(w => w.Item.BonusesAt(masteryLevel(w.Item.Mastery!))).Concat(OptionBonuses).ToList();
 
     /// <summary>전투 입력에 장비가 정하는 값(계열, 행동, 보너스, 위력 배율)을 넣는다.</summary>
     public CombatantSetup Apply(CombatantSetup setup, IEnumerable<ActionDefinition> actions, Func<string, int> masteryLevel) =>

@@ -193,6 +193,41 @@ public class GameDataLoaderTests
     }
 
     [Fact]
+    public void Shipped_options_let_every_piece_of_equipment_reach_legendary()
+    {
+        var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
+
+        Assert.All(data.Items.Values.Where(i => i.IsEquipment), item => Assert.True(
+            Affixes.For(item, data).Count >= Affixes.MaxOptions, $"{item.Id}: {Affixes.For(item, data).Count} options fit"));
+        Assert.All(data.Items.Values.Where(i => !i.IsEquipment), item => Assert.Empty(Affixes.For(item, data)));
+    }
+
+    [Fact]
+    public void Rejects_bad_affixes()
+    {
+        const string affixes = """
+            [ { "id": "a", "name": "", "kind": "PowerPercent", "tag": "spell", "itemMasteryTag": true, "on": [], "min": 0, "max": 2 },
+              { "id": "b", "name": "나쁨", "kind": "DefensePercent", "on": [ { "slot": "Material" }, { "slot": "Head", "masteries": [ "ghost" ] } ],
+                "min": 5, "max": 3, "perLevel": -1, "memberCap": 0 },
+              { "id": "b", "name": "중복", "kind": "DefensePercent", "on": [ { "slot": "Head" } ], "min": 1, "max": 1 } ]
+            """;
+
+        var errors = Assert.Throws<GameDataException>(() =>
+            GameDataLoader.Parse(Masteries, Skills, Actions, Encounters(), affixesJson: affixes)).Errors;
+
+        Assert.Contains("affixes.json 'a': name must not be empty", errors);
+        Assert.Contains("affixes.json 'a': itemMasteryTag and tag cannot be used together", errors);
+        Assert.Contains("affixes.json 'a': needs 1 <= min <= max, got 0..2", errors);
+        Assert.Contains("affixes.json 'a': needs at least one target in 'on'", errors);
+        Assert.Contains("affixes.json 'b': needs 1 <= min <= max, got 5..3", errors);
+        Assert.Contains("affixes.json 'b': perLevel must not be negative, got -1", errors);
+        Assert.Contains("affixes.json 'b': memberCap must be at least 1, got 0", errors);
+        Assert.Contains("affixes.json 'b': target slot must be equipment, got Material", errors);
+        Assert.Contains("affixes.json 'b': target has unknown mastery 'ghost'", errors);
+        Assert.Contains("affixes.json: duplicate id 'b'", errors);
+    }
+
+    [Fact]
     public void Rejects_bad_recipes()
     {
         const string items = """
@@ -555,9 +590,10 @@ public class GameDataLoaderTests
 
             var errors = Assert.Throws<GameDataException>(() => GameDataLoader.LoadDirectory(dir)).Errors;
 
-            Assert.Equal(7, errors.Count);
+            Assert.Equal(8, errors.Count);
             Assert.Contains(errors, e => e.StartsWith("items.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("recipes.json: cannot read"));
+            Assert.Contains(errors, e => e.StartsWith("affixes.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("zones.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("recruits.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("actions.json: cannot read"));

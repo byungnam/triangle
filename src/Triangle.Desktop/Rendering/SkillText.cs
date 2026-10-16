@@ -6,9 +6,13 @@ namespace Triangle.Desktop.Rendering;
 /// <summary>스킬과 보너스의 화면 표시.</summary>
 internal static class SkillText
 {
-    /// <summary>보너스 태그(숙련 ID 등)를 이름으로, 예: "bow" → "활 ".</summary>
-    private static string TagLabel(string? tag, GameData data) =>
-        tag is null ? "" : (data.Masteries.TryGetValue(tag, out var m) ? m.Name : tag) + " ";
+    /// <summary>보너스 태그(숙련 ID 등)를 이름으로, 예: "bow" → "활 ", "spell" → "주문 ".</summary>
+    private static string TagLabel(string? tag, GameData data) => tag switch
+    {
+        null => "",
+        "spell" => "주문 ",
+        _ => (data.Masteries.TryGetValue(tag, out var m) ? m.Name : tag) + " ",
+    };
 
     /// <summary>레벨당 보너스, 예: "활 위력 +5%". 감소는 일반 하이픈을 쓴다(글꼴에 − 기호가 없다).</summary>
     public static string BonusLabel(SkillBonus bonus, GameData data) => BonusLabel(bonus.Kind, bonus.PercentPerLevel, bonus.Tag, data);

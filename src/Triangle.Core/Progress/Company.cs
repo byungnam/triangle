@@ -85,7 +85,11 @@ public sealed class Company
         }
 
         _gear = gear?.ToList() ?? [];
-        var uids = _roster.SelectMany(m => m.Gear.Values).Concat(_gear).Select(g => g.Uid).ToList();
+        var uids = _roster.SelectMany(m => m.Gear.Values)
+            .Concat(_gear)
+            .Concat(expedition?.CarriedGear ?? [])
+            .Select(g => g.Uid)
+            .ToList();
         if (uids.GroupBy(u => u).FirstOrDefault(g => g.Count() > 1) is { } duplicate)
         {
             throw new ArgumentException($"Item uid {duplicate.Key} is used more than once.", nameof(gear));
@@ -308,7 +312,18 @@ public sealed class Company
         return made;
     }
 
-    private ItemInstance NewGear(string itemId, int level) => new(NextItemUid++, itemId, Math.Max(1, level));
+    private ItemInstance NewGear(string itemId, int level, IReadOnlyList<ItemOption>? options = null) =>
+        new(NextItemUid++, itemId, Math.Max(1, level), options);
+
+    /// <summary>새 장비 한 점을 만든다(번호를 붙인다). 창고에는 넣지 않는다: 원정 전리품은 원정이 끝날 때 <see cref="StoreGear"/>로 넣는다.</summary>
+    internal ItemInstance MintGear(string itemId, int level, IReadOnlyList<ItemOption>? options) => NewGear(itemId, level, options);
+
+    /// <summary>이미 번호가 붙은 장비를 창고에 넣는다.</summary>
+    internal void StoreGear(ItemInstance gear) => _gear.Add(gear);
+
+    /// <summary>클리어한 가장 깊은 깊이 (지역 난이도, 아무것도 클리어하지 않았으면 1). 제작품의 아이템 레벨이다.</summary>
+    public int DeepestDepth(GameData data) =>
+        Math.Max(1, _clearRecords.Keys.Where(data.Zones.ContainsKey).Select(id => data.Zones[id].Difficulty).DefaultIfEmpty(1).Max());
 
     /// <summary>창고에서 재료를 꺼낸다. 모자라면 아무것도 꺼내지 않고 false.</summary>
     private bool TakeMaterial(string itemId, int count = 1)
@@ -497,13 +512,14 @@ public sealed class Company
     }
 
     /// <summary>
-    /// 재료와 골드를 내고 장비를 만들어 창고에 넣는다(아이템 레벨 = 티어). 만들 수 없으면(<see cref="WhyCannotCraft"/>) false.
+    /// 재료와 골드를 내고 장비를 만들어 창고에 넣는다. 제작품은 마법(옵션 1개) 확정이고, 아이템 레벨은 클리어한 가장 깊은 깊이다
+    /// (<see cref="DeepestDepth"/>). 옵션은 회사 시드로 굴린다. 만든 장비를 돌려준다. 만들 수 없으면(<see cref="WhyCannotCraft"/>) null.
     /// </summary>
-    public bool Craft(string resultId, GameData data)
+    public ItemInstance? Craft(string resultId, GameData data)
     {
         if (WhyCannotCraft(resultId, data) is not null)
         {
-            return false;
+            return null;
         }
 
         var recipe = data.Recipes[resultId];
@@ -513,8 +529,45 @@ public sealed class Company
         }
 
         Gold -= recipe.Gold;
-        AddToStash(resultId, data);
-        return true;
+        var level = DeepestDepth(data);
+        var options = Affixes.Roll(data.Items[resultId], level, data, new Random(TakeSeed()), count: 1);
+        var made = NewGear(resultId, level, options);
+        _gear.Add(made);
+        return made;
+    }
+
+    /// <summary>창고의 장비를 분해할 수 없는 이유. null이면 분해할 수 있다. 원정 중, 창고에 없음, 나오는 재료가 없는 장비.</summary>
+    public string? WhyCannotDismantle(int uid, GameData data)
+    {
+        if (OnExpedition)
+        {
+            return "원정 중에는 분해할 수 없습니다";
+        }
+
+        if (StashGear(uid) is not { } gear)
+        {
+            return "창고에 없습니다";
+        }
+
+        return Affixes.DismantleYield(gear, data) is null ? "분해해도 나오는 재료가 없습니다" : null;
+    }
+
+    /// <summary>
+    /// 창고의 장비 한 점을 분해해 제작 재료를 받는다(<see cref="Affixes.DismantleYield"/>, 등급이 높을수록 많이).
+    /// 받은 재료와 개수를 돌려준다. 분해할 수 없으면(<see cref="WhyCannotDismantle"/>) null.
+    /// </summary>
+    public (string MaterialId, int Count)? Dismantle(int uid, GameData data)
+    {
+        if (WhyCannotDismantle(uid, data) is not null)
+        {
+            return null;
+        }
+
+        var gear = StashGear(uid)!;
+        var yield = Affixes.DismantleYield(gear, data)!.Value;
+        _gear.Remove(gear);
+        AddToStash(yield.MaterialId, data, yield.Count);
+        return yield;
     }
 
     /// <summary>모집 후보를 새로 굴린다 (원정이 끝날 때, 새 게임).</summary>

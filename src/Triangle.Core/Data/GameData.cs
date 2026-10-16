@@ -21,9 +21,11 @@ public sealed class GameData
         IReadOnlyDictionary<string, ItemDefinition> items,
         IReadOnlyDictionary<string, ZoneDefinition> zones,
         IReadOnlyDictionary<string, RecruitTemplate> recruits,
-        IReadOnlyDictionary<string, RecipeDefinition>? recipes = null)
+        IReadOnlyDictionary<string, RecipeDefinition>? recipes = null,
+        IReadOnlyDictionary<string, AffixDefinition>? affixes = null)
     {
         Recipes = recipes ?? new Dictionary<string, RecipeDefinition>();
+        Affixes = affixes ?? new Dictionary<string, AffixDefinition>();
         Items = items;
         Zones = zones;
         Recruits = recruits;
@@ -56,6 +58,9 @@ public sealed class GameData
     /// <summary>그 행동을 주는 아이템 (데이터 순서).</summary>
     public IEnumerable<ItemDefinition> ItemsGranting(string actionId) =>
         Items.Values.Where(i => i.Actions.Contains(actionId));
+
+    /// <summary>장비 무작위 옵션의 종류 (데이터 순서).</summary>
+    public IReadOnlyDictionary<string, AffixDefinition> Affixes { get; }
 
     /// <summary>제작법 (결과 아이템 ID → 제작법, 데이터 순서).</summary>
     public IReadOnlyDictionary<string, RecipeDefinition> Recipes { get; }

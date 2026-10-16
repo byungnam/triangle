@@ -72,6 +72,9 @@ public sealed record SavedExpedition
     public int CarriedGold { get; init; }
     public IReadOnlyDictionary<string, int> CarriedItems { get; init; } = new Dictionary<string, int>();
 
+    /// <summary>들고 있는 장비 한 점들 (2026-10-16). 없으면 비어 있다.</summary>
+    public IReadOnlyList<ItemInstance> CarriedGear { get; init; } = [];
+
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public BattleReport? LastBattle { get; init; }
 }
@@ -137,6 +140,8 @@ public static class SaveGame
     /// 12: 장비를 한 점씩 저장 (2026-10-16, 반복 파밍 계획 1단위). 창고(stash)를 재료(materials, 아이템 ID별 개수)와
     ///    장비(gear, 번호·아이템 ID·아이템 레벨)로 나누고, 멤버의 장비(equipment)도 한 점씩, 다음 번호(nextItemUid)를 둔다.
     ///    버전 11의 장비는 아이템 레벨 = 티어가 된다. 그 이전은 읽지 않는다.
+    ///    2026-10-16(2단위): 장비 한 점의 무작위 옵션(options), 원정이 들고 있는 장비(carriedGear), 직전 전투의 장비 드롭(gearDrops)을
+    ///    덧붙였다. 없으면 옵션이 없고 들고 있는 장비가 없는 것이라 이전 파일이 그대로 읽히므로 버전은 올리지 않았다.
     /// </summary>
     public const int CurrentVersion = 12;
 
@@ -162,6 +167,7 @@ public static class SaveGame
                     Members = e.Members.ToList(),
                     CarriedGold = e.CarriedGold,
                     CarriedItems = new SortedDictionary<string, int>(e.CarriedItems.ToDictionary()),
+                    CarriedGear = e.CarriedGear.ToList(),
                     LastBattle = e.LastBattle,
                 }
                 : null,
@@ -233,7 +239,8 @@ public static class SaveGame
             file.NextRecruitNumber,
             saved is null
                 ? null
-                : new Expedition(saved.ZoneId, saved.Seed, saved.BattleIndex, saved.Members, saved.CarriedGold, saved.CarriedItems, saved.LastBattle),
+                : new Expedition(
+                    saved.ZoneId, saved.Seed, saved.BattleIndex, saved.Members, saved.CarriedGold, saved.CarriedItems, saved.LastBattle, saved.CarriedGear),
             TacticSetNames(file),
             file.Clears,
             file.Encounters,
@@ -391,7 +398,10 @@ public static class SaveGame
             ValidateGear(gear, $"save gear {gear.Uid}", data, errors);
         }
 
-        var uids = file.Roster.SelectMany(m => m.Equipment.Values).Concat(file.Gear).Select(g => g.Uid);
+        var uids = file.Roster.SelectMany(m => m.Equipment.Values)
+            .Concat(file.Gear)
+            .Concat(file.Expedition?.CarriedGear ?? [])
+            .Select(g => g.Uid);
         foreach (var duplicate in uids.GroupBy(u => u).Where(g => g.Count() > 1))
         {
             errors.Add($"save: item uid {duplicate.Key} is used by more than one piece");
@@ -556,6 +566,11 @@ public static class SaveGame
                 errors.Add($"{at}: count of '{itemId}' must be at least 1, got {count}");
             }
         }
+
+        foreach (var gear in expedition.CarriedGear)
+        {
+            ValidateGear(gear, $"{at} gear {gear.Uid}", data, errors);
+        }
     }
 
     /// <summary>창고의 장비 한 점: 아는 장비 아이템이어야 한다. 낀 장비의 아이템과 부위는 <see cref="DataValidation.ValidateEquipped"/>가 본다.</summary>
@@ -570,11 +585,14 @@ public static class SaveGame
             errors.Add($"{at}: '{gear.ItemId}' is not equipment (materials are saved as counts)");
         }
 
-        ValidatePiece(gear, at, errors);
+        ValidatePiece(gear, at, data, errors);
     }
 
-    /// <summary>장비 한 점의 번호와 아이템 레벨: 둘 다 1 이상.</summary>
-    private static void ValidatePiece(ItemInstance gear, string at, List<string> errors)
+    /// <summary>
+    /// 장비 한 점의 번호와 아이템 레벨(둘 다 1 이상), 옵션(아는 옵션, 겹치지 않음, 3개 이하, 값 1 이상).
+    /// 옵션이 그 장비에 붙을 수 있는지는 보지 않는다: 데이터에서 옵션이 붙는 곳을 바꿔도 이미 가진 장비는 그대로 읽힌다.
+    /// </summary>
+    private static void ValidatePiece(ItemInstance gear, string at, GameData data, List<string> errors)
     {
         if (gear.Uid < 1)
         {
@@ -584,6 +602,29 @@ public static class SaveGame
         if (gear.Level < 1)
         {
             errors.Add($"{at}: level must be at least 1, got {gear.Level}");
+        }
+
+        if (gear.Affixes.Count > Affixes.MaxOptions)
+        {
+            errors.Add($"{at}: has {gear.Affixes.Count} options (at most {Affixes.MaxOptions})");
+        }
+
+        foreach (var option in gear.Affixes)
+        {
+            if (!data.Affixes.ContainsKey(option.AffixId))
+            {
+                errors.Add($"{at}: unknown option '{option.AffixId}'");
+            }
+
+            if (option.Percent < 1)
+            {
+                errors.Add($"{at}: option '{option.AffixId}' must be at least 1%, got {option.Percent}");
+            }
+        }
+
+        foreach (var duplicate in gear.Affixes.GroupBy(o => o.AffixId).Where(g => g.Count() > 1))
+        {
+            errors.Add($"{at}: option '{duplicate.Key}' appears more than once");
         }
     }
 
@@ -597,7 +638,7 @@ public static class SaveGame
             member.Equipment.ToDictionary(p => p.Key, p => p.Value.ItemId), $"{at}: equipment", data.Items, errors);
         foreach (var (slot, gear) in member.Equipment)
         {
-            ValidatePiece(gear, $"{at}: equipment {slot}", errors);
+            ValidatePiece(gear, $"{at}: equipment {slot}", data, errors);
         }
 
         foreach (var (masteryId, xp) in member.MasteryXp)

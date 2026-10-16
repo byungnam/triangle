@@ -22,6 +22,7 @@ public sealed class DataDocument
         ["zones"] = GameDataLoader.ZonesFile,
         ["recruits"] = GameDataLoader.RecruitsFile,
         ["recipes"] = GameDataLoader.RecipesFile,
+        ["affixes"] = GameDataLoader.AffixesFile,
     };
 
     private readonly Dictionary<string, JsonArray> _entries;
@@ -93,7 +94,7 @@ public sealed class DataDocument
     {
         string J(string kind) => ToJson(kind);
         return GameDataLoader.Parse(J("masteries"), J("skills"), J("actions"), J("encounters"), J("effects"), J("items"), J("zones"),
-            J("recruits"), J("recipes"));
+            J("recruits"), J("recipes"), J("affixes"));
     }
 
     /// <summary>파일에 쓸 내용 (게임 데이터 JSON 설정, 끝에 줄바꿈).</summary>

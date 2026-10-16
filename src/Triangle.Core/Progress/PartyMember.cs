@@ -129,8 +129,12 @@ public sealed class PartyMember
             .Where(s => ItemIn(s) is not null && WhyCannotWear(s, data) is null)
             .Select(s => (s, data.Items[ItemIn(s)!]));
 
-    /// <summary>실제로 착용 중인 장비 묶음.</summary>
-    public Loadout Loadout(GameData data) => new(WornItems(data));
+    /// <summary>실제로 착용 중인 장비 한 점들 (착용 불가 제외, 부위 순서).</summary>
+    public IEnumerable<(ItemDefinition Item, ItemInstance Gear)> WornGear(GameData data) =>
+        WornItems(data).Select(w => (w.Item, _equipment[w.Slot]));
+
+    /// <summary>실제로 착용 중인 장비 묶음 (무작위 옵션 포함).</summary>
+    public Loadout Loadout(GameData data) => new(WornItems(data), Affixes.Bonuses(WornGear(data), data));
 
     /// <summary>착용 중인 아이템의 행동과, 든 주무기 계열이 주는 행동(예: 정령 소환).</summary>
     public IReadOnlySet<string> GrantedActions(GameData data) => Loadout(data).GrantedActions(data.Actions.Values);

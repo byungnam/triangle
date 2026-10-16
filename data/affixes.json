@@ -1,0 +1,193 @@
+[
+  {
+    "id": "weapon_power",
+    "name": "계열 위력",
+    "kind": "PowerPercent",
+    "itemMasteryTag": true,
+    "on": [
+      {
+        "slot": "MainHand"
+      }
+    ],
+    "min": 3,
+    "max": 6,
+    "perLevel": 1.5
+  },
+  {
+    "id": "spell_power",
+    "name": "주문 위력",
+    "kind": "PowerPercent",
+    "tag": "spell",
+    "on": [
+      {
+        "slot": "OffHand"
+      },
+      {
+        "slot": "Head"
+      }
+    ],
+    "min": 3,
+    "max": 6,
+    "perLevel": 1.5
+  },
+  {
+    "id": "heal_power",
+    "name": "회복량",
+    "kind": "HealPercent",
+    "on": [
+      {
+        "slot": "MainHand",
+        "masteries": [
+          "restoration",
+          "renewal",
+          "warding",
+          "blessing"
+        ]
+      },
+      {
+        "slot": "OffHand",
+        "masteries": [
+          "relic"
+        ]
+      },
+      {
+        "slot": "Body"
+      }
+    ],
+    "min": 2,
+    "max": 4,
+    "perLevel": 1
+  },
+  {
+    "id": "max_hp",
+    "name": "최대 HP",
+    "kind": "MaxHpPercent",
+    "on": [
+      {
+        "slot": "Head"
+      },
+      {
+        "slot": "Body"
+      },
+      {
+        "slot": "OffHand",
+        "masteries": [
+          "shield"
+        ]
+      }
+    ],
+    "min": 3,
+    "max": 5,
+    "perLevel": 1
+  },
+  {
+    "id": "max_mp",
+    "name": "최대 MP",
+    "kind": "MaxMpPercent",
+    "on": [
+      {
+        "slot": "Head"
+      },
+      {
+        "slot": "Body"
+      },
+      {
+        "slot": "OffHand"
+      }
+    ],
+    "min": 3,
+    "max": 5,
+    "perLevel": 1
+  },
+  {
+    "id": "defense",
+    "name": "방어",
+    "kind": "DefensePercent",
+    "on": [
+      {
+        "slot": "Head"
+      },
+      {
+        "slot": "Body"
+      },
+      {
+        "slot": "Feet"
+      },
+      {
+        "slot": "OffHand",
+        "masteries": [
+          "shield"
+        ]
+      }
+    ],
+    "min": 4,
+    "max": 8,
+    "perLevel": 2
+  },
+  {
+    "id": "haste",
+    "name": "행동 간격 감소",
+    "kind": "DelayReductionPercent",
+    "on": [
+      {
+        "slot": "MainHand"
+      },
+      {
+        "slot": "Head"
+      },
+      {
+        "slot": "Feet"
+      }
+    ],
+    "min": 1,
+    "max": 2,
+    "perLevel": 0.3,
+    "memberCap": 50
+  },
+  {
+    "id": "mp_saving",
+    "name": "MP 소모 감소",
+    "kind": "MpCostReductionPercent",
+    "on": [
+      {
+        "slot": "MainHand"
+      },
+      {
+        "slot": "OffHand",
+        "masteries": [
+          "tome"
+        ]
+      },
+      {
+        "slot": "Body"
+      },
+      {
+        "slot": "Feet"
+      }
+    ],
+    "min": 2,
+    "max": 4,
+    "perLevel": 0.5,
+    "memberCap": 50
+  },
+  {
+    "id": "toughness",
+    "name": "받는 피해 감소",
+    "kind": "DamageTakenReductionPercent",
+    "on": [
+      {
+        "slot": "Body"
+      },
+      {
+        "slot": "OffHand",
+        "masteries": [
+          "shield"
+        ]
+      }
+    ],
+    "min": 1,
+    "max": 2,
+    "perLevel": 0.3,
+    "memberCap": 50
+  }
+]

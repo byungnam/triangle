@@ -1,4 +1,5 @@
 using Triangle.Core.Combat;
+using Triangle.Core.Items;
 
 namespace Triangle.Core.Expeditions;
 
@@ -11,7 +12,9 @@ public sealed class Expedition
 {
     private readonly List<ExpeditionMember> _members;
     private readonly Dictionary<string, int> _carriedItems;
+    private readonly List<ItemInstance> _carriedGear;
 
+    /// <param name="carriedGear">들고 있는 장비 (떨어질 때 번호와 옵션이 정해진다).</param>
     public Expedition(
         string zoneId,
         int seed,
@@ -19,8 +22,10 @@ public sealed class Expedition
         IEnumerable<ExpeditionMember> members,
         int carriedGold,
         IReadOnlyDictionary<string, int> carriedItems,
-        BattleReport? lastBattle)
+        BattleReport? lastBattle,
+        IEnumerable<ItemInstance>? carriedGear = null)
     {
+        _carriedGear = carriedGear?.ToList() ?? [];
         ZoneId = zoneId;
         Seed = seed;
         BattleIndex = battleIndex;
@@ -43,8 +48,11 @@ public sealed class Expedition
 
     public int CarriedGold { get; internal set; }
 
-    /// <summary>들고 있는 아이템 (ID별 개수).</summary>
+    /// <summary>들고 있는 재료 (ID별 개수). 2026-10-16 이전 세이브에는 장비도 개수로 들어 있을 수 있다(옵션 없이 확정된다).</summary>
     public IReadOnlyDictionary<string, int> CarriedItems => _carriedItems;
+
+    /// <summary>들고 있는 장비 한 점들 (떨어진 순서). 원정이 끝나면 창고로 간다.</summary>
+    public IReadOnlyList<ItemInstance> CarriedGear => _carriedGear;
 
     /// <summary>직전 전투의 요약. 아직 싸우지 않았으면 null.</summary>
     public BattleReport? LastBattle { get; internal set; }
@@ -60,6 +68,8 @@ public sealed class Expedition
     }
 
     internal void Carry(string itemId, int count = 1) => _carriedItems[itemId] = _carriedItems.GetValueOrDefault(itemId) + count;
+
+    internal void Carry(ItemInstance gear) => _carriedGear.Add(gear);
 }
 
 /// <summary>원정 중인 멤버의 상태.</summary>
@@ -84,8 +94,11 @@ public sealed record BattleReport
     /// <summary>이 전투에서 들고 있는 전리품에 더한 골드 (클리어 보너스 포함).</summary>
     public int Gold { get; init; }
 
-    /// <summary>이 전투에서 떨어진 아이템 ID.</summary>
+    /// <summary>이 전투에서 떨어진 재료 ID (2026-10-16 이전 세이브에는 장비 ID도 있다).</summary>
     public IReadOnlyList<string> Drops { get; init; } = [];
+
+    /// <summary>이 전투에서 떨어진 장비 한 점들 (등급과 옵션이 정해져 있다).</summary>
+    public IReadOnlyList<ItemInstance> GearDrops { get; init; } = [];
 
     /// <summary>이 전투에서 쓰러진 멤버 이름.</summary>
     public IReadOnlyList<string> Downed { get; init; } = [];
@@ -108,9 +121,12 @@ public enum ExpeditionEnd
 
 /// <summary>끝난 원정의 결과 (마을에 보여준다).</summary>
 /// <param name="Gold">확정된 골드.</param>
-/// <param name="Items">확정된 아이템 ID별 개수 (첫 클리어 보상 포함).</param>
+/// <param name="Items">확정된 재료 ID별 개수 (첫 클리어 보상 포함).</param>
 public sealed record ExpeditionSummary(string ZoneId, ExpeditionEnd End, int Battles, int Gold, IReadOnlyDictionary<string, int> Items)
 {
+    /// <summary>창고로 간 장비 한 점들 (떨어진 순서).</summary>
+    public IReadOnlyList<ItemInstance> Gear { get; init; } = [];
+
     /// <summary>클리어 결과. 클리어했을 때만 있다.</summary>
     public ZoneClear? Clear { get; init; }
 

@@ -40,6 +40,10 @@ public sealed class SaveGameTests : IDisposable
           { "id": "old_sword", "name": "낡은 검", "slot": "MainHand", "mastery": "sword" },
           { "id": "cloth_robe", "name": "천 로브", "slot": "Body", "mastery": "cloth" },
           { "id": "iron_scrap", "name": "철 조각", "slot": "Material" } ]
+        """,
+        affixesJson: """
+        [ { "id": "might", "name": "위력", "kind": "PowerPercent", "on": [ { "slot": "MainHand" } ], "min": 1, "max": 3 },
+          { "id": "guard", "name": "방어", "kind": "DefensePercent", "on": [ { "slot": "Body" } ], "min": 1, "max": 3 } ]
         """);
 
     public void Dispose()
@@ -203,6 +207,45 @@ public sealed class SaveGameTests : IDisposable
         Assert.All(worn, g => Assert.Equal(data.Items[g.ItemId].Tier, g.Level));
         Assert.Equal(3, loaded.StashCount("iron_scrap"));
         Assert.Equal(worn.Count + 1, loaded.NextItemUid);
+    }
+
+    [Fact]
+    public void Options_round_trip_and_common_pieces_write_none()
+    {
+        var company = SampleCompany();
+        var rare = company.MintGear("old_sword", 4, [new ItemOption("might", 5), new ItemOption("guard", 2)]);
+        company.StoreGear(rare);
+
+        var json = SaveGame.Serialize(company);
+        var loaded = SaveGame.Deserialize(json, Data);
+
+        Assert.Equal(rare, loaded.StashGear(rare.Uid));
+        Assert.Equal(ItemRarity.Rare, loaded.StashGear(rare.Uid)!.Rarity);
+        Assert.Equal(company.Gear, loaded.Gear);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(json, "\"options\"")); // 일반 장비는 쓰지 않는다
+        Assert.Contains("\"affixId\": \"might\"", json);
+    }
+
+    [Fact]
+    public void Rejects_bad_options()
+    {
+        var member = Member("""
+            , "equipment": { "MainHand": { "uid": 1, "itemId": "old_sword", "level": 1,
+                "options": [ { "affixId": "might", "percent": 0 }, { "affixId": "might", "percent": 2 }, { "affixId": "ghost", "percent": 1 } ] } }
+            """);
+        const string stash = """
+            , "gear": [ { "uid": 2, "itemId": "old_sword", "level": 1, "options": [ { "affixId": "might", "percent": 1 }, { "affixId": "guard", "percent": 1 },
+                { "affixId": "x", "percent": 1 }, { "affixId": "y", "percent": 1 } ] } ],
+            "nextItemUid": 3
+            """;
+
+        var errors = Assert.Throws<SaveGameException>(() => SaveGame.Deserialize(Save(member, extra: stash), Data)).Errors;
+
+        Assert.Contains("save member 'a': equipment MainHand: option 'might' must be at least 1%, got 0", errors);
+        Assert.Contains("save member 'a': equipment MainHand: option 'might' appears more than once", errors);
+        Assert.Contains("save member 'a': equipment MainHand: unknown option 'ghost'", errors);
+        Assert.Contains("save gear 2: has 4 options (at most 3)", errors);
+        Assert.DoesNotContain(errors, e => e.Contains("'guard'")); // 붙는 곳(몸통)이 아니어도 아는 옵션이면 읽는다
     }
 
     [Fact]
@@ -458,6 +501,9 @@ public sealed class SaveGameTests : IDisposable
         ExpeditionRules.Start(company, data, zone.Id);
         ExpeditionRules.ApplyResult(company, data, ExpeditionRules.Fight(company, data));
         Assert.NotNull(company.Expedition); // 첫 전투로는 끝나지 않는 지역이어야 한다
+        var weapon = data.Items.Values.First(i => i.Slot == EquipmentSlot.MainHand);
+        var carried = company.MintGear(weapon.Id, 2, Affixes.Roll(weapon, 2, data, new Random(1), count: 2));
+        company.Expedition!.Carry(carried); // 원정이 들고 있는 장비 (옵션 포함)
 
         var loaded = SaveGame.Deserialize(SaveGame.Serialize(company), data);
 
@@ -465,6 +511,9 @@ public sealed class SaveGameTests : IDisposable
         Assert.Equal((a.ZoneId, a.Seed, a.BattleIndex, a.CarriedGold), (b.ZoneId, b.Seed, b.BattleIndex, b.CarriedGold));
         Assert.Equal(a.Members, b.Members);
         Assert.Equal(a.CarriedItems, b.CarriedItems);
+        Assert.Equal(a.CarriedGear, b.CarriedGear);
+        Assert.Contains(carried, b.CarriedGear);
+        Assert.Equal(a.LastBattle!.GearDrops, b.LastBattle!.GearDrops);
         Assert.Equal(a.LastBattle!.Xp, b.LastBattle!.Xp);
         Assert.Equal((a.LastBattle.Outcome, a.LastBattle.EncounterId, a.LastBattle.Gold), (b.LastBattle.Outcome, b.LastBattle.EncounterId, b.LastBattle.Gold));
         Assert.Equal(company.RecruitOffers, loaded.RecruitOffers);
@@ -481,10 +530,12 @@ public sealed class SaveGameTests : IDisposable
         var zone = data.Zones.Values.First();
         var json = SaveGame.Serialize(StartingCompany.Create(data, seed: 1));
         var lineup = StartingCompany.Create(data, seed: 1).Lineup;
+        var equipment = data.Items.Values.First(i => i.IsEquipment).Id;
         var members = string.Join(", ", lineup.Skip(1).Select(id => $$"""{ "id": "{{id}}", "hp": 10, "mp": -1, "down": true }"""));
         var expedition = $$"""
             "expedition": { "zoneId": "{{zone.Id}}", "seed": 1, "battleIndex": {{zone.MaxBattles}},
-              "members": [ {{members}}, { "id": "ghost", "hp": 1, "mp": 1, "down": true } ], "carriedItems": { "ghost_item": 1 } },
+              "members": [ {{members}}, { "id": "ghost", "hp": 1, "mp": 1, "down": true } ], "carriedItems": { "ghost_item": 1 },
+              "carriedGear": [ { "uid": 1, "itemId": "{{equipment}}", "level": 0 }, { "uid": 900, "itemId": "ghost_gear", "level": 1 } ] },
             "version"
             """;
 
@@ -496,6 +547,9 @@ public sealed class SaveGameTests : IDisposable
         Assert.Contains($"save expedition: lineup member '{lineup[0]}' is not on the expedition", errors);
         Assert.Contains($"save expedition member '{lineup[1]}': mp must not be negative, got -1", errors);
         Assert.Contains("save expedition: carries unknown item 'ghost_item'", errors);
+        Assert.Contains("save expedition gear 1: level must be at least 1, got 0", errors);
+        Assert.Contains("save expedition gear 900: unknown item 'ghost_gear'", errors);
+        Assert.Contains("save: item uid 1 is used by more than one piece", errors); // 들고 있는 장비도 번호가 겹치면 안 된다
 
         // 다친 멤버는 원정에 나가 있을 수 없다.
         var company = StartingCompany.Create(data, seed: 1);

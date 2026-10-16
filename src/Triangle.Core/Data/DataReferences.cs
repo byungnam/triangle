@@ -78,6 +78,13 @@ public static class DataReferences
             Add(r.Tactics.Any(t => t.ActionId == id), $"{at}: tactics");
         }
 
+        foreach (var a in data.Affixes.Values)
+        {
+            var at = $"{GameDataLoader.AffixesFile} '{a.Id}'";
+            Add(a.Tag == id, $"{at}: tag");
+            Add(a.On.Any(t => t.Masteries.Contains(id)), $"{at}: on masteries");
+        }
+
         return found;
     }
 }

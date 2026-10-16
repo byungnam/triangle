@@ -68,8 +68,8 @@ internal sealed class TacticEditorScene : IScene
     private Tab _tab = Tab.Tactics;
     private EquipmentSlot _slot = EquipmentSlot.MainHand;
 
-    /// <summary>장비 탭에서 미리 보는 창고 아이템 (아직 끼지 않음).</summary>
-    private string? _candidate;
+    /// <summary>장비 탭에서 미리 보는 창고 장비의 번호 (아직 끼지 않음).</summary>
+    private int? _candidate;
 
     /// <summary>장비 탭에서 설명을 보는 행동. null이면 보이는 아이템의 첫 행동.</summary>
     private string? _detailAction;
@@ -128,7 +128,7 @@ internal sealed class TacticEditorScene : IScene
         };
         _picking = view == "picker" && TacticsOf(Selected).Count > 0 ? 0 : null;
         _candidate = view == "preview"
-            ? _data.ItemsFor(EquipmentSlot.MainHand).FirstOrDefault(i => _company.StashCount(i.Id) > 0 && CanWear(Selected, i))?.Id
+            ? StashPieces(EquipmentSlot.MainHand).FirstOrDefault(g => CanWear(Selected, _data.Items[g.ItemId]))?.Uid
             : null;
         MarkDirty();
     }
@@ -704,11 +704,11 @@ internal sealed class TacticEditorScene : IScene
 
         row.Widgets.Add(left);
 
-        var shown = _candidate ?? member.ItemIn(_slot);
-        var item = shown is null ? null : _data.Items[shown];
+        var shown = _candidate is { } uid ? _company.StashGear(uid) : member.GearIn(_slot);
+        var item = shown is null ? null : _data.Items[shown.ItemId];
         row.Widgets.Add(new ScrollPane
         {
-            Content = BuildItemColumn(member, item),
+            Content = BuildItemColumn(member, item, shown),
             ShowHorizontalScrollBar = false,
             Width = ItemColumnWidth + 18,
             Height = height,
@@ -752,8 +752,8 @@ internal sealed class TacticEditorScene : IScene
     private Widget BuildSlotCell(PartyMember member, EquipmentSlot slot)
     {
         const int cellWidth = 92;
-        var id = member.ItemIn(slot);
-        var item = id is null ? null : _data.Items[id];
+        var gear = member.GearIn(slot);
+        var item = gear is null ? null : _data.Items[gear.ItemId];
         var blockedByTwoHanded = slot == EquipmentSlot.OffHand && item is null
             && member.ItemIn(EquipmentSlot.MainHand) is { } main && _data.Items[main].TwoHanded;
         var why = member.WhyCannotWear(slot, _data);
@@ -761,12 +761,12 @@ internal sealed class TacticEditorScene : IScene
         var (icon, color) = item is not null ? GameIcons.Item(item)
             : blockedByTwoHanded ? ("lock", Theme.TextDim)
             : (GameIcons.EmptySlot(slot), Theme.PanelBorder);
-        var border = item is null ? Theme.PanelBorder : why is not null ? Theme.Enemy : ItemText.TierColor(item.Tier);
-        var tile = _widgets.IconButton(icon, SlotTile, color, border, slot == _slot);
+        var border = gear is null || item is null ? Theme.PanelBorder : why is not null ? Theme.Enemy : PieceBorder(gear, item);
+        var tile = _widgets.IconButton(icon, SlotTile, color, border, slot == _slot, gear is null ? null : $"Lv{gear.Level}");
         tile.HorizontalAlignment = HorizontalAlignment.Center;
-        tile.Tooltip = item is null
+        tile.Tooltip = gear is null
             ? $"{ItemText.SlotLabel(slot)}: {(blockedByTwoHanded ? "두손 무기 사용 중" : "비어 있음")}"
-            : $"{ItemText.SlotLabel(slot)}: {item.Name}{(why is null ? "" : $"\n착용 불가 — {why}")}";
+            : $"{ItemText.SlotLabel(slot)}: {ItemText.PieceSummary(gear, _data)}{(why is null ? "" : $"\n착용 불가 — {why}")}";
         tile.Click += (_, _) =>
         {
             _slot = slot;
@@ -791,33 +791,36 @@ internal sealed class TacticEditorScene : IScene
         return cell;
     }
 
-    /// <summary>고른 부위에 낄 수 있는 창고 아이템 칸 (데이터 순서, 오른쪽 아래에 개수). 누르면 가운데에서 미리 본다.</summary>
+    /// <summary>
+    /// 고른 부위에 낄 수 있는 창고 장비 칸, 한 점에 한 칸 (등급, 아이템 레벨, 티어가 높은 순, 오른쪽 아래에 아이템 레벨).
+    /// 테두리는 등급색(일반은 티어색). 누르면 가운데에서 미리 본다.
+    /// </summary>
     private Widget BuildCandidates(PartyMember member)
     {
         const int size = 50;
         const int perRow = 5;
         var list = new VerticalStackPanel { Spacing = 5, Width = DollWidth };
-        var current = member.ItemIn(_slot);
-        var options = _data.ItemsFor(_slot).Where(i => i.Id != current && _company.StashCount(i.Id) > 0).ToList();
-        if (options.Count == 0)
+        var pieces = StashPieces(_slot);
+        if (pieces.Count == 0)
         {
             list.Widgets.Add(Label("창고에 이 부위 아이템이 없다", 14, Theme.TextDim));
         }
 
-        for (var i = 0; i < options.Count; i += perRow)
+        for (var i = 0; i < pieces.Count; i += perRow)
         {
             var line = new HorizontalStackPanel { Spacing = 5 };
-            foreach (var item in options.Skip(i).Take(perRow))
+            foreach (var gear in pieces.Skip(i).Take(perRow))
             {
+                var item = _data.Items[gear.ItemId];
                 var wearable = CanWear(member, item);
                 var (icon, color) = GameIcons.Item(item);
-                var count = _company.StashCount(item.Id);
-                var tile = _widgets.IconButton(icon, size, wearable ? color : Theme.Enemy, wearable ? ItemText.TierColor(item.Tier) : Theme.Enemy,
-                    item.Id == _candidate, count > 1 ? $"{count}" : null);
-                tile.Tooltip = $"{ItemText.ShortName(item)} · {item.TypeOrName}{(wearable ? "" : " (패시브 모자람)")}";
+                var tile = _widgets.IconButton(icon, size, wearable ? color : Theme.Enemy, wearable ? PieceBorder(gear, item) : Theme.Enemy,
+                    gear.Uid == _candidate, $"Lv{gear.Level}");
+                var options = gear.Affixes.Count == 0 ? "" : $"\n{ItemText.Options(gear, _data)}";
+                tile.Tooltip = $"{ItemText.PieceName(gear, _data)} · {item.TypeOrName}{(wearable ? "" : " (패시브 모자람)")}{options}";
                 tile.Click += (_, _) =>
                 {
-                    _candidate = item.Id;
+                    _candidate = gear.Uid;
                     _detailAction = null;
                     MarkDirty();
                 };
@@ -829,6 +832,20 @@ internal sealed class TacticEditorScene : IScene
 
         return list;
     }
+
+    /// <summary>창고에서 그 부위에 끼는 장비 (등급, 아이템 레벨, 티어가 높은 순, 같으면 먼저 들어온 것).</summary>
+    private IReadOnlyList<ItemInstance> StashPieces(EquipmentSlot slot) =>
+        _company.Gear
+            .Where(g => _data.Items.TryGetValue(g.ItemId, out var i) && i.Slot == slot)
+            .OrderByDescending(g => g.Rarity)
+            .ThenByDescending(g => g.Level)
+            .ThenByDescending(g => _data.Items[g.ItemId].Tier)
+            .ThenBy(g => g.Uid)
+            .ToList();
+
+    /// <summary>장비 칸 테두리: 옵션이 있으면 등급색, 없으면 티어색.</summary>
+    private static Color PieceBorder(ItemInstance gear, ItemDefinition item) =>
+        gear.Rarity == ItemRarity.Common ? ItemText.TierColor(item.Tier) : ItemText.RarityColor(gear.Rarity);
 
     /// <summary>보이는 아이템의 행동: 아이템 행동 칸, 주무기면 그 계열이 주는 행동(정령 소환 등)도.</summary>
     private IReadOnlyList<ActionDefinition> ActionsOf(ItemDefinition item)
@@ -854,7 +871,7 @@ internal sealed class TacticEditorScene : IScene
         return row;
     }
 
-    private Widget BuildItemColumn(PartyMember member, ItemDefinition? item)
+    private Widget BuildItemColumn(PartyMember member, ItemDefinition? item, ItemInstance? gear)
     {
         var column = new VerticalStackPanel { Spacing = 8, Width = ItemColumnWidth };
         if (item is null)
@@ -872,8 +889,9 @@ internal sealed class TacticEditorScene : IScene
         }
 
         var (icon, color) = GameIcons.Item(item);
-        var details = ItemText.Details(item, _data, member.MasteryLevel(item.Mastery!), skills, withActions: false);
-        column.Widgets.Add(TitleWithIcon(icon, color, ItemText.TierColor(item.Tier), details[0].Text, details[0].Color, details[1].Text, ItemColumnWidth));
+        var details = ItemText.Details(item, _data, member.MasteryLevel(item.Mastery!), skills, withActions: false, gear: gear);
+        var border = gear is null ? ItemText.TierColor(item.Tier) : PieceBorder(gear, item);
+        column.Widgets.Add(TitleWithIcon(icon, color, border, details[0].Text, details[0].Color, details[1].Text, ItemColumnWidth));
         if (details.Count > 2)
         {
             column.Widgets.Add(_widgets.Card(details.Skip(2), ItemColumnWidth));
@@ -889,7 +907,7 @@ internal sealed class TacticEditorScene : IScene
         {
             var equip = TextButton("장착", Theme.Accent, Theme.AccentHover, bold: true);
             equip.Width = 100;
-            equip.Click += (_, _) => Equip(member, item.Id);
+            equip.Click += (_, _) => Equip(member, gear!);
             buttons.Widgets.Add(equip);
 
             var cancel = TextButton("취소", Theme.Button, Theme.ButtonHover);
@@ -901,9 +919,9 @@ internal sealed class TacticEditorScene : IScene
             };
             buttons.Widgets.Add(cancel);
 
-            if (member.ItemIn(_slot) is { } worn)
+            if (member.GearIn(_slot) is { } worn)
             {
-                buttons.Widgets.Add(Label($"지금: {ItemText.ShortName(_data.Items[worn])}", 14, Theme.TextDim));
+                buttons.Widgets.Add(Label($"지금: {ItemText.PieceName(worn, _data)}", 14, Theme.TextDim));
             }
         }
         else if (!OnExpedition)
@@ -984,11 +1002,10 @@ internal sealed class TacticEditorScene : IScene
         return column;
     }
 
-    /// <summary>창고의 그 아이템을 낀다. 같은 아이템이 여럿이면 아이템 레벨이 가장 높은 한 점을 낀다.</summary>
-    private void Equip(PartyMember member, string itemId)
+    /// <summary>미리 보던 창고 장비 한 점을 낀다.</summary>
+    private void Equip(PartyMember member, ItemInstance gear)
     {
-        var gear = _company.BestGear(itemId);
-        if (gear is not null && _company.Equip(member.Id, gear.Uid, _data))
+        if (_company.Equip(member.Id, gear.Uid, _data))
         {
             _candidate = null;
             _detailAction = null;
@@ -996,9 +1013,9 @@ internal sealed class TacticEditorScene : IScene
             return;
         }
 
-        if ((gear is null ? "창고에 없습니다" : _company.WhyCannotEquip(member.Id, gear.Uid, _data)) is { } reason)
+        if (_company.WhyCannotEquip(member.Id, gear.Uid, _data) is { } reason)
         {
-            _session.Notice = ($"{_data.Items[itemId].Name}: {reason}", Theme.Enemy);
+            _session.Notice = ($"{_data.Items[gear.ItemId].Name}: {reason}", Theme.Enemy);
         }
 
         MarkDirty();

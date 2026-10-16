@@ -10,7 +10,7 @@ using MyraDesktop = Myra.Graphics2D.UI.Desktop;
 namespace Triangle.Desktop.Scenes;
 
 /// <summary>
-/// 상점과 창고: 왼쪽은 상점(T1~T2 장비, 부위 탭, 구매), 오른쪽은 창고(끼지 않은 아이템과 재료, 판매).
+/// 상점과 창고: 왼쪽은 상점(T1~T2 장비, 부위 탭, 구매), 오른쪽은 창고(끼지 않은 장비 한 점씩과 재료, 판매·분해).
 /// 상점은 마을에서만 열린다.
 /// </summary>
 internal sealed class ShopScene : IScene
@@ -82,7 +82,7 @@ internal sealed class ShopScene : IScene
         _ui.Panel(batch, ShopArea);
         _ui.Panel(batch, StashArea);
 
-        var help = $"상점은 T1~T{Shop.MaxTier} 장비를 팝니다. 창고의 아이템은 가격의 {Shop.SellPercent}%에 팝니다. 낀 장비는 편성·전술의 장비 탭에서 빼야 팔 수 있습니다.     Esc  마을로";
+        var help = $"상점은 T1~T{Shop.MaxTier} 일반 장비를 팝니다. 창고의 아이템은 가격의 {Shop.SellPercent}%에 팔고, 장비는 분해해 재료로 바꿉니다(등급이 높을수록 많이). 낀 장비는 장비 탭에서 빼야 합니다.     Esc  마을로";
         _ui.Text(batch, _ui.Font(16), help, new Vector2(_bounds.Left + Margin, _bounds.Bottom - FooterHeight + 10), Theme.TextDim);
         if (_session.Notice is { } notice)
         {
@@ -208,23 +208,27 @@ internal sealed class ShopScene : IScene
         panel.Widgets.Add(_w.Label($"창고 ({Company.StashTotal}개)", 22, Theme.Ally, bold: true));
 
         var list = new VerticalStackPanel { Spacing = 6 };
-        var items = Company.Materials.Keys
-            .Concat(Company.Gear.Select(g => g.ItemId))
-            .Distinct()
-            .Select(id => data.Items[id])
-            .OrderBy(i => i.Slot)
-            .ThenBy(i => i.Mastery)
-            .ThenBy(i => i.Tier)
-            .ThenBy(i => i.Id, StringComparer.Ordinal)
+        var gear = Company.Gear
+            .OrderBy(g => data.Items[g.ItemId].Slot)
+            .ThenByDescending(g => g.Rarity)
+            .ThenByDescending(g => g.Level)
+            .ThenByDescending(g => data.Items[g.ItemId].Tier)
+            .ThenBy(g => g.Uid)
             .ToList();
-        if (items.Count == 0)
+        var materials = Company.Materials.Keys.Select(id => data.Items[id]).OrderBy(i => i.Id, StringComparer.Ordinal).ToList();
+        if (gear.Count == 0 && materials.Count == 0)
         {
             list.Widgets.Add(_w.Label("창고가 비었습니다", 17, Theme.TextDim));
         }
 
-        foreach (var item in items)
+        foreach (var piece in gear)
         {
-            list.Widgets.Add(StashRow(item, area.Width - 60));
+            list.Widgets.Add(GearRow(piece, area.Width - 60));
+        }
+
+        foreach (var item in materials)
+        {
+            list.Widgets.Add(MaterialRow(item, area.Width - 60));
         }
 
         panel.Widgets.Add(new ScrollPane { Content = list, ShowHorizontalScrollBar = false });
@@ -232,26 +236,81 @@ internal sealed class ShopScene : IScene
         return panel;
     }
 
-    private Widget StashRow(ItemDefinition item, int width)
+    /// <summary>창고의 장비 한 점: 등급·티어·이름·아이템 레벨, 옵션, 보너스와 요구, 판매와 분해.</summary>
+    private Widget GearRow(ItemInstance gear, int width)
+    {
+        var data = _session.Data;
+        var item = data.Items[gear.ItemId];
+        var rarity = ItemText.RarityColor(gear.Rarity);
+        var row = new HorizontalStackPanel { Spacing = 10 };
+        var (icon, color) = GameIcons.Item(item);
+        var border = gear.Rarity == ItemRarity.Common ? ItemText.TierColor(item.Tier) : rarity;
+        var tile = _w.IconTile(icon, 48, color, border, padding: 6);
+        tile.VerticalAlignment = VerticalAlignment.Top;
+        row.Widgets.Add(tile);
+        var text = new VerticalStackPanel { Spacing = 1, Width = width - 278 };
+        text.Widgets.Add(_w.Label($"{ItemText.SlotLabel(item.Slot)} · {ItemText.PieceName(gear, data)} ({item.TypeOrName})", 17,
+            gear.Rarity == ItemRarity.Common ? Theme.Text : rarity, width: (int?)text.Width, wrap: true));
+        if (gear.Affixes.Count > 0)
+        {
+            text.Widgets.Add(_w.Label($"옵션: {ItemText.Options(gear, data)}", 14, rarity, width: (int?)text.Width, wrap: true));
+        }
+
+        var details = new[] { ItemText.Bonuses(item, data), ItemText.Requirements(item, data) }.Where(s => s.Length > 0).ToList();
+        if (details.Count > 0)
+        {
+            text.Widgets.Add(_w.Label(string.Join(" · ", details), 14, Theme.TextDim, width: (int?)text.Width, wrap: true));
+        }
+
+        row.Widgets.Add(text);
+
+        var price = Shop.SellPrice(item);
+        var sell = _w.TextButton($"{price}G 판매", Theme.Button, Theme.ButtonHover, size: 16);
+        sell.Width = 100;
+        sell.VerticalAlignment = VerticalAlignment.Top;
+        sell.Enabled = !Company.OnExpedition;
+        sell.Click += (_, _) =>
+        {
+            if (Company.Sell(gear.Uid, data))
+            {
+                _session.MarkChanged();
+                _session.Notice = ($"{ItemText.PieceName(gear, data)} 판매 (+{price}골드)", Theme.Cover);
+                _dirty = true;
+            }
+        };
+        row.Widgets.Add(sell);
+
+        var yield = Affixes.DismantleYield(gear, data);
+        var dismantle = _w.TextButton(
+            yield is { } y ? $"분해: {data.Items[y.MaterialId].Name} {y.Count}" : "분해 불가", Theme.Button, Theme.ButtonHover, size: 15);
+        dismantle.Width = 150;
+        dismantle.VerticalAlignment = VerticalAlignment.Top;
+        dismantle.Enabled = Company.WhyCannotDismantle(gear.Uid, data) is null;
+        dismantle.Click += (_, _) =>
+        {
+            if (Company.Dismantle(gear.Uid, data) is { } got)
+            {
+                _session.MarkChanged();
+                _session.Notice = ($"{ItemText.PieceName(gear, data)} 분해 (+{data.Items[got.MaterialId].Name} {got.Count})", Theme.Heal);
+                _dirty = true;
+            }
+        };
+        row.Widgets.Add(dismantle);
+        return row;
+    }
+
+    /// <summary>창고의 재료: 이름과 개수, 하나씩 판매.</summary>
+    private Widget MaterialRow(ItemDefinition item, int width)
     {
         var data = _session.Data;
         var count = Company.StashCount(item.Id);
         var row = new HorizontalStackPanel { Spacing = 10 };
         var (icon, color) = GameIcons.Item(item);
-        var tile = _w.IconTile(icon, 48, color, ItemText.TierColor(item.Tier), padding: 6);
+        var tile = _w.IconTile(icon, 48, color, Theme.PanelBorder, padding: 6);
         tile.VerticalAlignment = VerticalAlignment.Top;
         row.Widgets.Add(tile);
         var text = new VerticalStackPanel { Spacing = 1, Width = width - 168 };
-        var name = count == 1 ? ItemText.Title(item, data) : $"{ItemText.Title(item, data)} × {count}";
-        text.Widgets.Add(_w.Label($"{ItemText.SlotLabel(item.Slot)} · {name}", 17, Theme.Text));
-        if (item.Bonuses.Count > 0 || item.Requirements.Count > 0)
-        {
-            var details = new[] { ItemText.Bonuses(item, data), ItemText.Requirements(item, data) }.Where(s => s.Length > 0);
-            text.Widgets.Add(_w.Label(string.Join(" · ", details), 14, Theme.TextDim));
-        }
-
-        AddActions(text, item);
-
+        text.Widgets.Add(_w.Label($"재료 · {item.Name} × {count}", 17, Theme.Text));
         row.Widgets.Add(text);
 
         var price = Shop.SellPrice(item);
@@ -260,14 +319,10 @@ internal sealed class ShopScene : IScene
         sell.Enabled = !Company.OnExpedition;
         sell.Click += (_, _) =>
         {
-            // 같은 장비가 여럿이면 아이템 레벨이 가장 낮은 한 점을 판다.
-            var sold = item.IsEquipment
-                ? Company.WorstGear(item.Id) is { } gear && Company.Sell(gear.Uid, data)
-                : Company.SellMaterial(item.Id, data);
-            if (sold)
+            if (Company.SellMaterial(item.Id, data))
             {
                 _session.MarkChanged();
-                _session.Notice = ($"{ItemText.ShortName(item)} 판매 (+{price}골드)", Theme.Cover);
+                _session.Notice = ($"{item.Name} 판매 (+{price}골드)", Theme.Cover);
                 _dirty = true;
             }
         };

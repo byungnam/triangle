@@ -38,11 +38,13 @@ public class CraftTests
     {
         var company = NewCompany(gold: 60, iron: 4, shard: 1);
 
-        Assert.True(company.Craft("knight_sword", Data));
+        var made = company.Craft("knight_sword", Data);
 
+        Assert.NotNull(made);
         Assert.Equal(10, company.Gold);
         Assert.Equal((1, 0, 1), (company.StashCount("iron"), company.StashCount("shard"), company.StashCount("knight_sword")));
-        Assert.Equal(3, Assert.Single(company.Gear).Level); // 만든 장비의 아이템 레벨은 티어
+        Assert.Equal(made, Assert.Single(company.Gear));
+        Assert.Equal(1, made.Level); // 제작품의 아이템 레벨은 깬 가장 깊은 심도 (아직 없으면 1)
     }
 
     [Fact]
@@ -53,7 +55,7 @@ public class CraftTests
         Assert.Equal("제작법이 없습니다", NewCompany(100, 3, 1).WhyCannotCraft("old_sword", Data));
 
         var company = NewCompany(100, 2, 1);
-        Assert.False(company.Craft("knight_sword", Data));
+        Assert.Null(company.Craft("knight_sword", Data));
         Assert.Equal((100, 2, 1), (company.Gold, company.StashCount("iron"), company.StashCount("shard")));
     }
 
@@ -64,6 +66,6 @@ public class CraftTests
         company.Expedition = new Triangle.Core.Expeditions.Expedition("z", 1, 0, [], 0, new Dictionary<string, int>(), null);
 
         Assert.Equal("원정 중에는 제작할 수 없습니다", company.WhyCannotCraft("knight_sword", Data));
-        Assert.False(company.Craft("knight_sword", Data));
+        Assert.Null(company.Craft("knight_sword", Data));
     }
 }

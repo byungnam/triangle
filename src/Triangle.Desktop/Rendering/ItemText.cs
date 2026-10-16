@@ -45,6 +45,45 @@ internal static class ItemText
         return item.IsEquipment ? $"T{item.Tier} {item.Name}{suffix}" : item.Name;
     }
 
+    public static string RarityName(ItemRarity rarity) => rarity switch
+    {
+        ItemRarity.Magic => "마법",
+        ItemRarity.Rare => "희귀",
+        ItemRarity.Legendary => "전설",
+        _ => "일반",
+    };
+
+    /// <summary>등급 색: 일반 흐림, 마법 보라, 희귀 노랑, 전설 주황 (티어 색과 겹치지 않게).</summary>
+    public static Color RarityColor(ItemRarity rarity) => rarity switch
+    {
+        ItemRarity.Magic => Theme.Lightning,
+        ItemRarity.Rare => Theme.Holy,
+        ItemRarity.Legendary => Theme.Fire,
+        _ => Theme.TextDim,
+    };
+
+    /// <summary>옵션 하나, 예: "검 위력 +7%". 모르는 옵션은 ID.</summary>
+    public static string Option(ItemOption option, ItemDefinition item, GameData data) =>
+        data.Affixes.TryGetValue(option.AffixId, out var affix)
+            ? SkillText.BonusLabel(affix.Kind, option.Percent, affix.TagFor(item), data)
+            : option.AffixId;
+
+    /// <summary>"검 위력 +7%, 방어 +6%"처럼 옵션 모두 (없으면 빈 문자열).</summary>
+    public static string Options(ItemInstance gear, GameData data) =>
+        data.Items.TryGetValue(gear.ItemId, out var item) ? string.Join(", ", gear.Affixes.Select(o => Option(o, item, data))) : "";
+
+    /// <summary>"희귀 T2 강철 검 Lv3"처럼 등급(일반은 빼고), 티어, 이름, 아이템 레벨.</summary>
+    public static string PieceName(ItemInstance gear, GameData data)
+    {
+        var item = data.Items[gear.ItemId];
+        var rarity = gear.Rarity == ItemRarity.Common ? "" : RarityName(gear.Rarity) + " ";
+        return $"{rarity}{ShortName(item)} Lv{gear.Level}";
+    }
+
+    /// <summary>"희귀 T2 강철 검 Lv3 (검 위력 +7%, 방어 +6%)"처럼 이름과 옵션.</summary>
+    public static string PieceSummary(ItemInstance gear, GameData data) =>
+        gear.Affixes.Count == 0 ? PieceName(gear, data) : $"{PieceName(gear, data)} ({Options(gear, data)})";
+
     /// <summary>"요구: 활 숙련 Lv3"처럼 착용 조건 (없으면 빈 문자열).</summary>
     public static string Requirements(ItemDefinition item, GameData data) =>
         item.Requirements.Count == 0
@@ -93,13 +132,24 @@ internal static class ItemText
     /// 아이템 설명 카드: 이름, 종류, 보너스(숙련 반영), 무기 위력 배율, 요구 패시브, 주는 행동, 가격.
     /// <paramref name="masteryLevel"/>은 보는 사람의 그 계열 숙련 레벨 (null이면 기본 보너스).
     /// </summary>
-    public static IReadOnlyList<TextLine> Details(ItemDefinition item, GameData data, int? masteryLevel = null, SkillSet? skills = null, bool withActions = true)
+    /// <param name="gear">장비 한 점이면 등급, 아이템 레벨, 무작위 옵션도 보여 준다.</param>
+    public static IReadOnlyList<TextLine> Details(
+        ItemDefinition item, GameData data, int? masteryLevel = null, SkillSet? skills = null, bool withActions = true, ItemInstance? gear = null)
     {
         var lines = new List<TextLine>
         {
             new($"T{item.Tier} {item.Name}", TierColor(item.Tier), 19, Bold: true),
             new($"{SlotLabel(item.Slot)} · {Kind(item, data)}", Theme.TextDim, 14),
         };
+
+        if (gear is not null)
+        {
+            lines.Add(new($"{RarityName(gear.Rarity)} · 아이템 레벨 {gear.Level}", RarityColor(gear.Rarity), 15, Bold: gear.Rarity != ItemRarity.Common));
+            foreach (var option in gear.Affixes)
+            {
+                lines.Add(new($"옵션: {Option(option, item, data)}", RarityColor(gear.Rarity)));
+            }
+        }
 
         if (item.Bonuses.Count > 0)
         {

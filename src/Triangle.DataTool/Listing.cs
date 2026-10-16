@@ -61,6 +61,13 @@ internal static class Listing
                 .Select(r => Row(r.Id, r.Name, $"{r.Price}G", r.Row.ToString(), string.Join(", ", r.Equipment.Values)))
                 .ToList(),
 
+            "affixes" => data.Affixes.Values
+                .Where(a => Matches(a.Id, a.Name) && (mastery is null || a.On.Any(t => t.Masteries.Contains(mastery))))
+                .Select(a => Row(a.Id, a.Name, a.Kind.ToString(), a.ItemMasteryTag ? "tag 계열" : a.Tag is { } tag ? $"tag {tag}" : "",
+                    $"{a.Min}-{a.Max} +{a.PerLevel}/Lv", a.MemberCap is { } cap ? $"cap {cap}" : "",
+                    string.Join(", ", a.On.Select(t => t.Masteries.Count == 0 ? t.Slot.ToString() : $"{t.Slot}[{string.Join("/", t.Masteries)}]"))))
+                .ToList(),
+
             _ => null,
         };
     }

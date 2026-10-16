@@ -984,9 +984,11 @@ internal sealed class TacticEditorScene : IScene
         return column;
     }
 
+    /// <summary>창고의 그 아이템을 낀다. 같은 아이템이 여럿이면 아이템 레벨이 가장 높은 한 점을 낀다.</summary>
     private void Equip(PartyMember member, string itemId)
     {
-        if (_company.Equip(member.Id, itemId, _data))
+        var gear = _company.BestGear(itemId);
+        if (gear is not null && _company.Equip(member.Id, gear.Uid, _data))
         {
             _candidate = null;
             _detailAction = null;
@@ -994,7 +996,7 @@ internal sealed class TacticEditorScene : IScene
             return;
         }
 
-        if (_company.WhyCannotEquip(member.Id, itemId, _data) is { } reason)
+        if ((gear is null ? "창고에 없습니다" : _company.WhyCannotEquip(member.Id, gear.Uid, _data)) is { } reason)
         {
             _session.Notice = ($"{_data.Items[itemId].Name}: {reason}", Theme.Enemy);
         }

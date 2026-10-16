@@ -1,6 +1,7 @@
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
 using Triangle.Core.Expeditions;
+using Triangle.Core.Items;
 using Triangle.Core.Progress;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
@@ -50,7 +51,9 @@ public class ExpeditionTests
             "encounters": [ { "encounterId": "dummy", "weight": 1 }, { "encounterId": "wall", "weight": 3 } ] },
           { "id": "vault", "name": "보물고", "maxBattles": 3, "encounters": [ { "encounterId": "dummy", "weight": 1 } ],
             "rewards": { "equipmentDrop": { "chance": 100, "minTier": 2, "maxTier": 2 } } },
-          { "id": "arena", "name": "투기장", "maxBattles": 3, "encounters": [ { "encounterId": "brute", "weight": 1 } ] } ]
+          { "id": "arena", "name": "투기장", "maxBattles": 3, "encounters": [ { "encounterId": "brute", "weight": 1 } ] },
+          { "id": "deep", "name": "심층", "difficulty": 3, "maxBattles": 2, "encounters": [ { "encounterId": "dummy", "weight": 1 } ],
+            "rewards": { "itemDrops": [ { "itemId": "plate_armor", "chance": 100 } ] } } ]
         """,
         recruitsJson: """
         [ { "id": "rookie", "name": "신입", "names": [ "가", "나", "다" ], "row": "Front",
@@ -61,10 +64,11 @@ public class ExpeditionTests
         """);
 
     private static readonly Dictionary<Triangle.Core.Items.EquipmentSlot, string> FullGear =
-        TestGear.Of(mainHand: "old_sword", offHand: "old_shield", head: "plate_helm", body: "plate_armor", feet: "plate_boots");
+        TestGear.Of(mainHand: "old_sword", offHand: "old_shield", head: "plate_helm", body: "plate_armor", feet: "plate_boots")
+            .ToDictionary(p => p.Key, p => p.Value.ItemId);
 
     private static PartyMember Member(string id, int vital = 20) =>
-        new(id, id.ToUpperInvariant(), new Stats(10, 10, vital, 10, 10), Row.Front, FullGear,
+        new(id, id.ToUpperInvariant(), new Stats(10, 10, vital, 10, 10), Row.Front, TestGear.Pieces(FullGear),
             new Dictionary<string, int>(), new Dictionary<string, int>(), [[new Tactic(1, Condition.Always, 0, "strike")]]);
 
     /// <summary>모든 지역이 열린 회사 (깊이 잠김은 <see cref="ZoneBossTests"/>에서 본다).</summary>
@@ -204,7 +208,7 @@ public class ExpeditionTests
         Assert.Equal(2, expedition.CarriedItems["plate_armor"]);
         Assert.Equal(7, company.Gold);
         Assert.True(ExpeditionRules.CanContinue(company, Data));
-        Assert.Empty(company.Stash);
+        Assert.Equal(0, company.StashTotal);
 
         var summary = ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Draw, company, ("a", 50, 5), ("b", 50, 5)));
 
@@ -212,6 +216,23 @@ public class ExpeditionTests
         Assert.Equal(32, company.Gold);
         Assert.Equal(2, company.StashCount("plate_armor"));
         Assert.Null(company.Expedition);
+    }
+
+    [Fact]
+    public void Dropped_equipment_becomes_one_piece_each_at_the_zone_depth()
+    {
+        var company = NewCompany();
+        var before = company.NextItemUid;
+        ExpeditionRules.Start(company, Data, "deep");
+
+        ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("a", 50, 5), ("b", 50, 5)));
+        ExpeditionRules.ApplyResult(company, Data, Result(CombatOutcome.Victory, company, ("a", 50, 5), ("b", 50, 5)));
+
+        // 판금 갑옷은 T1이지만 깊이 3에서 나왔으니 아이템 레벨 3.
+        Assert.Null(company.Expedition);
+        Assert.Equal(
+            [new ItemInstance(before, "plate_armor", 3), new ItemInstance(before + 1, "plate_armor", 3)],
+            company.Gear);
     }
 
     [Fact]

@@ -100,7 +100,7 @@ public class MasteryTests
             new Dictionary<string, int>(), [[new Tactic(1, Condition.Always, 0, "shot"), new Tactic(2, Condition.Always, 0, "strike")]]);
 
         Assert.Empty(m.LockedTacticIndexes(Data, 0));
-        m.SetItem(EquipmentSlot.MainHand, "old_sword", Data);
+        m.SetGear(EquipmentSlot.MainHand, TestGear.Piece("old_sword"));
         Assert.Equal([0], m.LockedTacticIndexes(Data, 0));
         Assert.Equal("sword", m.ToCombatantSetup(Data, 0).Weapon);
     }

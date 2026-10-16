@@ -48,7 +48,7 @@ public class EquipmentTests
         var company = new Company([member], ["a"], 0, new Dictionary<string, int>(), 0, 1);
         foreach (var item in stash)
         {
-            company.AddToStash(item);
+            company.AddToStash(item, Data);
         }
 
         return company;
@@ -61,7 +61,7 @@ public class EquipmentTests
 
         Assert.True(company.Equip("a", "helm", Data));
         Assert.Equal("helm", company.Member("a").ItemIn(EquipmentSlot.Head));
-        Assert.Equal("장비가 아닙니다", company.WhyCannotEquip("a", "ore", Data));
+        Assert.Null(company.BestGear("ore")); // 재료는 장비 한 점이 아니라 개수로 둔다
         Assert.False(company.Equip("a", "ore", Data));
         Assert.Equal(1, company.StashCount("ore"));
     }

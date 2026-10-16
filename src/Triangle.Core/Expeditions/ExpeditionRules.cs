@@ -232,16 +232,18 @@ public static class ExpeditionRules
         company.Expedition is { } e && e.BattleIndex < data.Zones[e.ZoneId].MaxBattles && e.Standing.Any();
 
     /// <summary>
-    /// 원정을 끝낸다: 전리품을 창고와 골드로 확정한다(전멸해도 이미 얻은 것은 남는다). 쓰러진 멤버는
-    /// 원정 상태와 함께 HP가 사라지므로 저절로 회복한다(다음 출정에서 가득 찬다). 모집 후보를 새로 굴린다.
+    /// 원정을 끝낸다: 전리품을 창고와 골드로 확정한다(전멸해도 이미 얻은 것은 남는다). 장비는 이때 한 점씩 생기고,
+    /// 아이템 레벨은 그 지역의 깊이(난이도)다. 쓰러진 멤버는 원정 상태와 함께 HP가 사라지므로 저절로 회복한다
+    /// (다음 출정에서 가득 찬다). 모집 후보를 새로 굴린다.
     /// </summary>
     private static ExpeditionSummary Finish(Company company, GameData data, ExpeditionEnd end)
     {
         var expedition = Active(company);
+        var depth = data.Zones[expedition.ZoneId].Difficulty;
         company.Gold += expedition.CarriedGold;
         foreach (var (item, count) in expedition.CarriedItems)
         {
-            company.AddToStash(item, count);
+            company.AddToStash(item, data, count, level: depth);
         }
 
         company.Expedition = null;

@@ -36,8 +36,10 @@ public class ShopTests
     {
         var company = NewCompany(200);
 
+        var uid = company.NextItemUid;
         Assert.True(company.Buy("steel_sword", Data));
         Assert.Equal((79, 1), (company.Gold, company.StashCount("steel_sword")));
+        Assert.Equal(new ItemInstance(uid, "steel_sword", 2), Assert.Single(company.Gear)); // 산 장비의 아이템 레벨은 티어
         Assert.Equal("골드가 모자랍니다", company.WhyCannotBuy("steel_sword", Data));
         Assert.False(company.Buy("steel_sword", Data));
         Assert.Equal("상점에서 팔지 않습니다", company.WhyCannotBuy("knight_sword", Data));
@@ -49,9 +51,9 @@ public class ShopTests
     public void Sell_pays_forty_percent_rounded_down_for_any_stash_item()
     {
         var company = NewCompany(0);
-        company.AddToStash("steel_sword");
-        company.AddToStash("knight_sword");
-        company.AddToStash("ore", 2);
+        company.AddToStash("steel_sword", Data);
+        company.AddToStash("knight_sword", Data);
+        company.AddToStash("ore", Data, 2);
 
         Assert.True(company.Sell("steel_sword", Data)); // 121 × 40% = 48.4 → 48
         Assert.True(company.Sell("knight_sword", Data)); // 128
@@ -66,7 +68,7 @@ public class ShopTests
     public void Shop_is_closed_on_an_expedition()
     {
         var company = NewCompany(500);
-        company.AddToStash("ore");
+        company.AddToStash("ore", Data);
         company.Expedition = new Triangle.Core.Expeditions.Expedition("z", 1, 0, [], 0, new Dictionary<string, int>(), null);
 
         Assert.Equal("원정 중에는 상점을 쓸 수 없습니다", company.WhyCannotBuy("old_sword", Data));

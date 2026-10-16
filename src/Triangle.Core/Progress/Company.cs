@@ -29,6 +29,7 @@ public sealed class Company
     private readonly List<string> _tacticSetNames;
     private readonly Dictionary<string, ClearRecord> _clearRecords;
     private readonly Dictionary<string, EncounterRecord> _encounterRecords;
+    private readonly Dictionary<string, int> _facilities;
     private int _activeTacticSet;
 
     /// <param name="materials">창고의 재료 (아이템 ID별 개수).</param>
@@ -48,6 +49,7 @@ public sealed class Company
         IEnumerable<string>? tacticSetNames = null,
         IReadOnlyDictionary<string, ClearRecord>? clearRecords = null,
         IReadOnlyDictionary<string, EncounterRecord>? encounterRecords = null,
+        IReadOnlyDictionary<string, int>? facilities = null,
         IEnumerable<ItemInstance>? gear = null,
         int nextItemUid = 1)
     {
@@ -100,6 +102,7 @@ public sealed class Company
         Expedition = expedition;
         _clearRecords = clearRecords?.ToDictionary() ?? [];
         _encounterRecords = encounterRecords?.ToDictionary() ?? [];
+        _facilities = facilities?.Where(p => p.Value > 0).ToDictionary() ?? [];
     }
 
     /// <summary>보유한 캐릭터 모두.</summary>
@@ -519,6 +522,139 @@ public sealed class Company
     {
         _recruitOffers.Clear();
         _recruitOffers.AddRange(Recruitment.Roll(data, TakeSeed()));
+    }
+
+    // ── 마을: 시설, 쉬기, 패시브 되돌리기 (2026-10-16) ─────────────
+
+    /// <summary>지은 시설의 레벨 (시설 ID별). 짓지 않은 시설은 없다.</summary>
+    public IReadOnlyDictionary<string, int> FacilityLevels => _facilities;
+
+    public int FacilityLevel(string facilityId) => _facilities.GetValueOrDefault(facilityId);
+
+    private FacilityLevel InfirmaryLevel => Facilities.Find(Facilities.Infirmary)!.At(FacilityLevel(Facilities.Infirmary));
+
+    /// <summary>시설을 다음 레벨로 올릴 수 없는 이유. null이면 올릴 수 있다.</summary>
+    public string? WhyCannotUpgrade(string facilityId)
+    {
+        if (OnExpedition)
+        {
+            return "원정 중에는 시설을 올릴 수 없습니다";
+        }
+
+        if (Facilities.Find(facilityId) is not { } facility)
+        {
+            return "없는 시설입니다";
+        }
+
+        var level = FacilityLevel(facilityId);
+        if (level >= facility.MaxLevel)
+        {
+            return "최고 레벨입니다";
+        }
+
+        return Gold < facility.Levels[level].Price ? "골드가 모자랍니다" : null;
+    }
+
+    /// <summary>골드를 내고 시설을 한 레벨 올린다. 올릴 수 없으면(<see cref="WhyCannotUpgrade"/>) false.</summary>
+    public bool Upgrade(string facilityId)
+    {
+        if (WhyCannotUpgrade(facilityId) is not null)
+        {
+            return false;
+        }
+
+        var level = FacilityLevel(facilityId);
+        Gold -= Facilities.Find(facilityId)!.Levels[level].Price;
+        _facilities[facilityId] = level + 1;
+        return true;
+    }
+
+    /// <summary>원정이 한 번 끝날 때 나가지 않은 부상 멤버가 낫는 단계 (치료소 반영).</summary>
+    public int ExpeditionRecovery => VillageRules.BaseRecovery + InfirmaryLevel.ExpeditionRecovery;
+
+    /// <summary>쉬기 한 번에 낫는 단계 (치료소 반영).</summary>
+    public int RestRecovery => VillageRules.BaseRecovery + InfirmaryLevel.RestRecovery;
+
+    /// <summary>쉬기 한 번에 다친 멤버 한 명당 드는 골드: 기본 비용에서 치료소 할인 (버림).</summary>
+    public int RestCostPerInjured => VillageRules.RestCostPerInjured * (100 - InfirmaryLevel.RestDiscountPercent) / 100;
+
+    /// <summary>쉬기 비용 = 다친 멤버 수 × 한 명당 비용.</summary>
+    public int RestCost => _roster.Count(m => m.Injured) * RestCostPerInjured;
+
+    public string? WhyCannotRest()
+    {
+        if (OnExpedition)
+        {
+            return "원정 중입니다";
+        }
+
+        return _roster.Any(m => m.Injured) ? null : "다친 멤버가 없습니다";
+    }
+
+    /// <summary>
+    /// 마을에서 쉰다: 골드를 내고 다친 멤버가 모두 <see cref="RestRecovery"/>단계 낫는다. 다 나은 멤버를 돌려준다.
+    /// 골드가 모자라면 가진 골드를 모두 내고 쉰다(모두 다쳐 출정할 수 없을 때 막히지 않도록).
+    /// </summary>
+    public IReadOnlyList<PartyMember> Rest()
+    {
+        if (WhyCannotRest() is not null)
+        {
+            return [];
+        }
+
+        Gold -= Math.Min(Gold, RestCost);
+        return HealInjured(_roster, RestRecovery);
+    }
+
+    /// <summary>다친 멤버를 steps단계 낫게 한다. 다 나은 멤버를 돌려준다.</summary>
+    internal IReadOnlyList<PartyMember> HealInjured(IEnumerable<PartyMember> members, int steps)
+    {
+        var recovered = new List<PartyMember>();
+        foreach (var member in members.Where(m => m.Injured).ToList())
+        {
+            if (member.Heal(steps))
+            {
+                recovered.Add(member);
+            }
+        }
+
+        return recovered;
+    }
+
+    /// <summary>그 멤버의 숙련 트리를 되돌리는 비용: 돌려받는 포인트 × 기본 비용. 배운 패시브가 없으면 0.</summary>
+    public int ResetSkillTreeCost(string memberId, string masteryId, GameData data) =>
+        Member(memberId).PointsSpent(masteryId, data) * VillageRules.RespecCostPerPoint;
+
+    public string? WhyCannotResetSkillTree(string memberId, string masteryId, GameData data)
+    {
+        if (OnExpedition)
+        {
+            return "원정 중에는 패시브를 되돌릴 수 없습니다";
+        }
+
+        var cost = ResetSkillTreeCost(memberId, masteryId, data);
+        if (cost == 0)
+        {
+            return "배운 패시브가 없습니다";
+        }
+
+        return Gold < cost ? "골드가 모자랍니다" : null;
+    }
+
+    /// <summary>
+    /// 골드를 내고 그 숙련 트리의 패시브를 모두 되돌린다(포인트를 돌려받고, 숙련 경험치는 그대로다).
+    /// 요구 패시브가 사라진 장비는 착용 불가, 행동은 잠김이 되어 고칠 때까지 출정을 막는다(지금 규칙 그대로).
+    /// </summary>
+    public bool ResetSkillTree(string memberId, string masteryId, GameData data)
+    {
+        if (WhyCannotResetSkillTree(memberId, masteryId, data) is not null)
+        {
+            return false;
+        }
+
+        Gold -= ResetSkillTreeCost(memberId, masteryId, data);
+        Member(memberId).ForgetTree(masteryId, data);
+        return true;
     }
 
     public bool CanHire(int offerIndex) =>

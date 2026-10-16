@@ -2,7 +2,7 @@
   {
     "id": "outskirts_forest",
     "name": "근교 숲",
-    "description": "초보 지역. 쓰러져도 원정이 끝나면 회복한다. 수치는 임시.",
+    "description": "초보 지역. 쓰러진 멤버는 원정이 끝나면 1단계 다친다. 수치는 임시.",
     "difficulty": 1,
     "maxBattles": 3,
     "encounters": [

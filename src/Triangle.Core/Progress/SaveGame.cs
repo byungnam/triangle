@@ -51,6 +51,9 @@ public sealed record SaveFile
 
     /// <summary>탐사 기록: 원정에서 만난 적 조합 (인카운터 ID별).</summary>
     public IReadOnlyDictionary<string, EncounterRecord> Encounters { get; init; } = new Dictionary<string, EncounterRecord>();
+
+    /// <summary>지은 마을 시설의 레벨 (시설 ID별, 2026-10-16). 없으면 아무것도 짓지 않았다.</summary>
+    public IReadOnlyDictionary<string, int> Facilities { get; init; } = new Dictionary<string, int>();
 }
 
 public sealed record SavedExpedition
@@ -85,6 +88,10 @@ public sealed record SavedMember
 
     /// <summary>전술 세트들 (회사의 tacticSetNames 순서).</summary>
     public IReadOnlyList<IReadOnlyList<Tactic>> TacticSets { get; init; } = [];
+
+    /// <summary>남은 부상 단계 (2026-10-16). 0이면 쓰지 않는다.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int Injury { get; init; }
 }
 
 /// <summary>세이브를 읽거나 검증하다 실패했다. 발견한 오류를 모두 담는다.</summary>
@@ -119,6 +126,8 @@ public static class SaveGame
     /// 11: 신성 숙련(relic)을 치유·재생·보호막·축복 숙련으로 나누고 relic은 성물 숙련이 됨 (2026-10-13).
     ///    버전 10의 relic 경험치는 relic에 남기고, 든 치유봉 종류의 숙련(치유봉이 아니면 치유)에도 같은 양을 준다.
     ///    치유술·신성 마법 레벨은 그 숙련의 1단계·3단계 패시브로 옮긴다. 그 이전은 읽지 않는다.
+    ///    2026-10-16: 멤버의 부상(injury)과 마을 시설(facilities)을 덧붙였다. 없으면 다치지 않았고 아무것도 짓지 않은 것이라
+    ///    이전 파일이 그대로 읽히므로 버전은 올리지 않았다.
     /// </summary>
     public const int CurrentVersion = 11;
 
@@ -150,6 +159,7 @@ public static class SaveGame
             Stash = new SortedDictionary<string, int>(company.Stash.ToDictionary()),
             Clears = new SortedDictionary<string, ClearRecord>(company.ClearRecords.ToDictionary(), StringComparer.Ordinal),
             Encounters = new SortedDictionary<string, EncounterRecord>(company.EncounterRecords.ToDictionary(), StringComparer.Ordinal),
+            Facilities = new SortedDictionary<string, int>(company.FacilityLevels.ToDictionary(), StringComparer.Ordinal),
             Lineup = company.Lineup.ToList(),
             Roster = company.Roster.Select(m => new SavedMember
             {
@@ -161,6 +171,7 @@ public static class SaveGame
                 MasteryXp = new SortedDictionary<string, int>(m.MasteryXp.ToDictionary()),
                 SkillLevels = new SortedDictionary<string, int>(m.SkillLevels.ToDictionary()),
                 TacticSets = m.TacticSets.Select(set => (IReadOnlyList<Tactic>)set.ToList()).ToList(),
+                Injury = m.Injury,
             }).ToList(),
         };
         return JsonSerializer.Serialize(file, GameDataJson.Options);
@@ -201,7 +212,7 @@ public static class SaveGame
         var saved = file.Expedition;
         return new Company(
             file.Roster.Select(m =>
-                new PartyMember(m.Id, m.Name, m.Stats, m.Row, m.Equipment, m.MasteryXp, m.SkillLevels, m.TacticSets)),
+                new PartyMember(m.Id, m.Name, m.Stats, m.Row, m.Equipment, m.MasteryXp, m.SkillLevels, m.TacticSets, m.Injury)),
             file.Lineup,
             file.Gold,
             file.Stash,
@@ -214,7 +225,8 @@ public static class SaveGame
                 : new Expedition(saved.ZoneId, saved.Seed, saved.BattleIndex, saved.Members, saved.CarriedGold, saved.CarriedItems, saved.LastBattle),
             TacticSetNames(file),
             file.Clears,
-            file.Encounters);
+            file.Encounters,
+            file.Facilities);
     }
 
     private static int ReadVersion(string json)
@@ -410,6 +422,23 @@ public static class SaveGame
             }
         }
 
+        foreach (var (facilityId, level) in file.Facilities)
+        {
+            if (Progress.Facilities.Find(facilityId) is not { } facility)
+            {
+                errors.Add($"save: facilities has unknown facility '{facilityId}'");
+            }
+            else if (level < 1 || level > facility.MaxLevel)
+            {
+                errors.Add($"save: facility '{facilityId}' level must be 1-{facility.MaxLevel}, got {level}");
+            }
+        }
+
+        foreach (var member in file.Roster.Where(m => m.Injury < 0))
+        {
+            errors.Add($"save member '{member.Id}': injury must not be negative, got {member.Injury}");
+        }
+
         if (errors.Count > 0)
         {
             throw new SaveGameException(errors);
@@ -444,6 +473,12 @@ public static class SaveGame
             if (!file.Lineup.Contains(member.Id))
             {
                 errors.Add($"{at}: member '{member.Id}' is not in the lineup");
+            }
+
+            // 다친 멤버는 출정할 수 없고, 부상은 원정이 끝날 때만 생긴다.
+            if (file.Roster.FirstOrDefault(m => m.Id == member.Id) is { Injury: > 0 })
+            {
+                errors.Add($"{at}: member '{member.Id}' is injured");
             }
 
             DataValidation.RequireNonNegative(member.Hp, $"{at} member '{member.Id}': hp", errors);

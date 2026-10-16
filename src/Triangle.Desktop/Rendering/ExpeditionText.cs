@@ -56,7 +56,7 @@ internal static class ExpeditionText
 
         if (report.Downed.Count > 0)
         {
-            lines.Add(new LogLine($"쓰러짐 (남은 전투에 못 나감): {string.Join(", ", report.Downed)}", Theme.Damage));
+            lines.Add(new LogLine($"쓰러짐 (남은 전투에 못 나가고, 돌아가면 다친다): {string.Join(", ", report.Downed)}", Theme.Damage));
         }
 
         return lines;
@@ -78,8 +78,31 @@ internal static class ExpeditionText
             parts.Add($"아이템: {Items(data, summary.Items)}");
         }
 
+        if (summary.Injuries.Count > 0)
+        {
+            parts.Add($"부상 {summary.Injuries.Count}명");
+        }
+
         var color = summary.End == ExpeditionEnd.Wiped ? Theme.Enemy : Theme.Heal;
         return (string.Join(" · ", parts), color);
+    }
+
+    /// <summary>원정이 끝나며 다친 멤버(부상 단계)와 다 나은 멤버. 둘 다 없으면 빈 목록.</summary>
+    public static IReadOnlyList<LogLine> Injuries(ExpeditionSummary summary)
+    {
+        var lines = new List<LogLine>();
+        if (summary.Injuries.Count > 0)
+        {
+            var injured = string.Join(", ", summary.Injuries.Select(i => $"{i.MemberName} {i.Steps}단계"));
+            lines.Add(new LogLine($"부상 (다 나을 때까지 출정할 수 없음): {injured}", Theme.Damage));
+        }
+
+        if (summary.Recovered.Count > 0)
+        {
+            lines.Add(new LogLine($"다 나음: {string.Join(", ", summary.Recovered)}", Theme.Heal));
+        }
+
+        return lines;
     }
 
     /// <summary>클리어한 원정의 결과 줄: 이번 원정의 기록, 처음이면 다음 깊이와 단서, 아니면 새 기록.</summary>

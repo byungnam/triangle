@@ -22,6 +22,7 @@ internal sealed class VillageScene : IScene
     private const int HeaderHeight = 64;
     private const int FooterHeight = 40;
     private const int BarHeight = 56;
+    private const int StatusHeight = 26;
     private const int ColumnGap = 32;
 
     private readonly Ui _ui;
@@ -33,9 +34,13 @@ internal sealed class VillageScene : IScene
     private readonly Action _openShop;
     private readonly Action _openCraft;
     private readonly Action _openExploration;
+    private readonly Action _openInfirmary;
     private readonly Action<string> _depart;
     private readonly Action _quit;
     private readonly MyraDesktop _desktop = new();
+
+    /// <summary>패널과 아래 줄 사이에 보여줄 상태: 출정할 수 없는 이유, 아니면 저장하지 않은 변경. 다시 만들 때 정한다.</summary>
+    private (string Text, Color Color)? _status;
 
     private string _zoneId;
     private bool _dirty = true;
@@ -44,7 +49,8 @@ internal sealed class VillageScene : IScene
     /// <param name="depart">출정 (지역 ID). 부르기 전에 출정할 수 있는지 확인한다.</param>
     /// <param name="quit">종료가 확인되었다 (저장했거나 버리기로 했다).</param>
     public VillageScene(
-        Ui ui, GameSession session, Rectangle bounds, Action openEditor, Action openRecruit, Action openShop, Action openCraft, Action openExploration, Action<string> depart, Action quit)
+        Ui ui, GameSession session, Rectangle bounds, Action openEditor, Action openRecruit, Action openShop, Action openCraft, Action openExploration,
+        Action openInfirmary, Action<string> depart, Action quit)
     {
         _ui = ui;
         _w = new Widgets(ui);
@@ -55,6 +61,7 @@ internal sealed class VillageScene : IScene
         _openShop = openShop;
         _openCraft = openCraft;
         _openExploration = openExploration;
+        _openInfirmary = openInfirmary;
         _depart = depart;
         _quit = quit;
         _zoneId = Depths.Ordered(session.Data)
@@ -140,12 +147,19 @@ internal sealed class VillageScene : IScene
             _ui.Panel(batch, new Rectangle(area.X - 16, area.Y - 12, area.Width + 32, area.Height + 24));
         }
 
+        if (_status is { } status)
+        {
+            var font = _ui.Font(16);
+            var x = RightArea.Right + 16 - font.MeasureString(status.Text).X;
+            _ui.Text(batch, font, status.Text, new Vector2(Math.Max(LeftArea.X - 16, x), ContentBottom + 16), status.Color);
+        }
+
         batch.End();
         _ui.Screen.Render(_desktop);
     }
 
     private int ContentTop => _bounds.Top + HeaderHeight + 12;
-    private int ContentBottom => _bounds.Bottom - FooterHeight - BarHeight - 12;
+    private int ContentBottom => _bounds.Bottom - FooterHeight - BarHeight - StatusHeight - 12;
     private int ColumnWidth => (_bounds.Width - Margin * 2 - 32 - ColumnGap) / 2;
 
     private Rectangle LeftArea => new(_bounds.Left + Margin + 16, ContentTop, ColumnWidth, ContentBottom - ContentTop);
@@ -223,7 +237,14 @@ internal sealed class VillageScene : IScene
     {
         var row = new HorizontalStackPanel { Spacing = 10 };
         var text = new VerticalStackPanel { Spacing = 2, Width = width - 100 };
-        text.Widgets.Add(Label($"{member.Name}  ·  {(member.Row == Row.Front ? "전위" : "후위")}", 18, Theme.Text, bold: true));
+        var title = new HorizontalStackPanel { Spacing = 10 };
+        title.Widgets.Add(Label($"{member.Name}  ·  {(member.Row == Row.Front ? "전위" : "후위")}", 18, Theme.Text, bold: true));
+        if (member.Injured)
+        {
+            title.Widgets.Add(Label($"부상 {member.Injury}", 16, Theme.Enemy, bold: true));
+        }
+
+        text.Widgets.Add(title);
         text.Widgets.Add(Label(ItemText.Gear(member.Equipment, _session.Data), 15, Theme.TextDim));
         row.Widgets.Add(text);
 
@@ -251,7 +272,7 @@ internal sealed class VillageScene : IScene
         var data = _session.Data;
         var list = new VerticalStackPanel { Spacing = 8 };
         list.Widgets.Add(Label("전투지역", 20, Theme.Enemy, bold: true));
-        list.Widgets.Add(Wrapped("출정하면 끝날 때까지 돌아오거나 전술을 바꿀 수 없습니다. 전멸해도 이미 얻은 전리품은 남고, 쓰러진 멤버는 원정이 끝나면 회복합니다. 마지막 전투의 보스까지 이겨 지역을 클리어하면 다음 깊이가 열립니다.", 14, Theme.TextDim, area.Width - 20));
+        list.Widgets.Add(Wrapped("출정하면 끝날 때까지 돌아오거나 전술을 바꿀 수 없습니다. 전멸하면 그 전투의 보상은 없지만 이미 얻은 전리품은 남습니다. 쓰러진 멤버는 원정이 끝나면 지역 난이도만큼 다치고, 다 나을 때까지 출정할 수 없습니다. 마지막 전투의 보스까지 이겨 지역을 클리어하면 다음 깊이가 열립니다.", 14, Theme.TextDim, area.Width - 20));
 
         foreach (var zone in Depths.Ordered(data))
         {
@@ -341,13 +362,19 @@ internal sealed class VillageScene : IScene
         bar.Widgets.Add(craft);
 
         var exploration = TextButton("탐사 기록", Theme.Button, Theme.ButtonHover);
-        exploration.Width = 130;
+        exploration.Width = 120;
         exploration.Click += (_, _) => _openExploration();
         bar.Widgets.Add(exploration);
 
+        var injured = Company.Roster.Count(m => m.Injured);
+        var infirmary = TextButton(injured > 0 ? $"치료소 ({injured})" : "치료소", Theme.Button, Theme.ButtonHover);
+        infirmary.Width = 110;
+        infirmary.Click += (_, _) => _openInfirmary();
+        bar.Widgets.Add(infirmary);
+
         var why = ExpeditionRules.WhyCannotStart(Company, _session.Data, _zoneId);
         var depart = TextButton($"{Korean.EuroRo(_session.Data.Zones[_zoneId].Name)} 출정  ▶", Theme.Accent, Theme.AccentHover, bold: true);
-        depart.Width = 280;
+        depart.Width = 240;
         depart.Enabled = why is null;
         depart.Click += (_, _) => _depart(_zoneId);
         bar.Widgets.Add(depart);
@@ -357,9 +384,10 @@ internal sealed class VillageScene : IScene
         save.Click += (_, _) => Save();
         bar.Widgets.Add(save);
 
-        bar.Widgets.Add(why is not null
-            ? Label(why, 16, Theme.Enemy)
-            : Label(_session.Unsaved ? "저장하지 않은 변경이 있습니다" : "", 16, Theme.Cover));
+        // 이유가 길면(다친 멤버 이름 등) 아래 줄 끝에 들어가지 않아서 패널 아래 상태 줄에 그린다.
+        _status = why is not null ? ($"출정할 수 없음: {why}", Theme.Enemy)
+            : _session.Unsaved ? ("저장하지 않은 변경이 있습니다", Theme.Cover)
+            : null;
         return bar;
     }
 

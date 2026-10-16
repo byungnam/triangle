@@ -113,7 +113,16 @@ public sealed record ExpeditionSummary(string ZoneId, ExpeditionEnd End, int Bat
 {
     /// <summary>클리어 결과. 클리어했을 때만 있다.</summary>
     public ZoneClear? Clear { get; init; }
+
+    /// <summary>이번 원정에서 쓰러져 다친 멤버와 남은 부상 단계.</summary>
+    public IReadOnlyList<InjuryReport> Injuries { get; init; } = [];
+
+    /// <summary>원정에 나가지 않아 이번에 다 나은 멤버 이름.</summary>
+    public IReadOnlyList<string> Recovered { get; init; } = [];
 }
+
+/// <param name="Steps">남은 부상 단계.</param>
+public sealed record InjuryReport(string MemberId, string MemberName, int Steps);
 
 /// <summary>클리어한 원정.</summary>
 /// <param name="FirstClear">처음 클리어했다 (첫 클리어 보상을 받고 다음 깊이가 열린다).</param>

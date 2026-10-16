@@ -28,6 +28,7 @@ public sealed class PartyMember
 
     /// <param name="equipment">부위별 아이템 ID.</param>
     /// <param name="tacticSets">세트별 전술. 비어 있으면 빈 세트 하나로 시작한다. 회사가 세트 수를 맞춘다.</param>
+    /// <param name="injury">남은 부상 단계 (0이면 다치지 않았다).</param>
     public PartyMember(
         string id,
         string name,
@@ -36,8 +37,10 @@ public sealed class PartyMember
         IReadOnlyDictionary<EquipmentSlot, string> equipment,
         IReadOnlyDictionary<string, int> masteryXp,
         IReadOnlyDictionary<string, int> skillLevels,
-        IReadOnlyList<IEnumerable<Tactic>> tacticSets)
+        IReadOnlyList<IEnumerable<Tactic>> tacticSets,
+        int injury = 0)
     {
+        Injury = Math.Max(0, injury);
         Id = id;
         Name = name;
         Stats = stats;
@@ -53,6 +56,29 @@ public sealed class PartyMember
     public string Name { get; }
     public Stats Stats { get; }
     public Row Row { get; set; }
+
+    /// <summary>
+    /// 남은 부상 단계 (2026-10-16). 원정에서 쓰러지면 그 지역 난이도만큼 다친다. 0이 될 때까지 출정할 수 없다.
+    /// 다른 멤버로 원정을 한 번 다녀오거나 마을에서 쉬면 낫는다(<see cref="Company.Rest"/>).
+    /// </summary>
+    public int Injury { get; private set; }
+
+    public bool Injured => Injury > 0;
+
+    /// <summary>다친다. 이미 다쳤으면 더 긴 쪽을 남긴다.</summary>
+    internal void Injure(int steps) => Injury = Math.Max(Injury, steps);
+
+    /// <summary>낫는다. 다 나으면 true.</summary>
+    internal bool Heal(int steps)
+    {
+        if (!Injured)
+        {
+            return false;
+        }
+
+        Injury = Math.Max(0, Injury - steps);
+        return !Injured;
+    }
 
     /// <summary>부위별 장착 아이템 ID.</summary>
     public IReadOnlyDictionary<EquipmentSlot, string> Equipment => _equipment;
@@ -195,7 +221,7 @@ public sealed class PartyMember
         return PointsAvailable(skill.Mastery, data) < skill.Rank ? new LearnBlocker(LearnBlockerKind.NotEnoughPoints, []) : null;
     }
 
-    /// <summary>포인트를 써서 스킬을 한 레벨 올린다. 올릴 수 없으면 false. 되돌릴 수 없다.</summary>
+    /// <summary>포인트를 써서 스킬을 한 레벨 올린다. 올릴 수 없으면 false. 되돌리려면 골드를 내고 트리를 통째로 되돌린다(<see cref="Company.ResetSkillTree"/>).</summary>
     public bool Learn(string skillId, GameData data)
     {
         if (WhyCannotLearn(skillId, data) is not null)
@@ -205,6 +231,18 @@ public sealed class PartyMember
 
         _skillLevels[skillId] = _skillLevels.GetValueOrDefault(skillId) + 1;
         return true;
+    }
+
+    /// <summary>그 숙련 트리의 패시브를 모두 지운다. 돌려받은 포인트 수를 돌려준다.</summary>
+    internal int ForgetTree(string masteryId, GameData data)
+    {
+        var points = PointsSpent(masteryId, data);
+        foreach (var skillId in _skillLevels.Keys.Where(id => data.Skills.TryGetValue(id, out var s) && s.Mastery == masteryId).ToList())
+        {
+            _skillLevels.Remove(skillId);
+        }
+
+        return points;
     }
 
     /// <summary>

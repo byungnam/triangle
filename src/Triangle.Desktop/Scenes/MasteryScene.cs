@@ -17,7 +17,8 @@ namespace Triangle.Desktop.Scenes;
 
 /// <summary>
 /// 한 유닛의 숙련(장비 계열)과 패시브 트리. 숙련은 그 장비로 싸워야 오르고,
-/// 숙련 레벨 1당 생기는 포인트로 그 트리의 패시브를 배운다 (되돌릴 수 없다).
+/// 숙련 레벨 1당 생기는 포인트로 그 트리의 패시브를 배운다.
+/// 마을에서는 골드를 내고 트리째 되돌릴 수 있다 (2026-10-16, 두 번 눌러 확인).
 /// </summary>
 internal sealed class MasteryScene : IScene
 {
@@ -28,11 +29,11 @@ internal sealed class MasteryScene : IScene
 
     private readonly Ui _ui;
     private readonly Widgets _w;
+    private readonly GameSession _session;
     private readonly GameData _data;
     private readonly PartyMember _member;
     private readonly Rectangle _bounds;
     private readonly Action _back;
-    private readonly Action _changed;
     private readonly MyraDesktop _desktop = new();
 
     private string _selected;
@@ -43,18 +44,22 @@ internal sealed class MasteryScene : IScene
     private bool _dirty = true;
     private (string Text, Color Color)? _notice;
 
-    /// <param name="changed">파티가 바뀌었을 때 (저장하지 않은 변경 표시용).</param>
-    public MasteryScene(Ui ui, GameData data, PartyMember member, Rectangle bounds, Action back, Action changed)
+    /// <summary>되돌리기를 한 번 누른 트리. 한 번 더 누르면 되돌린다. 다른 트리를 고르면 지운다.</summary>
+    private string? _confirmReset;
+
+    public MasteryScene(Ui ui, GameSession session, PartyMember member, Rectangle bounds, Action back)
     {
         _ui = ui;
         _w = new Widgets(ui);
-        _data = data;
+        _session = session;
+        _data = session.Data;
         _member = member;
         _bounds = bounds;
         _back = back;
-        _changed = changed;
-        _selected = member.WeaponMastery(data) ?? data.Masteries.Keys.First();
+        _selected = member.WeaponMastery(_data) ?? _data.Masteries.Keys.First();
     }
+
+    private Company Company => _session.Company;
 
     public void Update(GameTime gameTime, Input input)
     {
@@ -81,10 +86,13 @@ internal sealed class MasteryScene : IScene
 
         batch.Begin(transformMatrix: _ui.Screen.Transform);
         _ui.Text(batch, _ui.BoldFont(28), $"숙련·패시브 — {_member.Name}", new Vector2(_bounds.Left + Margin, _bounds.Top + 18), Theme.Text);
+        var gold = $"골드 {Company.Gold}";
+        var goldFont = _ui.BoldFont(24);
+        _ui.Text(batch, goldFont, gold, new Vector2(_bounds.Right - Margin - goldFont.MeasureString(gold).X, _bounds.Top + 22), Theme.Cover);
         var gear = $"장비: {ItemText.Gear(_member.Equipment, _data)}";
         _ui.Text(batch, _ui.Font(16), gear, new Vector2(_bounds.Left + Margin, _bounds.Top + 58), Theme.TextDim);
 
-        const string help = "장착한 장비로 싸우면 그 숙련이 오른다. 숙련 레벨 1당 포인트 1점. 배운 패시브는 되돌릴 수 없다.     Esc  편성으로";
+        const string help = "장착한 장비로 싸우면 그 숙련이 오른다. 숙련 레벨 1당 포인트 1점. 배운 패시브는 마을에서 골드를 내고 트리째 되돌릴 수 있다.     Esc  편성으로";
         _ui.Text(batch, _ui.Font(16), help, new Vector2(_bounds.Left + Margin, _bounds.Bottom - FooterHeight + 10), Theme.TextDim);
         if (_notice is { } notice)
         {
@@ -195,6 +203,7 @@ internal sealed class MasteryScene : IScene
         {
             _selected = mastery.Id;
             _action = null;
+            _confirmReset = null;
             _dirty = true;
         };
         return button;
@@ -248,6 +257,7 @@ internal sealed class MasteryScene : IScene
         header.Widgets.Add(_w.Label($"{mastery.Name} 숙련 Lv {level}", 22, Theme.Text, bold: true));
         header.Widgets.Add(_w.Label($"남은 포인트 {points}", 18, points > 0 ? Theme.Cover : Theme.TextDim, bold: points > 0));
         panel.Widgets.Add(header);
+        AddResetRow(panel, mastery, width);
 
         var xp = new HorizontalStackPanel { Spacing = 10 };
         var (current, next) = XpProgress(mastery.Id);
@@ -399,8 +409,86 @@ internal sealed class MasteryScene : IScene
             return;
         }
 
-        _notice = ($"{Korean.EulReul($"{skill.Name} Lv {_member.SkillLevels[skill.Id]}")} 배웠습니다 (되돌릴 수 없음)", Theme.Heal);
-        _changed();
+        _notice = ($"{Korean.EulReul($"{skill.Name} Lv {_member.SkillLevels[skill.Id]}")} 배웠습니다", Theme.Heal);
+        _session.MarkChanged();
+        _confirmReset = null;
         _dirty = true;
+    }
+
+    /// <summary>
+    /// 배운 패시브가 있으면 "트리 되돌리기 (n골드)" 버튼. 한 번 누르면 무엇을 잃는지 보여주고, 한 번 더 누르면 되돌린다.
+    /// 원정 중이거나 골드가 모자라면 버튼을 끄고 이유를 붙인다.
+    /// </summary>
+    private void AddResetRow(VerticalStackPanel panel, MasteryDefinition mastery, int width)
+    {
+        var spent = _member.PointsSpent(mastery.Id, _data);
+        if (spent == 0)
+        {
+            return;
+        }
+
+        var cost = Company.ResetSkillTreeCost(_member.Id, mastery.Id, _data);
+        var why = Company.WhyCannotResetSkillTree(_member.Id, mastery.Id, _data);
+        var confirming = _confirmReset == mastery.Id && why is null;
+
+        var row = new HorizontalStackPanel { Spacing = 12 };
+        var button = confirming
+            ? _w.TextButton($"한 번 더 누르면 되돌림 ({cost}골드)", Theme.Accent, Theme.AccentHover, size: 15, bold: true)
+            : _w.TextButton($"트리 되돌리기 ({cost}골드)", Theme.Button, Theme.ButtonHover, size: 15);
+        button.Padding = new Thickness(10, 3);
+        button.Enabled = why is null;
+        button.Click += (_, _) => ResetTree(mastery);
+        row.Widgets.Add(button);
+        row.Widgets.Add(_w.Label(why ?? $"쓴 포인트 {spent}점을 돌려받는다. 숙련 경험치는 그대로.", 14, why is null ? Theme.TextDim : Theme.Enemy));
+        panel.Widgets.Add(row);
+
+        if (confirming && ResetLosses(mastery) is { } losses)
+        {
+            panel.Widgets.Add(_w.Label(losses, 14, Theme.Cover, width: width, wrap: true));
+        }
+    }
+
+    /// <summary>되돌리면 착용 조건이 사라지는 장비와 잠기는 행동(전술에 넣은 것만). 없으면 null.</summary>
+    private string? ResetLosses(MasteryDefinition mastery)
+    {
+        bool InTree(SkillRequirement r) => _data.Skills.TryGetValue(r.SkillId, out var s) && s.Mastery == mastery.Id;
+        var gear = _member.WornItems(_data).Where(x => x.Item.Requirements.Any(InTree)).Select(x => x.Item.Name).ToList();
+        var actions = _member.TacticSets.SelectMany(set => set).Select(t => t.ActionId).Distinct()
+            .Where(id => _data.Actions.TryGetValue(id, out var a) && a.Requirements.Any(InTree))
+            .Select(id => _data.Actions[id].Name).ToList();
+        var parts = new List<string>();
+        if (gear.Count > 0)
+        {
+            parts.Add($"착용 불가가 되는 장비: {string.Join(", ", gear)}");
+        }
+
+        if (actions.Count > 0)
+        {
+            parts.Add($"잠기는 전술 행동: {string.Join(", ", actions)}");
+        }
+
+        return parts.Count == 0 ? null : string.Join(" · ", parts) + ". 다시 배우거나 바꿀 때까지 출정할 수 없다.";
+    }
+
+    private void ResetTree(MasteryDefinition mastery)
+    {
+        if (_confirmReset != mastery.Id)
+        {
+            _confirmReset = mastery.Id;
+            _dirty = true;
+            return;
+        }
+
+        var spent = _member.PointsSpent(mastery.Id, _data);
+        var cost = Company.ResetSkillTreeCost(_member.Id, mastery.Id, _data);
+        _confirmReset = null;
+        _dirty = true;
+        if (!Company.ResetSkillTree(_member.Id, mastery.Id, _data))
+        {
+            return;
+        }
+
+        _session.MarkChanged();
+        _notice = ($"{mastery.Name} 트리를 되돌렸습니다: 포인트 {spent}점, -{cost}골드", Theme.Heal);
     }
 }

@@ -261,6 +261,20 @@ public class GameDataLoaderTests
     }
 
     [Fact]
+    public void Encounter_units_start_with_known_effects_and_enemies_get_them_in_combat()
+    {
+        const string effects = """[ { "id": "ghost", "name": "실체 없음", "kind": "Buff", "immuneDamageTypes": [ "Physical" ] } ]""";
+        var encounter = Encounters().Replace("\"skills\": {},", "\"skills\": {}, \"effects\": [ \"ghost\", \"ghost\", \"nope\" ],");
+
+        var errors = Assert.Throws<GameDataException>(() => GameDataLoader.Parse(Masteries, Skills, Actions, encounter, effects)).Errors;
+        Assert.Contains("encounters.json 'camp' unit 'e1': unknown effect 'nope'", errors);
+        Assert.Contains("encounters.json 'camp' unit 'e1': duplicate effect 'ghost'", errors);
+
+        var data = GameDataLoader.Parse(Masteries, Skills, Actions, Encounters().Replace("\"skills\": {},", "\"skills\": {}, \"effects\": [ \"ghost\" ],"), effects);
+        Assert.Equal(["ghost"], data.CreateEncounterTeam("camp").Single().StartingEffects);
+    }
+
+    [Fact]
     public void Starting_company_fights_every_encounter_of_every_zone_to_the_end()
     {
         var data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));

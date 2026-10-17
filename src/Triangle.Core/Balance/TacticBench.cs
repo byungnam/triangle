@@ -40,8 +40,15 @@ public sealed record BenchScore(int Battles, int Wins, int Draws, double AllyHpO
 /// </summary>
 public static class TacticBench
 {
-    /// <summary>기준 파티를 그 성장 상태로 만든다. 장비 번호와 레벨은 시작 회사와 같은 방식(차례로, 레벨 = 티어)이다.</summary>
-    public static Company Party(BenchDefinition bench, GameData data, BenchState state)
+    /// <summary>
+    /// 기준 파티를 그 성장 상태로 만든다. 장비 번호와 레벨은 시작 회사와 같은 방식(차례로, 레벨 = 티어)이다.
+    /// <paramref name="equipment"/>는 세트의 장비 교체(<see cref="BenchDefinition.EquipmentOf"/>)로, 성장 전에 바꿔 낀다.
+    /// </summary>
+    public static Company Party(
+        BenchDefinition bench,
+        GameData data,
+        BenchState state,
+        IReadOnlyDictionary<string, IReadOnlyDictionary<EquipmentSlot, string>>? equipment = null)
     {
         var uid = 0;
         var members = bench.Party.Select(m => new PartyMember(
@@ -49,7 +56,7 @@ public static class TacticBench
                 m.Name,
                 m.Stats,
                 m.Row,
-                m.Equipment.ToDictionary(p => p.Key, p => new ItemInstance(++uid, p.Value, data.Items[p.Value].Tier)),
+                Worn(m, equipment).ToDictionary(p => p.Key, p => new ItemInstance(++uid, p.Value, data.Items[p.Value].Tier)),
                 m.Masteries.ToDictionary(p => p.Key, p => MasteryProgression.XpForLevel(p.Value)),
                 m.Skills,
                 []))
@@ -63,10 +70,30 @@ public static class TacticBench
         return company;
     }
 
-    public static PreparedMatchup Prepare(BenchDefinition bench, GameData data, BenchMatchup matchup)
+    /// <summary>멤버의 시작 장비에 세트의 교체를 덮는다. 빈 문자열은 그 부위를 비운다.</summary>
+    private static Dictionary<EquipmentSlot, string> Worn(BenchMember member, IReadOnlyDictionary<string, IReadOnlyDictionary<EquipmentSlot, string>>? equipment)
+    {
+        var worn = member.Equipment.ToDictionary();
+        foreach (var (slot, itemId) in equipment?.GetValueOrDefault(member.Id) ?? new Dictionary<EquipmentSlot, string>())
+        {
+            if (itemId == "")
+            {
+                worn.Remove(slot);
+            }
+            else
+            {
+                worn[slot] = itemId;
+            }
+        }
+
+        return worn;
+    }
+
+    /// <param name="setId">이 세트의 장비 교체로 파티를 만든다 (null이면 시작 장비 그대로).</param>
+    public static PreparedMatchup Prepare(BenchDefinition bench, GameData data, BenchMatchup matchup, string? setId = null)
     {
         var state = bench.State(matchup.State);
-        var company = Party(bench, data, state);
+        var company = Party(bench, data, state, setId is null ? null : bench.EquipmentOf(setId));
         var usable = company.Roster.ToDictionary(
             m => m.Id,
             m =>

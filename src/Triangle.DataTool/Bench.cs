@@ -42,11 +42,17 @@ internal static class Bench
             return 2;
         }
 
-        var prepared = matchups.Select(m => TacticBench.Prepare(bench, data, m)).ToList();
+        // 세트가 장비를 바꾸면 파티도 다르므로 세트마다 준비한다.
+        var preparedBy = new Dictionary<string, List<PreparedMatchup>>();
+        List<PreparedMatchup> Prepared(string setId) =>
+            preparedBy.TryGetValue(setId, out var list)
+                ? list
+                : preparedBy[setId] = matchups.Select(m => TacticBench.Prepare(bench, data, m, setId)).ToList();
+
         Console.WriteLine($"기준 파티: {string.Join(", ", bench.Party.Select(m => m.Name))} · 시드 {seeds}개 · 승률 % (무승부는 진 것으로 센다)");
         Console.WriteLine();
-        PrintTable(data, prepared, setIds.Select(id => (bench.Sets.First(s => s.Id == id).Name, bench.TacticsOf(id))).ToList(), seeds);
-        PrintDropped(bench, data, prepared, setIds);
+        PrintTable(bench, data, matchups, setIds, Prepared, seeds);
+        PrintDropped(bench, data, setIds, Prepared);
 
         if (!options.Has("search"))
         {
@@ -66,15 +72,17 @@ internal static class Bench
         var watch = Stopwatch.StartNew();
 
         // 공통 세트는 출발 세트마다 찾아 훈련 점수가 가장 높은 것을 쓴다 (한 출발점의 지역 최적에 갇히지 않게).
-        var joint = starts
+        // 탐색은 전술만 바꾸고, 장비는 출발 세트의 것을 그대로 쓴다.
+        var (joint, jointStart) = starts
             .Select(start =>
             {
-                var found = TacticSearch.Run(data, prepared, bench.TacticsOf(start), search, Progress($"공통 세트 ({start}에서)"));
+                var found = TacticSearch.Run(data, Prepared(start), bench.TacticsOf(start), search, Progress($"공통 세트 ({start}에서)"));
                 Console.WriteLine();
-                return found;
+                return (Result: found, Start: start);
             })
             .ToList()
-            .MaxBy(r => r.Fitness)!;
+            .MaxBy(r => r.Result.Fitness);
+        var prepared = Prepared(jointStart);
 
         var rows = new List<(PreparedMatchup Matchup, TacticSearch.Result Own)>();
         foreach (var matchup in prepared)
@@ -94,7 +102,7 @@ internal static class Bench
         }
 
         Console.WriteLine();
-        Console.WriteLine("공통 세트:");
+        Console.WriteLine($"공통 세트 ('{jointStart}'의 장비):");
         PrintTactics(bench, data, joint.Tactics, null);
         foreach (var (matchup, own) in rows)
         {
@@ -126,9 +134,11 @@ internal static class Bench
     /// <summary>터미널 폭으로 맞춘다. 한글 등 전각 글자는 두 칸이다.</summary>
     private static string Pad(string text, int width, bool right = false)
     {
-        var gap = new string(' ', Math.Max(0, width - text.Sum(c => IsWide(c) ? 2 : 1)));
+        var gap = new string(' ', Math.Max(0, width - Width(text)));
         return right ? gap + text : text + gap;
     }
+
+    private static int Width(string text) => text.Sum(c => IsWide(c) ? 2 : 1);
 
     private static bool IsWide(char c) =>
         c is >= '\u1100' and <= '\u115F' or >= '\u2E80' and <= '\uA4CF' or >= '\uAC00' and <= '\uD7A3' or >= '\uF900' and <= '\uFAFF' or >= '\uFF00' and <= '\uFF60';
@@ -140,24 +150,32 @@ internal static class Bench
 
     private static string Label(GameData data, PreparedMatchup m) => $"{data.Encounters[m.Matchup.EncounterId].Name} ({m.State.Name})";
 
-    private static void PrintTable(GameData data, List<PreparedMatchup> prepared, List<(string Name, IReadOnlyDictionary<string, IReadOnlyList<Tactic>> Tactics)> sets, int seeds)
+    private static void PrintTable(
+        BenchDefinition bench,
+        GameData data,
+        List<BenchMatchup> matchups,
+        List<string> setIds,
+        Func<string, List<PreparedMatchup>> prepared,
+        int seeds)
     {
-        Console.WriteLine(Pad("적 조합 (상태)", 28) + string.Concat(sets.Select(s => Pad(s.Name, 14, right: true))));
-        foreach (var matchup in prepared)
+        // 열 너비는 세트 이름에 맞춘다 (최소 8칸).
+        var widths = setIds.ToDictionary(id => id, id => Math.Max(8, Width(bench.Sets.First(s => s.Id == id).Name)) + 2);
+        Console.WriteLine(Pad("적 조합 (상태)", 28) + string.Concat(setIds.Select(id => Pad(bench.Sets.First(s => s.Id == id).Name, widths[id], right: true))));
+        for (var i = 0; i < matchups.Count; i++)
         {
-            var cells = sets.Select(s =>
+            var cells = setIds.Select(id =>
             {
-                var score = TacticBench.Measure(matchup, s.Tactics, data, seeds);
-                return Pad($"{score.WinRate:F1}", 14, right: true);
+                var score = TacticBench.Measure(prepared(id)[i], bench.TacticsOf(id), data, seeds);
+                return Pad($"{score.WinRate:F1}", widths[id], right: true);
             });
-            Console.WriteLine(Pad(Label(data, matchup), 28) + string.Concat(cells));
+            Console.WriteLine(Pad(Label(data, prepared(setIds[0])[i]), 28) + string.Concat(cells));
         }
     }
 
-    private static void PrintDropped(BenchDefinition bench, GameData data, List<PreparedMatchup> prepared, List<string> setIds)
+    private static void PrintDropped(BenchDefinition bench, GameData data, List<string> setIds, Func<string, List<PreparedMatchup>> prepared)
     {
         var dropped = setIds
-            .SelectMany(id => prepared.SelectMany(m => TacticBench.Dropped(m, bench.TacticsOf(id)).Select(d => (Set: id, m.State.Name, d.MemberId, d.Tactic.ActionId))))
+            .SelectMany(id => prepared(id).SelectMany(m => TacticBench.Dropped(m, bench.TacticsOf(id)).Select(d => (Set: id, m.State.Name, d.MemberId, d.Tactic.ActionId))))
             .Distinct()
             .ToList();
         if (dropped.Count == 0)

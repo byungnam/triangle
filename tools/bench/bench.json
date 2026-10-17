@@ -1,6 +1,6 @@
 {
   "description": "전술 측정 정의 (triangle-data bench). 기준 파티가 전술 세트를 바꿔 가며 적 조합과 HP·MP가 가득 찬 한 판을 싸운다. 수치는 모두 임시.",
-  "encounters": "encounters.json",
+  "extraData": ".",
   "party": [
     {
       "id": "tank",
@@ -119,6 +119,137 @@
           { "priority": 5, "condition": "Always", "value": 0, "actionId": "basic_attack" }
         ]
       }
+    },
+    {
+      "id": "vs_wraiths_dispel",
+      "name": "대응: 망령(깨기)",
+      "base": "universal",
+      "description": "망령 기사단 대응: 사제가 버프 걸린 적이 있으면 먼저 주문 깨기로 실체 없음을 지운다. 나머지는 만능 그대로.",
+      "tactics": {
+        "priest": [
+          { "priority": 1, "condition": "AnyEnemyHasBuff", "value": 0, "actionId": "dispel" },
+          { "priority": 2, "condition": "AllyAverageHpAtMost", "value": 60, "actionId": "light_of_prayer", "and": [{ "condition": "SelfMpAtLeast", "value": 35 }] },
+          { "priority": 3, "condition": "AnyAllyHpAtMost", "value": 50, "actionId": "heal" },
+          { "priority": 4, "condition": "SelfMpAtMost", "value": 25, "actionId": "focus" },
+          { "priority": 5, "condition": "Always", "value": 0, "actionId": "basic_attack" }
+        ]
+      }
+    },
+    {
+      "id": "vs_wraiths_magic",
+      "name": "대응: 망령(마법봉)",
+      "base": "universal",
+      "description": "망령 기사단 대응: 물리 공격을 하지 않는다. 궁수는 활 대신 불 마법봉을 들고(장비 교체) 화염구, 마법사는 만능 그대로 불로 태우고, 사제는 기본 공격 대신 마력 폭주, 탱커는 공격 대신 도발과 방패 벽.",
+      "equipment": { "archer": { "MainHand": "apprentice_fire_wand" } },
+      "tactics": {
+        "tank": [
+          { "priority": 1, "condition": "SelfHpAtMost", "value": 35, "actionId": "first_aid" },
+          { "priority": 2, "condition": "SelfLacksActionEffect", "value": 0, "actionId": "provoke" },
+          { "priority": 3, "condition": "Always", "value": 0, "actionId": "shield_wall" }
+        ],
+        "archer": [
+          { "priority": 1, "condition": "SelfMpAtMost", "value": 20, "actionId": "focus" },
+          { "priority": 2, "condition": "AnyEnemyLacksActionEffect", "value": 0, "actionId": "fireball" },
+          { "priority": 3, "condition": "Always", "value": 0, "actionId": "ember" }
+        ],
+        "priest": [
+          { "priority": 1, "condition": "AnyAllyHpAtMost", "value": 50, "actionId": "heal" },
+          { "priority": 2, "condition": "SelfMpAtMost", "value": 25, "actionId": "focus" },
+          { "priority": 3, "condition": "Always", "value": 0, "actionId": "mana_overload" }
+        ]
+      }
+    },
+    {
+      "id": "vs_raiders_formation",
+      "name": "대응: 약탈단(진형)",
+      "base": "universal",
+      "description": "갈고리 약탈단 대응: 밀려나면 제자리로 돌아간다. 마법사와 사제는 물러서기(천 신발), 탱커는 나서기(판금 신발). 궁수는 돌아갈 수단이 없다.",
+      "tactics": {
+        "tank": [
+          { "priority": 1, "condition": "SelfDisplaced", "value": 0, "actionId": "step_forward" },
+          { "priority": 2, "condition": "SelfHpAtMost", "value": 35, "actionId": "first_aid" },
+          { "priority": 3, "condition": "SelfLacksActionEffect", "value": 0, "actionId": "shield_wall" },
+          { "priority": 4, "condition": "SelfMpAtLeast", "value": 30, "actionId": "heavy_strike" },
+          { "priority": 5, "condition": "Always", "value": 0, "actionId": "basic_attack" }
+        ],
+        "mage": [
+          { "priority": 1, "condition": "SelfDisplaced", "value": 0, "actionId": "step_back" },
+          { "priority": 2, "condition": "SelfMpAtMost", "value": 25, "actionId": "focus" },
+          { "priority": 3, "condition": "EnemyAliveAtLeast", "value": 3, "actionId": "ash_storm", "and": [{ "condition": "SelfMpAtLeast", "value": 50 }] },
+          { "priority": 4, "condition": "AnyEnemyLacksActionEffect", "value": 0, "actionId": "fireball" },
+          { "priority": 5, "condition": "Always", "value": 0, "actionId": "ember" }
+        ],
+        "priest": [
+          { "priority": 1, "condition": "SelfDisplaced", "value": 0, "actionId": "step_back" },
+          { "priority": 2, "condition": "AllyAverageHpAtMost", "value": 60, "actionId": "light_of_prayer", "and": [{ "condition": "SelfMpAtLeast", "value": 35 }] },
+          { "priority": 3, "condition": "AnyAllyHpAtMost", "value": 50, "actionId": "heal" },
+          { "priority": 4, "condition": "SelfMpAtMost", "value": 25, "actionId": "focus" },
+          { "priority": 5, "condition": "Always", "value": 0, "actionId": "basic_attack" }
+        ]
+      }
+    },
+    {
+      "id": "vs_raiders_burst",
+      "name": "대응: 약탈단(속공)",
+      "base": "universal",
+      "description": "갈고리 약탈단 대응: 진형도 회복도 버리고 몸이 약한 약탈단을 먼저 쓸어버린다. 탱커는 강타, 궁수는 화살, 마법사는 재의 폭풍, 사제는 마력 폭주.",
+      "tactics": {
+        "tank": [
+          { "priority": 1, "condition": "SelfMpAtLeast", "value": 15, "actionId": "heavy_strike" },
+          { "priority": 2, "condition": "Always", "value": 0, "actionId": "basic_attack" }
+        ],
+        "archer": [
+          { "priority": 1, "condition": "SelfMpAtMost", "value": 10, "actionId": "focus" },
+          { "priority": 2, "condition": "Always", "value": 0, "actionId": "fire_arrow" }
+        ],
+        "mage": [
+          { "priority": 1, "condition": "SelfMpAtLeast", "value": 35, "actionId": "ash_storm" },
+          { "priority": 2, "condition": "SelfMpAtLeast", "value": 20, "actionId": "mana_overload" },
+          { "priority": 3, "condition": "Always", "value": 0, "actionId": "ember" }
+        ],
+        "priest": [
+          { "priority": 1, "condition": "SelfMpAtLeast", "value": 20, "actionId": "mana_overload" },
+          { "priority": 2, "condition": "Always", "value": 0, "actionId": "basic_attack" }
+        ]
+      }
+    },
+    {
+      "id": "vs_choir_dispel",
+      "name": "대응: 성가대(깨기)",
+      "base": "universal",
+      "description": "정결한 성가대 대응: 사제가 먼저 주문 깨기로 불가침을 지운다. 그 뒤로는 만능 그대로 상태 이상이 든다.",
+      "tactics": {
+        "priest": [
+          { "priority": 1, "condition": "AnyEnemyHasBuff", "value": 0, "actionId": "dispel" },
+          { "priority": 2, "condition": "AllyAverageHpAtMost", "value": 60, "actionId": "light_of_prayer", "and": [{ "condition": "SelfMpAtLeast", "value": 35 }] },
+          { "priority": 3, "condition": "AnyAllyHpAtMost", "value": 50, "actionId": "heal" },
+          { "priority": 4, "condition": "SelfMpAtMost", "value": 25, "actionId": "focus" },
+          { "priority": 5, "condition": "Always", "value": 0, "actionId": "basic_attack" }
+        ]
+      }
+    },
+    {
+      "id": "vs_choir_direct",
+      "name": "대응: 성가대(직접)",
+      "base": "universal",
+      "description": "정결한 성가대 대응: 상태 이상을 버리고 직접 피해만. 궁수는 투척 단검으로 뒤의 사제부터, 마법사는 화상이 막혀도 광역 피해가 사제까지 닿는 재의 폭풍, 사제는 기본 공격 대신 마력 폭주.",
+      "tactics": {
+        "archer": [
+          { "priority": 1, "condition": "SelfMpAtMost", "value": 10, "actionId": "focus" },
+          { "priority": 2, "condition": "EnemyBackAtLeast", "value": 1, "actionId": "throwing_knife" },
+          { "priority": 3, "condition": "Always", "value": 0, "actionId": "fire_arrow" }
+        ],
+        "mage": [
+          { "priority": 1, "condition": "SelfMpAtLeast", "value": 35, "actionId": "ash_storm" },
+          { "priority": 2, "condition": "SelfMpAtLeast", "value": 20, "actionId": "mana_overload" },
+          { "priority": 3, "condition": "Always", "value": 0, "actionId": "focus" }
+        ],
+        "priest": [
+          { "priority": 1, "condition": "AnyAllyHpAtMost", "value": 50, "actionId": "heal" },
+          { "priority": 2, "condition": "SelfMpAtLeast", "value": 20, "actionId": "mana_overload" },
+          { "priority": 3, "condition": "Always", "value": 0, "actionId": "basic_attack" }
+        ]
+      }
     }
   ],
   "matchups": [
@@ -136,8 +267,11 @@
     { "encounterId": "black_sun_cult", "state": "t3" },
     { "encounterId": "elite", "state": "t3" },
     { "encounterId": "boss_triad_guardians", "state": "t3" },
-    { "encounterId": "oath_bulwark", "state": "t2", "counter": "vs_bulwark" },
-    { "encounterId": "penitent_order", "state": "t2", "counter": "vs_penitents" },
-    { "encounterId": "shadow_hunters", "state": "t2", "counter": "vs_hunters" }
+    { "encounterId": "oath_bulwark", "state": "t2", "counters": ["vs_bulwark"] },
+    { "encounterId": "penitent_order", "state": "t2", "counters": ["vs_penitents"] },
+    { "encounterId": "shadow_hunters", "state": "t2", "counters": ["vs_hunters"] },
+    { "encounterId": "wraith_host", "state": "t2", "counters": ["vs_wraiths_dispel", "vs_wraiths_magic"] },
+    { "encounterId": "hook_raiders", "state": "t2", "counters": ["vs_raiders_formation", "vs_raiders_burst", "vs_hunters"] },
+    { "encounterId": "pure_choir", "state": "t2", "counters": ["vs_choir_dispel", "vs_choir_direct"] }
   ]
 }

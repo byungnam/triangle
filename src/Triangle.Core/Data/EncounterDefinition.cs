@@ -33,5 +33,8 @@ public sealed record EncounterUnitDefinition
     /// <summary>스킬 ID별 레벨 (1–5).</summary>
     public IReadOnlyDictionary<string, int> Skills { get; init; } = new Dictionary<string, int>();
 
+    /// <summary>타고난 효과 ID (면역 같은 특성). 전투를 시작할 때 걸려 있고 지워지기 전까지 끝나지 않는다 (2026-10-17).</summary>
+    public IReadOnlyList<string> Effects { get; init; } = [];
+
     public IReadOnlyList<Tactic> Tactics { get; init; } = [];
 }

@@ -49,6 +49,7 @@ public static class DataLint
     {
         var used = data.Actions.Values
             .SelectMany(a => a.Applies.Select(x => x.EffectId).Append(a.BonusAgainst?.EffectId))
+            .Concat(data.Encounters.Values.SelectMany(e => e.Units).SelectMany(u => u.Effects))
             .OfType<string>()
             .ToHashSet();
         foreach (var effect in data.Effects.Values.Where(e => !used.Contains(e.Id)))

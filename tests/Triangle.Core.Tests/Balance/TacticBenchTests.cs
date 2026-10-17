@@ -21,7 +21,7 @@ public class TacticBenchTests(ITestOutputHelper output)
     private double WinRate(string encounterId, string setId)
     {
         var (bench, data) = Loaded;
-        var prepared = TacticBench.Prepare(bench, data, bench.Matchups.First(m => m.EncounterId == encounterId));
+        var prepared = TacticBench.Prepare(bench, data, bench.Matchups.First(m => m.EncounterId == encounterId), setId);
         var rate = TacticBench.Measure(prepared, bench.TacticsOf(setId), data, Seeds).WinRate;
         output.WriteLine($"{data.Encounters[encounterId].Name} · {setId}: {rate:F1}%");
         return rate;
@@ -34,17 +34,20 @@ public class TacticBenchTests(ITestOutputHelper output)
         var shipped = GameDataLoader.LoadDirectory(DataDirectory);
 
         Assert.Equal(shipped.Encounters.Keys.Order(), bench.Matchups.Select(m => m.EncounterId).Where(shipped.Encounters.ContainsKey).Order());
-        Assert.All(bench.Matchups.Where(m => m.Counter is not null), m => Assert.False(shipped.Encounters.ContainsKey(m.EncounterId)));
+        Assert.All(bench.Matchups.Where(m => m.Counters.Count > 0), m => Assert.False(shipped.Encounters.ContainsKey(m.EncounterId)));
         Assert.All(bench.Matchups, m => Assert.True(data.Encounters.ContainsKey(m.EncounterId)));
     }
 
     [Fact]
     public void Prototypes_break_the_universal_set_and_fall_to_their_counter()
     {
-        foreach (var matchup in Loaded.Bench.Matchups.Where(m => m.Counter is not null))
+        foreach (var matchup in Loaded.Bench.Matchups.Where(m => m.Counters.Count > 0))
         {
             Assert.True(WinRate(matchup.EncounterId, "universal") < 30, $"{matchup.EncounterId} should beat the universal set");
-            Assert.True(WinRate(matchup.EncounterId, matchup.Counter!) >= 70, $"{matchup.EncounterId} should fall to {matchup.Counter}");
+            foreach (var counter in matchup.Counters)
+            {
+                Assert.True(WinRate(matchup.EncounterId, counter) >= 70, $"{matchup.EncounterId} should fall to {counter}");
+            }
         }
     }
 
@@ -88,7 +91,7 @@ public class TacticBenchTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void Extra_encounters_get_the_same_checks_as_the_game_data()
+    public void Extra_data_gets_the_same_checks_as_the_game_data()
     {
         var duplicate = """[ { "id": "training", "name": "또 훈련", "units": [] } ]""";
         var unknownItem = """
@@ -96,9 +99,24 @@ public class TacticBenchTests(ITestOutputHelper output)
                 "stats": { "str": 10, "dex": 10, "vital": 10, "intel": 10, "speed": 10 }, "equipment": { "MainHand": "no_such_item" } } ] } ]
             """;
 
-        Assert.Contains(Assert.Throws<GameDataException>(() => GameDataLoader.LoadDirectory(DataDirectory, duplicate)).Errors, e => e.Contains("training"));
-        Assert.Contains(Assert.Throws<GameDataException>(() => GameDataLoader.LoadDirectory(DataDirectory, unknownItem)).Errors, e => e.Contains("no_such_item"));
-        Assert.Contains(Assert.Throws<GameDataException>(() => GameDataLoader.LoadDirectory(DataDirectory, "{}")).Errors, e => e.StartsWith("extra encounters"));
+        Assert.Contains(LoadWithExtra(duplicate), e => e.Contains("training"));
+        Assert.Contains(LoadWithExtra(unknownItem), e => e.Contains("no_such_item"));
+        Assert.Contains(LoadWithExtra("{}"), e => e.Contains(GameDataLoader.EncountersFile) && e.Contains("extra"));
+    }
+
+    /// <summary>임시 폴더에 encounters.json만 두고 읽어 오류 목록을 돌려준다.</summary>
+    private static IReadOnlyList<string> LoadWithExtra(string encountersJson)
+    {
+        var folder = Directory.CreateTempSubdirectory("bench-extra-").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(folder, GameDataLoader.EncountersFile), encountersJson);
+            return Assert.Throws<GameDataException>(() => GameDataLoader.LoadDirectory(DataDirectory, folder)).Errors;
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
     }
 
     private static string Rows(GameData data, string encounterId) =>

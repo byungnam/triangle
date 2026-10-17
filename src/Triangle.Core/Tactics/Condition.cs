@@ -87,6 +87,12 @@ public enum Condition
 
     /// <summary>살아있는 아군(자신·소환물 포함) 중 디버프가 걸린 유닛이 있으면 참. 값은 쓰지 않는다.</summary>
     AnyAllyHasDebuff,
+
+    /// <summary>자신이 전투를 시작한 줄에 있지 않으면 참 (갈고리 당기기·밀쳐내기로 옮겨짐, 2026-10-17). 값은 쓰지 않는다.</summary>
+    SelfDisplaced,
+
+    /// <summary>살아있는 적(소환물 포함) 중 버프가 걸린 유닛이 있으면 참 (2026-10-17). 값은 쓰지 않는다.</summary>
+    AnyEnemyHasBuff,
 }
 
 public static class ConditionKinds
@@ -115,5 +121,6 @@ public static class ConditionKinds
 
     /// <summary>값을 쓰는 조건인가 (항상, 효과·디버프 조건은 값이 없다).</summary>
     public static bool HasValue(this Condition condition) =>
-        condition is not Condition.Always and not Condition.AnyAllyHasDebuff && !condition.UsesActionEffect();
+        condition is not (Condition.Always or Condition.AnyAllyHasDebuff or Condition.SelfDisplaced or Condition.AnyEnemyHasBuff)
+        && !condition.UsesActionEffect();
 }

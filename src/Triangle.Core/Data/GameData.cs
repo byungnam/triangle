@@ -90,7 +90,7 @@ public sealed class GameData
 
         return encounter.Units
             .Select(u => new Loadout(u.Equipment.Select(e => (e.Key, Items[e.Value]))).Apply(
-                new CombatantSetup(u.Id, u.Name, u.Stats, u.Row, null, null, u.Skills, u.Tactics),
+                new CombatantSetup(u.Id, u.Name, u.Stats, u.Row, null, null, u.Skills, u.Tactics) { StartingEffects = u.Effects },
                 Actions.Values,
                 _ => 0))
             .ToList();

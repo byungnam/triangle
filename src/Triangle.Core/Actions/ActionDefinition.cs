@@ -51,6 +51,9 @@ public enum TargetRule
 
     /// <summary>디버프가 걸린 대상을 우선 (무작위). 없으면 HP 비율이 가장 낮은 대상.</summary>
     WithDebuffFirst,
+
+    /// <summary>버프가 걸린 대상을 우선 (무작위). 없으면 아무나 (2026-10-17).</summary>
+    WithBuffFirst,
 }
 
 public enum RowRestriction
@@ -143,6 +146,9 @@ public sealed record ActionDefinition
 
     /// <summary>참이면 대상의 디버프를 모두 지운다.</summary>
     public bool RemovesDebuffs { get; init; }
+
+    /// <summary>참이면 대상의 버프를 모두 지운다. 적의 타고난 버프도 지운다 (주문 깨기, 2026-10-17).</summary>
+    public bool RemovesBuffs { get; init; }
 
     /// <summary>영창 횟수. 2 이상이면 이 행동을 연속으로 이만큼 써야 효과가 난다. 다른 행동, 기절, 넘어뜨림은 처음부터 다시 하게 한다.</summary>
     public int Chant { get; init; } = 1;

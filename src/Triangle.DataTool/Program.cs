@@ -16,7 +16,7 @@ const string Usage = """
       show <id>                  그 id의 원본 JSON과 쓰는 곳.
       refs <id>                  그 id를 가리키는 곳만.
       bench [옵션]               전술 측정: 기준 파티가 전술 세트마다 적 조합과 싸운 승률 (tools/bench/bench.json,
-                                 시제품 적 조합은 tools/bench/encounters.json).
+                                 시제품 적 조합과 효과는 tools/bench/encounters.json, effects.json).
                                  --encounter <id,…>  맞대결 거르기 (*는 아무 글자)   --set <id,…>  세트 거르기
                                  --seeds <n>  시드 수 (기본 200)   --bench <파일>  측정 정의 파일
                                  --search  자동 탐색: 공통 최선 세트와 적마다 맞춘 세트를 찾아 특색(승률 차이)을 본다

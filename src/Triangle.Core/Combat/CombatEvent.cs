@@ -37,7 +37,11 @@ public sealed record Died(string UnitId) : CombatEvent;
 public sealed record MpRestored(string TargetId, int Amount, int MpAfter) : CombatEvent;
 
 /// <param name="Refreshed">이미 걸려 있던 효과의 지속시간을 새로 시작했다.</param>
-public sealed record EffectApplied(string TargetId, string EffectId, int Duration, bool Refreshed) : CombatEvent;
+public sealed record EffectApplied(string TargetId, string EffectId, int Duration, bool Refreshed) : CombatEvent
+{
+    /// <summary>타고난 효과(<see cref="CombatantSetup.StartingEffects"/>)의 지속. 지워지기 전까지 끝나지 않는다.</summary>
+    public const int Permanent = int.MaxValue;
+}
 
 /// <summary>
 /// 턴 시작의 지속 피해·회복. <paramref name="HpChange"/>가 음수면 피해.
@@ -70,5 +74,11 @@ public sealed record Summoned(string OwnerId, string UnitId, string Name, Triang
 
 /// <summary>소환 유닛이 사라졌다.</summary>
 public sealed record Dismissed(string UnitId) : CombatEvent;
+
+/// <summary>대상의 면역 효과(<see cref="Effects.EffectDefinition.ImmuneDamageTypes"/>, <see cref="Effects.EffectDefinition.ImmuneToDebuffs"/>)가 막았다. <paramref name="BlockedEffectId"/>는 막은 디버프 (피해를 막았으면 null).</summary>
+public sealed record Immune(string TargetId, string EffectId, string? BlockedEffectId = null) : CombatEvent;
+
+/// <summary>치유 봉쇄(<see cref="Effects.EffectDefinition.HealBlock"/>)로 회복하지 못했다.</summary>
+public sealed record HealBlocked(string TargetId, string EffectId) : CombatEvent;
 
 public sealed record CombatEnded(CombatOutcome Outcome) : CombatEvent;

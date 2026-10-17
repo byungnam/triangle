@@ -317,5 +317,387 @@
         ]
       }
     ]
+  },
+  {
+    "id": "wraith_host",
+    "name": "망령 기사단",
+    "description": "시제품 (전술 측정). 모두 타고난 '실체 없음'으로 물리 공격을 받지 않는다. 주문 깨기로 실체를 드러내거나 마법으로만 싸워야 한다. 임시 수치.",
+    "units": [
+      {
+        "id": "wraith_host_knight_1",
+        "name": "망령 기사",
+        "stats": {
+          "str": 25,
+          "dex": 10,
+          "vital": 48,
+          "intel": 20,
+          "speed": 12
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_greatsword",
+          "Body": "plate_armor"
+        },
+        "skills": {},
+        "effects": [
+          "incorporeal"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "greatsword_sweep"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "wraith_host_knight_2",
+        "name": "망령 기사",
+        "stats": {
+          "str": 25,
+          "dex": 10,
+          "vital": 48,
+          "intel": 20,
+          "speed": 12
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_greatsword",
+          "Body": "plate_armor"
+        },
+        "skills": {},
+        "effects": [
+          "incorporeal"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "greatsword_sweep"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "wraith_host_seer",
+        "name": "망령 점술사",
+        "stats": {
+          "str": 8,
+          "dex": 10,
+          "vital": 33,
+          "intel": 41,
+          "speed": 12
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "apprentice_frost_staff",
+          "Body": "cloth_robe"
+        },
+        "skills": {
+          "cryomancy": 2
+        },
+        "effects": [
+          "incorporeal"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "blizzard"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "ice_lance"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "hook_raiders",
+    "name": "갈고리 약탈단",
+    "description": "시제품 (전술 측정). 갈고리꾼이 두 차례마다 후열을 전열로 끌어내고, 창과 큰도끼로 전열을 통째로 휩쓴다. 끌려나온 멤버가 제자리로 돌아가거나, 진형을 무시하고 몸이 약한 약탈단을 먼저 쓸어버려야 한다. 임시 수치.",
+    "units": [
+      {
+        "id": "hook_raiders_hook_1",
+        "name": "갈고리꾼",
+        "stats": {
+          "str": 34,
+          "dex": 10,
+          "vital": 26,
+          "intel": 20,
+          "speed": 13
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_halberd",
+          "Body": "leather_armor"
+        },
+        "skills": {
+          "spearmanship": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EnemyBackAtLeast",
+            "value": 1,
+            "actionId": "hook_pull",
+            "and": [
+              {
+                "condition": "EveryNthTurn",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "priority": 2,
+            "condition": "SelfMpAtLeast",
+            "value": 20,
+            "actionId": "spear_sweep"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "hook_raiders_hook_2",
+        "name": "갈고리꾼",
+        "stats": {
+          "str": 34,
+          "dex": 10,
+          "vital": 26,
+          "intel": 20,
+          "speed": 13
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_halberd",
+          "Body": "leather_armor"
+        },
+        "skills": {
+          "spearmanship": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EnemyBackAtLeast",
+            "value": 1,
+            "actionId": "hook_pull",
+            "and": [
+              {
+                "condition": "EveryNthTurn",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "priority": 2,
+            "condition": "SelfMpAtLeast",
+            "value": 20,
+            "actionId": "spear_sweep"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "hook_raiders_reaver",
+        "name": "약탈 도끼잡이",
+        "stats": {
+          "str": 34,
+          "dex": 10,
+          "vital": 28,
+          "intel": 20,
+          "speed": 12
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_greataxe",
+          "Body": "leather_armor"
+        },
+        "skills": {
+          "axemanship": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "berserk"
+          },
+          {
+            "priority": 2,
+            "condition": "SelfMpAtLeast",
+            "value": 25,
+            "actionId": "whirlwind"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "pure_choir",
+    "name": "정결한 성가대",
+    "description": "시제품 (전술 측정). 모두 타고난 '불가침'으로 디버프에 걸리지 않고, 뒤의 사제가 치유한다. 상태 이상을 먼저 거는 전술은 효과 없는 적이 계속 남아 같은 줄을 되풀이한다. 주문 깨기로 불가침을 지우거나 직접 피해로 사제부터 잡아야 한다. 임시 수치.",
+    "units": [
+      {
+        "id": "pure_choir_knight_1",
+        "name": "성가대 기사",
+        "stats": {
+          "str": 18,
+          "dex": 10,
+          "vital": 48,
+          "intel": 20,
+          "speed": 11
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_mace",
+          "OffHand": "wooden_shield",
+          "Body": "plate_armor"
+        },
+        "skills": {
+          "defense": 1
+        },
+        "effects": [
+          "inviolate"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "shield_wall"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "pure_choir_knight_2",
+        "name": "성가대 기사",
+        "stats": {
+          "str": 18,
+          "dex": 10,
+          "vital": 48,
+          "intel": 20,
+          "speed": 11
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_mace",
+          "OffHand": "wooden_shield",
+          "Body": "plate_armor"
+        },
+        "skills": {
+          "defense": 1
+        },
+        "effects": [
+          "inviolate"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "shield_wall"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "pure_choir_cantor",
+        "name": "성가 사제",
+        "stats": {
+          "str": 9,
+          "dex": 10,
+          "vital": 19,
+          "intel": 30,
+          "speed": 13
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "silver_relic",
+          "Body": "cloth_robe"
+        },
+        "skills": {
+          "healing": 2
+        },
+        "effects": [
+          "inviolate"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "AnyAllyHpAtMost",
+            "value": 70,
+            "actionId": "greater_heal"
+          },
+          {
+            "priority": 2,
+            "condition": "AnyAllyHpAtMost",
+            "value": 85,
+            "actionId": "heal"
+          },
+          {
+            "priority": 3,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 4,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      }
+    ]
   }
 ]

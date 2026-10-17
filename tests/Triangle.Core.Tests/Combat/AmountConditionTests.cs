@@ -90,6 +90,6 @@ public class AmountConditionTests
         Assert.Equal(14, Enum.GetValues<Condition>().Count(c => c.IsPercent()));
         Assert.Equal(14, Enum.GetValues<Condition>().Count(c => c.IsAmount()));
         Assert.Equal(2, Enum.GetValues<Condition>().Count(c => c.IsAllyCount()));
-        Assert.Equal(5, Enum.GetValues<Condition>().Count(c => !c.HasValue()));
+        Assert.Equal(7, Enum.GetValues<Condition>().Count(c => !c.HasValue()));
     }
 }

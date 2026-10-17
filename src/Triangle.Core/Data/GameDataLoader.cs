@@ -26,11 +26,12 @@ public static class GameDataLoader
     public const string RecruitsFile = "recruits.json";
     public const string RecipesFile = "recipes.json";
 
-    /// <param name="extraEncountersJson">
-    /// 게임 데이터 밖의 적 조합 배열 (전술 측정의 시제품, <see cref="Balance.BenchDefinition.Encounters"/>).
-    /// encounters.json 뒤에 붙여 같은 검증을 받는다. 오류 메시지는 encounters.json으로 나온다.
+    /// <param name="extraDirectory">
+    /// 게임 데이터 밖의 추가 데이터 폴더 (전술 측정의 시제품, <see cref="Balance.BenchDefinition.ExtraData"/>).
+    /// 이 폴더에 같은 이름의 파일(encounters.json, effects.json 등)이 있으면 게임 데이터 배열 뒤에 붙여 같은 검증을 받는다.
+    /// 오류 메시지는 게임 데이터 파일 이름으로 나온다.
     /// </param>
-    public static GameData LoadDirectory(string directory, string? extraEncountersJson = null)
+    public static GameData LoadDirectory(string directory, string? extraDirectory = null)
     {
         var errors = new List<string>();
 
@@ -39,7 +40,9 @@ public static class GameDataLoader
             var path = Path.Combine(directory, fileName);
             try
             {
-                return File.ReadAllText(path);
+                var json = File.ReadAllText(path);
+                var extra = extraDirectory is null ? null : Path.Combine(extraDirectory, fileName);
+                return extra is not null && File.Exists(extra) ? ConcatArrays(json, File.ReadAllText(extra), extra, errors) : json;
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
@@ -57,11 +60,6 @@ public static class GameDataLoader
         var zones = Read(ZonesFile);
         var recruits = Read(RecruitsFile);
         var recipes = Read(RecipesFile);
-        if (errors.Count == 0 && extraEncountersJson is not null)
-        {
-            encounters = ConcatArrays(encounters!, extraEncountersJson, errors);
-        }
-
         if (errors.Count > 0)
         {
             throw new GameDataException(errors);
@@ -70,7 +68,8 @@ public static class GameDataLoader
         return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, recruits!, recipes!);
     }
 
-    private static string ConcatArrays(string json, string extraJson, List<string> errors)
+    /// <summary>두 JSON 배열을 이어 붙인다. 배열이 아니거나 읽을 수 없으면 오류를 남기고 원래 것을 돌려준다.</summary>
+    private static string ConcatArrays(string json, string extraJson, string extraPath, List<string> errors)
     {
         try
         {
@@ -86,7 +85,7 @@ public static class GameDataLoader
         }
         catch (Exception e) when (e is JsonException or InvalidOperationException)
         {
-            errors.Add($"extra encounters: {e.Message}");
+            errors.Add($"{extraPath}: {e.Message}");
             return json;
         }
     }
@@ -172,7 +171,7 @@ public static class GameDataLoader
 
         foreach (var e in encounters!)
         {
-            ValidateEncounter(e, skillMap, actionMap, itemMap, errors);
+            ValidateEncounter(e, skillMap, actionMap, itemMap, effectMap, errors);
         }
 
         foreach (var item in items!)
@@ -510,6 +509,7 @@ public static class GameDataLoader
         IReadOnlyDictionary<string, SkillDefinition> skills,
         IReadOnlyDictionary<string, ActionDefinition> actions,
         IReadOnlyDictionary<string, ItemDefinition> items,
+        IReadOnlyDictionary<string, EffectDefinition> effects,
         List<string> errors)
     {
         var at = $"{EncountersFile} '{e.Id}'";
@@ -533,6 +533,8 @@ public static class GameDataLoader
             DataValidation.ValidateStats(unit.Stats, unitAt, errors);
             DataValidation.ValidateEquipped(unit.Equipment, $"{unitAt}: equipment", items, errors);
             DataValidation.ValidateSkillLevels(unit.Skills, unitAt, skills, errors);
+            errors.AddRange(unit.Effects.Where(id => !effects.ContainsKey(id)).Select(id => $"{unitAt}: unknown effect '{id}'"));
+            errors.AddRange(unit.Effects.GroupBy(id => id).Where(g => g.Count() > 1).Select(g => $"{unitAt}: duplicate effect '{g.Key}'"));
 
             // 적은 착용 불가 상태를 두지 않는다: 착용 조건과 두손·보조 충돌은 데이터 오류다.
             var set = new SkillSet(unit.Skills, skills);

@@ -70,7 +70,7 @@ $D delete items rusty_sword                                       # 가리키는
 
 ## 전술 측정
 
-기준 파티가 전술 세트마다 적 조합과 HP·MP가 가득 찬 한 판을 싸운 승률이다. 만능 세트 하나로 모든 적을 이기는지, 적마다 세트를 바꿔야 하는지 본다. 정의는 `tools/bench/bench.json`, 아직 지역에 넣지 않은 시제품 적 조합은 `tools/bench/encounters.json`이다. 설명과 측정 결과는 [docs/architecture.md](docs/architecture.md#전술-측정-2026-10-17)에 있다.
+기준 파티가 전술 세트마다 적 조합과 HP·MP가 가득 찬 한 판을 싸운 승률이다. 만능 세트 하나로 모든 적을 이기는지, 적마다 세트를 바꿔야 하는지 본다. 정의는 `tools/bench/bench.json`, 아직 지역에 넣지 않은 시제품 적 조합과 그 적만 쓰는 효과는 `tools/bench/encounters.json`, `effects.json`이다(게임 데이터 뒤에 붙여 같은 검증을 받는다). 세트는 전술과 함께 장비 교체도 가질 수 있다. 설명과 측정 결과는 [docs/architecture.md](docs/architecture.md#전술-측정-2026-10-17)에 있다.
 
 ```bash
 $D bench                                            # 맞대결 × 세트 승률 표

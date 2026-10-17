@@ -22,6 +22,11 @@ public sealed record CombatantSetup(
     int? StartHp = null,
     int? StartMp = null)
 {
+    /// <summary>
+    /// 타고난 효과 ID. 전투를 시작할 때 걸려 있고, 지워지기 전까지 끝나지 않는다(적의 면역 같은 특성, 2026-10-17).
+    /// </summary>
+    public IReadOnlyList<string> StartingEffects { get; init; } = [];
+
     /// <summary>낀 아이템이 주는 행동 ID. null이면 아이템 제한이 없다 (규칙 시험용 유닛).</summary>
     public IReadOnlySet<string>? GrantedActions { get; init; }
 

@@ -25,10 +25,11 @@ public sealed record BenchDefinition
     public required IReadOnlyList<BenchMatchup> Matchups { get; init; }
 
     /// <summary>
-    /// 게임 데이터 밖의 적 조합 파일 (이 파일 기준 상대 경로, 형식은 encounters.json과 같다). 어느 지역에도 넣기 전의
-    /// 시제품을 게임에 싣지 않고 재려는 것이다. 지역에 넣기로 하면 data/encounters.json으로 옮긴다.
+    /// 게임 데이터 밖의 추가 데이터 폴더 (이 파일 기준 상대 경로). 그 안의 encounters.json, effects.json 등은 게임 데이터 뒤에
+    /// 붙는다(<see cref="GameDataLoader.LoadDirectory"/>). 어느 지역에도 넣기 전의 시제품 적과 그 적만 쓰는 타고난 효과를
+    /// 게임에 싣지 않고 재려는 것이다. 지역에 넣기로 하면 data/로 옮긴다.
     /// </summary>
-    public string? Encounters { get; init; }
+    public string? ExtraData { get; init; }
 
     public BenchState State(string id) => States.First(s => s.Id == id);
 
@@ -45,8 +46,29 @@ public sealed record BenchDefinition
         return tactics;
     }
 
+    /// <summary>세트의 멤버별 장비 교체 (부위 → 아이템 ID, 빈 문자열이면 그 부위를 비운다). 바탕 세트의 교체를 이어받는다.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<EquipmentSlot, string>> EquipmentOf(string setId)
+    {
+        var set = Sets.First(s => s.Id == setId);
+        var equipment = set.Base is null
+            ? new Dictionary<string, IReadOnlyDictionary<EquipmentSlot, string>>()
+            : EquipmentOf(set.Base).ToDictionary();
+        foreach (var (memberId, slots) in set.Equipment)
+        {
+            var merged = equipment.GetValueOrDefault(memberId)?.ToDictionary() ?? [];
+            foreach (var (slot, itemId) in slots)
+            {
+                merged[slot] = itemId;
+            }
+
+            equipment[memberId] = merged;
+        }
+
+        return equipment;
+    }
+
     /// <summary>
-    /// 측정 정의와, 그 정의의 시제품 적 조합(<see cref="Encounters"/>)을 더한 게임 데이터를 읽는다.
+    /// 측정 정의와, 그 정의의 추가 데이터(<see cref="ExtraData"/>)를 더한 게임 데이터를 읽는다.
     /// 형식이나 참조가 틀리면 <see cref="GameDataException"/>을 던진다.
     /// </summary>
     public static (BenchDefinition Bench, GameData Data) Load(string path, string dataDirectory)
@@ -66,7 +88,7 @@ public sealed record BenchDefinition
             throw new GameDataException([$"{Path.GetFileName(path)}: empty"]);
         }
 
-        var extra = bench.Encounters is null ? null : File.ReadAllText(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, bench.Encounters));
+        var extra = bench.ExtraData is null ? null : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, bench.ExtraData);
         var data = GameDataLoader.LoadDirectory(dataDirectory, extra);
         var errors = bench.Validate(data);
         if (errors.Count > 0)
@@ -129,6 +151,26 @@ public sealed record BenchDefinition
                     DataValidation.ValidateTactic(tactic, $"sets.{set.Id}.{memberId}", data.Actions, errors);
                 }
             }
+
+            foreach (var (memberId, slots) in set.Equipment)
+            {
+                if (!memberIds.Contains(memberId))
+                {
+                    errors.Add($"sets.{set.Id}: unknown member '{memberId}' in equipment");
+                }
+
+                foreach (var (slot, itemId) in slots.Where(p => p.Value != ""))
+                {
+                    if (!data.Items.TryGetValue(itemId, out var item))
+                    {
+                        errors.Add($"sets.{set.Id}.equipment.{memberId}: unknown item '{itemId}'");
+                    }
+                    else if (item.Slot != slot)
+                    {
+                        errors.Add($"sets.{set.Id}.equipment.{memberId}: '{itemId}' is not a {slot} item");
+                    }
+                }
+            }
         }
 
         var stateIds = States.Select(s => s.Id).ToHashSet();
@@ -146,10 +188,7 @@ public sealed record BenchDefinition
                 errors.Add($"{at}: unknown state '{matchup.State}'");
             }
 
-            if (matchup.Counter is not null && !setIds.Contains(matchup.Counter))
-            {
-                errors.Add($"{at}: unknown counter set '{matchup.Counter}'");
-            }
+            errors.AddRange(matchup.Counters.Where(id => !setIds.Contains(id)).Select(id => $"{at}: unknown counter set '{id}'"));
         }
 
         return errors;
@@ -176,7 +215,17 @@ public sealed record BenchState(string Id, string Name, int Tier, int MasteryLev
 public sealed record BenchSet(string Id, string Name, IReadOnlyDictionary<string, IReadOnlyList<Tactic>> Tactics, string? Base = null)
 {
     public string? Description { get; init; }
+
+    /// <summary>
+    /// 멤버 ID별 장비 교체 (부위 → 아이템 ID, 빈 문자열이면 그 부위를 비운다). 출정 전에 장비를 바꾸는 대응을 재려는 것이다.
+    /// 성장 상태는 바꾼 장비로 숙련과 패시브를 올린다.
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<EquipmentSlot, string>> Equipment { get; init; } =
+        new Dictionary<string, IReadOnlyDictionary<EquipmentSlot, string>>();
 }
 
-/// <param name="Counter">이 적에 맞춘 대응 세트 ID (있으면).</param>
-public sealed record BenchMatchup(string EncounterId, string State, string? Counter = null);
+public sealed record BenchMatchup(string EncounterId, string State)
+{
+    /// <summary>이 적에 맞춘 대응 세트 ID. 해법이 여럿이면 모두 적는다.</summary>
+    public IReadOnlyList<string> Counters { get; init; } = [];
+}

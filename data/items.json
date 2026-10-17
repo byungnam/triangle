@@ -3172,7 +3172,8 @@
       "mana_gift",
       "mana_burn",
       "prayer_of_protection",
-      "vigil"
+      "vigil",
+      "dispel"
     ]
   },
   {
@@ -3204,7 +3205,8 @@
       "mana_gift",
       "mana_burn",
       "prayer_of_protection",
-      "vigil"
+      "vigil",
+      "dispel"
     ]
   },
   {
@@ -3236,7 +3238,8 @@
       "mana_gift",
       "mana_burn",
       "prayer_of_protection",
-      "vigil"
+      "vigil",
+      "dispel"
     ]
   },
   {
@@ -3272,7 +3275,8 @@
       "mana_gift",
       "mana_burn",
       "prayer_of_protection",
-      "vigil"
+      "vigil",
+      "dispel"
     ]
   },
   {
@@ -3514,7 +3518,8 @@
       }
     ],
     "actions": [
-      "charge"
+      "charge",
+      "step_forward"
     ]
   },
   {
@@ -3538,7 +3543,8 @@
       }
     ],
     "actions": [
-      "charge"
+      "charge",
+      "step_forward"
     ]
   },
   {
@@ -3562,7 +3568,8 @@
       }
     ],
     "actions": [
-      "charge"
+      "charge",
+      "step_forward"
     ]
   },
   {
@@ -3590,7 +3597,8 @@
       }
     ],
     "actions": [
-      "charge"
+      "charge",
+      "step_forward"
     ]
   },
   {

@@ -68,6 +68,16 @@ $D delete items rusty_sword                                       # 가리키는
 
 콘텐츠(`src/Triangle.Desktop/Content/Content.mgcb`)는 빌드할 때 함께 처리된다. 에디터는 `src/Triangle.Desktop`에서 `dotnet tool restore && dotnet mgcb-editor`로 연다.
 
+## 전술 측정
+
+기준 파티가 전술 세트마다 적 조합과 HP·MP가 가득 찬 한 판을 싸운 승률이다. 만능 세트 하나로 모든 적을 이기는지, 적마다 세트를 바꿔야 하는지 본다. 정의는 `tools/bench/bench.json`, 아직 지역에 넣지 않은 시제품 적 조합은 `tools/bench/encounters.json`이다. 설명과 측정 결과는 [docs/architecture.md](docs/architecture.md#전술-측정-2026-10-17)에 있다.
+
+```bash
+$D bench                                            # 맞대결 × 세트 승률 표
+$D bench --encounter 'oath_*,penitent_*' --set universal,vs_bulwark
+$D bench --search --from all                        # 자동 탐색: 공통 최선 세트와 적마다 맞춘 세트, 그 차이(특색). 수 분 걸린다
+```
+
 ## 라이선스
 
 Apache License 2.0 — [LICENSE](LICENSE)

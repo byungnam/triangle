@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Triangle.Core.Actions;
 using Triangle.Core.Effects;
 using Triangle.Core.Expeditions;
@@ -25,7 +26,11 @@ public static class GameDataLoader
     public const string RecruitsFile = "recruits.json";
     public const string RecipesFile = "recipes.json";
 
-    public static GameData LoadDirectory(string directory)
+    /// <param name="extraEncountersJson">
+    /// 게임 데이터 밖의 적 조합 배열 (전술 측정의 시제품, <see cref="Balance.BenchDefinition.Encounters"/>).
+    /// encounters.json 뒤에 붙여 같은 검증을 받는다. 오류 메시지는 encounters.json으로 나온다.
+    /// </param>
+    public static GameData LoadDirectory(string directory, string? extraEncountersJson = null)
     {
         var errors = new List<string>();
 
@@ -52,12 +57,38 @@ public static class GameDataLoader
         var zones = Read(ZonesFile);
         var recruits = Read(RecruitsFile);
         var recipes = Read(RecipesFile);
+        if (errors.Count == 0 && extraEncountersJson is not null)
+        {
+            encounters = ConcatArrays(encounters!, extraEncountersJson, errors);
+        }
+
         if (errors.Count > 0)
         {
             throw new GameDataException(errors);
         }
 
         return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, recruits!, recipes!);
+    }
+
+    private static string ConcatArrays(string json, string extraJson, List<string> errors)
+    {
+        try
+        {
+            var all = JsonNode.Parse(json)?.AsArray() ?? [];
+            var extra = JsonNode.Parse(extraJson)?.AsArray() ?? [];
+            foreach (var node in extra.ToList())
+            {
+                extra.Remove(node);
+                all.Add(node);
+            }
+
+            return all.ToJsonString();
+        }
+        catch (Exception e) when (e is JsonException or InvalidOperationException)
+        {
+            errors.Add($"extra encounters: {e.Message}");
+            return json;
+        }
     }
 
     public static GameData Parse(string masteriesJson, string skillsJson, string actionsJson, string encountersJson, string effectsJson = "[]",

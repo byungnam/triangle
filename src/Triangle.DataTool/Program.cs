@@ -15,6 +15,13 @@ const string Usage = """
                                        skills: --mastery <id>
       show <id>                  그 id의 원본 JSON과 쓰는 곳.
       refs <id>                  그 id를 가리키는 곳만.
+      bench [옵션]               전술 측정: 기준 파티가 전술 세트마다 적 조합과 싸운 승률 (tools/bench/bench.json,
+                                 시제품 적 조합은 tools/bench/encounters.json).
+                                 --encounter <id,…>  맞대결 거르기 (*는 아무 글자)   --set <id,…>  세트 거르기
+                                 --seeds <n>  시드 수 (기본 200)   --bench <파일>  측정 정의 파일
+                                 --search  자동 탐색: 공통 최선 세트와 적마다 맞춘 세트를 찾아 특색(승률 차이)을 본다
+                                           --from <세트,…|all> 출발 세트 (기본: 첫 세트)  --generations <n> (기본 120)
+                                           --train-seeds <n> (기본 60)
 
     수정 명령 (고친 뒤 검증을 통과해야 저장한다. 실패하면 아무 파일도 바꾸지 않는다):
       set <종류> <id> <경로> <값>      값을 바꾼다. 없는 속성은 만든다.
@@ -59,6 +66,12 @@ var rest = options.Positional.Skip(1).ToList();
 if (Editing.Commands.Contains(command))
 {
     return Editing.Run(command, rest, options, directory);
+}
+
+// 측정은 시제품 적 조합을 더해 데이터를 따로 읽는다.
+if (command == "bench" && rest.Count == 0)
+{
+    return Bench.Run(options, directory);
 }
 
 GameData data;

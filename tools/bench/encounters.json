@@ -1,0 +1,321 @@
+[
+  {
+    "id": "oath_bulwark",
+    "name": "맹세의 방벽",
+    "description": "시제품 (전술 측정). 방벽 기사가 도발과 방패 벽을 번갈아 걸며 막고, 뒤에서 화염술사가 첫 차례와 3차례마다 광역으로 태운다. 단일 공격은 엄호와 도발로 모두 기사에게 끌려가므로, 광역(재의 폭풍)으로 화염술사를 태워야 한다. 적이 둘뿐이라 '적 3 이상이면 광역'인 전술은 광역을 쓰지 않는다. 고해 수도회와 겉모습(전열 하나, 후열 하나)이 같다. 임시 수치.",
+    "units": [
+      {
+        "id": "oath_bulwark_knight",
+        "name": "방벽 기사",
+        "stats": {
+          "str": 20,
+          "dex": 10,
+          "vital": 100,
+          "intel": 20,
+          "speed": 10
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_spear",
+          "OffHand": "iron_shield",
+          "Head": "steel_plate_helm",
+          "Body": "steel_plate_armor",
+          "Feet": "steel_plate_boots"
+        },
+        "skills": {
+          "defense": 3,
+          "endurance": 3,
+          "shield_mastery": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfLacksActionEffect",
+            "value": 0,
+            "actionId": "provoke"
+          },
+          {
+            "priority": 2,
+            "condition": "SelfLacksActionEffect",
+            "value": 0,
+            "actionId": "shield_wall"
+          },
+          {
+            "priority": 3,
+            "condition": "SelfHpAtMost",
+            "value": 50,
+            "actionId": "first_aid"
+          },
+          {
+            "priority": 4,
+            "condition": "SelfMpAtMost",
+            "value": 15,
+            "actionId": "focus"
+          },
+          {
+            "priority": 5,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "oath_bulwark_pyromancer",
+        "name": "방벽 화염술사",
+        "stats": {
+          "str": 8,
+          "dex": 10,
+          "vital": 27,
+          "intel": 45,
+          "speed": 14
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "apprentice_staff",
+          "Body": "cloth_robe"
+        },
+        "skills": {
+          "pyromancy": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "ash_storm"
+          },
+          {
+            "priority": 3,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "ash_storm"
+          },
+          {
+            "priority": 4,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "fireball"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "penitent_order",
+    "name": "고해 수도회",
+    "description": "시제품 (전술 측정). 고행 수도사는 기도만 하고, 고해 사제는 첫 차례와 8차례마다 광역을 쓰고 나머지는 기도한다. 그러다 둘 중 누구라도 상처(디버프)를 입으면 수도사는 공격하고 사제는 매 차례 화염구와 두 차례마다 광역을 퍼붓는다. 화상·독을 포함해 디버프를 하나도 걸지 않아야 이긴다. 맹세의 방벽과 겉모습(전열 하나, 후열 하나)이 같아 조건으로는 둘을 가를 수 없다: 방벽은 광역(화상)이 필요하고 수도회는 디버프를 금한다. 임시 수치.",
+    "units": [
+      {
+        "id": "penitent_order_flagellant",
+        "name": "고행 수도사",
+        "stats": {
+          "str": 24,
+          "dex": 10,
+          "vital": 60,
+          "intel": 20,
+          "speed": 8
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_mace",
+          "Head": "plate_helm",
+          "Body": "plate_armor",
+          "Feet": "plate_boots"
+        },
+        "skills": {
+          "defense": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "AnyAllyHasDebuff",
+            "value": 0,
+            "actionId": "basic_attack"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "focus"
+          }
+        ]
+      },
+      {
+        "id": "penitent_order_confessor",
+        "name": "고해 사제",
+        "stats": {
+          "str": 8,
+          "dex": 10,
+          "vital": 48,
+          "intel": 80,
+          "speed": 19
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "apprentice_staff",
+          "Body": "cloth_robe"
+        },
+        "skills": {
+          "pyromancy": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "AnyAllyHasDebuff",
+            "value": 0,
+            "actionId": "ash_storm",
+            "and": [
+              {
+                "condition": "EveryNthTurn",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "priority": 3,
+            "condition": "AnyAllyHasDebuff",
+            "value": 0,
+            "actionId": "fireball"
+          },
+          {
+            "priority": 4,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "ash_storm"
+          },
+          {
+            "priority": 5,
+            "condition": "EveryNthTurn",
+            "value": 8,
+            "actionId": "ash_storm"
+          },
+          {
+            "priority": 6,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "focus"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "shadow_hunters",
+    "name": "그림자 사냥단",
+    "description": "시제품 (전술 측정). 엄호를 무시하는 투창과 얼음 창으로 후열만 노린다. 탱커가 자기 방어 버프만 거는 전술은 맞을 일이 없는 탱커만 단단해진다. 도발은 엄호 무시 공격도 끌어온다. 임시 수치.",
+    "units": [
+      {
+        "id": "shadow_hunters_spear_1",
+        "name": "그림자 사냥꾼",
+        "stats": {
+          "str": 30,
+          "dex": 13,
+          "vital": 55,
+          "intel": 20,
+          "speed": 15
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "steel_spear",
+          "Body": "leather_armor"
+        },
+        "skills": {
+          "spearmanship": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 5,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "javelin"
+          }
+        ]
+      },
+      {
+        "id": "shadow_hunters_spear_2",
+        "name": "그림자 사냥꾼",
+        "stats": {
+          "str": 30,
+          "dex": 13,
+          "vital": 55,
+          "intel": 20,
+          "speed": 15
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "steel_spear",
+          "Body": "leather_armor"
+        },
+        "skills": {
+          "spearmanship": 1
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 5,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "javelin"
+          }
+        ]
+      },
+      {
+        "id": "shadow_hunters_frost",
+        "name": "서리 추적자",
+        "stats": {
+          "str": 8,
+          "dex": 10,
+          "vital": 36,
+          "intel": 46,
+          "speed": 13
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "mage_frost_wand",
+          "Body": "cloth_robe"
+        },
+        "skills": {
+          "cryomancy": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "ice_lance"
+          }
+        ]
+      }
+    ]
+  }
+]

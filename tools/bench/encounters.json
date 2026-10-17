@@ -699,5 +699,200 @@
         ]
       }
     ]
+  },
+  {
+    "id": "hammer_vanguard",
+    "name": "망치 돌격대",
+    "description": "시제품 (전술 측정). 망치병 하나가 첫 차례와 두 차례마다 우리 전열을 후열로 밀어낸다. 평소에는 기다리다가(정신 집중, 쇠뇌 거치) 우리 전열이 비면 망치병은 분쇄, 쇠뇌수 둘은 엄호 없는 중볼트를 몰아친다. 밀려난 탱커가 나서거나, 진형을 무시하고 빨리 잡아야 한다. 임시 수치.",
+    "units": [
+      {
+        "id": "hammer_vanguard_1",
+        "name": "망치병",
+        "stats": {
+          "str": 36,
+          "dex": 10,
+          "vital": 44,
+          "intel": 20,
+          "speed": 12
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_warhammer",
+          "Body": "plate_armor"
+        },
+        "skills": {
+          "mace_mastery": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EnemyFrontAtLeast",
+            "value": 1,
+            "actionId": "knockback",
+            "and": [
+              {
+                "condition": "OnTurn",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "priority": 2,
+            "condition": "EnemyFrontAtLeast",
+            "value": 1,
+            "actionId": "knockback",
+            "and": [
+              {
+                "condition": "EveryNthTurn",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "priority": 3,
+            "condition": "EnemyFrontAtMost",
+            "value": 0,
+            "actionId": "crush",
+            "and": [
+              {
+                "condition": "SelfMpAtLeast",
+                "value": 30
+              }
+            ]
+          },
+          {
+            "priority": 4,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "focus"
+          }
+        ]
+      },
+      {
+        "id": "hammer_vanguard_2",
+        "name": "망치병",
+        "stats": {
+          "str": 36,
+          "dex": 10,
+          "vital": 44,
+          "intel": 20,
+          "speed": 12
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_warhammer",
+          "Body": "plate_armor"
+        },
+        "skills": {
+          "mace_mastery": 2
+        },
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EnemyFrontAtMost",
+            "value": 0,
+            "actionId": "crush",
+            "and": [
+              {
+                "condition": "SelfMpAtLeast",
+                "value": 30
+              }
+            ]
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "focus"
+          }
+        ]
+      },
+      {
+        "id": "hammer_vanguard_bolt_1",
+        "name": "돌격대 쇠뇌수",
+        "stats": {
+          "str": 36,
+          "dex": 10,
+          "vital": 30,
+          "intel": 20,
+          "speed": 13
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "wooden_arbalest",
+          "Body": "leather_armor"
+        },
+        "skills": {},
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EnemyFrontAtMost",
+            "value": 0,
+            "actionId": "heavy_bolt",
+            "and": [
+              {
+                "condition": "SelfMpAtLeast",
+                "value": 25
+              }
+            ]
+          },
+          {
+            "priority": 2,
+            "condition": "SelfLacksActionEffect",
+            "value": 0,
+            "actionId": "emplace"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "focus"
+          }
+        ]
+      },
+      {
+        "id": "hammer_vanguard_bolt_2",
+        "name": "돌격대 쇠뇌수",
+        "stats": {
+          "str": 36,
+          "dex": 10,
+          "vital": 30,
+          "intel": 20,
+          "speed": 13
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "wooden_arbalest",
+          "Body": "leather_armor"
+        },
+        "skills": {},
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EnemyFrontAtMost",
+            "value": 0,
+            "actionId": "heavy_bolt",
+            "and": [
+              {
+                "condition": "SelfMpAtLeast",
+                "value": 25
+              }
+            ]
+          },
+          {
+            "priority": 2,
+            "condition": "SelfLacksActionEffect",
+            "value": 0,
+            "actionId": "emplace"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "focus"
+          }
+        ]
+      }
+    ]
   }
 ]

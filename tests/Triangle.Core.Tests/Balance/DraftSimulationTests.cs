@@ -94,6 +94,33 @@ public class DraftSimulationTests
     }
 
     [Fact]
+    public void The_tier_list_bot_always_takes_its_best_ranked_card()
+    {
+        // 줄 상한 +1만 1점이면 줄 카드가 나올 때마다 그것을 고른다.
+        var line = new DraftCard(DraftCardKind.Line, null, null);
+        var options = new DraftOptions { Picker = DraftPicker.TierList, TierList = new Dictionary<DraftCard, double> { [line] = 1 } };
+        var results = new DraftSimulation(Draft, Data, options).RunMany(10);
+
+        var offeredLine = results.SelectMany(r => r.Offers.Zip(r.Picks)).Where(x => x.First.Contains(line)).ToList();
+        Assert.NotEmpty(offeredLine);
+        Assert.All(offeredLine, x => Assert.Equal(line, x.Second.Card));
+    }
+
+    [Fact]
+    public void Act_bosses_are_drawn_from_the_candidates()
+    {
+        var draft = Draft with { Acts = [new DraftAct("outskirts_forest", 0, 1) { Bosses = ["wild_dogs", "poachers"] }] };
+        var results = new DraftSimulation(draft, Data, new DraftOptions { Picker = DraftPicker.Random }).RunMany(20);
+
+        Assert.All(results, r => Assert.Contains(r.Encounter, (string[])["wild_dogs", "poachers"]));
+        Assert.Contains(results, r => r.Encounter == "wild_dogs");
+        Assert.Contains(results, r => r.Encounter == "poachers");
+
+        var unknown = Draft with { Acts = [new DraftAct("outskirts_forest", 0, 1) { Bosses = ["no_such_boss"] }] };
+        Assert.Contains(unknown.Validate(Data), e => e.Contains("unknown boss 'no_such_boss'"));
+    }
+
+    [Fact]
     public void Definition_checks_its_references()
     {
         var wrongSkill = Draft with { Classes = [Draft.Classes[0] with { StartingSkill = "fireball" }, .. Draft.Classes.Skip(1)] };

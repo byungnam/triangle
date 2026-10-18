@@ -34,6 +34,12 @@ public enum DraftPicker
 
     /// <summary>후보와 받을 멤버마다 지금 막의 적 조합과 보스를 미리 싸워 보고 가장 잘 싸우는 쪽을 고른다.</summary>
     Greedy,
+
+    /// <summary>
+    /// 외워 둔 순위표(<see cref="DraftOptions.TierList"/>)에서 점수가 가장 높은 카드. 파티의 지금 모습과 다음 적은 보지 않는다.
+    /// 앞을 보는 봇만큼 잘하면 고르기의 답이 뻔하다는 뜻이다.
+    /// </summary>
+    TierList,
 }
 
 public sealed record DraftOptions
@@ -45,6 +51,15 @@ public sealed record DraftOptions
 
     /// <summary>시작 줄 상한을 정의 대신 이 값으로 (null이면 정의대로).</summary>
     public int? StartLines { get; init; }
+
+    /// <summary>
+    /// 앞을 보는 봇이 그 판의 막 보스를 알고 미리 싸워 보는가. 보스는 판을 시작할 때 정해지고 공개된다(<see cref="DraftAct.Bosses"/>).
+    /// 거짓이면 그 막의 보통 적 조합만 미리 싸워 본다.
+    /// </summary>
+    public bool KnowsBoss { get; init; } = true;
+
+    /// <summary>순위표 봇의 카드 점수. 없는 카드는 0점이다.</summary>
+    public IReadOnlyDictionary<DraftCard, double> TierList { get; init; } = new Dictionary<DraftCard, double>();
 }
 
 /// <summary>한 판의 결과.</summary>
@@ -55,6 +70,8 @@ public sealed record DraftOptions
 /// <param name="FirstSeal">처음 봉인된 전투 번호 (1부터). 봉인이 없었으면 null.</param>
 /// <param name="Picks">고른 카드 차례대로.</param>
 /// <param name="Encounter">마지막으로 싸운 적 조합 (졌다면 진 상대).</param>
+/// <param name="Offers">보상마다 나온 후보 카드 (<paramref name="Picks"/>와 같은 차례).</param>
+/// <param name="IdleSkills">판이 끝날 때 줄 상한이 모자라 놓지 못한 사본 수 (살아 있는 멤버).</param>
 public sealed record DraftRunResult(
     CombatOutcome Outcome,
     int FightsWon,
@@ -63,7 +80,9 @@ public sealed record DraftRunResult(
     int Deaths,
     int? FirstSeal,
     IReadOnlyList<DraftChoice> Picks,
-    string Encounter)
+    string Encounter,
+    IReadOnlyList<IReadOnlyList<DraftCard>> Offers,
+    int IdleSkills)
 {
     public bool Cleared => Outcome == CombatOutcome.Victory;
 }
@@ -110,7 +129,7 @@ public sealed class DraftSimulation
 
         foreach (var zone in draft.Acts.Select(a => data.Zones[a.ZoneId]))
         {
-            foreach (var id in zone.Encounters.Select(e => e.EncounterId).Append(zone.Boss!.EncounterId))
+            foreach (var id in zone.Encounters.Select(e => e.EncounterId).Append(zone.Boss!.EncounterId).Concat(draft.Acts.SelectMany(a => a.Bosses)))
             {
                 _enemies[id] = data.CreateEncounterTeam(id);
             }
@@ -151,21 +170,25 @@ public sealed class DraftSimulation
         var lines = _options.StartLines ?? _draft.StartLines;
         var party = _draft.Party.Select(id => new Member(id, lines) { Skills = { _draft.Class(id).StartingSkill } }).ToList();
         var picks = new List<DraftChoice>();
+        var offers = new List<IReadOnlyList<DraftCard>>();
         var (fight, won, downs, deaths) = (0, 0, 0, 0);
         int? firstSeal = null;
         var total = _draft.Acts.Sum(a => a.Fights + 1);
+
+        // 막 보스는 판을 시작할 때 정해 공개한다 (Slay the Spire처럼). 후보가 없으면 그 지역의 보스다.
+        var bosses = _draft.Acts.Select(a => a.Bosses.Count > 0 ? a.Bosses[random.Next(a.Bosses.Count)] : _data.Zones[a.ZoneId].Boss!.EncounterId).ToList();
         for (var act = 0; act < _draft.Acts.Count; act++)
         {
             var zone = _data.Zones[_draft.Acts[act].ZoneId];
             for (var k = 0; k <= _draft.Acts[act].Fights; k++)
             {
                 var boss = k == _draft.Acts[act].Fights;
-                var encounter = boss ? zone.Boss!.EncounterId : Draw(zone.Encounters, random);
+                var encounter = boss ? bosses[act] : Draw(zone.Encounters, random);
                 fight++;
                 var result = Fight(party, encounter, _draft.Acts[act].GearTier, Seeds.Derive(seed, fight));
                 if (result.Outcome != CombatOutcome.Victory)
                 {
-                    return new DraftRunResult(result.Outcome, won, act, downs, deaths, firstSeal, picks, encounter);
+                    return new DraftRunResult(result.Outcome, won, act, downs, deaths, firstSeal, picks, encounter, offers, Idle(party));
                 }
 
                 won++;
@@ -188,7 +211,7 @@ public sealed class DraftSimulation
 
                 if (party.All(m => m.Dead))
                 {
-                    return new DraftRunResult(CombatOutcome.Defeat, won, act, downs, deaths, firstSeal, picks, encounter);
+                    return new DraftRunResult(CombatOutcome.Defeat, won, act, downs, deaths, firstSeal, picks, encounter, offers, Idle(party));
                 }
 
                 if (boss)
@@ -205,20 +228,23 @@ public sealed class DraftSimulation
                 }
 
                 var next = boss ? act + 1 : act;
-                var choices = Offer(party, random).SelectMany(card => Choices(card, party)).ToList();
+                var offer = Offer(party, random);
+                var choices = offer.SelectMany(card => Choices(card, party)).ToList();
                 if (choices.Count > 0)
                 {
-                    var choice = Pick(choices, party, next, random);
+                    var choice = Pick(choices, party, next, bosses[next], random);
                     Apply(party, choice);
                     picks.Add(choice);
+                    offers.Add(offer);
                 }
             }
         }
 
-        return new DraftRunResult(CombatOutcome.Victory, won, _draft.Acts.Count, downs, deaths, firstSeal, picks, _data.Zones[_draft.Acts[^1].ZoneId].Boss!.EncounterId);
+        return new DraftRunResult(
+            CombatOutcome.Victory, won, _draft.Acts.Count, downs, deaths, firstSeal, picks, bosses[^1], offers, Idle(party));
     }
 
-    private DraftChoice Pick(List<DraftChoice> choices, List<Member> party, int act, Random random)
+    private DraftChoice Pick(List<DraftChoice> choices, List<Member> party, int act, string boss, Random random)
     {
         if (_options.Picker == DraftPicker.Random)
         {
@@ -229,19 +255,28 @@ public sealed class DraftSimulation
             return members[random.Next(members.Count)];
         }
 
+        if (_options.Picker == DraftPicker.TierList)
+        {
+            // 순위표에서 가장 높은 카드를, 클래스 카드는 사본이 가장 적은 그 클래스 멤버에게, 줄 카드는 놓지 못한 사본이 가장 많은 멤버에게.
+            var card = choices.Select(c => c.Card).Distinct().MaxBy(c => _options.TierList.GetValueOrDefault(c))!;
+            return choices.Where(c => c.Card == card)
+                .MinBy(c => card.Kind == DraftCardKind.Line ? party[c.Member].Lines - party[c.Member].Skills.Count : party[c.Member].Skills.Count)!;
+        }
+
         return choices.MaxBy(choice =>
         {
             var copy = party.Select(m => m.Clone()).ToList();
             Apply(copy, choice);
-            return Lookahead(copy, act);
+            return Lookahead(copy, act, boss);
         })!;
     }
 
     /// <summary>그 막의 적 조합마다와 보스를 미리 싸운 평균 점수. 이기면 1 + 0.2 × 서 있는 비율, 지면 0.2 × 깎은 적 HP 비율.</summary>
-    private double Lookahead(List<Member> party, int act)
+    private double Lookahead(List<Member> party, int act, string boss)
     {
         var zone = _data.Zones[_draft.Acts[act].ZoneId];
-        var encounters = zone.Encounters.Select(e => e.EncounterId).Distinct().Append(zone.Boss!.EncounterId).ToList();
+        var pool = zone.Encounters.Select(e => e.EncounterId).Distinct();
+        var encounters = (_options.KnowsBoss ? pool.Append(boss) : pool).ToList();
         var score = 0.0;
         foreach (var encounter in encounters)
         {
@@ -356,6 +391,8 @@ public sealed class DraftSimulation
                 break;
         }
     }
+
+    private static int Idle(List<Member> party) => party.Where(m => !m.Dead).Sum(m => Math.Max(0, m.Skills.Count - m.Lines));
 
     /// <summary>죽은 멤버의 사본은 살아 있는 같은 클래스 멤버 중 사본이 가장 적은 쪽으로 간다. 그런 멤버가 없으면 사라진다.</summary>
     private static void Inherit(List<Member> party, Member dead)

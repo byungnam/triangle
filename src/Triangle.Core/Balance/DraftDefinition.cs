@@ -122,6 +122,7 @@ public sealed record DraftDefinition
                 errors.Add($"acts[{i}]: zone '{act.ZoneId}' has no boss");
             }
 
+            errors.AddRange(act.Bosses.Where(id => !data.Encounters.ContainsKey(id)).Select(id => $"acts[{i}]: unknown boss '{id}'"));
             if (act.Fights < 0)
             {
                 errors.Add($"acts[{i}]: fights must not be negative");
@@ -149,7 +150,11 @@ public sealed record DraftClass(string Id, string Name, IReadOnlyList<string> Fa
 
 /// <param name="Fights">보스 앞의 전투 수. 지역의 적 조합을 가중치로 뽑는다.</param>
 /// <param name="GearTier">이 막에서 낄 장비 티어. 기본 장비와 같은 종류의 그 티어로 바꿔 낀다(아직 없는 상점을 대신한다).</param>
-public sealed record DraftAct(string ZoneId, int Fights, int GearTier);
+public sealed record DraftAct(string ZoneId, int Fights, int GearTier)
+{
+    /// <summary>막 보스 후보. 판을 시작할 때 하나를 뽑아 공개한다. 비어 있으면 그 지역의 보스다.</summary>
+    public IReadOnlyList<string> Bosses { get; init; } = [];
+}
 
 /// <summary>전투 보상: 후보 카드 수와 종류별 가중치.</summary>
 public sealed record DraftOffer

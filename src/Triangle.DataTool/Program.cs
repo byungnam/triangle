@@ -22,6 +22,11 @@ const string Usage = """
                                  --search  자동 탐색: 공통 최선 세트와 적마다 맞춘 세트를 찾아 특색(승률 차이)을 본다
                                            --from <세트,…|all> 출발 세트 (기본: 첫 세트)  --generations <n> (기본 120)
                                            --train-seeds <n> (기본 60)
+      draft [옵션]               드래프트 시뮬레이션: 로그라이트 재편(설계)의 한 판을 지금 데이터로 돌린다 (tools/draft/draft.json).
+                                 봇마다 클리어율, 막별 탈락, 쓰러짐·사망, 첫 봉인, 빌드 차이, 많이 고른 카드.
+                                 --bot <random|greedy|both> (기본 both)   --runs <n> 판 수 (기본 200)
+                                 --start-lines <n,…> 시작 줄 상한 (기본: 정의대로)   --lookahead <n> 미리 싸워 보는 시드 수 (기본 4)
+                                 --draft <파일>  시뮬레이션 정의 파일
 
     수정 명령 (고친 뒤 검증을 통과해야 저장한다. 실패하면 아무 파일도 바꾸지 않는다):
       set <종류> <id> <경로> <값>      값을 바꾼다. 없는 속성은 만든다.
@@ -158,6 +163,9 @@ switch (command)
     case "refs" when rest.Count == 1:
         PrintRefs(data, rest[0]);
         return 0;
+
+    case "draft" when rest.Count == 0:
+        return Draft.Run(options, directory, data);
 
     default:
         Console.Error.WriteLine(Usage);

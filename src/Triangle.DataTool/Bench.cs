@@ -114,7 +114,7 @@ internal static class Bench
     }
 
     /// <summary>정수 옵션. 없으면 기본값, 잘못됐으면 알리고 null.</summary>
-    private static int? Number(Args options, string name, int fallback, int min)
+    internal static int? Number(Args options, string name, int fallback, int min)
     {
         var text = options.Get(name);
         if (text is null)
@@ -132,7 +132,7 @@ internal static class Bench
     }
 
     /// <summary>터미널 폭으로 맞춘다. 한글 등 전각 글자는 두 칸이다.</summary>
-    private static string Pad(string text, int width, bool right = false)
+    internal static string Pad(string text, int width, bool right = false)
     {
         var gap = new string(' ', Math.Max(0, width - Width(text)));
         return right ? gap + text : text + gap;

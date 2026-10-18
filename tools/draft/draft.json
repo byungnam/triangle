@@ -1,0 +1,67 @@
+{
+  "description": "드래프트 시뮬레이션 정의 (triangle-data draft). 로그라이트 재편(설계, 구현 전)의 임시 규칙을 지금 게임 데이터 위에 얹는다. 클래스의 스탯과 기본 장비는 전술 측정의 기준 파티와 같다. 수치는 모두 임시.",
+  "classes": [
+    {
+      "id": "knight",
+      "name": "기사",
+      "families": ["sword", "shield", "plate"],
+      "startingSkill": "shield_wall",
+      "member": {
+        "id": "knight",
+        "name": "기사",
+        "stats": { "str": 15, "dex": 12, "vital": 26, "intel": 20, "speed": 12 },
+        "row": "Front",
+        "equipment": { "MainHand": "old_sword", "OffHand": "wooden_shield", "Head": "plate_helm", "Body": "plate_armor", "Feet": "plate_boots" }
+      }
+    },
+    {
+      "id": "archer",
+      "name": "궁수",
+      "families": ["bow", "leather"],
+      "startingSkill": "fire_arrow",
+      "member": {
+        "id": "archer",
+        "name": "궁수",
+        "stats": { "str": 10, "dex": 14, "vital": 20, "intel": 24, "speed": 13 },
+        "row": "Back",
+        "equipment": { "MainHand": "hunting_bow", "Head": "leather_cap", "Body": "leather_armor", "Feet": "leather_boots" }
+      }
+    },
+    {
+      "id": "elementalist",
+      "name": "원소술사",
+      "families": ["fire", "frost", "lightning", "cloth"],
+      "startingSkill": "fireball",
+      "member": {
+        "id": "elementalist",
+        "name": "원소술사",
+        "stats": { "str": 9, "dex": 11, "vital": 19, "intel": 27, "speed": 12 },
+        "row": "Back",
+        "equipment": { "MainHand": "apprentice_staff", "Head": "cloth_hood", "Body": "cloth_robe", "Feet": "cloth_shoes" }
+      }
+    },
+    {
+      "id": "priest",
+      "name": "사제",
+      "families": ["restoration", "renewal", "warding"],
+      "startingSkill": "heal",
+      "member": {
+        "id": "priest",
+        "name": "사제",
+        "stats": { "str": 10, "dex": 11, "vital": 20, "intel": 24, "speed": 11 },
+        "row": "Back",
+        "equipment": { "MainHand": "wooden_relic", "OffHand": "holy_token", "Head": "cloth_hood", "Body": "cloth_robe", "Feet": "cloth_shoes" }
+      }
+    }
+  ],
+  "party": ["knight", "archer", "elementalist", "priest"],
+  "startLines": 2,
+  "maxLines": 6,
+  "acts": [
+    { "zoneId": "outskirts_forest", "fights": 4, "gearTier": 1 },
+    { "zoneId": "abandoned_fort", "fights": 4, "gearTier": 2 },
+    { "zoneId": "ashen_capital", "fights": 4, "gearTier": 3 }
+  ],
+  "offer": { "cards": 3, "active": 6, "passive": 3, "line": 1 },
+  "unsealAfterAct": 1
+}

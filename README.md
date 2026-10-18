@@ -78,6 +78,15 @@ $D bench --encounter 'oath_*,penitent_*' --set universal,vs_bulwark
 $D bench --search --from all                        # 자동 탐색: 공통 최선 세트와 적마다 맞춘 세트, 그 차이(특색). 수 분 걸린다
 ```
 
+## 드래프트 시뮬레이션
+
+로그라이트 재편(설계, 구현 전)의 한 판을 지금 데이터로 돌린다. 클래스 파티가 막마다 지역 적 조합과 보스를 싸우고, 이길 때마다 카드(스킬 사본, 패시브, 줄 상한 +1) 하나를 고른다. 무작위로 고르는 봇과 앞을 보고 고르는 봇의 클리어율 차이로 "고르기가 결과를 바꾸는가"를 본다. 정의는 `tools/draft/draft.json`, 규칙과 결과는 [docs/architecture.md](docs/architecture.md#드래프트-시뮬레이션-2026-10-18)에 있다.
+
+```bash
+$D draft                                            # 두 봇 × 판 200개
+$D draft --start-lines 1,2,3 --runs 100             # 시작 줄 상한을 바꿔 가며
+```
+
 ## 라이선스
 
 Apache License 2.0 — [LICENSE](LICENSE)

@@ -24,15 +24,18 @@ docs/                       설계 문서
 ```bash
 dotnet build
 dotnet test
-dotnet run --project src/Triangle.Desktop
-dotnet run --project src/Triangle.Desktop -- --screenshot shot.png                # 첫 화면(마을)을 PNG로 저장하고 종료
-dotnet run --project src/Triangle.Desktop -- --combat --screenshot shot.png       # 전투가 끝난 화면
+dotnet run --project src/Triangle.Desktop                                          # 원정(판): 파티 고르기 또는 진행 중인 판
+dotnet run --project src/Triangle.Desktop -- --screenshot shot.png                # 첫 화면을 PNG로 저장하고 종료
+dotnet run --project src/Triangle.Desktop -- --scene run:map --screenshot shot.png  # 시험 판의 지도 (임시 폴더, 실제 판은 그대로)
+#   --scene run:*: map, reward, shop, rest, event, editor, equipment, picker, end
+dotnet run --project src/Triangle.Desktop -- --scene village                       # 옛 마을 (로그라이트 재편 뒤 지울 예정)
+dotnet run --project src/Triangle.Desktop -- --combat --screenshot shot.png       # 옛 출전 명단의 시험 전투가 끝난 화면
 dotnet run --project src/Triangle.Desktop -- --combat --screenshot shot.png 40    # 로그 40줄까지 진행한 중간 화면
 dotnet run --project src/Triangle.Desktop -- --combat --summary --screenshot shot.png  # 전투 요약 탭
-dotnet run --project src/Triangle.Desktop -- --exploration --screenshot shot.png  # 탐사 기록 화면
-dotnet run --project src/Triangle.Desktop -- --scene editor:equipment --screenshot shot.png  # 편성 화면 장비 탭
-#   --scene: editor, editor:equipment, editor:preview, editor:stats, editor:picker, training, shop
-dotnet run --project src/Triangle.Desktop -- --save /tmp/test-save.json            # 세이브 위치 바꾸기 (기본: ~/.config/Triangle/save.json)
+dotnet run --project src/Triangle.Desktop -- --exploration --screenshot shot.png  # 옛 탐사 기록 화면
+dotnet run --project src/Triangle.Desktop -- --scene editor:equipment --screenshot shot.png  # 옛 편성 화면 장비 탭
+#   --scene: editor, editor:equipment, editor:preview, editor:stats, editor:picker, training, shop, infirmary
+dotnet run --project src/Triangle.Desktop -- --save /tmp/test-save.json            # 세이브 위치 바꾸기 (기본: ~/.config/Triangle/save.json, 판은 같은 폴더의 run.json)
 ```
 
 ## 데이터 검사 · 조회 · 수정

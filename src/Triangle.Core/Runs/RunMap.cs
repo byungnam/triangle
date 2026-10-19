@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Triangle.Core.Runs;
 
 public enum RunNodeKind
@@ -16,12 +18,14 @@ public sealed record RunNode(int Id, int Floor, int Lane, RunNodeKind Kind, IRea
 /// <summary>
 /// 막 하나의 갈림길 지도 (Slay the Spire식). 층(<see cref="RunNode.Floor"/>) × 칸(<see cref="RunNode.Lane"/>) 격자에서 경로 몇 개를
 /// 첫 층부터 아래로 긋고(한 층 내려갈 때 칸을 -1, 0, +1 중 하나만큼 옮긴다), 그 경로들이 지난 자리를 지점으로, 이은 선을 길로 삼는다.
-/// 마지막 층의 지점은 모두 보스로 이어진다. 첫 층은 늘 전투, 보스 바로 앞 층은 늘 휴식이다.
+/// 길은 서로 엇갈리지 않는다. 마지막 층의 지점은 모두 보스로 이어진다. 첫 층은 늘 전투, 보스 바로 앞 층은 늘 휴식이다.
 /// </summary>
 public sealed record RunMap(int Floors, IReadOnlyList<RunNode> Nodes)
 {
+    [JsonIgnore]
     public RunNode Boss => Nodes[^1];
 
+    [JsonIgnore]
     public IEnumerable<RunNode> Starts => Nodes.Where(n => n.Floor == 0);
 
     public RunNode Node(int id) => Nodes[id];
@@ -42,7 +46,15 @@ public sealed record RunMap(int Floors, IReadOnlyList<RunNode> Nodes)
             spots.Add((0, lane));
             for (var floor = 1; floor < floors; floor++)
             {
+                // 다른 경로의 길과 엇갈리면 곧게 내려간다 (곧은 길은 엇갈리지 않는다).
                 var next = Math.Clamp(lane + random.Next(-1, 2), 0, width - 1);
+                var from = lane;
+                var to = next;
+                if (edges.Any(e => e.Floor == floor - 1 && Math.Sign(e.From - from) * Math.Sign(e.To - to) < 0))
+                {
+                    next = lane;
+                }
+
                 edges.Add((floor - 1, lane, next));
                 spots.Add((floor, next));
                 lane = next;

@@ -75,11 +75,12 @@ public sealed record RunBattle(string EncounterId, RunNodeKind Kind, CombatResul
 /// <item>지거나 비기면 판이 끝난다. 마지막 막의 보스를 이기면 승리다.</item>
 /// </list>
 /// </summary>
-public sealed class Run
+public sealed partial class Run
 {
     private static readonly ConditionalWeakTable<GameData, CombatCatalog> Catalogs = new();
 
     private readonly List<RunStock> _stock = [];
+    private readonly List<int> _path = [];
     private bool _bossCleared;
 
     private Run(int seed, IReadOnlyList<RunMap> maps, IReadOnlyList<string> bosses, int gold)
@@ -99,6 +100,9 @@ public sealed class Run
 
     /// <summary>지금 서 있는 지점 ID. 막을 막 시작했으면 null.</summary>
     public int? Position { get; private set; }
+
+    /// <summary>이 막에서 지나온 지점 ID (들어간 순서). 다음 막으로 가면 비운다.</summary>
+    public IReadOnlyList<int> Path => _path;
 
     /// <summary>막마다 지도. 판을 시작할 때 모두 만든다.</summary>
     public IReadOnlyList<RunMap> Maps { get; }
@@ -137,6 +141,15 @@ public sealed class Run
     public RunEvent? Event { get; private set; }
 
     public bool Finished => Phase is RunPhase.Victory or RunPhase.Defeat;
+
+    /// <summary>판을 포기한다 (패배로 끝난다).</summary>
+    public void Abandon()
+    {
+        if (!Finished)
+        {
+            Phase = RunPhase.Defeat;
+        }
+    }
 
     public static string? WhyCannotStart(GameData data, IReadOnlyList<string> classIds)
     {
@@ -188,6 +201,7 @@ public sealed class Run
         var node = Map.Node(nodeId);
         var random = Stream(0);
         Position = nodeId;
+        _path.Add(nodeId);
         Step++;
         switch (node.Kind)
         {
@@ -341,6 +355,7 @@ public sealed class Run
             _bossCleared = false;
             Act++;
             Position = null;
+            _path.Clear();
         }
     }
 

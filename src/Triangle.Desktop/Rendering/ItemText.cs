@@ -15,6 +15,7 @@ internal static class ItemText
         EquipmentSlot.Head => "머리",
         EquipmentSlot.Body => "몸통",
         EquipmentSlot.Feet => "신발",
+        EquipmentSlot.Trinket => "장신구",
         _ => "재료",
     };
 

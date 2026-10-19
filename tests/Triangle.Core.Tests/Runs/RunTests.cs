@@ -2,6 +2,7 @@ using System.Text.Json;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
 using Triangle.Core.Items;
+using Triangle.Core.Progress;
 using Triangle.Core.Runs;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
@@ -115,6 +116,10 @@ public class RunTests
                 kinds.Add(node.Kind);
             }
 
+            // 길은 엇갈리지 않는다.
+            var edges = map.Nodes.SkipLast(2).SelectMany(n => n.Next.Where(id => id != map.Boss.Id).Select(id => (n.Floor, From: n.Lane, To: map.Node(id).Lane))).ToList();
+            Assert.DoesNotContain(edges, a => edges.Any(b => a.Floor == b.Floor && Math.Sign(a.From - b.From) * Math.Sign(a.To - b.To) < 0));
+
             // 모든 지점은 첫 층에서 갈 수 있다.
             var reached = map.Starts.Select(n => n.Id).ToHashSet();
             foreach (var node in map.Nodes.OrderBy(n => n.Floor).Where(n => reached.Contains(n.Id)))
@@ -202,6 +207,7 @@ public class RunTests
         Assert.Throws<InvalidOperationException>(() => run.Enter(Shipped, run.Map.Starts.First().Id));
 
         var at = run.Position!.Value;
+        Assert.Equal([at], run.Path);
         run.Skip();
         Assert.Equal((RunPhase.Map, 0), (run.Phase, run.Offer.Count));
         Assert.Equal(run.Map.Node(at).Next, run.Choices.Select(n => n.Id));
@@ -351,6 +357,7 @@ public class RunTests
                         if (run.Position is null)
                         {
                             Assert.Equal(run.Maps[run.Act].Starts, run.Choices);
+                            Assert.Empty(run.Path);
                         }
 
                         break;
@@ -620,6 +627,108 @@ public class RunTests
 
         Assert.Equal(Play(3), Play(3));
         Assert.NotEqual(Play(3), Play(4));
+    }
+
+    [Fact]
+    public void A_saved_run_continues_exactly_like_the_original()
+    {
+        // 지도, 보상, 상점, 이벤트 단계에서 저장했다가 되살려도 같은 선택이면 같은 판이 된다.
+        foreach (var data in new[] { Shipped, SecondFloor("shop", r => r with { StartGold = 500 }), SecondFloor("event") })
+        {
+            var original = WonFirstFight(data, Party);
+            for (var step = 0; step < 4 && !original.Finished; step++)
+            {
+                var copy = Run.Deserialize(original.Serialize(), data);
+                Assert.Equal(original.Serialize(), copy.Serialize());
+                Assert.Equal(Advance(data, original), Advance(data, copy));
+                Assert.Equal(original.Serialize(), copy.Serialize());
+            }
+        }
+    }
+
+    /// <summary>판을 한 걸음 진행한다: 지점은 마지막 것, 카드는 첫 장(받을 수 있는 첫 멤버), 상점은 살 수 있는 첫 물건 뒤 나가기, 이벤트는 첫 선택지.</summary>
+    private static string Advance(GameData data, Run run)
+    {
+        switch (run.Phase)
+        {
+            case RunPhase.Map:
+                var battle = run.Enter(data, run.Choices[^1].Id);
+                return $"{run.Phase} {battle?.EncounterId} {battle?.Result.Outcome} {battle?.Gold}";
+            case RunPhase.Reward:
+                var member = run.Living.FirstOrDefault(m => run.WhyCannotTake(data, 0, m) is null);
+                run.Take(data, 0, run.Offer[0].Kind == RunCardKind.Active ? null : member ?? run.Living.First());
+                return $"took {run.Phase}";
+            case RunPhase.Shop:
+                var stock = Enumerable.Range(0, run.Stock.Count).FirstOrDefault(i => run.WhyCannotBuy(data, i) is null, -1);
+                if (stock >= 0)
+                {
+                    run.Buy(data, stock);
+                }
+
+                run.LeaveShop();
+                return $"bought {stock}";
+            case RunPhase.Event:
+                var option = Enumerable.Range(0, run.Event!.Options.Count).First(i => run.WhyCannotChoose(i) is null);
+                run.Choose(data, option);
+                return $"chose {option} {run.Phase}";
+            default:
+                run.RestUnseal(data);
+                return "rested";
+        }
+    }
+
+    [Fact]
+    public void Saves_that_do_not_match_the_game_data_are_rejected()
+    {
+        var run = Run.Start(Shipped, ["knight"], 1);
+        var file = run.ToSave();
+
+        Assert.Contains(Assert.Throws<SaveGameException>(() => Run.Restore(file with { Version = 99 }, Shipped)).Errors, e => e.Contains("version 99"));
+        var errors = Assert.Throws<SaveGameException>(() => Run.Restore(file with
+        {
+            Members = [file.Members[0] with { ClassId = "bard", Weapon = "no_sword" }],
+            Bag = ["no_item"],
+            Phase = RunPhase.Event,
+            Position = 999,
+        }, Shipped)).Errors;
+        Assert.Contains(errors, e => e.Contains("unknown class 'bard'"));
+        Assert.Contains(errors, e => e.Contains("unknown item 'no_sword'"));
+        Assert.Contains(errors, e => e.Contains("unknown item 'no_item' in bag"));
+        Assert.Contains(errors, e => e.Contains("position 999"));
+        Assert.Contains(errors, e => e.Contains("event phase needs an event"));
+        Assert.Throws<SaveGameException>(() => Run.Deserialize("{ \"version\": 1 }", Shipped));
+    }
+
+    [Fact]
+    public void The_run_store_keeps_one_run_and_sets_a_broken_one_aside()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "triangle-run-" + Guid.NewGuid());
+        try
+        {
+            var store = new RunStore(Path.Combine(dir, "run.json"));
+            Assert.Equal((null, LoadStatus.NewGame), (store.Load(Shipped).Run, store.Load(Shipped).Status));
+
+            var run = Run.Start(Shipped, Party, 5);
+            store.Save(run);
+            var loaded = store.Load(Shipped);
+            Assert.Equal(LoadStatus.Loaded, loaded.Status);
+            Assert.Equal(run.Serialize(), loaded.Run!.Serialize());
+
+            run.Abandon();
+            Assert.Equal(RunPhase.Defeat, run.Phase);
+            store.Delete();
+            Assert.Equal(LoadStatus.NewGame, store.Load(Shipped).Status);
+
+            File.WriteAllText(store.Path, "not json");
+            var broken = store.Load(Shipped);
+            Assert.Equal(LoadStatus.Recovered, broken.Status);
+            Assert.True(File.Exists(broken.BrokenFilePath));
+            Assert.False(File.Exists(store.Path));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
     }
 
     private static string Describe(RunMap map) => string.Join(";", map.Nodes.Select(n => $"{n.Id}:{n.Floor}/{n.Lane}{n.Kind}>{string.Join(",", n.Next)}"));

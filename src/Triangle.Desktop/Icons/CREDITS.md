@@ -70,3 +70,13 @@
 | `stats.png` | muscle-up |
 | `mastery.png` | anvil |
 | `lock.png` | padlock |
+| `node.fight.png` | crossed-swords |
+| `node.elite.png` | skull-crossed-bones |
+| `node.shop.png` | shop |
+| `node.rest.png` | campfire |
+| `node.event.png` | uncertainty |
+| `node.boss.png` | crowned-skull |
+| `trinket.png` | gem-pendant |
+| `gold.png` | two-coins |
+| `card.png` | card-pick |
+| `dead.png` | tombstone |

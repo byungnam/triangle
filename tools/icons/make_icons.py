@@ -89,6 +89,17 @@ ICONS = {
     "stats": "muscle-up",
     "mastery": "anvil",
     "lock": "padlock",
+    # 한 판 (로그라이트 재편): 지도의 지점, 장신구, 골드, 카드
+    "node.fight": "crossed-swords",
+    "node.elite": "skull-crossed-bones",
+    "node.shop": "shop",
+    "node.rest": "campfire",
+    "node.event": "uncertainty",
+    "node.boss": "crowned-skull",
+    "trinket": "gem-pendant",
+    "gold": "two-coins",
+    "card": "card-pick",
+    "dead": "tombstone",
 }
 
 

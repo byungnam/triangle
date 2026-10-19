@@ -7,6 +7,8 @@ using Triangle.Core.Combat;
 using Triangle.Core.Data;
 using Triangle.Core.Expeditions;
 using Triangle.Core.Progress;
+using Triangle.Core.Runs;
+using Triangle.Core.Tactics;
 using Triangle.Desktop.Rendering;
 using Triangle.Desktop.Scenes;
 
@@ -18,7 +20,9 @@ namespace Triangle.Desktop;
 /// <param name="SavePath">세이브 파일 경로. null이면 OS별 기본 위치.</param>
 /// <param name="StartInExploration">마을 대신 탐사 기록 화면으로 시작한다.</param>
 /// <param name="StartScene">
-/// 마을 대신 이 화면으로 시작한다 (확인·스크린샷용): editor, editor:equipment, editor:stats, editor:picker, editor:preview, training, shop.
+/// 판 대신 이 화면으로 시작한다. village(옛 마을), 옛 화면 확인용 editor, editor:equipment, editor:stats, editor:picker, editor:preview,
+/// training, shop, infirmary, 판 화면 확인용 run:map, run:reward, run:shop, run:rest, run:event, run:editor, run:equipment, run:picker,
+/// run:end (임시 폴더의 시험 판으로, 실제 판 세이브는 건드리지 않는다).
 /// </param>
 /// <param name="StartInSummary">전투 화면으로 시작할 때 요약 탭을 연다.</param>
 public sealed record LaunchOptions(
@@ -26,9 +30,11 @@ public sealed record LaunchOptions(
     bool StartInExploration = false, string? StartScene = null, bool StartInSummary = false);
 
 /// <summary>
-/// 화면 흐름: 마을 ↔ (전술 편집, 숙련·패시브, 모집, 상점·창고, 제작, 탐사 기록), 마을 → 출정 → 원정 ↔ (전투 기록, 전술 편집) → 귀환 → 마을.
-/// 원정 중에는 전투가 끝날 때마다, 출정과 귀환 때 자동 저장하고, 종료하면 항상 저장한다.
-/// 마을에서는 수동 저장이고, 저장하지 않고 종료하면 확인 창을 띄운다.
+/// 화면 흐름 (로그라이트 재편, 2026-10-19): 파티 고르기 → 지도 ↔ (편성, 전투 기록 → 보상, 상점, 휴식, 이벤트) → 결과 → 파티 고르기.
+/// 판은 바뀔 때마다 자동 저장한다(<see cref="RunSession"/>).
+/// 옛 흐름(마을 ↔ 편성·모집·상점…, 마을 → 원정 → 귀환)은 <c>--scene village</c>로만 연다. 새 판 화면이 자리 잡으면 지운다.
+/// 옛 원정 중에는 전투가 끝날 때마다, 출정과 귀환 때 자동 저장하고, 종료하면 항상 저장한다.
+/// 옛 마을에서는 수동 저장이고, 저장하지 않고 종료하면 확인 창을 띄운다.
 /// </summary>
 public class TriangleGame : Game
 {
@@ -47,6 +53,7 @@ public class TriangleGame : Game
     private Ui _ui = null!;
     private IScene _scene = null!;
     private GameSession? _session;
+    private RunSession? _runs;
     private VillageScene _village = null!;
     private ExpeditionScene _expedition = null!;
     private TacticEditorScene _editor = null!;
@@ -148,6 +155,7 @@ public class TriangleGame : Game
             return new ErrorScene(_ui, "게임 데이터를 읽지 못했습니다", e.Errors);
         }
 
+        _runs = CreateRunSession(data);
         var store = new SaveStore(_options.SavePath ?? SaveStore.DefaultPath);
         var loaded = store.Load(data, () => StartingCompany.Create(data, Random.Shared.Next()));
         _session = new GameSession(data, loaded.Company, store) { Notice = LoadNotice(loaded) };
@@ -158,6 +166,10 @@ public class TriangleGame : Game
 
         switch (_options.StartScene?.Split(':'))
         {
+            case ["village"]:
+                return Home;
+            case ["run", var view]:
+                return DemoRunScene(view);
             case ["editor", .. var rest]:
                 _editor.Show(rest.FirstOrDefault());
                 return _editor;
@@ -176,7 +188,7 @@ public class TriangleGame : Game
 
         if (!_options.StartInCombat || Company.Lineup.Count == 0)
         {
-            return Home;
+            return RunSceneFor(null);
         }
 
         var result = CombatSimulator.Run(
@@ -194,6 +206,156 @@ public class TriangleGame : Game
         }
 
         return combat;
+    }
+
+    /// <summary>판 세이브: 회사 세이브와 같은 폴더의 run.json. 판 화면 확인용 시작이면 임시 폴더를 쓴다.</summary>
+    private RunSession CreateRunSession(GameData data)
+    {
+        var path = _options.StartScene?.StartsWith("run:") == true ? Path.Combine(Path.GetTempPath(), $"triangle-demo-run-{Guid.NewGuid():N}.json")
+            : _options.SavePath is { } save ? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(save))!, "run.json")
+            : RunStore.DefaultPath;
+        var store = new RunStore(path);
+        var loaded = store.Load(data);
+        var session = new RunSession(data, store);
+        session.Resume(loaded.Run);
+        if (loaded.Status == LoadStatus.Recovered)
+        {
+            session.Notice = ($"원정 세이브를 읽지 못해 새로 시작합니다. 원래 파일: {Path.GetFileName(loaded.BrokenFilePath)}", Theme.Enemy);
+        }
+
+        return session;
+    }
+
+    private RunSession Runs => _runs!;
+
+    private void ShowRun(RunBattle? battle = null) => _scene = RunSceneFor(battle);
+
+    /// <summary>판의 단계에 맞는 화면. 판이 없으면 파티 고르기, 끝났으면 결과.</summary>
+    private IScene RunSceneFor(RunBattle? battle)
+    {
+        void Changed()
+        {
+            Runs.Save();
+            ShowRun();
+        }
+
+        return Runs.Run switch
+        {
+            null => new RunPartyScene(_ui, Runs, Bounds, StartRun),
+            { Finished: true } => new RunEndScene(_ui, Runs, Bounds, NewRun),
+            { Phase: RunPhase.Reward } => new RunRewardScene(_ui, Runs, Bounds, Changed, battle),
+            { Phase: RunPhase.Shop } => new RunShopScene(_ui, Runs, Bounds, Changed),
+            { Phase: RunPhase.Rest } => new RunRestScene(_ui, Runs, Bounds, Changed),
+            { Phase: RunPhase.Event } => new RunEventScene(_ui, Runs, Bounds, Changed),
+            _ => new RunMapScene(_ui, Runs, Bounds, EnterNode, OpenRunEditor, AbandonRun),
+        };
+    }
+
+    private void StartRun(IReadOnlyList<string> classIds)
+    {
+        Runs.Start(classIds);
+        ShowRun();
+    }
+
+    private void NewRun()
+    {
+        Runs.Clear();
+        ShowRun();
+    }
+
+    private void AbandonRun()
+    {
+        Runs.Run!.Abandon();
+        Runs.Save();
+        ShowRun();
+    }
+
+    private void OpenRunEditor() => _scene = new RunEditorScene(_ui, Runs, Bounds, back: () => ShowRun());
+
+    /// <summary>지점에 들어간다. 전투면 결과를 저장한 뒤 전투 기록을 보여주고, 다 보면 보상(또는 결과)으로 간다.</summary>
+    private void EnterNode(int nodeId)
+    {
+        var run = Runs.Run!;
+        var title = RunText.Act(run, Runs.Data);
+        var battle = run.Enter(Runs.Data, nodeId);
+        Runs.Save();
+        if (battle is null)
+        {
+            ShowRun();
+            return;
+        }
+
+        var combat = new CombatLogScene(_ui, Runs.Data, battle.Result, battle.EncounterId, $"{title} · {RunText.Node(battle.Kind).Name}", Bounds,
+            () => ShowRun(battle), run.Finished ? "결과로" : "보상으로");
+        combat.SetRewardLines(RunText.Battle(battle, run, Runs.Data).Skip(1).ToList());
+        _scene = combat;
+    }
+
+    /// <summary>판 화면 확인용: 시험 판을 그 단계까지 자동으로 진행한다 (지점은 원하는 종류를, 카드는 첫 장을 고른다).</summary>
+    private IScene DemoRunScene(string view)
+    {
+        var data = Runs.Data;
+        var run = Triangle.Core.Runs.Run.Start(data, ["knight", "archer", "elementalist", "priest"], 3);
+        Runs.Resume(run);
+        var (phase, kind) = view switch
+        {
+            "reward" => (RunPhase.Reward, RunNodeKind.Fight),
+            "shop" => (RunPhase.Shop, RunNodeKind.Shop),
+            "rest" => (RunPhase.Rest, RunNodeKind.Rest),
+            "event" => (RunPhase.Event, RunNodeKind.Event),
+            _ => (RunPhase.Map, RunNodeKind.Fight),
+        };
+        RunBattle? battle = null;
+        for (var step = 0; step < 80 && !run.Finished && !(run.Phase == phase && run.Fights > 0); step++)
+        {
+            switch (run.Phase)
+            {
+                case RunPhase.Map:
+                    var choice = run.Choices.FirstOrDefault(n => n.Kind == kind) ?? run.Choices[0];
+                    battle = run.Enter(data, choice.Id);
+                    break;
+                case RunPhase.Reward:
+                    var member = run.Living.FirstOrDefault(m => run.WhyCannotTake(data, 0, m) is null);
+                    if (run.Offer[0].Kind == RunCardKind.Active || member is not null)
+                    {
+                        run.Take(data, 0, member);
+                    }
+                    else
+                    {
+                        run.Skip();
+                    }
+
+                    break;
+                case RunPhase.Shop:
+                    run.LeaveShop();
+                    break;
+                case RunPhase.Rest:
+                    run.RestUnseal(data);
+                    break;
+                default:
+                    run.Choose(data, run.Event!.Options.Count - 1);
+                    break;
+            }
+        }
+
+        switch (view)
+        {
+            case "end":
+                run.Abandon();
+                break;
+            case "editor" or "equipment" or "picker":
+                run.Bag.AddRange(["frost_ring", "banner_of_defiance", "leather_armor"]);
+                // 줄 상한(2)보다 한 줄 더 적어 꺼진 줄도 보이게 한다.
+                var knight = run.Members[0];
+                run.Copies["heavy_strike"] = run.Copies.GetValueOrDefault("heavy_strike") + 1;
+                run.SetTactics(data, knight, [.. knight.Tactics, Tactic.Create(9, [new(Condition.SelfHpAtLeast, 50)], "heavy_strike"),
+                    Tactic.Create(9, [new(Condition.Always, 0)], "focus")]);
+                var editor = new RunEditorScene(_ui, Runs, Bounds, back: () => ShowRun());
+                editor.Show(view);
+                return editor;
+        }
+
+        return RunSceneFor(phase == RunPhase.Reward ? battle : null);
     }
 
     private static (string, Color)? LoadNotice(LoadResult result) => result.Status switch
@@ -297,6 +459,7 @@ public class TriangleGame : Game
     {
         if (!_quitConfirmed && _options.ScreenshotPath is null && _session is not null)
         {
+            _runs?.Save();
             if (Company.OnExpedition)
             {
                 Session.Save();

@@ -35,6 +35,14 @@ internal sealed class Ui : IDisposable
 
     public void Fill(SpriteBatch batch, Rectangle rect, Color color) => batch.Draw(_pixel, rect, color);
 
+    /// <summary>두 점을 잇는 선 (설계 좌표).</summary>
+    public void Line(SpriteBatch batch, Vector2 from, Vector2 to, Color color, float thickness = 2f)
+    {
+        var delta = to - from;
+        var angle = MathF.Atan2(delta.Y, delta.X);
+        batch.Draw(_pixel, from, null, color, angle, new Vector2(0f, 0.5f), new Vector2(delta.Length(), thickness), SpriteEffects.None, 0f);
+    }
+
     /// <summary>테두리 장식이 있는 판: 어두운 바깥선, 청동 테두리, 안쪽 어두운 선, 모서리 금색 장식.</summary>
     public void Panel(SpriteBatch batch, Rectangle rect)
     {

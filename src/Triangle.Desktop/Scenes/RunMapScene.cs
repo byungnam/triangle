@@ -78,7 +78,8 @@ internal sealed class RunMapScene : RunScene
             return new Vector2(area.Center.X, y - 8);
         }
 
-        var width = Data.Run!.Map.Width;
+        // 이어 하는 판의 지도는 폭을 바꾸기 전에 만들어졌을 수 있다 (넓은 지도도 칸 안에 그린다).
+        var width = Math.Max(Data.Run!.Map.Width, Run.Map.Nodes.Max(n => n.Lane) + 1);
         return new Vector2(area.Left + 14 + (node.Lane + 0.5f) * (area.Width - 14) / width, y);
     }
 

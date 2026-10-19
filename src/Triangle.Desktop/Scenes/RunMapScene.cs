@@ -187,7 +187,7 @@ internal sealed class RunMapScene : RunScene
             var text = new VerticalStackPanel { Spacing = 3 };
             var name = new HorizontalStackPanel { Spacing = 6 };
             name.Widgets.Add(W.Label(Run.Name(Data, member), 18, member.Dead ? Theme.Death : Theme.Ally, bold: true));
-            name.Widgets.Add(W.Chip(RunText.Row(c), member.Dead ? Theme.BarBack : RunText.RowColor(c), size: 12));
+            name.Widgets.Add(W.Chip(RunText.Row(member.Row), member.Dead ? Theme.BarBack : RunText.RowColor(member.Row), size: 12));
             text.Widgets.Add(name);
             var (lines, linesColor) = RunText.Lines(member);
             text.Widgets.Add(W.Label(lines, 15, linesColor));

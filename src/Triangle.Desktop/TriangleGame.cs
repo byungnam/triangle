@@ -257,9 +257,9 @@ public class TriangleGame : Game
         };
     }
 
-    private void StartRun(IReadOnlyList<string> classIds)
+    private void StartRun(IReadOnlyList<string> classIds, IReadOnlyList<Triangle.Core.Units.Row> rows)
     {
-        Runs.Start(classIds);
+        Runs.Start(classIds, rows);
         ShowRun();
     }
 

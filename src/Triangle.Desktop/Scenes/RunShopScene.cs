@@ -92,7 +92,7 @@ internal sealed class RunShopScene : RunScene
             RunStockKind.Skill => Describe(GameIcons.Action(Data.Actions[stock.Id], Data),
                 [.. RunText.Action(Data.Actions[stock.Id], Data).Take(2), new TextLine(ActionText.Summary(Data.Actions[stock.Id], Data), Theme.Text, 14)]),
             _ => Describe(RunText.Portrait(Data.Classes[stock.Id], Data),
-                [new TextLine(Data.Classes[stock.Id].Name, Theme.Ally, 18, Bold: true), new TextLine($"{RunText.Row(Data.Classes[stock.Id])} · 시작 카드 {Data.Actions[Data.Classes[stock.Id].StartingSkill].Name}, 기본 장비", Theme.Text, 14)]),
+                [new TextLine(Data.Classes[stock.Id].Name, Theme.Ally, 18, Bold: true), new TextLine($"시작 카드 {Data.Actions[Data.Classes[stock.Id].StartingSkill].Name}, 기본 장비 (줄은 편성에서 고른다)", Theme.Text, 14)]),
         };
 
         var row = new HorizontalStackPanel { Spacing = 10 };

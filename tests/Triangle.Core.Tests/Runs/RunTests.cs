@@ -173,6 +173,29 @@ public class RunTests
     }
 
     [Fact]
+    public void Rows_are_chosen_per_member_and_not_fixed_by_the_class()
+    {
+        // 처음 값은 클래스가 정하고, 시작할 때 고르거나 판 중에 바꾼다.
+        var run = Run.Start(Shipped, ["knight", "priest", "knight"], 1, rows: [Units.Row.Back, Units.Row.Front]);
+        Assert.Equal([Units.Row.Back, Units.Row.Front, Units.Row.Front], run.Members.Select(m => m.Row));
+        Assert.Equal(Units.Row.Back, run.Setup(Shipped, run.Members[0]).Row);
+
+        run.SetRow(run.Members[0], Units.Row.Front);
+        Assert.Equal(Units.Row.Front, run.Setup(Shipped, run.Members[0]).Row);
+        run.SetRow(run.Members[1], Units.Row.Back);
+
+        // 세이브에 남고, 줄이 없는 세이브는 클래스의 처음 값이 된다.
+        Assert.Equal(run.Members.Select(m => m.Row), Run.Deserialize(run.Serialize(), Shipped).Members.Select(m => m.Row));
+        var old = run.ToSave() with { Members = run.ToSave().Members.Select(m => m with { Row = null }).ToList() };
+        Assert.Equal([Units.Row.Front, Units.Row.Back, Units.Row.Front], Run.Restore(old, Shipped).Members.Select(m => m.Row));
+
+        run.Members[2].Dead = true;
+        Assert.NotNull(run.WhyCannotSetRow(run.Members[2]));
+        run.Abandon();
+        Assert.Equal("판이 끝났다", run.WhyCannotSetRow(run.Members[0]));
+    }
+
+    [Fact]
     public void Battle_setup_uses_only_the_lines_under_the_cap_and_ends_with_the_basic_attack()
     {
         var run = Run.Start(Shipped, ["elementalist"], 1);

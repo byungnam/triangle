@@ -2,7 +2,7 @@
   {
     "id": "knight",
     "name": "기사",
-    "description": "전열. 검·방패·판금 계열. 맞으며 버티고 지킨다.",
+    "description": "검·방패·판금 계열. 맞으며 버티고 지킨다.",
     "row": "Front",
     "stats": {
       "str": 14,
@@ -50,7 +50,7 @@
   {
     "id": "archer",
     "name": "궁수",
-    "description": "후열. 활·가죽 계열. 상태 이상과 후열 노리기.",
+    "description": "활·가죽 계열. 상태 이상과 후열 노리기.",
     "row": "Back",
     "stats": {
       "str": 10,
@@ -91,7 +91,7 @@
   {
     "id": "elementalist",
     "name": "원소술사",
-    "description": "후열. 화염·냉기·전기·천 계열. 광역과 지속 피해.",
+    "description": "화염·냉기·전기·천 계열. 광역과 지속 피해.",
     "row": "Back",
     "stats": {
       "str": 9,
@@ -153,7 +153,7 @@
   {
     "id": "priest",
     "name": "사제",
-    "description": "후열. 치유·재생·보호막 계열. 회복과 보호.",
+    "description": "치유·재생·보호막 계열. 회복과 보호.",
     "row": "Back",
     "stats": {
       "str": 10,
@@ -199,7 +199,7 @@
   {
     "id": "warrior",
     "name": "전사",
-    "description": "전열. 도끼·둔기 계열. 출혈과 기절, 둔화로 몰아붙인다.",
+    "description": "도끼·둔기 계열. 출혈과 기절, 둔화로 몰아붙인다.",
     "row": "Front",
     "stats": {
       "str": 16,
@@ -243,7 +243,7 @@
   {
     "id": "gunner",
     "name": "총사",
-    "description": "후열. 석궁·화기 계열. 느리지만 한 발이 크다.",
+    "description": "석궁·화기 계열. 느리지만 한 발이 크다.",
     "row": "Back",
     "stats": {
       "str": 12,

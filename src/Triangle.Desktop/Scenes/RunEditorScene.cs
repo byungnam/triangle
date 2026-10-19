@@ -162,7 +162,23 @@ internal sealed class RunEditorScene : RunScene
         var names = new VerticalStackPanel { Spacing = 4, Width = 420 };
         var title = new HorizontalStackPanel { Spacing = 8 };
         title.Widgets.Add(W.Label(Run.Name(Data, member), 24, Theme.Ally, bold: true));
-        title.Widgets.Add(W.Chip(RunText.Row(c), RunText.RowColor(c)));
+        foreach (var side in new[] { Triangle.Core.Units.Row.Front, Triangle.Core.Units.Row.Back })
+        {
+            var chosen = member.Row == side;
+            var button = W.TextButton(RunText.Row(side), chosen ? RunText.RowColor(side) : Theme.Button, chosen ? RunText.RowColor(side) : Theme.ButtonHover, bold: chosen, size: 14);
+            button.Width = 64;
+            button.Padding = new Thickness(0, 3);
+            button.Tooltip = chosen ? $"지금 {RunText.Row(side)}" : $"{RunText.Row(side)}로 옮긴다";
+            button.Click += (_, _) =>
+            {
+                Run.SetRow(member, side);
+                Session.Notice = null;
+                Session.Save();
+                Refresh();
+            };
+            title.Widgets.Add(button);
+        }
+
         names.Widgets.Add(title);
         var preview = UnitPreview.For(Setup, Run.Catalog(Data), CombatRules.Default);
         var passives = member.Passives.Count == 0 ? "패시브 없음" : string.Join(", ", member.Passives.Select(p => $"{Data.Skills[p.Key].Name} Lv{p.Value}"));

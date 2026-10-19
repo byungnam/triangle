@@ -1,4 +1,5 @@
 using Triangle.Core.Tactics;
+using Triangle.Core.Units;
 
 namespace Triangle.Core.Runs;
 
@@ -19,6 +20,9 @@ public sealed class RunMember
     public string Id { get; }
 
     public string ClassId { get; }
+
+    /// <summary>서는 줄 (전열·후열). 클래스의 처음 값에서 시작하고 바꿀 수 있다.</summary>
+    public Row Row { get; internal set; }
 
     /// <summary>얻은 줄 상한 (시작 + "줄 상한 +1" 카드).</summary>
     public int Earned { get; internal set; }

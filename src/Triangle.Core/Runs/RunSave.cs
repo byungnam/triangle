@@ -63,6 +63,10 @@ public sealed record SavedRunMember
 
     public required string ClassId { get; init; }
 
+    /// <summary>서는 줄. 없으면(줄을 고르기 전 세이브) 클래스의 처음 값.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Units.Row? Row { get; init; }
+
     public int Earned { get; init; }
 
     public int Sealed { get; init; }
@@ -103,6 +107,7 @@ public sealed partial class Run
         {
             Id = m.Id,
             ClassId = m.ClassId,
+            Row = m.Row,
             Earned = m.Earned,
             Sealed = m.Sealed,
             Dead = m.Dead,
@@ -256,6 +261,7 @@ public sealed partial class Run
 
         run.Members.AddRange(file.Members.Select(m => new RunMember(m.Id, m.ClassId, m.Earned)
         {
+            Row = m.Row ?? data.Classes[m.ClassId].Row,
             Sealed = m.Sealed,
             Dead = m.Dead,
             Passives = m.Passives.ToDictionary(),

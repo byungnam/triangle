@@ -3,21 +3,22 @@ using Microsoft.Xna.Framework.Graphics;
 using Myra.Graphics2D.UI;
 using Triangle.Core.Combat;
 using Triangle.Core.Runs;
+using Triangle.Core.Units;
 using Triangle.Desktop.Rendering;
 
 namespace Triangle.Desktop.Scenes;
 
 /// <summary>
 /// 새 원정: 클래스로 파티를 고른다 (같은 클래스 여럿 가능). 위는 클래스 카드, 아래는 고른 자리와 출발·해금 버튼.
-/// 아직 열지 않은 클래스는 흐리게 보이고 넣을 수 없다.
+/// 자리마다 전위·후위를 고른다(클래스와 상관없이, 처음 값은 클래스가 정한다). 아직 열지 않은 클래스는 흐리게 보이고 넣을 수 없다.
 /// </summary>
 internal sealed class RunPartyScene : RunScene
 {
     private const int CardHeight = 392;
     private const int Gap = 16;
 
-    private readonly List<string> _picked;
-    private readonly Action<IReadOnlyList<string>> _start;
+    private readonly List<(string ClassId, Row Row)> _picked;
+    private readonly Action<IReadOnlyList<string>, IReadOnlyList<Row>> _start;
     private readonly Action _openUnlocks;
     private readonly RunUnlocks _unlocks;
 
@@ -26,13 +27,13 @@ internal sealed class RunPartyScene : RunScene
 
     /// <param name="start">고른 클래스로 판을 시작한다.</param>
     /// <param name="openUnlocks">해금·기록 화면을 연다.</param>
-    public RunPartyScene(Ui ui, RunSession session, Rectangle bounds, Action<IReadOnlyList<string>> start, Action openUnlocks)
+    public RunPartyScene(Ui ui, RunSession session, Rectangle bounds, Action<IReadOnlyList<string>, IReadOnlyList<Row>> start, Action openUnlocks)
         : base(ui, session, bounds, () => { })
     {
         _start = start;
         _openUnlocks = openUnlocks;
         _unlocks = session.Profile.UnlocksForRun(session.Data);
-        _picked = session.Data.Classes.Keys.Where(id => !_unlocks.Locked.Contains(id)).Take(session.Data.Run!.PartySize).ToList();
+        _picked = session.Data.Classes.Values.Where(c => !_unlocks.Locked.Contains(c.Id)).Take(session.Data.Run!.PartySize).Select(c => (c.Id, c.Row)).ToList();
         _previews = session.Data.Classes.Keys.ToDictionary(id => id, id =>
         {
             var run = Run.Start(session.Data, [id], 0);
@@ -46,7 +47,7 @@ internal sealed class RunPartyScene : RunScene
 
     protected override string? Status => $"파티 {_picked.Count}/{PartySize}";
 
-    protected override string Help => "같은 클래스를 여럿 데려가도 됩니다. 원정 중에 이벤트나 상점에서 동료가 더 합류할 수 있습니다. 막마다 보스는 출발할 때 정해져 지도에 보입니다.";
+    protected override string Help => "같은 클래스를 여럿 데려가도 됩니다. 전위·후위는 자리마다 고르고 원정 중에도 편성에서 바꿉니다. 보스는 출발할 때 정해집니다.";
 
     private int CardWidth => (Body.Width - Gap * (Data.Classes.Count - 1)) / Data.Classes.Count;
 
@@ -75,7 +76,8 @@ internal sealed class RunPartyScene : RunScene
 
         root.Widgets.Add(Place(party, Body.Left + 16, top + 16));
 
-        var start = Button("출발  ▶", () => _start(_picked), Run.WhyCannotStart(Data, _picked, _unlocks), accent: true, width: 220, size: 22);
+        var classIds = _picked.Select(p => p.ClassId).ToList();
+        var start = Button("출발  ▶", () => _start(classIds, _picked.Select(p => p.Row).ToList()), Run.WhyCannotStart(Data, classIds, _unlocks), accent: true, width: 220, size: 22);
         start.Height = 64;
         root.Widgets.Add(Place(start, Body.Right - 16 - 220, Body.Bottom - 16 - 64));
         var unlocks = Button($"해금 · 기록 (명성 {Session.Profile.Renown})", _openUnlocks, width: 220);
@@ -100,7 +102,10 @@ internal sealed class RunPartyScene : RunScene
         head.Widgets.Add(W.IconTile(icon, 52, color));
         var names = new VerticalStackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
         names.Widgets.Add(W.Label(c.Name, 22, locked ? Theme.TextDim : Theme.Ally, bold: true));
-        names.Widgets.Add(W.Chip(locked ? "잠김" : RunText.Row(c), locked ? Theme.Accent : RunText.RowColor(c), 13));
+        if (locked)
+        {
+            names.Widgets.Add(W.Chip("잠김", Theme.Accent, 13));
+        }
         head.Widgets.Add(names);
         card.Widgets.Add(head);
 
@@ -134,7 +139,7 @@ internal sealed class RunPartyScene : RunScene
         var why = locked ? $"해금에서 연다 (명성 {unlock?.Cost})" : _picked.Count >= PartySize ? $"파티는 {PartySize}명까지다" : null;
         var add = Button(locked ? $"잠김 · 명성 {unlock?.Cost}" : "+ 파티에 넣기", () =>
         {
-            _picked.Add(c.Id);
+            _picked.Add((c.Id, c.Row));
             Refresh();
         }, why, width: inner, size: 15);
         return new Panel { Widgets = { card, Place(add, 12, CardHeight - 48) } };
@@ -149,20 +154,37 @@ internal sealed class RunPartyScene : RunScene
             return slot;
         }
 
-        var c = Data.Classes[_picked[index]];
-        var row = new HorizontalStackPanel { Spacing = 8 };
+        var (classId, chosenRow) = _picked[index];
+        var c = Data.Classes[classId];
+        var head = new HorizontalStackPanel { Spacing = 8 };
         var (icon, color) = RunText.Portrait(c, Data);
-        row.Widgets.Add(W.IconTile(icon, 44, color));
-        var names = new VerticalStackPanel { Spacing = 2 };
-        names.Widgets.Add(W.Label($"{index + 1}. {c.Name}", 18, Theme.Ally, bold: true));
-        names.Widgets.Add(W.Label(RunText.Row(c), 14, Theme.TextDim));
-        row.Widgets.Add(names);
-        slot.Widgets.Add(row);
-        slot.Widgets.Add(Button("빼기", () =>
+        head.Widgets.Add(W.IconTile(icon, 40, color));
+        head.Widgets.Add(W.Label($"{index + 1}. {c.Name}", 18, Theme.Ally, bold: true));
+        slot.Widgets.Add(head);
+
+        // 줄 고르기와 빼기
+        var buttons = new HorizontalStackPanel { Spacing = 4 };
+        foreach (var row in new[] { Row.Front, Row.Back })
+        {
+            var chosen = row == chosenRow;
+            var button = W.TextButton(RunText.Row(row), chosen ? RunText.RowColor(row) : Theme.Button, chosen ? RunText.RowColor(row) : Theme.ButtonHover, bold: chosen, size: 14);
+            button.Width = 56;
+            button.Padding = new Myra.Graphics2D.Thickness(0, 4);
+            button.Click += (_, _) =>
+            {
+                _picked[index] = (classId, row);
+                Refresh();
+            };
+            buttons.Widgets.Add(button);
+        }
+
+        buttons.Widgets.Add(new Panel { Width = 4 });
+        buttons.Widgets.Add(Button("빼기", () =>
         {
             _picked.RemoveAt(index);
             Refresh();
-        }, width: 80, size: 14));
+        }, width: 56, size: 14));
+        slot.Widgets.Add(buttons);
         return slot;
     }
 }

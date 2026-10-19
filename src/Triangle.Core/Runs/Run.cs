@@ -7,6 +7,7 @@ using Triangle.Core.Items;
 using Triangle.Core.Progress;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
+using Triangle.Core.Units;
 
 namespace Triangle.Core.Runs;
 
@@ -192,7 +193,8 @@ public sealed partial class Run
 
     /// <summary>판을 시작한다. 막마다 지도를 만들고 보스를 정해 공개한다. 멤버는 클래스의 기본 장비와 시작 스킬 한 줄로 시작한다.</summary>
     /// <param name="unlocks">해금이 정하는 잠긴 것과 시작 골드. null이면 모두 열린 판이다.</param>
-    public static Run Start(GameData data, IReadOnlyList<string> classIds, int seed, RunUnlocks? unlocks = null)
+    /// <param name="rows">멤버마다 서는 줄 (<paramref name="classIds"/>와 같은 순서). null이거나 모자라면 클래스의 처음 값이다.</param>
+    public static Run Start(GameData data, IReadOnlyList<string> classIds, int seed, RunUnlocks? unlocks = null, IReadOnlyList<Row>? rows = null)
     {
         unlocks ??= RunUnlocks.All;
         if (WhyCannotStart(data, classIds, unlocks) is { } reason)
@@ -205,9 +207,9 @@ public sealed partial class Run
         var random = new Random(Seeds.Derive(seed, 200));
         var bosses = rules.Acts.Select(a => a.Bosses.Count > 0 ? a.Bosses[random.Next(a.Bosses.Count)] : data.Zones[a.ZoneId].Boss!.EncounterId).ToList();
         var run = new Run(seed, maps, bosses, rules.StartGold + unlocks.StartGold, unlocks.Locked);
-        foreach (var classId in classIds)
+        for (var i = 0; i < classIds.Count; i++)
         {
-            run.Join(data, classId);
+            run.Join(data, classIds[i], rows is not null && i < rows.Count ? rows[i] : null);
         }
 
         return run;
@@ -620,6 +622,27 @@ public sealed partial class Run
         member.Tactics.AddRange(lines.Select((t, i) => t with { Priority = i + 1 }));
     }
 
+    /// <summary>멤버의 줄(전열·후열)을 바꾼다. 클래스와 상관없이 고른다.</summary>
+    public string? WhyCannotSetRow(RunMember member)
+    {
+        if (Finished)
+        {
+            return "판이 끝났다";
+        }
+
+        return member.Dead || !Members.Contains(member) ? "살아 있는 멤버가 아니다" : null;
+    }
+
+    public void SetRow(RunMember member, Row row)
+    {
+        if (WhyCannotSetRow(member) is { } reason)
+        {
+            throw new InvalidOperationException(reason);
+        }
+
+        member.Row = row;
+    }
+
     /// <summary>가방의 아이템을 낀다. 무기는 그 클래스 계열만, 방어구는 몸통, 장신구는 정한 수까지. 끼고 있던 것은 가방으로 간다.</summary>
     public string? WhyCannotEquip(GameData data, RunMember member, int bagIndex)
     {
@@ -712,7 +735,7 @@ public sealed partial class Run
         worn.AddRange(member.Trinkets.Select(t => (EquipmentSlot.Trinket, data.Items[t])));
         var lines = member.ActiveTactics;
         List<Tactic> tactics = [.. lines.Select((t, i) => t with { Priority = i + 1 }), Tactic.Create(lines.Count + 1, [new(Condition.Always, 0)], DraftTactics.Fallback)];
-        var setup = new CombatantSetup(member.Id, Name(data, member), c.Stats, c.Row, null, null, member.Passives.ToDictionary(), tactics);
+        var setup = new CombatantSetup(member.Id, Name(data, member), c.Stats, member.Row, null, null, member.Passives.ToDictionary(), tactics);
         return new Loadout(worn).Apply(setup, data.Actions.Values, _ => 0) with
         {
             GrantedActions = lines.Select(t => t.ActionId).Where(id => !data.Actions[id].Universal).ToHashSet(),
@@ -734,11 +757,11 @@ public sealed partial class Run
     private static RunDefinition Rules(GameData data) => data.Run ?? throw new InvalidOperationException("run.json이 없다");
 
     /// <summary>새 멤버: 클래스의 기본 장비, 시작 스킬 사본 1장(파티 사본에 더한다), 그 사본으로 짠 한 줄.</summary>
-    private void Join(GameData data, string classId)
+    private void Join(GameData data, string classId, Row? row = null)
     {
         var c = data.Classes[classId];
         var rules = Rules(data);
-        var member = new RunMember($"m{Members.Count + 1}", classId, rules.StartLines) { Weapon = c.Weapon, Armor = c.Armor };
+        var member = new RunMember($"m{Members.Count + 1}", classId, rules.StartLines) { Row = row ?? c.Row, Weapon = c.Weapon, Armor = c.Armor };
         Copies[c.StartingSkill] = Copies.GetValueOrDefault(c.StartingSkill) + 1;
         if (rules.StartLines > 0)
         {

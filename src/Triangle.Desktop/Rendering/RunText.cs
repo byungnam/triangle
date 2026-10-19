@@ -36,9 +36,9 @@ internal static class RunText
     public static (string Icon, Color Color) Portrait(ClassDefinition c, GameData data) =>
         GameIcons.Portrait(data.Items.TryGetValue(c.Weapon, out var weapon) ? weapon.Mastery : null);
 
-    public static string Row(ClassDefinition c) => c.Row == Triangle.Core.Units.Row.Front ? "전위" : "후위";
+    public static string Row(Triangle.Core.Units.Row row) => row == Triangle.Core.Units.Row.Front ? "전위" : "후위";
 
-    public static Color RowColor(ClassDefinition c) => c.Row == Triangle.Core.Units.Row.Front ? Theme.FrontRow : Theme.BackRow;
+    public static Color RowColor(Triangle.Core.Units.Row row) => row == Triangle.Core.Units.Row.Front ? Theme.FrontRow : Theme.BackRow;
 
     /// <summary>"줄 상한 2", 봉인되면 "줄 상한 1 (봉인 1)", 죽었으면 "죽음".</summary>
     public static (string Text, Color Color) Lines(RunMember member) =>

@@ -91,6 +91,23 @@ public static class DataReferences
             Add(c.Passives.Contains(id), $"{at}: passives");
         }
 
+        if (data.Run is { } run)
+        {
+            for (var i = 0; i < run.Acts.Count; i++)
+            {
+                var act = run.Acts[i];
+                var at = $"{GameDataLoader.RunFile} acts[{i}]";
+                Add(act.ZoneId == id, $"{at}: zoneId");
+                Add(act.Bosses.Contains(id), $"{at}: bosses");
+                Add(act.Elites.Contains(id), $"{at}: elites");
+            }
+
+            foreach (var e in run.Events)
+            {
+                Add(e.Options.Any(o => o.Join == id), $"{GameDataLoader.RunFile} event '{e.Id}': join");
+            }
+        }
+
         return found;
     }
 }

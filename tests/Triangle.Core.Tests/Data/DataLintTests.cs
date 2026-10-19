@@ -73,7 +73,7 @@ public class DataLintTests
                 "actions.json 'orphan': no item grants it",
                 "actions.json 'spirit_bite': summonOnly but no summon uses it",
                 "effects.json 'unused_buff': no action applies it",
-                "encounters.json 'lonely': no zone uses it",
+                "encounters.json 'lonely': no zone or run act uses it",
                 "items.json 'relic_sword': cannot be obtained (not sold, dropped, crafted or given to recruits)",
                 "items.json 'pebble': cannot be obtained (not sold, dropped, crafted or given to recruits)",
                 "items.json 'pebble': material used by no recipe",

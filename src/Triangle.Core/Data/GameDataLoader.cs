@@ -27,6 +27,7 @@ public static class GameDataLoader
     public const string RecruitsFile = "recruits.json";
     public const string RecipesFile = "recipes.json";
     public const string ClassesFile = "classes.json";
+    public const string RunFile = "run.json";
 
     /// <param name="extraDirectory">
     /// 게임 데이터 밖의 추가 데이터 폴더 (전술 측정의 시제품, <see cref="Balance.BenchDefinition.ExtraData"/>).
@@ -63,12 +64,13 @@ public static class GameDataLoader
         var recruits = Read(RecruitsFile);
         var recipes = Read(RecipesFile);
         var classes = Read(ClassesFile);
+        var run = Read(RunFile);
         if (errors.Count > 0)
         {
             throw new GameDataException(errors);
         }
 
-        return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, recruits!, recipes!, classes!);
+        return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, recruits!, recipes!, classes!, run!);
     }
 
     /// <summary>두 JSON 배열을 이어 붙인다. 배열이 아니거나 읽을 수 없으면 오류를 남기고 원래 것을 돌려준다.</summary>
@@ -94,7 +96,8 @@ public static class GameDataLoader
     }
 
     public static GameData Parse(string masteriesJson, string skillsJson, string actionsJson, string encountersJson, string effectsJson = "[]",
-        string itemsJson = "[]", string zonesJson = "[]", string recruitsJson = "[]", string recipesJson = "[]", string classesJson = "[]")
+        string itemsJson = "[]", string zonesJson = "[]", string recruitsJson = "[]", string recipesJson = "[]", string classesJson = "[]",
+        string? runJson = null)
     {
         var errors = new List<string>();
 
@@ -108,6 +111,7 @@ public static class GameDataLoader
         var recruits = Deserialize<RecruitTemplate>(recruitsJson, RecruitsFile, errors);
         var recipes = Deserialize<RecipeDefinition>(recipesJson, RecipesFile, errors);
         var classes = Deserialize<ClassDefinition>(classesJson, ClassesFile, errors);
+        var run = runJson is null ? null : DeserializeObject<RunDefinition>(runJson, RunFile, errors);
 
         // 형식 오류가 있으면 참조 검증은 의미가 없다.
         if (errors.Count > 0)
@@ -200,13 +204,17 @@ public static class GameDataLoader
         }
 
         ValidateClasses(classes!, masteryMap, skillMap, actionMap, itemMap, errors);
+        if (run is not null)
+        {
+            ValidateRun(run, zoneMap, encounterMap, classMap, errors);
+        }
 
         if (errors.Count > 0)
         {
             throw new GameDataException(errors);
         }
 
-        return new GameData(masteryMap, skillMap, actionMap, effectMap, encounterMap, itemMap, zoneMap, recruitMap, recipeMap, classMap);
+        return new GameData(masteryMap, skillMap, actionMap, effectMap, encounterMap, itemMap, zoneMap, recruitMap, recipeMap, classMap) { Run = run };
     }
 
     private static List<T>? Deserialize<T>(string json, string fileName, List<string> errors)
@@ -226,6 +234,142 @@ public static class GameDataLoader
             var line = e.LineNumber is { } n ? $" line {n + 1}" : "";
             errors.Add($"{fileName}{line}: {e.Message}");
             return null;
+        }
+    }
+
+    private static T? DeserializeObject<T>(string json, string fileName, List<string> errors)
+        where T : class
+    {
+        try
+        {
+            var value = JsonSerializer.Deserialize<T>(json, GameDataJson.Options);
+            if (value is null)
+            {
+                errors.Add($"{fileName}: expected an object, found null");
+            }
+
+            return value;
+        }
+        catch (JsonException e)
+        {
+            var line = e.LineNumber is { } n ? $" line {n + 1}" : "";
+            errors.Add($"{fileName}{line}: {e.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>판의 규칙: 막의 지역·보스·정예, 인원과 줄, 가중치와 값, 이벤트 선택지의 합류 클래스.</summary>
+    private static void ValidateRun(
+        RunDefinition run,
+        IReadOnlyDictionary<string, ZoneDefinition> zones,
+        IReadOnlyDictionary<string, EncounterDefinition> encounters,
+        IReadOnlyDictionary<string, ClassDefinition> classes,
+        List<string> errors)
+    {
+        if (run.PartySize is < 1 or > Company.MaxLineup)
+        {
+            errors.Add($"{RunFile}: partySize must be 1-{Company.MaxLineup}, got {run.PartySize}");
+        }
+
+        if (run.StartLines < 0 || run.StartLines > run.MaxLines)
+        {
+            errors.Add($"{RunFile}: startLines must be 0-maxLines ({run.MaxLines}), got {run.StartLines}");
+        }
+
+        DataValidation.RequireNonNegative(run.MaxTrinkets, $"{RunFile}: maxTrinkets", errors);
+        DataValidation.RequireNonNegative(run.StartGold, $"{RunFile}: startGold", errors);
+        if (run.Acts.Count == 0)
+        {
+            errors.Add($"{RunFile}: needs at least one act");
+        }
+
+        for (var i = 0; i < run.Acts.Count; i++)
+        {
+            var act = run.Acts[i];
+            var at = $"{RunFile} acts[{i}]";
+            if (!zones.TryGetValue(act.ZoneId, out var zone))
+            {
+                errors.Add($"{at}: unknown zone '{act.ZoneId}'");
+            }
+            else if (act.Bosses.Count == 0 && zone.Boss is null)
+            {
+                errors.Add($"{at}: zone '{act.ZoneId}' has no boss and the act names none");
+            }
+
+            if (act.Floors < 2)
+            {
+                errors.Add($"{at}: floors must be at least 2, got {act.Floors}");
+            }
+
+            errors.AddRange(act.Bosses.Concat(act.Elites).Where(id => !encounters.ContainsKey(id)).Select(id => $"{at}: unknown encounter '{id}'"));
+            if (act.ShopTier is < 1 or > ItemDefinition.MaxTier)
+            {
+                errors.Add($"{at}: shopTier must be 1-{ItemDefinition.MaxTier}, got {act.ShopTier}");
+            }
+        }
+
+        var map = run.Map;
+        if (map.Width < 1 || map.Paths < 1)
+        {
+            errors.Add($"{RunFile}: map width and paths must be at least 1");
+        }
+
+        if (new[] { map.Fight, map.Elite, map.Shop, map.Rest, map.Event }.Any(w => w < 0) || map.Fight + map.Elite + map.Shop + map.Rest + map.Event == 0)
+        {
+            errors.Add($"{RunFile}: map weights must not be negative and must not all be 0");
+        }
+
+        var reward = run.Reward;
+        if (reward.Cards < 1 || reward.EliteExtraCards < 0 || new[] { reward.Active, reward.Passive, reward.Line }.Any(w => w < 0)
+            || reward.Active + reward.Passive + reward.Line == 0)
+        {
+            errors.Add($"{RunFile}: reward needs at least one card and one positive weight");
+        }
+
+        if (reward.GoldMin > reward.GoldMax || reward.EliteGoldMin > reward.EliteGoldMax || reward.GoldMin < 0 || reward.EliteGoldMin < 0 || reward.BossGold < 0)
+        {
+            errors.Add($"{RunFile}: reward gold ranges must be 0 <= min <= max");
+        }
+
+        var shop = run.Shop;
+        if (new[] { shop.Items, shop.Skills, shop.SkillPrice, shop.Recruits, shop.RecruitPrice, shop.UnsealPrice }.Any(v => v < 0))
+        {
+            errors.Add($"{RunFile}: shop counts and prices must not be negative");
+        }
+
+        if (run.Rest.Unseal < 0 || run.Rest.TrainCards < 1)
+        {
+            errors.Add($"{RunFile}: rest unseal must not be negative and trainCards must be at least 1");
+        }
+
+        foreach (var duplicate in run.Events.GroupBy(e => e.Id).Where(g => g.Count() > 1))
+        {
+            errors.Add($"{RunFile}: duplicate event id '{duplicate.Key}'");
+        }
+
+        foreach (var e in run.Events)
+        {
+            var at = $"{RunFile} event '{e.Id}'";
+            DataValidation.RequireText(e.Id, $"{RunFile}: event id", errors);
+            DataValidation.RequireText(e.Name, $"{at}: name", errors);
+            if (e.Options.Count == 0)
+            {
+                errors.Add($"{at}: needs at least one option");
+            }
+
+            foreach (var option in e.Options)
+            {
+                DataValidation.RequireText(option.Text, $"{at}: option text", errors);
+                if (option.Join is { } join && join != "any" && !classes.ContainsKey(join))
+                {
+                    errors.Add($"{at}: unknown class '{join}'");
+                }
+
+                if (option.Seal < 0 || option.Unseal < 0)
+                {
+                    errors.Add($"{at}: seal and unseal must not be negative");
+                }
+            }
         }
     }
 

@@ -66,10 +66,11 @@ public static class DataLint
     {
         var used = data.Zones.Values.SelectMany(z => z.Encounters).Select(e => e.EncounterId)
             .Concat(data.Zones.Values.Select(z => z.Boss?.EncounterId).OfType<string>())
+            .Concat(data.Run?.Acts.SelectMany(a => a.Bosses.Concat(a.Elites)) ?? [])
             .ToHashSet();
         foreach (var encounter in data.Encounters.Values.Where(e => !used.Contains(e.Id)))
         {
-            warnings.Add($"{GameDataLoader.EncountersFile} '{encounter.Id}': no zone uses it");
+            warnings.Add($"{GameDataLoader.EncountersFile} '{encounter.Id}': no zone or run act uses it");
         }
     }
 
@@ -84,7 +85,7 @@ public static class DataLint
         var recruitGear = data.Recruits.Values.SelectMany(r => r.Equipment.Values).ToHashSet();
         var materials = data.Recipes.Values.SelectMany(r => r.Materials).Select(m => m.ItemId).ToHashSet();
 
-        // 장신구는 로그라이트 재편의 원정 상점에서만 얻는다(아직 없다). 지금 게임의 경로로는 보지 않는다.
+        // 장신구는 로그라이트 재편의 판 상점과 이벤트에서만 얻는다(화면은 아직 없다). 지금 게임의 경로로는 보지 않는다.
         foreach (var item in data.Items.Values.Where(i => i.Slot != EquipmentSlot.Trinket))
         {
             var at = $"{GameDataLoader.ItemsFile} '{item.Id}'";

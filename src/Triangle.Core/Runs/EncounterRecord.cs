@@ -1,8 +1,6 @@
-namespace Triangle.Core.Progress;
+namespace Triangle.Core.Runs;
 
-/// <summary>
-/// 탐사 기록의 한 항목: 원정에서 만난 적 조합. 정찰이 없으므로 적은 직접 싸워 봐야 기록에 남는다.
-/// </summary>
+/// <summary>탐사 기록의 한 항목: 판에서 만난 적 조합. 적은 직접 싸워 봐야 기록에 남는다.</summary>
 /// <param name="Met">싸운 횟수 (1 이상: 기록이 있으면 만난 것이다).</param>
 /// <param name="Wins">이긴 횟수.</param>
 public sealed record EncounterRecord(int Met, int Wins)

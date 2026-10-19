@@ -28,9 +28,6 @@ public sealed class Loadout
     /// <summary>몸통 방어구의 재질 계열 ID (표시용, 없으면 null).</summary>
     public string? ArmorMastery => In(EquipmentSlot.Body)?.Mastery;
 
-    /// <summary>입은 방어구 부위별 재질 (방어구 숙련 경험치를 나눈다).</summary>
-    public IReadOnlyList<string> ArmorPieces => Worn.Where(w => w.Slot.IsArmor()).Select(w => w.Item.Mastery!).ToList();
-
     /// <summary>착용 중인 아이템의 행동과, 든 주무기 계열이 주는 행동(예: 정령 소환).</summary>
     public IReadOnlySet<string> GrantedActions(IEnumerable<ActionDefinition> actions)
     {
@@ -55,7 +52,6 @@ public sealed class Loadout
             Armor = ArmorMastery,
             GrantedActions = GrantedActions(actions),
             ItemBonuses = ItemBonuses(masteryLevel),
-            ArmorPieces = ArmorPieces,
             OffHand = OffHandMastery,
             PowerMultiplierPercent = MainHand?.PowerMultiplierPercent ?? 100,
             EffectDurationBonus = MainHand?.EffectDurationBonus ?? 0,

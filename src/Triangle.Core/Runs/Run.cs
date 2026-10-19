@@ -2,9 +2,7 @@ using System.Runtime.CompilerServices;
 using Triangle.Core.Balance;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
-using Triangle.Core.Expeditions;
 using Triangle.Core.Items;
-using Triangle.Core.Progress;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
@@ -93,6 +91,9 @@ public sealed record RunBattle(string EncounterId, RunNodeKind Kind, CombatResul
 /// </summary>
 public sealed partial class Run
 {
+    /// <summary>파티 인원의 최대 (합류로 늘 수 있는 끝, 전투 화면이 한 줄에 보여 주는 수).</summary>
+    public const int MaxMembers = 5;
+
     private static readonly ConditionalWeakTable<GameData, CombatCatalog> Catalogs = new();
 
     private readonly List<RunStock> _stock = [];
@@ -436,7 +437,7 @@ public sealed partial class Run
             return $"골드가 모자란다 ({s.Price}G)";
         }
 
-        return s.Kind == RunStockKind.Recruit && Living.Count() >= Company.MaxLineup ? $"파티는 {Company.MaxLineup}명까지다" : null;
+        return s.Kind == RunStockKind.Recruit && Living.Count() >= MaxMembers ? $"파티는 {MaxMembers}명까지다" : null;
     }
 
     /// <summary>상점에서 산다: 아이템은 가방으로, 스킬은 파티 사본으로, 합류는 새 멤버로.</summary>
@@ -516,7 +517,7 @@ public sealed partial class Run
             return "아직 열지 않은 클래스다";
         }
 
-        return o.Join is not null && Living.Count() >= Company.MaxLineup ? $"파티는 {Company.MaxLineup}명까지다" : null;
+        return o.Join is not null && Living.Count() >= MaxMembers ? $"파티는 {MaxMembers}명까지다" : null;
     }
 
     /// <summary>이벤트의 선택지를 고른다. 카드가 있으면 보상 단계가 된다.</summary>

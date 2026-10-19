@@ -1,6 +1,6 @@
 # Triangle
 
-유닛을 육성하고, 유닛마다 "조건 → 행동" 전술을 짜서 팀을 꾸린 뒤 자동 전투로 승부하는 싱글플레이 RPG. MonoGame으로 개발 중.
+유닛마다 "조건 → 행동" 전술을 짜서 자동 전투로 승부하는 싱글플레이 로그라이트. 한 판(원정) 동안 갈림길 지도를 따라가며 보상으로 스킬 사본과 줄 상한을 얻어 전술을 키운다. MonoGame으로 개발 중.
 
 2015년 Java/Android 프로토타입을 새로 만드는 프로젝트다. 기존 구현 분석은 [docs/legacy/](docs/legacy/README.md)에, 새 구조는 [docs/architecture.md](docs/architecture.md)에 있다.
 
@@ -24,18 +24,12 @@ docs/                       설계 문서
 ```bash
 dotnet build
 dotnet test
-dotnet run --project src/Triangle.Desktop                                          # 원정(판): 파티 고르기 또는 진행 중인 판
+dotnet run --project src/Triangle.Desktop                                          # 원정(판): 진행 중인 판을 이어 하거나 파티를 고른다
 dotnet run --project src/Triangle.Desktop -- --screenshot shot.png                # 첫 화면을 PNG로 저장하고 종료
-dotnet run --project src/Triangle.Desktop -- --scene run:map --screenshot shot.png  # 시험 판의 지도 (임시 폴더, 실제 판은 그대로)
-#   --scene run:*: map, reward, shop, rest, event, editor, equipment, picker, end
-dotnet run --project src/Triangle.Desktop -- --scene village                       # 옛 마을 (로그라이트 재편 뒤 지울 예정)
-dotnet run --project src/Triangle.Desktop -- --combat --screenshot shot.png       # 옛 출전 명단의 시험 전투가 끝난 화면
-dotnet run --project src/Triangle.Desktop -- --combat --screenshot shot.png 40    # 로그 40줄까지 진행한 중간 화면
-dotnet run --project src/Triangle.Desktop -- --combat --summary --screenshot shot.png  # 전투 요약 탭
-dotnet run --project src/Triangle.Desktop -- --exploration --screenshot shot.png  # 옛 탐사 기록 화면
-dotnet run --project src/Triangle.Desktop -- --scene editor:equipment --screenshot shot.png  # 옛 편성 화면 장비 탭
-#   --scene: editor, editor:equipment, editor:preview, editor:stats, editor:picker, training, shop, infirmary
-dotnet run --project src/Triangle.Desktop -- --save /tmp/test-save.json            # 세이브 위치 바꾸기 (기본: ~/.config/Triangle/save.json, 판은 같은 폴더의 run.json)
+dotnet run --project src/Triangle.Desktop -- --scene run:map --screenshot shot.png  # 시험 판의 지도 (임시 폴더, 실제 세이브는 그대로)
+#   --scene run:*: map, reward, shop, rest, event, editor, equipment, picker, end, party, unlocks, combat
+dotnet run --project src/Triangle.Desktop -- --scene run:combat --screenshot shot.png 40  # 전투 기록을 40줄까지 진행한 화면 (--summary: 요약 탭)
+dotnet run --project src/Triangle.Desktop -- --save /tmp/triangle-save              # 세이브 폴더 바꾸기 (기본: ~/.config/Triangle, 판 run.json과 기록 profile.json)
 ```
 
 ## 데이터 검사 · 조회 · 수정
@@ -44,7 +38,7 @@ dotnet run --project src/Triangle.Desktop -- --save /tmp/test-save.json         
 
 ```bash
 dotnet run --project src/Triangle.DataTool -- validate                      # 오류 있으면 종료 코드 1, --strict면 경고도 1
-dotnet run --project src/Triangle.DataTool -- list items --mastery sword    # 종류: masteries skills actions effects items encounters zones recipes recruits classes unlocks
+dotnet run --project src/Triangle.DataTool -- list items --mastery sword    # 종류: masteries skills actions effects items encounters zones classes unlocks
 dotnet run --project src/Triangle.DataTool -- list items --type 한손검 --tier 2
 dotnet run --project src/Triangle.DataTool -- list actions --mastery fire   # 화염 계열 아이템이 주는 행동
 dotnet run --project src/Triangle.DataTool -- show heal                     # 원본 JSON + 쓰는 곳
@@ -65,7 +59,7 @@ $D new effects '{"id":"dazed","name":"멍함","kind":"Debuff"}' --after weakened
 $D delete items rusty_sword                                       # 가리키는 곳이 남아 있으면 검증에서 막힌다
 ```
 
-- `<id>`: 쉼표로 여럿, `*`는 아무 글자. 제작법은 결과 아이템 id로 고른다.
+- `<id>`: 쉼표로 여럿, `*`는 아무 글자.
 - `<값>`: JSON으로 읽히면 JSON(`50`, `true`, `["a"]`, `{"skillId":"archery","level":1}`), 아니면 문자열.
 - `--where`: `=` `!=` `>=` `<=` `>` `<`, 여러 번 주면 모두 만족. 배열의 `=`는 "포함". 파일에 적힌 값만 본다.
 

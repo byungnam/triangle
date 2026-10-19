@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
-using Triangle.Core.Progress;
 
 namespace Triangle.Core.Runs;
 

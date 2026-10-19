@@ -2,10 +2,8 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Triangle.Core.Actions;
 using Triangle.Core.Effects;
-using Triangle.Core.Expeditions;
 using Triangle.Core.Items;
 using Triangle.Core.Masteries;
-using Triangle.Core.Progress;
 using Triangle.Core.Runs;
 using Triangle.Core.Skills;
 
@@ -24,8 +22,6 @@ public static class GameDataLoader
     public const string EncountersFile = "encounters.json";
     public const string ItemsFile = "items.json";
     public const string ZonesFile = "zones.json";
-    public const string RecruitsFile = "recruits.json";
-    public const string RecipesFile = "recipes.json";
     public const string ClassesFile = "classes.json";
     public const string RunFile = "run.json";
     public const string UnlocksFile = "unlocks.json";
@@ -62,8 +58,6 @@ public static class GameDataLoader
         var encounters = Read(EncountersFile);
         var items = Read(ItemsFile);
         var zones = Read(ZonesFile);
-        var recruits = Read(RecruitsFile);
-        var recipes = Read(RecipesFile);
         var classes = Read(ClassesFile);
         var run = Read(RunFile);
         var unlocks = Read(UnlocksFile);
@@ -72,7 +66,7 @@ public static class GameDataLoader
             throw new GameDataException(errors);
         }
 
-        return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, recruits!, recipes!, classes!, run!, unlocks!);
+        return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, classes!, run!, unlocks!);
     }
 
     /// <summary>두 JSON 배열을 이어 붙인다. 배열이 아니거나 읽을 수 없으면 오류를 남기고 원래 것을 돌려준다.</summary>
@@ -98,7 +92,7 @@ public static class GameDataLoader
     }
 
     public static GameData Parse(string masteriesJson, string skillsJson, string actionsJson, string encountersJson, string effectsJson = "[]",
-        string itemsJson = "[]", string zonesJson = "[]", string recruitsJson = "[]", string recipesJson = "[]", string classesJson = "[]",
+        string itemsJson = "[]", string zonesJson = "[]", string classesJson = "[]",
         string? runJson = null, string unlocksJson = "[]")
     {
         var errors = new List<string>();
@@ -110,8 +104,6 @@ public static class GameDataLoader
         var encounters = Deserialize<EncounterDefinition>(encountersJson, EncountersFile, errors);
         var items = Deserialize<ItemDefinition>(itemsJson, ItemsFile, errors);
         var zones = Deserialize<ZoneDefinition>(zonesJson, ZonesFile, errors);
-        var recruits = Deserialize<RecruitTemplate>(recruitsJson, RecruitsFile, errors);
-        var recipes = Deserialize<RecipeDefinition>(recipesJson, RecipesFile, errors);
         var classes = Deserialize<ClassDefinition>(classesJson, ClassesFile, errors);
         var run = runJson is null ? null : DeserializeObject<RunDefinition>(runJson, RunFile, errors);
         var unlocks = Deserialize<UnlockDefinition>(unlocksJson, UnlocksFile, errors);
@@ -139,18 +131,8 @@ public static class GameDataLoader
         var encounterMap = ToMap(encounters!, e => e.Id, EncountersFile, errors);
         var itemMap = ToMap(items!, i => i.Id, ItemsFile, errors);
         var zoneMap = ToMap(zones!, z => z.Id, ZonesFile, errors);
-        var recruitMap = ToMap(recruits!, r => r.Id, RecruitsFile, errors);
         var classMap = ToMap(classes!, c => c.Id, ClassesFile, errors);
         var unlockMap = ToMap(unlocks!, u => u.Id, UnlocksFile, errors);
-        var recipeMap = new Dictionary<string, RecipeDefinition>();
-        foreach (var recipe in recipes!)
-        {
-            if (!recipeMap.TryAdd(recipe.Result ?? "", recipe))
-            {
-                errors.Add($"{RecipesFile}: more than one recipe for '{recipe.Result}'");
-            }
-        }
-
         foreach (var m in masteries!)
         {
             DataValidation.RequireText(m.Id, $"{MasteriesFile}: id", errors);
@@ -194,17 +176,7 @@ public static class GameDataLoader
 
         foreach (var zone in zones!)
         {
-            ValidateZone(zone, encounterMap, itemMap, errors);
-        }
-
-        foreach (var recruit in recruits!)
-        {
-            ValidateRecruit(recruit, skillMap, actionMap, itemMap, errors);
-        }
-
-        foreach (var recipe in recipes)
-        {
-            ValidateRecipe(recipe, itemMap, errors);
+            ValidateZone(zone, encounterMap, errors);
         }
 
         ValidateClasses(classes!, masteryMap, skillMap, actionMap, itemMap, errors);
@@ -220,7 +192,7 @@ public static class GameDataLoader
             throw new GameDataException(errors);
         }
 
-        return new GameData(masteryMap, skillMap, actionMap, effectMap, encounterMap, itemMap, zoneMap, recruitMap, recipeMap, classMap) { Run = run, Unlocks = unlockMap };
+        return new GameData(masteryMap, skillMap, actionMap, effectMap, encounterMap, itemMap, zoneMap, classMap) { Run = run, Unlocks = unlockMap };
     }
 
     private static List<T>? Deserialize<T>(string json, string fileName, List<string> errors)
@@ -337,9 +309,9 @@ public static class GameDataLoader
         IReadOnlyDictionary<string, ClassDefinition> classes,
         List<string> errors)
     {
-        if (run.PartySize is < 1 or > Company.MaxLineup)
+        if (run.PartySize is < 1 or > Run.MaxMembers)
         {
-            errors.Add($"{RunFile}: partySize must be 1-{Company.MaxLineup}, got {run.PartySize}");
+            errors.Add($"{RunFile}: partySize must be 1-{Run.MaxMembers}, got {run.PartySize}");
         }
 
         if (run.StartLines < 0 || run.StartLines > run.MaxLines)
@@ -636,16 +608,6 @@ public static class GameDataLoader
 
         DataValidation.ValidateRequirements(item.Requirements, $"{at} requirement", skills, errors);
 
-        if (!item.IsEquipment)
-        {
-            if (item.Mastery is not null || item.TwoHanded || item.Bonuses.Count > 0 || item.Actions.Count > 0 || item.Requirements.Count > 0)
-            {
-                errors.Add($"{at}: a material has no mastery, twoHanded, requirements, bonuses or actions");
-            }
-
-            return;
-        }
-
         errors.AddRange(item.Effects.Where(id => !effects.ContainsKey(id)).Select(id => $"{at}: unknown effect '{id}'"));
         if (item.Slot == EquipmentSlot.Trinket)
         {
@@ -703,48 +665,6 @@ public static class GameDataLoader
         foreach (var duplicate in item.Actions.GroupBy(a => a).Where(g => g.Count() > 1))
         {
             errors.Add($"{at}: lists action '{duplicate.Key}' more than once");
-        }
-    }
-
-    private static void ValidateRecipe(RecipeDefinition recipe, IReadOnlyDictionary<string, ItemDefinition> items, List<string> errors)
-    {
-        var at = $"{RecipesFile} '{recipe.Result}'";
-        if (!items.TryGetValue(recipe.Result ?? "", out var result))
-        {
-            errors.Add($"{at}: unknown result item");
-        }
-        else if (!result.IsEquipment)
-        {
-            errors.Add($"{at}: result must be equipment, got {result.Slot}");
-        }
-
-        DataValidation.RequireNonNegative(recipe.Gold, $"{at}: gold", errors);
-        var materials = recipe.Materials ?? [];
-        if (materials.Count == 0)
-        {
-            errors.Add($"{at}: needs at least one material");
-        }
-
-        foreach (var material in materials)
-        {
-            if (!items.TryGetValue(material.ItemId ?? "", out var item))
-            {
-                errors.Add($"{at}: unknown material '{material.ItemId}'");
-            }
-            else if (item.IsEquipment)
-            {
-                errors.Add($"{at}: '{material.ItemId}' is not a material");
-            }
-
-            if (material.Count < 1)
-            {
-                errors.Add($"{at}: count of '{material.ItemId}' must be at least 1, got {material.Count}");
-            }
-        }
-
-        foreach (var duplicate in materials.GroupBy(m => m.ItemId).Where(g => g.Count() > 1))
-        {
-            errors.Add($"{at}: lists material '{duplicate.Key}' more than once");
         }
     }
 
@@ -897,17 +817,11 @@ public static class GameDataLoader
     private static void ValidateZone(
         ZoneDefinition z,
         IReadOnlyDictionary<string, EncounterDefinition> encounters,
-        IReadOnlyDictionary<string, ItemDefinition> items,
         List<string> errors)
     {
         var at = $"{ZonesFile} '{z.Id}'";
         DataValidation.RequireText(z.Id, $"{ZonesFile}: id", errors);
         DataValidation.RequireText(z.Name, $"{at}: name", errors);
-        if (z.MaxBattles < 1)
-        {
-            errors.Add($"{at}: maxBattles must be at least 1, got {z.MaxBattles}");
-        }
-
         if (z.Encounters.Count == 0)
         {
             errors.Add($"{at}: needs at least one encounter");
@@ -926,105 +840,13 @@ public static class GameDataLoader
             }
         }
 
-        var r = z.Rewards;
-        DataValidation.RequireNonNegative(r.GoldMin, $"{at}: goldMin", errors);
-        DataValidation.RequireNonNegative(r.DepthBonusPercent, $"{at}: depthBonusPercent", errors);
-        DataValidation.RequireNonNegative(r.ClearBonusGold, $"{at}: clearBonusGold", errors);
-        if (r.GoldMax < r.GoldMin)
-        {
-            errors.Add($"{at}: goldMax {r.GoldMax} is less than goldMin {r.GoldMin}");
-        }
-
-        foreach (var drop in r.ItemDrops)
-        {
-            if (!items.ContainsKey(drop.ItemId))
-            {
-                errors.Add($"{at}: drops unknown item '{drop.ItemId}'");
-            }
-
-            DataValidation.RequirePercent(drop.Chance, $"{at}: chance of '{drop.ItemId}'", errors);
-        }
-
-        if (r.EquipmentDrop is { } tierDrop)
-        {
-            DataValidation.RequirePercent(tierDrop.Chance, $"{at}: equipmentDrop chance", errors);
-            if (tierDrop.MinTier < 1 || tierDrop.MaxTier > ItemDefinition.MaxTier || tierDrop.MaxTier < tierDrop.MinTier)
-            {
-                errors.Add($"{at}: equipmentDrop tiers must be 1-{ItemDefinition.MaxTier} with min <= max, got {tierDrop.MinTier}-{tierDrop.MaxTier}");
-            }
-            else if (!items.Values.Any(i => i.IsEquipment && i.Tier >= tierDrop.MinTier && i.Tier <= tierDrop.MaxTier))
-            {
-                errors.Add($"{at}: no equipment in tiers {tierDrop.MinTier}-{tierDrop.MaxTier}");
-            }
-        }
-
         if (z.Boss is { } boss)
         {
             if (!encounters.ContainsKey(boss.EncounterId))
             {
                 errors.Add($"{at}: boss has unknown encounter '{boss.EncounterId}'");
             }
-
-            DataValidation.RequireNonNegative(boss.FirstClearGold, $"{at}: boss firstClearGold", errors);
-            foreach (var itemId in boss.FirstClearItems.Where(id => !items.ContainsKey(id)))
-            {
-                errors.Add($"{at}: boss gives unknown item '{itemId}'");
-            }
         }
     }
 
-    private static void ValidateRecruit(
-        RecruitTemplate r,
-        IReadOnlyDictionary<string, SkillDefinition> skills,
-        IReadOnlyDictionary<string, ActionDefinition> actions,
-        IReadOnlyDictionary<string, ItemDefinition> items,
-        List<string> errors)
-    {
-        var at = $"{RecruitsFile} '{r.Id}'";
-        DataValidation.RequireText(r.Id, $"{RecruitsFile}: id", errors);
-        DataValidation.RequireText(r.Name, $"{at}: name", errors);
-        if (r.Names.Count == 0)
-        {
-            errors.Add($"{at}: needs at least one name");
-        }
-
-        foreach (var name in r.Names)
-        {
-            DataValidation.RequireText(name, $"{at}: names entry", errors);
-        }
-
-        DataValidation.ValidateStats(r.StatsMin, $"{at} statsMin", errors);
-        var (min, max) = (r.StatsMin, r.StatsMax);
-        if (max.Str < min.Str || max.Dex < min.Dex || max.Vital < min.Vital || max.Intel < min.Intel || max.Speed < min.Speed)
-        {
-            errors.Add($"{at}: statsMax must be at least statsMin for every stat");
-        }
-
-        DataValidation.RequireNonNegative(r.Price, $"{at}: price", errors);
-        DataValidation.ValidateEquipped(r.Equipment, $"{at}: equipment", items, errors);
-
-        // 신입은 패시브가 없으므로 요구 스킬이 없는 장비와 행동만, 시작 장비의 첫 옵션이나 공용 행동만 쓸 수 있다.
-        var noSkills = new SkillSet(SkillSet.NoSkills, skills);
-        var equipped = r.Equipment.Values.Where(items.ContainsKey).Select(id => items[id]).ToList();
-        foreach (var item in equipped.Where(i => !noSkills.Meets(i.Requirements)))
-        {
-            errors.Add($"{at}: a new recruit cannot wear '{item.Id}'");
-        }
-
-        if (r.Equipment.ContainsKey(EquipmentSlot.OffHand) && equipped.Any(i => i.TwoHanded))
-        {
-            errors.Add($"{at}: an off-hand item cannot be worn with a two-handed weapon");
-        }
-
-        var granted = equipped.SelectMany(i => i.Actions).ToHashSet();
-        foreach (var tactic in r.Tactics)
-        {
-            var tacticAt = $"{at} tactic {tactic.Priority}";
-            DataValidation.ValidateTactic(tactic, tacticAt, actions, errors);
-            if (actions.TryGetValue(tactic.ActionId, out var action) && !action.IsUsableBy(granted, noSkills))
-            {
-                errors.Add($"{tacticAt}: a new recruit cannot use '{tactic.ActionId}'");
-            }
-        }
-    }
 }

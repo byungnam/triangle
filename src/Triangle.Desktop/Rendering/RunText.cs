@@ -140,11 +140,18 @@ internal static class RunText
         ],
     };
 
+    public static (string Text, Color Color) Outcome(CombatOutcome outcome) => outcome switch
+    {
+        CombatOutcome.Victory => ("승리", Theme.Heal),
+        CombatOutcome.Defeat => ("패배", Theme.Enemy),
+        _ => ("무승부", Theme.TextDim),
+    };
+
     /// <summary>전투 결과 줄: 결과, 골드, 봉인과 죽음.</summary>
     public static IReadOnlyList<LogLine> Battle(RunBattle battle, Run run, GameData data)
     {
         var lines = new List<LogLine>();
-        var (outcome, color) = ExpeditionText.Outcome(battle.Result.Outcome);
+        var (outcome, color) = Outcome(battle.Result.Outcome);
         lines.Add(new($"{outcome} — {data.Encounters[battle.EncounterId].Name}", color));
         if (battle.Result.Outcome == CombatOutcome.Victory)
         {

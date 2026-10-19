@@ -1,9 +1,7 @@
 using Triangle.Core.Actions;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
-using Triangle.Core.Expeditions;
 using Triangle.Core.Items;
-using Triangle.Core.Progress;
 using Triangle.Core.Runs;
 using Triangle.Core.Skills;
 

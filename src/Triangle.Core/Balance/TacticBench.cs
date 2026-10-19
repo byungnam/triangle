@@ -1,8 +1,6 @@
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
 using Triangle.Core.Items;
-using Triangle.Core.Masteries;
-using Triangle.Core.Progress;
 using Triangle.Core.Tactics;
 
 namespace Triangle.Core.Balance;
@@ -41,33 +39,22 @@ public sealed record BenchScore(int Battles, int Wins, int Draws, double AllyHpO
 public static class TacticBench
 {
     /// <summary>
-    /// 기준 파티를 그 성장 상태로 만든다. 장비 번호와 레벨은 시작 회사와 같은 방식(차례로, 레벨 = 티어)이다.
+    /// 기준 파티를 그 성장 상태로 만든다(<see cref="BenchUnit.Grow"/>).
     /// <paramref name="equipment"/>는 세트의 장비 교체(<see cref="BenchDefinition.EquipmentOf"/>)로, 성장 전에 바꿔 낀다.
     /// </summary>
-    public static Company Party(
+    public static IReadOnlyList<BenchUnit> Party(
         BenchDefinition bench,
         GameData data,
         BenchState state,
         IReadOnlyDictionary<string, IReadOnlyDictionary<EquipmentSlot, string>>? equipment = null)
     {
-        var uid = 0;
-        var members = bench.Party.Select(m => new PartyMember(
-                m.Id,
-                m.Name,
-                m.Stats,
-                m.Row,
-                Worn(m, equipment).ToDictionary(p => p.Key, p => new ItemInstance(++uid, p.Value, data.Items[p.Value].Tier)),
-                m.Masteries.ToDictionary(p => p.Key, p => MasteryProgression.XpForLevel(p.Value)),
-                m.Skills,
-                []))
-            .ToList();
-        var company = new Company(members, members.Select(m => m.Id), 0, new Dictionary<string, int>(), 0, 1, gear: [], nextItemUid: uid + 1);
+        var party = bench.Party.Select(m => new BenchUnit(data, m, Worn(m, equipment))).ToList();
         if (state.Tier > 0)
         {
-            Growth.Grow(company, data, state.Tier, state.MasteryLevel);
+            party.ForEach(u => u.Grow(state.Tier, state.MasteryLevel));
         }
 
-        return company;
+        return party;
     }
 
     /// <summary>멤버의 시작 장비에 세트의 교체를 덮는다. 빈 문자열은 그 부위를 비운다.</summary>
@@ -93,16 +80,9 @@ public static class TacticBench
     public static PreparedMatchup Prepare(BenchDefinition bench, GameData data, BenchMatchup matchup, string? setId = null)
     {
         var state = bench.State(matchup.State);
-        var company = Party(bench, data, state, setId is null ? null : bench.EquipmentOf(setId));
-        var usable = company.Roster.ToDictionary(
-            m => m.Id,
-            m =>
-            {
-                var granted = m.GrantedActions(data);
-                var skills = m.Skills(data);
-                return (IReadOnlySet<string>)data.Actions.Values.Where(a => a.IsUsableBy(granted, skills)).Select(a => a.Id).ToHashSet();
-            });
-        return new PreparedMatchup(matchup, state, company.Roster.Select(m => m.ToCombatantSetup(data, 0)).ToList(), usable, data.CreateEncounterTeam(matchup.EncounterId));
+        var party = Party(bench, data, state, setId is null ? null : bench.EquipmentOf(setId));
+        var usable = party.ToDictionary(u => u.Id, u => u.UsableActions());
+        return new PreparedMatchup(matchup, state, party.Select(u => u.Setup()).ToList(), usable, data.CreateEncounterTeam(matchup.EncounterId));
     }
 
     /// <summary>

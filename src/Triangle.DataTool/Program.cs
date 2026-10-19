@@ -8,7 +8,7 @@ const string Usage = """
 
     명령:
       validate [--strict]        로더 검증(오류)과 추가 검사(경고)를 돌린다. --strict면 경고도 실패로 본다.
-      list <종류> [필터…]        종류: masteries skills actions effects items encounters zones recipes recruits classes unlocks
+      list <종류> [필터…]        종류: masteries skills actions effects items encounters zones classes unlocks
                                  필터: --search <글자> (id·이름·종류에 포함)
                                        items: --mastery <id> --slot <부위> --tier <n> --type <종류>
                                        actions: --mastery <id> (그 계열 아이템이 주거나 그 계열 무기 행동)
@@ -37,7 +37,7 @@ const string Usage = """
       copy <종류> <원본id> <새id> [--after <id>]  항목을 복사한다 (기본: 원본 바로 뒤).
       delete <종류> <id>               항목을 지운다. 가리키는 곳이 남아 있으면 검증에서 막힌다.
 
-      <id>: 쉼표로 여럿, *는 아무 글자 (예: old_*, '*'). 제작법은 결과 아이템 id.
+      <id>: 쉼표로 여럿, *는 아무 글자 (예: old_*, '*').
       <경로>: 점으로 잇는다. 배열 원소는 번호(0부터)나 id. 예: price, rewards.goldMin, units.e1.stats.str
       <값>: JSON으로 읽히면 JSON(50, true, ["a"], {"skillId":"archery","level":1}), 아니면 문자열.
             *=1.2  /=2  +=10  -=5 는 지금 숫자로 계산한다 (정수는 반올림).

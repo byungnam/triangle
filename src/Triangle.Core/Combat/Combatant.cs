@@ -19,7 +19,6 @@ public sealed class Combatant
         PowerMultiplierPercent = setup.PowerMultiplierPercent;
         EffectDurationBonus = setup.EffectDurationBonus;
         Armor = setup.Armor;
-        ArmorMasteries = setup.ArmorMasteries;
         Stats = setup.Stats;
         Row = setup.Row;
         StartRow = setup.Row;
@@ -43,9 +42,6 @@ public sealed class Combatant
     public string? Armor { get; }
     public int PowerMultiplierPercent { get; }
     public int EffectDurationBonus { get; }
-
-    /// <summary>입은 방어구 부위별 재질 계열.</summary>
-    public IReadOnlyList<string> ArmorMasteries { get; }
 
     public Stats Stats { get; }
     /// <summary>전투를 시작한(소환 유닛은 나타난) 줄.</summary>

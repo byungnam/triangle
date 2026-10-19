@@ -137,16 +137,6 @@ public class RunDataTests
     }
 
     [Fact]
-    public void Trinkets_stay_out_of_the_current_shop_drops_and_lineup_slots()
-    {
-        var trinkets = Shipped.Items.Values.Where(i => i.Slot == EquipmentSlot.Trinket).ToList();
-        Assert.NotEmpty(trinkets);
-        Assert.All(trinkets, t => Assert.False(Shop.Sells(t)));
-        Assert.DoesNotContain(Shipped.EquipmentInTiers(1, 4), i => i.Slot == EquipmentSlot.Trinket);
-        Assert.DoesNotContain(EquipmentSlot.Trinket, EquipmentSlots.All);
-    }
-
-    [Fact]
     public void Only_trinkets_carry_effects_and_trinkets_carry_no_actions_or_mastery()
     {
         const string bad = """

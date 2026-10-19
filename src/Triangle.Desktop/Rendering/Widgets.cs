@@ -95,38 +95,6 @@ internal sealed class Widgets(Ui ui)
         return tile;
     }
 
-    /// <summary>
-    /// 아이콘 칸 버튼 (장비 칸, 창고 아이템, 초상). 고르면 금색 테두리, 아니면 <paramref name="border"/>(등급색 등).
-    /// <paramref name="corner"/>가 있으면 오른쪽 아래에 작은 글자(개수 등)를 얹는다.
-    /// </summary>
-    public Button IconButton(string icon, int size, Color color, Color border, bool selected, string? corner = null, int padding = 7)
-    {
-        var content = new Panel { Width = size - 4, Height = size - 4 };
-        content.Widgets.Add(Icon(icon, size - padding * 2, color));
-        if (corner is not null)
-        {
-            var label = Label(corner, 12, Theme.Text, bold: true);
-            label.HorizontalAlignment = HorizontalAlignment.Right;
-            label.VerticalAlignment = VerticalAlignment.Bottom;
-            label.Background = new SolidBrush(Theme.BarBack * 0.8f);
-            label.Padding = new Thickness(3, 0);
-            content.Widgets.Add(label);
-        }
-
-        return new Button
-        {
-            Content = content,
-            Width = size,
-            Height = size,
-            Padding = new Thickness(0),
-            Background = new SolidBrush(selected ? Theme.Selected : Theme.BarBack),
-            OverBackground = new SolidBrush(Theme.ButtonHover),
-            PressedBackground = new SolidBrush(Theme.ButtonPressed),
-            Border = new SolidBrush(selected ? Theme.Gold : border),
-            BorderThickness = new Thickness(2),
-        };
-    }
-
     /// <summary>금색 아이콘과 제목, 옆에 흐린 설명 (구역 머리글).</summary>
     public Widget Header(string icon, string text, string? note = null, int size = 17)
     {

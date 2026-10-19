@@ -1,4 +1,4 @@
-namespace Triangle.Core.Progress;
+namespace Triangle.Core.Runs;
 
 /// <summary>
 /// 시드 계산. 같은 입력이면 항상 같은 값을 낸다 (세이브를 다시 불러도 결과가 같도록).
@@ -9,7 +9,7 @@ public static class Seeds
     /// <summary>다음 시드 (SplitMix32 한 단계).</summary>
     public static int Next(int seed) => Mix(unchecked((uint)seed + 0x9E3779B9u));
 
-    /// <summary>한 시드에서 번호별로 갈라진 시드 (예: 원정 시드 + 전투 번호).</summary>
+    /// <summary>한 시드에서 번호별로 갈라진 시드 (예: 판 시드 + 전투 번호).</summary>
     public static int Derive(int seed, int index) => Mix(unchecked((uint)seed ^ ((uint)index * 0x85EBCA6Bu + 0x632BE59Bu)));
 
     private static int Mix(uint z)

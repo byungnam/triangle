@@ -2,7 +2,6 @@ using System.Text.Json;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
 using Triangle.Core.Items;
-using Triangle.Core.Progress;
 using Triangle.Core.Runs;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
@@ -27,8 +26,7 @@ public class RunTests
         string Read(string file) => File.ReadAllText(Path.Combine(DataDirectory, file));
         return GameDataLoader.Parse(
             Read(GameDataLoader.MasteriesFile), Read(GameDataLoader.SkillsFile), Read(GameDataLoader.ActionsFile), Read(GameDataLoader.EncountersFile),
-            Read(GameDataLoader.EffectsFile), Read(GameDataLoader.ItemsFile), Read(GameDataLoader.ZonesFile), Read(GameDataLoader.RecruitsFile),
-            Read(GameDataLoader.RecipesFile), Read(GameDataLoader.ClassesFile), JsonSerializer.Serialize(change(Shipped.Run!), GameDataJson.Options),
+            Read(GameDataLoader.EffectsFile), Read(GameDataLoader.ItemsFile), Read(GameDataLoader.ZonesFile), Read(GameDataLoader.ClassesFile), JsonSerializer.Serialize(change(Shipped.Run!), GameDataJson.Options),
             Read(GameDataLoader.UnlocksFile));
     }
 

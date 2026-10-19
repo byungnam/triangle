@@ -47,13 +47,8 @@ internal static class Listing
 
             "zones" => data.Zones.Values
                 .Where(z => Matches(z.Id, z.Name))
-                .Select(z => Row(z.Id, z.Name, $"난이도 {z.Difficulty}", $"전투 {z.MaxBattles}",
+                .Select(z => Row(z.Id, z.Name, $"보스 {z.Boss?.EncounterId ?? "-"}",
                     string.Join(", ", z.Encounters.Select(e => $"{e.EncounterId}×{e.Weight}"))))
-                .ToList(),
-
-            "recipes" => data.Recipes.Values
-                .Where(r => Matches(r.Result, data.Items.GetValueOrDefault(r.Result)?.Name))
-                .Select(r => Row(r.Result, $"{r.Gold}G", string.Join(", ", r.Materials.Select(m => $"{m.ItemId}×{m.Count}"))))
                 .ToList(),
 
             "classes" => data.Classes.Values
@@ -65,11 +60,6 @@ internal static class Listing
             "unlocks" => data.Unlocks.Values
                 .Where(u => Matches(u.Id, u.Name))
                 .Select(u => Row(u.Id, u.Name, $"명성 {u.Cost}", string.Join(", ", u.Locks), u.StartGold > 0 ? $"시작 골드 +{u.StartGold}" : ""))
-                .ToList(),
-
-            "recruits" => data.Recruits.Values
-                .Where(r => Matches(r.Id, r.Name))
-                .Select(r => Row(r.Id, r.Name, $"{r.Price}G", r.Row.ToString(), string.Join(", ", r.Equipment.Values)))
                 .ToList(),
 
             _ => null,

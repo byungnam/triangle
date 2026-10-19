@@ -103,9 +103,9 @@ public sealed record BenchDefinition
     public IReadOnlyList<string> Validate(GameData data)
     {
         var errors = new List<string>();
-        if (Party.Count is 0 or > Progress.Company.MaxLineup)
+        if (Party.Count is 0 or > Runs.Run.MaxMembers)
         {
-            errors.Add($"party: 1 to {Progress.Company.MaxLineup} members");
+            errors.Add($"party: 1 to {Runs.Run.MaxMembers} members");
         }
 
         Duplicates(Party.Select(m => m.Id), "party", errors);

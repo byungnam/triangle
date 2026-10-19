@@ -1,7 +1,6 @@
 using Triangle.Core.Actions;
 using Triangle.Core.Combat;
 using Triangle.Core.Effects;
-using Triangle.Core.Masteries;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
@@ -297,6 +296,5 @@ public class ActionMechanicsTests
         Assert.Equal(CombatOutcome.Defeat, result.Outcome);
         var spiritId = Of<Summoned>(result).Single().UnitId;
         Assert.Contains(Of<Dismissed>(result), d => d.UnitId == spiritId);
-        Assert.DoesNotContain(MasteryGain.ForAllies(result), x => x.CombatantId == spiritId);
     }
 }

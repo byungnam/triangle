@@ -1,10 +1,8 @@
 using Triangle.Core.Actions;
 using Triangle.Core.Combat;
 using Triangle.Core.Effects;
-using Triangle.Core.Expeditions;
 using Triangle.Core.Items;
 using Triangle.Core.Masteries;
-using Triangle.Core.Progress;
 using Triangle.Core.Runs;
 using Triangle.Core.Skills;
 
@@ -21,15 +19,11 @@ public sealed class GameData
         IReadOnlyDictionary<string, EncounterDefinition> encounters,
         IReadOnlyDictionary<string, ItemDefinition> items,
         IReadOnlyDictionary<string, ZoneDefinition> zones,
-        IReadOnlyDictionary<string, RecruitTemplate> recruits,
-        IReadOnlyDictionary<string, RecipeDefinition>? recipes = null,
         IReadOnlyDictionary<string, ClassDefinition>? classes = null)
     {
         Classes = classes ?? new Dictionary<string, ClassDefinition>();
-        Recipes = recipes ?? new Dictionary<string, RecipeDefinition>();
         Items = items;
         Zones = zones;
-        Recruits = recruits;
         Effects = effects;
         Masteries = masteries;
         Skills = skills;
@@ -38,32 +32,18 @@ public sealed class GameData
         Catalog = new CombatCatalog(actions, skills) { Effects = effects };
     }
 
-    /// <summary>장비 계열이자 숙련 트리.</summary>
+    /// <summary>장비 계열 (무기 종류와 재질). 클래스 계열, 아이템과 패시브의 소속, 위력 태그에 쓴다.</summary>
     public IReadOnlyDictionary<string, MasteryDefinition> Masteries { get; }
 
     public IEnumerable<MasteryDefinition> MasteriesOf(MasteryKind kind) => Masteries.Values.Where(m => m.Kind == kind);
 
-    /// <summary>아이템 (장비와 재료).</summary>
     public IReadOnlyDictionary<string, ItemDefinition> Items { get; }
 
-    /// <summary>그 부위에 끼는 아이템 (데이터 순서).</summary>
-    public IEnumerable<ItemDefinition> ItemsFor(EquipmentSlot slot) => Items.Values.Where(i => i.Slot == slot);
-
-    /// <summary>아이템의 계열. null이면 null.</summary>
-    public string? MasteryOf(string? itemId) => itemId is null ? null : Items[itemId].Mastery;
-
-    /// <summary>티어 범위의 장비 (재료와 장신구 제외, 데이터 순서).</summary>
-    public IReadOnlyList<ItemDefinition> EquipmentInTiers(int minTier, int maxTier) =>
-        Items.Values.Where(i => i.Slot.IsCompanySlot() && i.Tier >= minTier && i.Tier <= maxTier).ToList();
-
-    /// <summary>그 행동을 주는 아이템 (데이터 순서).</summary>
+    /// <summary>그 행동을 주는 아이템 (데이터 순서, 전술 측정의 기준 파티용).</summary>
     public IEnumerable<ItemDefinition> ItemsGranting(string actionId) =>
         Items.Values.Where(i => i.Actions.Contains(actionId));
 
-    /// <summary>제작법 (결과 아이템 ID → 제작법, 데이터 순서).</summary>
-    public IReadOnlyDictionary<string, RecipeDefinition> Recipes { get; }
-
-    /// <summary>전투지역 (데이터 순서).</summary>
+    /// <summary>지역 (데이터 순서). 판의 막이 지역을 고른다.</summary>
     public IReadOnlyDictionary<string, ZoneDefinition> Zones { get; }
 
     /// <summary>한 판(원정)의 규칙 (로그라이트 재편, `run.json`). 데이터 폴더에서 읽으면 늘 있다.</summary>
@@ -75,10 +55,7 @@ public sealed class GameData
     /// <summary>클래스 (로그라이트 재편, 데이터 순서). 원정을 시작할 때 이것으로 파티를 고른다.</summary>
     public IReadOnlyDictionary<string, ClassDefinition> Classes { get; }
 
-    /// <summary>모집 후보 템플릿.</summary>
-    public IReadOnlyDictionary<string, RecruitTemplate> Recruits { get; }
-
-    /// <summary>숙련 트리의 패시브 스킬.</summary>
+    /// <summary>패시브 스킬 (계열별).</summary>
     public IReadOnlyDictionary<string, SkillDefinition> Skills { get; }
 
     /// <summary>버프·디버프·지속 피해·지속 회복.</summary>

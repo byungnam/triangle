@@ -20,8 +20,6 @@ public sealed class DataDocument
         ["encounters"] = GameDataLoader.EncountersFile,
         ["items"] = GameDataLoader.ItemsFile,
         ["zones"] = GameDataLoader.ZonesFile,
-        ["recruits"] = GameDataLoader.RecruitsFile,
-        ["recipes"] = GameDataLoader.RecipesFile,
         ["classes"] = GameDataLoader.ClassesFile,
         ["unlocks"] = GameDataLoader.UnlocksFile,
     };
@@ -41,8 +39,8 @@ public sealed class DataDocument
     public static DataDocument FromJson(IReadOnlyDictionary<string, string> json) =>
         new(Files.Keys.ToDictionary(kind => kind, kind => JsonNode.Parse(json.GetValueOrDefault(kind, "[]"))!.AsArray()));
 
-    /// <summary>항목을 가리키는 속성: 제작법은 결과 아이템, 나머지는 id.</summary>
-    public static string KeyOf(string kind) => kind == "recipes" ? "result" : "id";
+    /// <summary>항목을 가리키는 속성 (모든 종류가 id).</summary>
+    public static string KeyOf(string kind) => "id";
 
     public static string IdOf(string kind, JsonObject entry) => entry[KeyOf(kind)]?.GetValue<string>() ?? "";
 
@@ -95,7 +93,7 @@ public sealed class DataDocument
     {
         string J(string kind) => ToJson(kind);
         return GameDataLoader.Parse(J("masteries"), J("skills"), J("actions"), J("encounters"), J("effects"), J("items"), J("zones"),
-            J("recruits"), J("recipes"), J("classes"), unlocksJson: J("unlocks"));
+            J("classes"), unlocksJson: J("unlocks"));
     }
 
     /// <summary>파일에 쓸 내용 (게임 데이터 JSON 설정, 끝에 줄바꿈).</summary>

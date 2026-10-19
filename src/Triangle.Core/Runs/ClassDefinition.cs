@@ -20,7 +20,7 @@ public sealed record ClassDefinition
     /// <summary>파티에 넣거나 합류할 때 처음 서는 줄. 멤버마다 바꿀 수 있다.</summary>
     public required Row Row { get; init; }
 
-    /// <summary>고정 스탯. 모집 틀의 중간값에서 시작했다.</summary>
+    /// <summary>고정 스탯 (옛 모집 틀의 중간값에서 시작했다).</summary>
     public required Stats Stats { get; init; }
 
     /// <summary>이 클래스의 계열(숙련 ID). 무기는 이 계열의 주무기만 낀다(클래스 전용).</summary>

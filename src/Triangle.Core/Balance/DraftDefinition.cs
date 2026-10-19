@@ -61,9 +61,9 @@ public sealed record DraftDefinition
     public IReadOnlyList<string> Validate(GameData data)
     {
         var errors = new List<string>();
-        if (Party.Count is 0 or > Progress.Company.MaxLineup)
+        if (Party.Count is 0 or > Runs.Run.MaxMembers)
         {
-            errors.Add($"party: 1 to {Progress.Company.MaxLineup} members");
+            errors.Add($"party: 1 to {Runs.Run.MaxMembers} members");
         }
 
         errors.AddRange(Party.Where(id => !data.Classes.ContainsKey(id)).Select(id => $"party: unknown class '{id}'"));

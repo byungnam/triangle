@@ -49,11 +49,7 @@ internal static class DataValidation
     {
         foreach (var (slot, itemId) in equipment)
         {
-            if (!slot.IsEquipment())
-            {
-                errors.Add($"{at}: {slot} is not an equipment slot");
-            }
-            else if (!items.TryGetValue(itemId, out var item))
+            if (!items.TryGetValue(itemId, out var item))
             {
                 errors.Add($"{at}: {slot}: unknown item '{itemId}'");
             }

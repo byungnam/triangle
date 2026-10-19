@@ -19,14 +19,17 @@ public static class DataLint
         return warnings;
     }
 
-    /// <summary>공용도, 무기 행동도, 소환 행동도 아니고 주는 아이템도 없는 행동 (적도 아이템 행동만 쓴다).</summary>
+    /// <summary>공용도, 무기 행동도, 소환 행동도 아니고 주는 아이템도, 클래스 카드도, 적의 행동 목록에도 없는 행동.</summary>
     private static void CheckActions(GameData data, List<string> warnings)
     {
         var summonActions = data.Actions.Values
             .Select(a => a.Summon?.ActionId)
             .OfType<string>()
             .ToHashSet();
-        var itemActions = data.Items.Values.SelectMany(i => i.Actions).ToHashSet();
+        var itemActions = data.Items.Values.SelectMany(i => i.Actions)
+            .Concat(data.Classes.Values.SelectMany(c => c.Skills))
+            .Concat(data.Encounters.Values.SelectMany(e => e.Units).SelectMany(u => u.Actions ?? []))
+            .ToHashSet();
 
         foreach (var action in data.Actions.Values)
         {
@@ -50,6 +53,7 @@ public static class DataLint
         var used = data.Actions.Values
             .SelectMany(a => a.Applies.Select(x => x.EffectId).Append(a.BonusAgainst?.EffectId))
             .Concat(data.Encounters.Values.SelectMany(e => e.Units).SelectMany(u => u.Effects))
+            .Concat(data.Items.Values.SelectMany(i => i.Effects))
             .OfType<string>()
             .ToHashSet();
         foreach (var effect in data.Effects.Values.Where(e => !used.Contains(e.Id)))
@@ -80,7 +84,8 @@ public static class DataLint
         var recruitGear = data.Recruits.Values.SelectMany(r => r.Equipment.Values).ToHashSet();
         var materials = data.Recipes.Values.SelectMany(r => r.Materials).Select(m => m.ItemId).ToHashSet();
 
-        foreach (var item in data.Items.Values)
+        // 장신구는 로그라이트 재편의 원정 상점에서만 얻는다(아직 없다). 지금 게임의 경로로는 보지 않는다.
+        foreach (var item in data.Items.Values.Where(i => i.Slot != EquipmentSlot.Trinket))
         {
             var at = $"{GameDataLoader.ItemsFile} '{item.Id}'";
             var obtainable = dropped.Contains(item.Id)

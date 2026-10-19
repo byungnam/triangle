@@ -127,12 +127,12 @@ public class GameDataLoaderTests
             ["plate"] = "defense", ["leather"] = "mobility", ["cloth"] = "meditation",
         };
 
-        // 종류(무기는 type, 방어구는 계열)·부위마다 T1~T4가 하나씩 있다.
+        // 종류(무기는 type, 방어구는 계열)·부위마다 T1~T4가 하나씩 있다. 장신구(로그라이트 재편)는 따로 본다.
         static (EquipmentSlot, string?, string?) Line(ItemDefinition i) => (i.Slot, i.Mastery, i.Type);
-        foreach (var line in data.Items.Values.Where(i => i.IsEquipment).GroupBy(Line))
+        foreach (var line in data.Items.Values.Where(i => i.Slot.IsCompanySlot()).GroupBy(Line))
             Assert.Equal([1, 2, 3, 4], line.Select(i => i.Tier).Order());
 
-        foreach (var item in data.Items.Values.Where(i => i.IsEquipment))
+        foreach (var item in data.Items.Values.Where(i => i.Slot.IsCompanySlot()))
         {
             var key = core[item.Mastery!];
             var levels = item.Requirements.ToDictionary(r => r.SkillId, r => r.Level);
@@ -173,7 +173,7 @@ public class GameDataLoaderTests
 
         // T3·T4 장비마다 제작법이 하나 있고, T1·T2는 제작하지 않는다.
         Assert.Equal(
-            data.Items.Values.Where(i => i.IsEquipment && i.Tier >= 3).Select(i => i.Id).Order(),
+            data.Items.Values.Where(i => i.Slot.IsCompanySlot() && i.Tier >= 3).Select(i => i.Id).Order(),
             data.Recipes.Keys.Order());
 
         // 재료는 모두 지역에서 떨어지고, 고대 파편은 가장 어려운 지역에서만 떨어져 T4 제작법에만 쓰인다.
@@ -569,7 +569,7 @@ public class GameDataLoaderTests
 
             var errors = Assert.Throws<GameDataException>(() => GameDataLoader.LoadDirectory(dir)).Errors;
 
-            Assert.Equal(7, errors.Count);
+            Assert.Equal(8, errors.Count);
             Assert.Contains(errors, e => e.StartsWith("items.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("recipes.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("zones.json: cannot read"));
@@ -577,6 +577,7 @@ public class GameDataLoaderTests
             Assert.Contains(errors, e => e.StartsWith("actions.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("effects.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("encounters.json: cannot read"));
+            Assert.Contains(errors, e => e.StartsWith("classes.json: cannot read"));
         }
         finally
         {

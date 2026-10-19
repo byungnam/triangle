@@ -24,6 +24,9 @@
           "swordsmanship": 1,
           "defense": 1
         },
+        "actions": [
+          "shield_wall"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -58,6 +61,9 @@
           "spearmanship": 1,
           "defense": 1
         },
+        "actions": [
+          "harrying_thrust"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -91,6 +97,9 @@
         "skills": {
           "healing": 2
         },
+        "actions": [
+          "heal"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -134,6 +143,9 @@
           "shield_mastery": 1,
           "defense": 1
         },
+        "actions": [
+          "heavy_strike"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -167,6 +179,9 @@
         "skills": {
           "swordsmanship": 2
         },
+        "actions": [
+          "greatsword_sweep"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -201,6 +216,10 @@
           "archery": 3,
           "mobility": 1
         },
+        "actions": [
+          "poison_arrow",
+          "fire_arrow"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -235,6 +254,10 @@
         "skills": {
           "healing": 2
         },
+        "actions": [
+          "heal",
+          "prayer_of_protection"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -267,6 +290,7 @@
         "id": "dog_1",
         "name": "들개",
         "row": "Front",
+        "actions": [],
         "stats": {
           "str": 7,
           "dex": 8,
@@ -287,6 +311,7 @@
         "id": "dog_2",
         "name": "들개",
         "row": "Front",
+        "actions": [],
         "stats": {
           "str": 7,
           "dex": 8,
@@ -307,6 +332,7 @@
         "id": "dog_3",
         "name": "들개",
         "row": "Front",
+        "actions": [],
         "stats": {
           "str": 7,
           "dex": 8,
@@ -345,6 +371,9 @@
           "MainHand": "old_hatchet",
           "Body": "leather_armor"
         },
+        "actions": [
+          "bleeding_cut"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -375,6 +404,9 @@
           "MainHand": "old_sword",
           "Body": "leather_armor"
         },
+        "actions": [
+          "disarm"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -412,6 +444,9 @@
           "MainHand": "old_spear",
           "Body": "leather_armor"
         },
+        "actions": [
+          "javelin"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -442,6 +477,10 @@
           "MainHand": "hunting_bow",
           "Body": "leather_armor"
         },
+        "actions": [
+          "harass_shot",
+          "fire_arrow"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -489,6 +528,9 @@
         "skills": {
           "spearmanship": 1
         },
+        "actions": [
+          "harrying_thrust"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -522,6 +564,9 @@
         "skills": {
           "spearmanship": 1
         },
+        "actions": [
+          "spear_sweep"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -564,6 +609,9 @@
         "skills": {
           "defense": 2
         },
+        "actions": [
+          "shield_wall"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -597,6 +645,10 @@
         "skills": {
           "crossbow_mastery": 2
         },
+        "actions": [
+          "barbed_bolt",
+          "bolt_shot"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -643,6 +695,9 @@
         "skills": {
           "axemanship": 2
         },
+        "actions": [
+          "reckless_blow"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -673,6 +728,9 @@
           "MainHand": "old_hatchet",
           "Body": "leather_armor"
         },
+        "actions": [
+          "bleeding_cut"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -715,6 +773,9 @@
           "mace_mastery": 2,
           "defense": 1
         },
+        "actions": [
+          "bone_crusher"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -755,6 +816,9 @@
           "mace_mastery": 2,
           "defense": 1
         },
+        "actions": [
+          "quake_slam"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -794,6 +858,10 @@
         "skills": {
           "archery": 2
         },
+        "actions": [
+          "poison_arrow",
+          "fire_arrow"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -840,6 +908,9 @@
         "skills": {
           "mobility": 1
         },
+        "actions": [
+          "javelin"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -873,6 +944,9 @@
         "skills": {
           "mobility": 1
         },
+        "actions": [
+          "hamstring"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -914,6 +988,9 @@
         "skills": {
           "defense": 1
         },
+        "actions": [
+          "heavy_blow"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -947,6 +1024,10 @@
         "skills": {
           "pyromancy": 2
         },
+        "actions": [
+          "fireball",
+          "ember"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -986,6 +1067,9 @@
         "skills": {
           "healing": 2
         },
+        "actions": [
+          "heal"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1028,6 +1112,10 @@
           "axemanship": 2,
           "defense": 1
         },
+        "actions": [
+          "berserk",
+          "reckless_blow"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1065,6 +1153,9 @@
           "Body": "leather_armor"
         },
         "skills": {},
+        "actions": [
+          "bleeding_cut"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1096,6 +1187,10 @@
           "Body": "leather_armor"
         },
         "skills": {},
+        "actions": [
+          "lead_shot",
+          "sling_stone"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1139,6 +1234,9 @@
         "skills": {
           "defense": 1
         },
+        "actions": [
+          "shield_wall"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1172,6 +1270,9 @@
         "skills": {
           "spearmanship": 2
         },
+        "actions": [
+          "spear_sweep"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1205,6 +1306,9 @@
         "skills": {
           "healing": 1
         },
+        "actions": [
+          "heal"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1236,6 +1340,10 @@
           "Body": "leather_armor"
         },
         "skills": {},
+        "actions": [
+          "volley",
+          "bayonet"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1279,6 +1387,9 @@
           "mace_mastery": 2,
           "defense": 1
         },
+        "actions": [
+          "crush"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1313,6 +1424,10 @@
           "axemanship": 2,
           "mobility": 1
         },
+        "actions": [
+          "berserk",
+          "reckless_blow"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1353,6 +1468,10 @@
           "cryomancy": 2,
           "meditation": 1
         },
+        "actions": [
+          "blizzard",
+          "ice_lance"
+        ],
         "tactics": [
           {
             "priority": 1,

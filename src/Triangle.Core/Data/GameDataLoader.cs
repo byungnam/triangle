@@ -6,6 +6,7 @@ using Triangle.Core.Expeditions;
 using Triangle.Core.Items;
 using Triangle.Core.Masteries;
 using Triangle.Core.Progress;
+using Triangle.Core.Runs;
 using Triangle.Core.Skills;
 
 namespace Triangle.Core.Data;
@@ -25,6 +26,7 @@ public static class GameDataLoader
     public const string ZonesFile = "zones.json";
     public const string RecruitsFile = "recruits.json";
     public const string RecipesFile = "recipes.json";
+    public const string ClassesFile = "classes.json";
 
     /// <param name="extraDirectory">
     /// 게임 데이터 밖의 추가 데이터 폴더 (전술 측정의 시제품, <see cref="Balance.BenchDefinition.ExtraData"/>).
@@ -60,12 +62,13 @@ public static class GameDataLoader
         var zones = Read(ZonesFile);
         var recruits = Read(RecruitsFile);
         var recipes = Read(RecipesFile);
+        var classes = Read(ClassesFile);
         if (errors.Count > 0)
         {
             throw new GameDataException(errors);
         }
 
-        return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, recruits!, recipes!);
+        return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, recruits!, recipes!, classes!);
     }
 
     /// <summary>두 JSON 배열을 이어 붙인다. 배열이 아니거나 읽을 수 없으면 오류를 남기고 원래 것을 돌려준다.</summary>
@@ -91,7 +94,7 @@ public static class GameDataLoader
     }
 
     public static GameData Parse(string masteriesJson, string skillsJson, string actionsJson, string encountersJson, string effectsJson = "[]",
-        string itemsJson = "[]", string zonesJson = "[]", string recruitsJson = "[]", string recipesJson = "[]")
+        string itemsJson = "[]", string zonesJson = "[]", string recruitsJson = "[]", string recipesJson = "[]", string classesJson = "[]")
     {
         var errors = new List<string>();
 
@@ -104,6 +107,7 @@ public static class GameDataLoader
         var zones = Deserialize<ZoneDefinition>(zonesJson, ZonesFile, errors);
         var recruits = Deserialize<RecruitTemplate>(recruitsJson, RecruitsFile, errors);
         var recipes = Deserialize<RecipeDefinition>(recipesJson, RecipesFile, errors);
+        var classes = Deserialize<ClassDefinition>(classesJson, ClassesFile, errors);
 
         // 형식 오류가 있으면 참조 검증은 의미가 없다.
         if (errors.Count > 0)
@@ -129,6 +133,7 @@ public static class GameDataLoader
         var itemMap = ToMap(items!, i => i.Id, ItemsFile, errors);
         var zoneMap = ToMap(zones!, z => z.Id, ZonesFile, errors);
         var recruitMap = ToMap(recruits!, r => r.Id, RecruitsFile, errors);
+        var classMap = ToMap(classes!, c => c.Id, ClassesFile, errors);
         var recipeMap = new Dictionary<string, RecipeDefinition>();
         foreach (var recipe in recipes!)
         {
@@ -176,7 +181,7 @@ public static class GameDataLoader
 
         foreach (var item in items!)
         {
-            ValidateItem(item, masteryMap, skillMap, actionMap, errors);
+            ValidateItem(item, masteryMap, skillMap, actionMap, effectMap, errors);
         }
 
         foreach (var zone in zones!)
@@ -194,12 +199,14 @@ public static class GameDataLoader
             ValidateRecipe(recipe, itemMap, errors);
         }
 
+        ValidateClasses(classes!, masteryMap, skillMap, actionMap, itemMap, errors);
+
         if (errors.Count > 0)
         {
             throw new GameDataException(errors);
         }
 
-        return new GameData(masteryMap, skillMap, actionMap, effectMap, encounterMap, itemMap, zoneMap, recruitMap, recipeMap);
+        return new GameData(masteryMap, skillMap, actionMap, effectMap, encounterMap, itemMap, zoneMap, recruitMap, recipeMap, classMap);
     }
 
     private static List<T>? Deserialize<T>(string json, string fileName, List<string> errors)
@@ -395,6 +402,7 @@ public static class GameDataLoader
         IReadOnlyDictionary<string, MasteryDefinition> masteries,
         IReadOnlyDictionary<string, SkillDefinition> skills,
         IReadOnlyDictionary<string, ActionDefinition> actions,
+        IReadOnlyDictionary<string, EffectDefinition> effects,
         List<string> errors)
     {
         var at = $"{ItemsFile} '{item.Id}'";
@@ -418,13 +426,29 @@ public static class GameDataLoader
             return;
         }
 
-        if (item.Mastery is null)
+        errors.AddRange(item.Effects.Where(id => !effects.ContainsKey(id)).Select(id => $"{at}: unknown effect '{id}'"));
+        if (item.Slot == EquipmentSlot.Trinket)
         {
-            errors.Add($"{at}: equipment needs a mastery");
+            if (item.Mastery is not null || item.TwoHanded || item.Actions.Count > 0 || item.Requirements.Count > 0)
+            {
+                errors.Add($"{at}: a trinket has no mastery, twoHanded, requirements or actions");
+            }
         }
         else
         {
-            DataValidation.RequireKind(item.Mastery, item.Slot.IsWeapon() ? MasteryKind.Weapon : MasteryKind.Armor, $"{at}: mastery", masteries, errors);
+            if (item.Effects.Count > 0)
+            {
+                errors.Add($"{at}: only a trinket can have effects");
+            }
+
+            if (item.Mastery is null)
+            {
+                errors.Add($"{at}: equipment needs a mastery");
+            }
+            else
+            {
+                DataValidation.RequireKind(item.Mastery, item.Slot.IsWeapon() ? MasteryKind.Weapon : MasteryKind.Armor, $"{at}: mastery", masteries, errors);
+            }
         }
 
         if (item.TwoHanded && item.Slot != EquipmentSlot.MainHand)
@@ -555,7 +579,13 @@ public static class GameDataLoader
                 errors.Add($"{unitAt}: an off-hand item cannot be worn with a two-handed weapon");
             }
 
-            var granted = new Loadout(worn).GrantedActions(actions.Values);
+            if (unit.Actions is not null)
+            {
+                errors.AddRange(unit.Actions.Where(id => !actions.ContainsKey(id)).Select(id => $"{unitAt}: unknown action '{id}'"));
+                errors.AddRange(unit.Actions.GroupBy(id => id).Where(g => g.Count() > 1).Select(g => $"{unitAt}: duplicate action '{g.Key}'"));
+            }
+
+            var granted = unit.Actions?.ToHashSet() ?? new Loadout(worn).GrantedActions(actions.Values);
             foreach (var tactic in unit.Tactics)
             {
                 var tacticAt = $"{unitAt} tactic {tactic.Priority}";
@@ -567,7 +597,9 @@ public static class GameDataLoader
 
                 if (!action.IsGranted(granted))
                 {
-                    errors.Add($"{tacticAt}: no equipped item gives '{tactic.ActionId}'");
+                    errors.Add(unit.Actions is null
+                        ? $"{tacticAt}: no equipped item gives '{tactic.ActionId}'"
+                        : $"{tacticAt}: '{tactic.ActionId}' is not in the unit's actions");
                 }
 
                 foreach (var missing in set.Missing(action.Requirements))
@@ -575,6 +607,70 @@ public static class GameDataLoader
                     errors.Add($"{tacticAt}: '{tactic.ActionId}' needs '{missing.SkillId}' level {missing.Level}");
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// 클래스: 계열·무기·방어구·카드 풀의 참조. 무기는 그 클래스 계열의 주무기, 방어구는 몸통. 시작 스킬은 카드 풀에 있어야 하고,
+    /// 공용·소환물 전용 행동은 카드가 될 수 없다. 액티브와 패시브는 한 클래스에만 속한다.
+    /// </summary>
+    private static void ValidateClasses(
+        IReadOnlyList<ClassDefinition> classes,
+        IReadOnlyDictionary<string, MasteryDefinition> masteries,
+        IReadOnlyDictionary<string, SkillDefinition> skills,
+        IReadOnlyDictionary<string, ActionDefinition> actions,
+        IReadOnlyDictionary<string, ItemDefinition> items,
+        List<string> errors)
+    {
+        foreach (var c in classes)
+        {
+            var at = $"{ClassesFile} '{c.Id}'";
+            DataValidation.RequireText(c.Id, $"{ClassesFile}: id", errors);
+            DataValidation.RequireText(c.Name, $"{at}: name", errors);
+            DataValidation.ValidateStats(c.Stats, at, errors);
+            errors.AddRange(c.Families.Where(f => !masteries.ContainsKey(f)).Select(f => $"{at}: unknown mastery '{f}'"));
+            if (!items.TryGetValue(c.Weapon, out var weapon))
+            {
+                errors.Add($"{at}: unknown weapon '{c.Weapon}'");
+            }
+            else if (!c.CanWield(weapon))
+            {
+                errors.Add($"{at}: weapon '{c.Weapon}' is not a main-hand item of the class families");
+            }
+
+            if (!items.TryGetValue(c.Armor, out var armor))
+            {
+                errors.Add($"{at}: unknown armor '{c.Armor}'");
+            }
+            else if (armor.Slot != EquipmentSlot.Body)
+            {
+                errors.Add($"{at}: armor '{c.Armor}' is not a body item");
+            }
+
+            if (!c.Skills.Contains(c.StartingSkill))
+            {
+                errors.Add($"{at}: starting skill '{c.StartingSkill}' is not in skills");
+            }
+
+            foreach (var id in c.Skills)
+            {
+                if (!actions.TryGetValue(id, out var action))
+                {
+                    errors.Add($"{at}: unknown skill '{id}'");
+                }
+                else if (action.Universal || action.SummonOnly)
+                {
+                    errors.Add($"{at}: '{id}' cannot be a card (universal or summon-only action)");
+                }
+            }
+
+            errors.AddRange(c.Passives.Where(id => !skills.ContainsKey(id)).Select(id => $"{at}: unknown passive '{id}'"));
+            errors.AddRange(c.Skills.Concat(c.Passives).GroupBy(id => id).Where(g => g.Count() > 1).Select(g => $"{at}: duplicate card '{g.Key}'"));
+        }
+
+        foreach (var shared in classes.SelectMany(c => c.Skills.Concat(c.Passives).Distinct().Select(id => (id, c.Id))).GroupBy(x => x.id).Where(g => g.Count() > 1))
+        {
+            errors.Add($"{ClassesFile}: '{shared.Key}' belongs to more than one class ({string.Join(", ", shared.Select(x => x.Item2))})");
         }
     }
 

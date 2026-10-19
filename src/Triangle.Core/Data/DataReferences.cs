@@ -51,6 +51,7 @@ public static class DataReferences
                 var at = $"{GameDataLoader.EncountersFile} '{e.Id}' unit '{u.Id}'";
                 Add(u.Equipment.Values.Contains(id), $"{at}: equipment");
                 Add(u.Skills.ContainsKey(id), $"{at}: skills");
+                Add(u.Actions?.Contains(id) == true, $"{at}: actions");
                 Add(u.Tactics.Any(t => t.ActionId == id), $"{at}: tactics");
                 Add(u.Effects.Contains(id), $"{at}: effects");
             }
@@ -77,6 +78,17 @@ public static class DataReferences
             var at = $"{GameDataLoader.RecruitsFile} '{r.Id}'";
             Add(r.Equipment.Values.Contains(id), $"{at}: equipment");
             Add(r.Tactics.Any(t => t.ActionId == id), $"{at}: tactics");
+        }
+
+        foreach (var c in data.Classes.Values)
+        {
+            var at = $"{GameDataLoader.ClassesFile} '{c.Id}'";
+            Add(c.Families.Contains(id), $"{at}: families");
+            Add(c.Weapon == id, $"{at}: weapon");
+            Add(c.Armor == id, $"{at}: armor");
+            Add(c.StartingSkill == id, $"{at}: startingSkill");
+            Add(c.Skills.Contains(id), $"{at}: skills");
+            Add(c.Passives.Contains(id), $"{at}: passives");
         }
 
         return found;

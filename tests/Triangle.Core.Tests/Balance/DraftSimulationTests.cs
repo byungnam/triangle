@@ -5,32 +5,13 @@ using Triangle.Core.Tactics;
 namespace Triangle.Core.Tests.Balance;
 
 /// <summary>
-/// 드래프트 시뮬레이션(`tools/draft`)의 규칙. 로그라이트 재편(설계)의 임시 규칙이고 수치도 임시다. 결과 수치는 보지 않고 규칙만 지킨다.
+/// 드래프트 시뮬레이션(`tools/draft`, 클래스는 `data/classes.json`)의 규칙. 로그라이트 재편(설계)의 임시 규칙이고 수치도 임시다. 결과 수치는 보지 않고 규칙만 지킨다.
 /// </summary>
 public class DraftSimulationTests
 {
     private static readonly GameData Data = GameDataLoader.LoadDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
 
     private static readonly DraftDefinition Draft = DraftDefinition.Load(Path.Combine(AppContext.BaseDirectory, "draft", "draft.json"), Data);
-
-    [Fact]
-    public void Classes_draw_only_from_their_own_families()
-    {
-        IReadOnlySet<string> Pool(string classId) => DraftSimulation.ActivePool(Data, Draft.Class(classId));
-
-        Assert.Contains("shield_wall", Pool("knight"));
-        Assert.Contains("provoke", Pool("knight"));
-        Assert.Contains("throwing_knife", Pool("archer"));
-        Assert.Contains("fireball", Pool("elementalist"));
-        Assert.Contains("heal", Pool("priest"));
-        Assert.DoesNotContain("fireball", Pool("knight"));
-        Assert.DoesNotContain("basic_attack", Pool("priest"));
-
-        // 재질 행동(도발, 투척 단검 등)도 그 클래스 전용이므로 클래스끼리 겹치는 카드가 없다.
-        var classes = Draft.Classes.Select(c => c.Id).ToList();
-        Assert.All(classes.SelectMany(a => classes.Where(b => string.CompareOrdinal(a, b) < 0).Select(b => (a, b))),
-            pair => Assert.Empty(Pool(pair.a).Intersect(Pool(pair.b))));
-    }
 
     [Fact]
     public void Placement_keeps_the_line_cap_and_always_ends_with_the_basic_attack()
@@ -123,11 +104,11 @@ public class DraftSimulationTests
     [Fact]
     public void Definition_checks_its_references()
     {
-        var wrongSkill = Draft with { Classes = [Draft.Classes[0] with { StartingSkill = "fireball" }, .. Draft.Classes.Skip(1)] };
         var unknownClass = Draft with { Party = ["knight", "bard"] };
+        var noSuchTier = Draft with { Acts = [new DraftAct("outskirts_forest", 1, 9)] };
 
-        Assert.Contains(wrongSkill.Validate(Data), e => e.Contains("starting skill 'fireball'"));
         Assert.Contains(unknownClass.Validate(Data), e => e.Contains("unknown class 'bard'"));
+        Assert.Contains(noSuchTier.Validate(Data), e => e.Contains("no tier 9 item like 'old_sword'"));
         Assert.Empty(Draft.Validate(Data));
     }
 

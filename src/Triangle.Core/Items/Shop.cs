@@ -20,7 +20,7 @@ public static class Shop
             .ThenBy(i => i.Tier)
             .ToList();
 
-    public static bool Sells(ItemDefinition item) => item.IsEquipment && item.Tier <= MaxTier;
+    public static bool Sells(ItemDefinition item) => item.Slot.IsCompanySlot() && item.Tier <= MaxTier;
 
     public static int SellPrice(ItemDefinition item) => item.Price * SellPercent / 100;
 }

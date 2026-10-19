@@ -27,6 +27,11 @@
           "endurance": 3,
           "shield_mastery": 1
         },
+        "actions": [
+          "provoke",
+          "shield_wall",
+          "first_aid"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -78,6 +83,10 @@
         "skills": {
           "pyromancy": 2
         },
+        "actions": [
+          "ash_storm",
+          "fireball"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -132,6 +141,7 @@
         "skills": {
           "defense": 2
         },
+        "actions": [],
         "tactics": [
           {
             "priority": 1,
@@ -165,6 +175,10 @@
         "skills": {
           "pyromancy": 2
         },
+        "actions": [
+          "ash_storm",
+          "fireball"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -235,6 +249,9 @@
         "skills": {
           "spearmanship": 1
         },
+        "actions": [
+          "javelin"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -268,6 +285,9 @@
         "skills": {
           "spearmanship": 1
         },
+        "actions": [
+          "javelin"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -301,6 +321,9 @@
         "skills": {
           "cryomancy": 2
         },
+        "actions": [
+          "ice_lance"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -339,6 +362,9 @@
           "Body": "plate_armor"
         },
         "skills": {},
+        "actions": [
+          "greatsword_sweep"
+        ],
         "effects": [
           "incorporeal"
         ],
@@ -373,6 +399,9 @@
           "Body": "plate_armor"
         },
         "skills": {},
+        "actions": [
+          "greatsword_sweep"
+        ],
         "effects": [
           "incorporeal"
         ],
@@ -409,6 +438,10 @@
         "skills": {
           "cryomancy": 2
         },
+        "actions": [
+          "blizzard",
+          "ice_lance"
+        ],
         "effects": [
           "incorporeal"
         ],
@@ -458,6 +491,10 @@
         "skills": {
           "spearmanship": 2
         },
+        "actions": [
+          "hook_pull",
+          "spear_sweep"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -503,6 +540,10 @@
         "skills": {
           "spearmanship": 2
         },
+        "actions": [
+          "hook_pull",
+          "spear_sweep"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -548,6 +589,10 @@
         "skills": {
           "axemanship": 2
         },
+        "actions": [
+          "berserk",
+          "whirlwind"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -595,6 +640,9 @@
         "skills": {
           "defense": 1
         },
+        "actions": [
+          "shield_wall"
+        ],
         "effects": [
           "inviolate"
         ],
@@ -632,6 +680,9 @@
         "skills": {
           "defense": 1
         },
+        "actions": [
+          "shield_wall"
+        ],
         "effects": [
           "inviolate"
         ],
@@ -668,6 +719,10 @@
         "skills": {
           "healing": 2
         },
+        "actions": [
+          "greater_heal",
+          "heal"
+        ],
         "effects": [
           "inviolate"
         ],
@@ -723,6 +778,10 @@
         "skills": {
           "mace_mastery": 2
         },
+        "actions": [
+          "knockback",
+          "crush"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -786,6 +845,9 @@
         "skills": {
           "mace_mastery": 2
         },
+        "actions": [
+          "crush"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -823,6 +885,10 @@
           "Body": "leather_armor"
         },
         "skills": {},
+        "actions": [
+          "heavy_bolt",
+          "emplace"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -866,6 +932,10 @@
           "Body": "leather_armor"
         },
         "skills": {},
+        "actions": [
+          "heavy_bolt",
+          "emplace"
+        ],
         "tactics": [
           {
             "priority": 1,

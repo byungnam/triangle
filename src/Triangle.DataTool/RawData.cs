@@ -10,7 +10,7 @@ internal static class RawData
     [
         GameDataLoader.MasteriesFile, GameDataLoader.SkillsFile, GameDataLoader.ActionsFile, GameDataLoader.EffectsFile,
         GameDataLoader.ItemsFile, GameDataLoader.EncountersFile, GameDataLoader.ZonesFile, GameDataLoader.RecipesFile,
-        GameDataLoader.RecruitsFile,
+        GameDataLoader.RecruitsFile, GameDataLoader.ClassesFile,
     ];
 
     /// <summary>id가 같은 항목 (제작법은 result). 종류가 달라 같은 id가 여러 파일에 있을 수 있다.</summary>

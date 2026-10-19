@@ -4,6 +4,7 @@ using Triangle.Core.Data;
 using Triangle.Core.Expeditions;
 using Triangle.Core.Items;
 using Triangle.Core.Progress;
+using Triangle.Core.Runs;
 using Triangle.Core.Skills;
 
 namespace Triangle.Core.Balance;
@@ -109,8 +110,6 @@ public sealed class DraftSimulation
     private readonly CombatRules _rules;
     private readonly Dictionary<(string ClassId, int Tier), CombatantSetup> _bases = [];
     private readonly Dictionary<string, IReadOnlyList<CombatantSetup>> _enemies = [];
-    private readonly Dictionary<string, IReadOnlyList<string>> _actives;
-    private readonly Dictionary<string, IReadOnlyList<string>> _passives;
 
     public DraftSimulation(DraftDefinition draft, GameData data, DraftOptions? options = null)
     {
@@ -119,7 +118,7 @@ public sealed class DraftSimulation
         _options = options ?? new DraftOptions();
         _rules = draft.MaxActions is { } max ? CombatRules.Default with { MaxActions = max } : CombatRules.Default;
         _catalog = data.Catalog with { Actions = data.Catalog.Actions.ToDictionary(p => p.Key, p => p.Value with { Requirements = [] }) };
-        foreach (var c in draft.Classes)
+        foreach (var c in draft.Party.Distinct().Select(id => data.Classes[id]))
         {
             foreach (var tier in draft.Acts.Select(a => a.GearTier).Distinct())
             {
@@ -135,20 +134,7 @@ public sealed class DraftSimulation
             }
         }
 
-        _actives = draft.Classes.ToDictionary(c => c.Id, c => (IReadOnlyList<string>)ActivePool(data, c).Order(StringComparer.Ordinal).ToList());
-        _passives = draft.Classes.ToDictionary(c => c.Id, c => PassivePool(data, c));
     }
-
-    /// <summary>클래스가 받는 액티브: 그 계열 아이템이 주는 행동과 그 계열 무기가 주는 행동. 공용·소환물 전용 행동은 뺀다.</summary>
-    public static IReadOnlySet<string> ActivePool(GameData data, DraftClass c) =>
-        data.Items.Values.Where(i => i.Mastery is not null && c.Families.Contains(i.Mastery)).SelectMany(i => i.Actions)
-            .Concat(data.Actions.Values.Where(a => a.Weapon is not null && c.Families.Contains(a.Weapon)).Select(a => a.Id))
-            .Where(id => data.Actions.TryGetValue(id, out var a) && !a.Universal && !a.SummonOnly)
-            .ToHashSet();
-
-    /// <summary>클래스가 받는 패시브: 그 계열 패시브.</summary>
-    public static IReadOnlyList<string> PassivePool(GameData data, DraftClass c) =>
-        data.Skills.Values.Where(s => c.Families.Contains(s.Mastery)).Select(s => s.Id).Order(StringComparer.Ordinal).ToList();
 
     /// <summary>같은 종류(부위, 무기 종류, 계열)의 그 티어 아이템. 없으면 null.</summary>
     public static ItemDefinition? AtTier(GameData data, ItemDefinition item, int tier) =>
@@ -168,7 +154,7 @@ public sealed class DraftSimulation
     {
         var random = new Random(seed);
         var lines = _options.StartLines ?? _draft.StartLines;
-        var party = _draft.Party.Select(id => new Member(id, lines) { Skills = { _draft.Class(id).StartingSkill } }).ToList();
+        var party = _draft.Party.Select(id => new Member(id, lines) { Skills = { _data.Classes[id].StartingSkill } }).ToList();
         var picks = new List<DraftChoice>();
         var offers = new List<IReadOnlyList<DraftCard>>();
         var (fight, won, downs, deaths) = (0, 0, 0, 0);
@@ -343,12 +329,12 @@ public sealed class DraftSimulation
             DraftCard? card = null;
             if (roll < offer.Active)
             {
-                var pool = _actives[classId];
+                var pool = _data.Classes[classId].Skills;
                 card = new DraftCard(DraftCardKind.Active, classId, pool[random.Next(pool.Count)]);
             }
             else if (roll < offer.Active + offer.Passive)
             {
-                var pool = _passives[classId].Where(id => alive.Any(m => m.ClassId == classId && m.Level(id) < SkillDefinition.MaxLevel)).ToList();
+                var pool = _data.Classes[classId].Passives.Where(id => alive.Any(m => m.ClassId == classId && m.Level(id) < SkillDefinition.MaxLevel)).ToList();
                 card = pool.Count == 0 ? null : new DraftCard(DraftCardKind.Passive, classId, pool[random.Next(pool.Count)]);
             }
             else if (alive.Any(m => m.Earned < _draft.MaxLines))
@@ -403,10 +389,10 @@ public sealed class DraftSimulation
     }
 
     /// <summary>클래스의 기본 장비를 그 티어로 바꿔 낀 전투 입력. 재편에서는 아이템의 패시브 요구가 없으므로 요구를 보지 않고 낀다.</summary>
-    private CombatantSetup BaseSetup(DraftClass c, int tier)
+    private CombatantSetup BaseSetup(ClassDefinition c, int tier)
     {
-        var worn = c.Member.Equipment.Select(p => (p.Key, AtTier(_data, _data.Items[p.Value], tier)!));
-        var setup = new CombatantSetup(c.Id, c.Name, c.Member.Stats, c.Member.Row, null, null, new Dictionary<string, int>(), []);
+        var worn = new[] { (EquipmentSlot.MainHand, AtTier(_data, _data.Items[c.Weapon], tier)!), (EquipmentSlot.Body, AtTier(_data, _data.Items[c.Armor], tier)!) };
+        var setup = new CombatantSetup(c.Id, c.Name, c.Stats, c.Row, null, null, new Dictionary<string, int>(), []);
         return new Loadout(worn).Apply(setup, _data.Actions.Values, _ => 0);
     }
 

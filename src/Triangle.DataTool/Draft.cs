@@ -45,7 +45,7 @@ internal static class Draft
         }
 
         var acts = draft.Acts.Select(a => $"{data.Zones[a.ZoneId].Name} {a.Fights}+보스(T{a.GearTier})");
-        Console.WriteLine($"파티: {string.Join(", ", draft.Party.Select(id => draft.Class(id).Name))} · 막: {string.Join(" → ", acts)} · 판 {runs}개");
+        Console.WriteLine($"파티: {string.Join(", ", draft.Party.Select(id => data.Classes[id].Name))} · 막: {string.Join(" → ", acts)} · 판 {runs}개");
         Console.WriteLine($"보상: 후보 {draft.Offer.Cards}장 (액티브 {draft.Offer.Active} : 패시브 {draft.Offer.Passive} : 줄 상한 {draft.Offer.Line}) · 막이 끝나면 봉인 {draft.UnsealAfterAct}개 풀기");
         Console.WriteLine();
         Console.WriteLine(Bench.Pad("봇", 10) + Bench.Pad("시작 줄", 9) + Bench.Pad("클리어", 8, true) + Bench.Pad("평균 승리", 11, true)
@@ -80,7 +80,7 @@ internal static class Draft
         {
             Console.WriteLine();
             Console.WriteLine($"{Name(bot)} · 시작 줄 {lines}: 판당 많이 고른 카드");
-            foreach (var (label, count) in results.SelectMany(r => r.Picks).GroupBy(p => Label(draft, data, p.Card)).Select(g => (g.Key, g.Count())).OrderByDescending(x => x.Item2).Take(10))
+            foreach (var (label, count) in results.SelectMany(r => r.Picks).GroupBy(p => Label(data, p.Card)).Select(g => (g.Key, g.Count())).OrderByDescending(x => x.Item2).Take(10))
             {
                 Console.WriteLine($"  {(double)count / runs,5:F2}  {label}");
             }
@@ -98,10 +98,10 @@ internal static class Draft
 
     private static string Name(DraftPicker bot) => bot == DraftPicker.Random ? "무작위" : "앞을 봄";
 
-    private static string Label(DraftDefinition draft, GameData data, DraftCard card) => card.Kind switch
+    private static string Label(GameData data, DraftCard card) => card.Kind switch
     {
-        DraftCardKind.Active => $"{draft.Class(card.ClassId!).Name} · {data.Actions[card.Id!].Name}",
-        DraftCardKind.Passive => $"{draft.Class(card.ClassId!).Name} · 패시브 {data.Skills[card.Id!].Name}",
+        DraftCardKind.Active => $"{data.Classes[card.ClassId!].Name} · {data.Actions[card.Id!].Name}",
+        DraftCardKind.Passive => $"{data.Classes[card.ClassId!].Name} · 패시브 {data.Skills[card.Id!].Name}",
         _ => "줄 상한 +1",
     };
 

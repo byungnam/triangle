@@ -61,6 +61,9 @@ public sealed record ItemDefinition
     /// <summary>끼면 쓸 수 있는 행동 (모두 쓴다, 고르지 않는다. 2026-10-06).</summary>
     public IReadOnlyList<string> Actions { get; init; } = [];
 
+    /// <summary>끼고 있으면 전투를 시작할 때 걸려 있는 효과 (타고난 효과와 같다, 장신구만, 2026-10-19). 지워지기 전까지 끝나지 않는다.</summary>
+    public IReadOnlyList<string> Effects { get; init; } = [];
+
     public bool IsEquipment => Slot.IsEquipment();
 
     /// <summary>

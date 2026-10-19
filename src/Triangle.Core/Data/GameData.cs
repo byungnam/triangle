@@ -5,6 +5,7 @@ using Triangle.Core.Expeditions;
 using Triangle.Core.Items;
 using Triangle.Core.Masteries;
 using Triangle.Core.Progress;
+using Triangle.Core.Runs;
 using Triangle.Core.Skills;
 
 namespace Triangle.Core.Data;
@@ -21,8 +22,10 @@ public sealed class GameData
         IReadOnlyDictionary<string, ItemDefinition> items,
         IReadOnlyDictionary<string, ZoneDefinition> zones,
         IReadOnlyDictionary<string, RecruitTemplate> recruits,
-        IReadOnlyDictionary<string, RecipeDefinition>? recipes = null)
+        IReadOnlyDictionary<string, RecipeDefinition>? recipes = null,
+        IReadOnlyDictionary<string, ClassDefinition>? classes = null)
     {
+        Classes = classes ?? new Dictionary<string, ClassDefinition>();
         Recipes = recipes ?? new Dictionary<string, RecipeDefinition>();
         Items = items;
         Zones = zones;
@@ -49,9 +52,9 @@ public sealed class GameData
     /// <summary>아이템의 계열. null이면 null.</summary>
     public string? MasteryOf(string? itemId) => itemId is null ? null : Items[itemId].Mastery;
 
-    /// <summary>티어 범위의 장비 (재료 제외, 데이터 순서).</summary>
+    /// <summary>티어 범위의 장비 (재료와 장신구 제외, 데이터 순서).</summary>
     public IReadOnlyList<ItemDefinition> EquipmentInTiers(int minTier, int maxTier) =>
-        Items.Values.Where(i => i.IsEquipment && i.Tier >= minTier && i.Tier <= maxTier).ToList();
+        Items.Values.Where(i => i.Slot.IsCompanySlot() && i.Tier >= minTier && i.Tier <= maxTier).ToList();
 
     /// <summary>그 행동을 주는 아이템 (데이터 순서).</summary>
     public IEnumerable<ItemDefinition> ItemsGranting(string actionId) =>
@@ -62,6 +65,9 @@ public sealed class GameData
 
     /// <summary>전투지역 (데이터 순서).</summary>
     public IReadOnlyDictionary<string, ZoneDefinition> Zones { get; }
+
+    /// <summary>클래스 (로그라이트 재편, 데이터 순서). 원정을 시작할 때 이것으로 파티를 고른다.</summary>
+    public IReadOnlyDictionary<string, ClassDefinition> Classes { get; }
 
     /// <summary>모집 후보 템플릿.</summary>
     public IReadOnlyDictionary<string, RecruitTemplate> Recruits { get; }
@@ -89,10 +95,14 @@ public sealed class GameData
         }
 
         return encounter.Units
-            .Select(u => new Loadout(u.Equipment.Select(e => (e.Key, Items[e.Value]))).Apply(
-                new CombatantSetup(u.Id, u.Name, u.Stats, u.Row, null, null, u.Skills, u.Tactics) { StartingEffects = u.Effects },
-                Actions.Values,
-                _ => 0))
+            .Select(u =>
+            {
+                var setup = new Loadout(u.Equipment.Select(e => (e.Key, Items[e.Value]))).Apply(
+                    new CombatantSetup(u.Id, u.Name, u.Stats, u.Row, null, null, u.Skills, u.Tactics) { StartingEffects = u.Effects },
+                    Actions.Values,
+                    _ => 0);
+                return u.Actions is null ? setup : setup with { GrantedActions = u.Actions.ToHashSet() };
+            })
             .ToList();
     }
 }

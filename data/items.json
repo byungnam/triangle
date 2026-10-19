@@ -4232,5 +4232,196 @@
     "description": "T4 제작 재료. 재의 왕도에서만 나온다.",
     "slot": "Material",
     "price": 30
+  },
+  {
+    "id": "ember_pendant",
+    "name": "불씨 목걸이",
+    "description": "임시 수치. 화염 위력 +25%.",
+    "slot": "Trinket",
+    "type": "장신구",
+    "tier": 1,
+    "price": 60,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 25,
+        "tag": "fire"
+      }
+    ]
+  },
+  {
+    "id": "frost_ring",
+    "name": "서리 반지",
+    "description": "임시 수치. 냉기 위력 +25%.",
+    "slot": "Trinket",
+    "type": "장신구",
+    "tier": 1,
+    "price": 60,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 25,
+        "tag": "frost"
+      }
+    ]
+  },
+  {
+    "id": "storm_earring",
+    "name": "뇌운 귀걸이",
+    "description": "임시 수치. 전기 위력 +25%.",
+    "slot": "Trinket",
+    "type": "장신구",
+    "tier": 1,
+    "price": 60,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 25,
+        "tag": "lightning"
+      }
+    ]
+  },
+  {
+    "id": "fletching_charm",
+    "name": "화살깃 부적",
+    "description": "임시 수치. 활 위력 +20%.",
+    "slot": "Trinket",
+    "type": "장신구",
+    "tier": 1,
+    "price": 60,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "bow"
+      }
+    ]
+  },
+  {
+    "id": "whetstone_token",
+    "name": "숫돌 패",
+    "description": "임시 수치. 검 위력 +20%.",
+    "slot": "Trinket",
+    "type": "장신구",
+    "tier": 1,
+    "price": 60,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20,
+        "tag": "sword"
+      }
+    ]
+  },
+  {
+    "id": "mana_crystal",
+    "name": "마나 결정",
+    "description": "임시 수치. 최대 MP +30%.",
+    "slot": "Trinket",
+    "type": "장신구",
+    "tier": 1,
+    "price": 60,
+    "bonuses": [
+      {
+        "kind": "MaxMpPercent",
+        "percent": 30
+      }
+    ]
+  },
+  {
+    "id": "saint_rosary",
+    "name": "성자의 묵주",
+    "description": "임시 수치. 회복 +25%.",
+    "slot": "Trinket",
+    "type": "장신구",
+    "tier": 2,
+    "price": 110,
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 25
+      }
+    ]
+  },
+  {
+    "id": "knight_insignia",
+    "name": "기사의 휘장",
+    "description": "임시 수치. 받는 피해 -15%.",
+    "slot": "Trinket",
+    "type": "장신구",
+    "tier": 2,
+    "price": 110,
+    "bonuses": [
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percent": 15
+      }
+    ]
+  },
+  {
+    "id": "wind_charm",
+    "name": "바람의 부적",
+    "description": "임시 수치. 대기 -15% (더 자주 움직인다).",
+    "slot": "Trinket",
+    "type": "장신구",
+    "tier": 2,
+    "price": 110,
+    "bonuses": [
+      {
+        "kind": "DelayReductionPercent",
+        "percent": 15
+      }
+    ]
+  },
+  {
+    "id": "thrift_seal",
+    "name": "절약의 인장",
+    "description": "임시 수치. MP 소모 -20%.",
+    "slot": "Trinket",
+    "type": "장신구",
+    "tier": 2,
+    "price": 110,
+    "bonuses": [
+      {
+        "kind": "MpCostReductionPercent",
+        "percent": 20
+      }
+    ]
+  },
+  {
+    "id": "banner_of_defiance",
+    "name": "도전의 깃발",
+    "description": "임시 수치. 전투 내내 도발한다: 적의 단일 공격이 이 멤버에게 온다.",
+    "slot": "Trinket",
+    "type": "장신구",
+    "tier": 2,
+    "price": 110,
+    "effects": [
+      "taunting"
+    ]
+  },
+  {
+    "id": "troll_amulet",
+    "name": "트롤의 부적",
+    "description": "임시 수치. 전투 내내 재생한다 (자기 차례마다 HP 5%).",
+    "slot": "Trinket",
+    "type": "장신구",
+    "tier": 3,
+    "price": 180,
+    "effects": [
+      "regenerating"
+    ]
+  },
+  {
+    "id": "pure_sigil",
+    "name": "정결한 성표",
+    "description": "임시 수치. 디버프에 걸리지 않는다.",
+    "slot": "Trinket",
+    "type": "장신구",
+    "tier": 3,
+    "price": 180,
+    "effects": [
+      "steadfast"
+    ]
   }
 ]

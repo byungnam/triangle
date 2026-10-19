@@ -56,6 +56,12 @@ internal static class Listing
                 .Select(r => Row(r.Result, $"{r.Gold}G", string.Join(", ", r.Materials.Select(m => $"{m.ItemId}×{m.Count}"))))
                 .ToList(),
 
+            "classes" => data.Classes.Values
+                .Where(c => Matches(c.Id, c.Name))
+                .Select(c => Row(c.Id, c.Name, c.Row.ToString(), string.Join("·", c.Families), $"{c.Weapon}+{c.Armor}",
+                    $"시작 {c.StartingSkill}", $"액티브 {c.Skills.Count}", $"패시브 {c.Passives.Count}"))
+                .ToList(),
+
             "recruits" => data.Recruits.Values
                 .Where(r => Matches(r.Id, r.Name))
                 .Select(r => Row(r.Id, r.Name, $"{r.Price}G", r.Row.ToString(), string.Join(", ", r.Equipment.Values)))

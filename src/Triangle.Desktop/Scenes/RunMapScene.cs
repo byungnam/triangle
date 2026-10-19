@@ -9,6 +9,7 @@ namespace Triangle.Desktop.Scenes;
 /// <summary>
 /// 갈림길 지도: 왼쪽은 파티(줄 상한과 봉인), 가운데는 이 막의 지도(아래가 첫 층, 맨 위가 보스), 오른쪽은 막 보스와 지점 설명.
 /// 갈 수 있는 지점은 금색 테두리이고 누르면 들어간다. 전술과 장비는 "편성"에서 고친다.
+/// 지도는 한 화면보다 길어서(막마다 15층) 마우스 휠로 위아래로 움직이고, 처음에는 지금 위치를 가운데에 둔다.
 /// </summary>
 internal sealed class RunMapScene : RunScene
 {
@@ -17,11 +18,22 @@ internal sealed class RunMapScene : RunScene
     private const int NodeSize = 44;
     private const int BossSize = 64;
 
+    /// <summary>층 사이 간격 (설계 좌표).</summary>
+    private const int FloorStep = 64;
+
+    /// <summary>첫 층 아래 여백.</summary>
+    private const int BottomPad = 40;
+
+    private static readonly RasterizerState Clip = new() { ScissorTestEnable = true, CullMode = CullMode.None };
+
     private readonly Action<int> _enter;
     private readonly Action _openEditor;
     private readonly Action _abandon;
     private RunNode? _hover;
     private bool _confirmAbandon;
+
+    /// <summary>지도를 위로 민 양 (0이면 첫 층이 아래에 붙는다).</summary>
+    private float _scroll;
 
     /// <param name="enter">지점에 들어간다 (전투면 전투 기록을 보여준다).</param>
     public RunMapScene(Ui ui, RunSession session, Rectangle bounds, Action<int> enter, Action openEditor, Action abandon)
@@ -30,13 +42,15 @@ internal sealed class RunMapScene : RunScene
         _enter = enter;
         _openEditor = openEditor;
         _abandon = abandon;
+        var floor = session.Run!.Position is { } at ? session.Run.Map.Node(at).Floor : 0;
+        ScrollTo(floor);
     }
 
     protected override string Title => $"원정 — {RunText.Act(Run, Data)}";
 
     protected override string? Status => $"골드 {Run.Gold}";
 
-    protected override string Help => "금색 테두리 지점을 눌러 나아갑니다. 보통 전투의 적은 들어가야 압니다.     편성에서 전술과 장비를 고칩니다.";
+    protected override string Help => "금색 테두리 지점을 눌러 나아갑니다. 보통 전투의 적은 들어가야 압니다.     휠  지도 위아래";
 
     private Rectangle PartyArea => new(Body.Left, Body.Top, SideWidth, Body.Height);
 
@@ -44,20 +58,28 @@ internal sealed class RunMapScene : RunScene
 
     private Rectangle MapArea => new(PartyArea.Right + Margin, Body.Top, InfoArea.Left - Margin - PartyArea.Right - Margin, Body.Height - BarHeight);
 
+    /// <summary>층의 세로 위치 (설계 좌표, 스크롤 반영). 아래가 첫 층이다.</summary>
+    private float FloorY(int floor) => MapArea.Bottom - BottomPad - floor * FloorStep + _scroll;
+
+    /// <summary>지도를 끝까지 민 양: 보스가 지도 칸 위에 붙을 때.</summary>
+    private float MaxScroll => Math.Max(0, Run.Map.Floors * FloorStep + BottomPad + BossSize - MapArea.Height + 12);
+
+    /// <summary>그 층이 지도 칸 가운데보다 한 층 아래에 오게 민다 (앞으로 갈 층들이 보이도록).</summary>
+    private void ScrollTo(int floor) =>
+        _scroll = Math.Clamp(MapArea.Center.Y + FloorStep - (MapArea.Bottom - BottomPad - floor * FloorStep), 0, MaxScroll);
+
     /// <summary>지점의 가운데 (설계 좌표). 아래가 첫 층이고 보스는 맨 위 가운데다.</summary>
     private Vector2 Center(RunNode node)
     {
-        var map = Run.Map;
         var area = MapArea;
-        var step = (area.Height - 70f) / map.Floors;
-        var y = area.Bottom - 40 - node.Floor * step;
+        var y = FloorY(node.Floor);
         if (node.Kind == RunNodeKind.Boss)
         {
-            return new Vector2(area.Center.X, y + 6);
+            return new Vector2(area.Center.X, y - 8);
         }
 
         var width = Data.Run!.Map.Width;
-        return new Vector2(area.Left + (node.Lane + 0.5f) * area.Width / width, y);
+        return new Vector2(area.Left + 14 + (node.Lane + 0.5f) * (area.Width - 14) / width, y);
     }
 
     private static int Size(RunNode node) => node.Kind == RunNodeKind.Boss ? BossSize : NodeSize;
@@ -79,7 +101,13 @@ internal sealed class RunMapScene : RunScene
         }
 
         var mouse = Ui.Screen.ToDesign(input.MousePosition);
-        var hover = Run.Map.Nodes.FirstOrDefault(n => Vector2.Distance(mouse, Center(n)) <= Size(n) / 2f + 4);
+        var inside = MapArea.Contains(mouse.ToPoint());
+        if (inside && input.WheelDelta != 0)
+        {
+            _scroll = Math.Clamp(_scroll + input.WheelDelta / 120f * FloorStep * 1.5f, 0, MaxScroll);
+        }
+
+        var hover = inside ? Run.Map.Nodes.FirstOrDefault(n => Vector2.Distance(mouse, Center(n)) <= Size(n) / 2f + 4) : null;
         if (hover != _hover)
         {
             _hover = hover;
@@ -98,7 +126,44 @@ internal sealed class RunMapScene : RunScene
         var area = MapArea;
         Ui.Panel(batch, new Rectangle(area.X, area.Y, area.Width, area.Height + BarHeight));
 
+        // 지도는 지도 칸 안에만 그린다 (넘치는 층은 잘라낸다).
+        batch.End();
+        var device = batch.GraphicsDevice;
+        var screen = Ui.Screen;
+        var clip = new Rectangle(
+            screen.Offset.X + (int)(area.X * screen.Scale), screen.Offset.Y + (int)(area.Y * screen.Scale),
+            (int)(area.Width * screen.Scale), (int)(area.Height * screen.Scale));
+        device.ScissorRectangle = Rectangle.Intersect(clip, device.Viewport.Bounds);
+        batch.Begin(transformMatrix: screen.Transform, rasterizerState: Clip);
+        DrawMap(batch);
+        batch.End();
+        batch.Begin(transformMatrix: screen.Transform);
+
+        // 오른쪽 가장자리의 스크롤 막대: 지금 보이는 부분.
+        if (MaxScroll > 0)
+        {
+            var total = area.Height + MaxScroll;
+            var length = Math.Max(24, (int)(area.Height * area.Height / total));
+            var top = area.Y + (int)((MaxScroll - _scroll) / total * area.Height);
+            Ui.Fill(batch, new Rectangle(area.Right - 8, area.Y + 4, 4, area.Height - 8), Theme.BarBack);
+            Ui.Fill(batch, new Rectangle(area.Right - 8, Math.Clamp(top, area.Y + 4, area.Bottom - 4 - length), 4, length), Theme.PanelBorder);
+        }
+    }
+
+    private void DrawMap(SpriteBatch batch)
+    {
+        var area = MapArea;
         var map = Run.Map;
+        var font = Ui.Font(12);
+        for (var floor = 0; floor < map.Floors; floor++)
+        {
+            var y = FloorY(floor);
+            if (y > area.Top - 20 && y < area.Bottom + 20)
+            {
+                Ui.Text(batch, font, $"{floor + 1}", new Vector2(area.Left + 6, y - 7), Theme.TextDim * 0.7f);
+            }
+        }
+
         var choices = Run.Choices.Select(n => n.Id).ToHashSet();
         var path = Run.Path;
         var walked = path.Zip(path.Skip(1)).ToHashSet();

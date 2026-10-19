@@ -19,6 +19,7 @@ public sealed record RunNode(int Id, int Floor, int Lane, RunNodeKind Kind, IRea
 /// 막 하나의 갈림길 지도 (Slay the Spire식). 층(<see cref="RunNode.Floor"/>) × 칸(<see cref="RunNode.Lane"/>) 격자에서 경로 몇 개를
 /// 첫 층부터 아래로 긋고(한 층 내려갈 때 칸을 -1, 0, +1 중 하나만큼 옮긴다), 그 경로들이 지난 자리를 지점으로, 이은 선을 길로 삼는다.
 /// 길은 서로 엇갈리지 않는다. 마지막 층의 지점은 모두 보스로 이어진다. 첫 층은 늘 전투, 보스 바로 앞 층은 늘 휴식이다.
+/// 정예·상점·휴식은 한 길에서 연달아 나오지 않는다(바로 앞 지점과 같은 종류는 뽑지 않는다).
 /// </summary>
 public sealed record RunMap(int Floors, IReadOnlyList<RunNode> Nodes)
 {
@@ -65,19 +66,23 @@ public sealed record RunMap(int Floors, IReadOnlyList<RunNode> Nodes)
         var ids = ordered.Select((s, i) => (s, i)).ToDictionary(x => x.s, x => x.i);
         var bossId = ordered.Count;
         var nodes = new List<RunNode>();
+        var kinds = new Dictionary<(int Floor, int Lane), RunNodeKind>();
         foreach (var (floor, lane) in ordered)
         {
             var next = floor == floors - 1
                 ? [bossId]
                 : edges.Where(e => e.Floor == floor && e.From == lane).Select(e => ids[(floor + 1, e.To)]).Distinct().Order().ToList();
-            nodes.Add(new RunNode(ids[(floor, lane)], floor, lane, Kind(rules, floor, floors, hasElites, random), next));
+            var parents = edges.Where(e => e.Floor == floor - 1 && e.To == lane).Select(e => kinds[(floor - 1, e.From)]).ToHashSet();
+            kinds[(floor, lane)] = Kind(rules, floor, floors, hasElites, parents, random);
+            nodes.Add(new RunNode(ids[(floor, lane)], floor, lane, kinds[(floor, lane)], next));
         }
 
         nodes.Add(new RunNode(bossId, floors, width / 2, RunNodeKind.Boss, []));
         return new RunMap(floors, nodes);
     }
 
-    private static RunNodeKind Kind(RunMapRules rules, int floor, int floors, bool hasElites, Random random)
+    /// <param name="parents">이 지점으로 오는 바로 앞 지점들의 종류. 정예·상점·휴식은 그와 겹치지 않게 뽑는다.</param>
+    private static RunNodeKind Kind(RunMapRules rules, int floor, int floors, bool hasElites, IReadOnlySet<RunNodeKind> parents, Random random)
     {
         if (floor == 0)
         {
@@ -94,9 +99,9 @@ public sealed record RunMap(int Floors, IReadOnlyList<RunNode> Nodes)
         var weights = new (RunNodeKind Kind, int Weight)[]
         {
             (RunNodeKind.Fight, rules.Fight),
-            (RunNodeKind.Elite, special && hasElites ? rules.Elite : 0),
-            (RunNodeKind.Shop, rules.Shop),
-            (RunNodeKind.Rest, special && floor < floors - 2 ? rules.Rest : 0),
+            (RunNodeKind.Elite, special && hasElites && !parents.Contains(RunNodeKind.Elite) ? rules.Elite : 0),
+            (RunNodeKind.Shop, parents.Contains(RunNodeKind.Shop) ? 0 : rules.Shop),
+            (RunNodeKind.Rest, special && floor < floors - 2 && !parents.Contains(RunNodeKind.Rest) ? rules.Rest : 0),
             (RunNodeKind.Event, rules.Event),
         };
         var roll = random.Next(Math.Max(1, weights.Sum(w => w.Weight)));

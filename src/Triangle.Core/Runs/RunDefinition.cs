@@ -66,13 +66,13 @@ public sealed record RunAct(string ZoneId, int Floors)
 public sealed record RunMapRules
 {
     /// <summary>한 층의 칸 수 (경로가 지나갈 수 있는 자리).</summary>
-    public int Width { get; init; } = 4;
+    public int Width { get; init; } = 7;
 
     /// <summary>첫 층에서 보스까지 그어 보는 경로 수. 지점과 길은 이 경로들의 합이다.</summary>
-    public int Paths { get; init; } = 4;
+    public int Paths { get; init; } = 6;
 
     /// <summary>정예와 휴식이 나올 수 있는 가장 이른 층 (0부터).</summary>
-    public int SpecialFrom { get; init; } = 2;
+    public int SpecialFrom { get; init; } = 5;
 
     public int Fight { get; init; } = 50;
 

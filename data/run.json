@@ -7,7 +7,7 @@
   "acts": [
     {
       "zoneId": "outskirts_forest",
-      "floors": 6,
+      "floors": 15,
       "bosses": [],
       "elites": [
         "bandit_chief",
@@ -17,7 +17,7 @@
     },
     {
       "zoneId": "abandoned_fort",
-      "floors": 6,
+      "floors": 15,
       "bosses": [],
       "elites": [
         "black_sun_cult",
@@ -27,7 +27,7 @@
     },
     {
       "zoneId": "ashen_capital",
-      "floors": 6,
+      "floors": 15,
       "bosses": [],
       "elites": [
         "elite"
@@ -36,9 +36,9 @@
     }
   ],
   "map": {
-    "width": 4,
-    "paths": 4,
-    "specialFrom": 2,
+    "width": 7,
+    "paths": 6,
+    "specialFrom": 5,
     "fight": 50,
     "elite": 12,
     "shop": 10,

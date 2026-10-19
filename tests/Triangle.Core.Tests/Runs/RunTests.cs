@@ -75,13 +75,16 @@ public class RunTests
     [Fact]
     public void Maps_are_deterministic_connected_and_keep_the_floor_rules()
     {
-        var rules = new RunMapRules();
+        // 게임의 지도: 한 막 15층, 폭 7칸, 경로 6개.
+        var rules = Shipped.Run!.Map;
+        var floors = Shipped.Run.Acts[0].Floors;
+        Assert.Equal((15, 7, 6, 5), (floors, rules.Width, rules.Paths, rules.SpecialFrom));
         var kinds = new HashSet<RunNodeKind>();
         for (var seed = 0; seed < 200; seed++)
         {
-            var map = RunMap.Generate(rules, 6, hasElites: true, seed);
-            Assert.Equal(Describe(map), Describe(RunMap.Generate(rules, 6, hasElites: true, seed)));
-            Assert.Equal((RunNodeKind.Boss, map.Nodes.Count - 1, 6), (map.Boss.Kind, map.Boss.Id, map.Boss.Floor));
+            var map = RunMap.Generate(rules, floors, hasElites: true, seed);
+            Assert.Equal(Describe(map), Describe(RunMap.Generate(rules, floors, hasElites: true, seed)));
+            Assert.Equal((RunNodeKind.Boss, map.Nodes.Count - 1, floors), (map.Boss.Kind, map.Boss.Id, map.Boss.Floor));
             Assert.True(map.Starts.Count() >= 2, "갈림길이 생기도록 첫 층에 지점이 둘 이상 있다");
 
             foreach (var node in map.Nodes.SkipLast(1))
@@ -89,7 +92,7 @@ public class RunTests
                 Assert.Equal(node, map.Node(node.Id));
                 Assert.NotEmpty(node.Next);
                 Assert.All(node.Next.Select(map.Node), next => Assert.Equal(node.Floor + 1, next.Floor));
-                if (node.Floor == 5)
+                if (node.Floor == floors - 1)
                 {
                     Assert.Equal(RunNodeKind.Rest, node.Kind);
                     Assert.Equal([map.Boss.Id], node.Next);
@@ -102,7 +105,7 @@ public class RunTests
                     Assert.Equal(RunNodeKind.Fight, node.Kind);
                 }
 
-                if (node.Floor < rules.SpecialFrom || node.Floor == 4)
+                if (node.Floor < rules.SpecialFrom || node.Floor == floors - 2)
                 {
                     Assert.NotEqual(RunNodeKind.Rest, node.Kind);
                 }
@@ -114,6 +117,10 @@ public class RunTests
 
                 kinds.Add(node.Kind);
             }
+
+            // 정예·상점·휴식은 한 길에서 연달아 나오지 않는다.
+            Assert.DoesNotContain(map.Nodes, n => n.Kind is RunNodeKind.Elite or RunNodeKind.Shop or RunNodeKind.Rest
+                && n.Next.Select(map.Node).Any(next => next.Kind == n.Kind));
 
             // 길은 엇갈리지 않는다.
             var edges = map.Nodes.SkipLast(2).SelectMany(n => n.Next.Where(id => id != map.Boss.Id).Select(id => (n.Floor, From: n.Lane, To: map.Node(id).Lane))).ToList();
@@ -130,7 +137,7 @@ public class RunTests
         }
 
         Assert.Equal([RunNodeKind.Fight, RunNodeKind.Elite, RunNodeKind.Shop, RunNodeKind.Rest, RunNodeKind.Event], kinds.Order());
-        Assert.DoesNotContain(Enumerable.Range(0, 50).SelectMany(s => RunMap.Generate(rules, 6, hasElites: false, s).Nodes), n => n.Kind == RunNodeKind.Elite);
+        Assert.DoesNotContain(Enumerable.Range(0, 50).SelectMany(s => RunMap.Generate(rules, floors, hasElites: false, s).Nodes), n => n.Kind == RunNodeKind.Elite);
     }
 
     [Fact]

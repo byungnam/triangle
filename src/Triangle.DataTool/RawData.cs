@@ -9,21 +9,20 @@ internal static class RawData
     private static readonly string[] Files =
     [
         GameDataLoader.MasteriesFile, GameDataLoader.SkillsFile, GameDataLoader.ActionsFile, GameDataLoader.EffectsFile,
-        GameDataLoader.ItemsFile, GameDataLoader.EncountersFile, GameDataLoader.ZonesFile, GameDataLoader.RecipesFile,
-        GameDataLoader.RecruitsFile,
+        GameDataLoader.ItemsFile, GameDataLoader.EncountersFile, GameDataLoader.ZonesFile, GameDataLoader.ClassesFile,
+        GameDataLoader.UnlocksFile,
     ];
 
-    /// <summary>id가 같은 항목 (제작법은 result). 종류가 달라 같은 id가 여러 파일에 있을 수 있다.</summary>
+    /// <summary>id가 같은 항목. 종류가 달라 같은 id가 여러 파일에 있을 수 있다.</summary>
     public static List<(string File, JsonNode Node)> FindById(string directory, string id)
     {
         var found = new List<(string, JsonNode)>();
         foreach (var file in Files)
         {
-            var key = file == GameDataLoader.RecipesFile ? "result" : "id";
             var array = JsonNode.Parse(File.ReadAllText(Path.Combine(directory, file)))!.AsArray();
             foreach (var node in array)
             {
-                if (node?[key]?.GetValue<string>() == id)
+                if (node?["id"]?.GetValue<string>() == id)
                 {
                     found.Add((file, node));
                 }

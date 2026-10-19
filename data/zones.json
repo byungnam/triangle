@@ -2,9 +2,7 @@
   {
     "id": "outskirts_forest",
     "name": "근교 숲",
-    "description": "초보 지역. 쓰러진 멤버는 원정이 끝나면 1단계 다친다. 수치는 임시.",
-    "difficulty": 1,
-    "maxBattles": 3,
+    "description": "1막 지역. 수치는 임시.",
     "encounters": [
       {
         "encounterId": "wild_dogs",
@@ -19,47 +17,15 @@
         "weight": 2
       }
     ],
-    "rewards": {
-      "goldMin": 20,
-      "goldMax": 40,
-      "depthBonusPercent": 20,
-      "itemDrops": [
-        {
-          "itemId": "iron_scrap",
-          "chance": 10
-        },
-        {
-          "itemId": "tough_leather",
-          "chance": 10
-        },
-        {
-          "itemId": "mana_thread",
-          "chance": 10
-        }
-      ],
-      "equipmentDrop": {
-        "chance": 20,
-        "minTier": 1,
-        "maxTier": 1
-      },
-      "clearBonusGold": 50
-    },
     "boss": {
       "encounterId": "boss_scavenger_chief",
-      "clue": "우두머리가 지키던 길목 너머로 땅에 그어진 선이 보인다. 자로 잰 듯 곧다.",
-      "firstClearGold": 150,
-      "firstClearItems": [
-        "iron_scrap",
-        "tough_leather"
-      ]
+      "clue": "우두머리가 지키던 길목 너머로 땅에 그어진 선이 보인다. 자로 잰 듯 곧다."
     }
   },
   {
     "id": "abandoned_fort",
     "name": "버려진 요새",
-    "description": "보통 지역. 수치는 임시.",
-    "difficulty": 2,
-    "maxBattles": 4,
+    "description": "2막 지역. 수치는 임시.",
     "encounters": [
       {
         "encounterId": "deserters",
@@ -78,48 +44,15 @@
         "weight": 2
       }
     ],
-    "rewards": {
-      "goldMin": 50,
-      "goldMax": 80,
-      "depthBonusPercent": 25,
-      "itemDrops": [
-        {
-          "itemId": "iron_scrap",
-          "chance": 25
-        },
-        {
-          "itemId": "tough_leather",
-          "chance": 25
-        },
-        {
-          "itemId": "mana_thread",
-          "chance": 25
-        }
-      ],
-      "equipmentDrop": {
-        "chance": 25,
-        "minTier": 1,
-        "maxTier": 2
-      },
-      "clearBonusGold": 150
-    },
     "boss": {
       "encounterId": "boss_halted_regiment",
-      "clue": "연대의 깃발에는 백 년 전 날짜가 적혀 있다. 그들에게는 아직 그날이다.",
-      "firstClearGold": 400,
-      "firstClearItems": [
-        "iron_scrap",
-        "tough_leather",
-        "mana_thread"
-      ]
+      "clue": "연대의 깃발에는 백 년 전 날짜가 적혀 있다. 그들에게는 아직 그날이다."
     }
   },
   {
     "id": "ashen_capital",
     "name": "재의 왕도",
-    "description": "어려움 지역. 수치는 임시.",
-    "difficulty": 3,
-    "maxBattles": 5,
+    "description": "3막 지역. 수치는 임시.",
     "encounters": [
       {
         "encounterId": "dead_infantry",
@@ -132,49 +65,11 @@
       {
         "encounterId": "black_sun_cult",
         "weight": 2
-      },
-      {
-        "encounterId": "elite",
-        "weight": 2
       }
     ],
-    "rewards": {
-      "goldMin": 90,
-      "goldMax": 140,
-      "depthBonusPercent": 30,
-      "itemDrops": [
-        {
-          "itemId": "iron_scrap",
-          "chance": 30
-        },
-        {
-          "itemId": "tough_leather",
-          "chance": 30
-        },
-        {
-          "itemId": "mana_thread",
-          "chance": 30
-        },
-        {
-          "itemId": "ancient_shard",
-          "chance": 15
-        }
-      ],
-      "equipmentDrop": {
-        "chance": 30,
-        "minTier": 2,
-        "maxTier": 3
-      },
-      "clearBonusGold": 400
-    },
     "boss": {
       "encounterId": "boss_triad_guardians",
-      "clue": "세 수호자의 가면을 모으면 꼭짓점 셋이 맞물린다. 중심으로 가는 길은 아직 닫혀 있다.",
-      "firstClearGold": 1000,
-      "firstClearItems": [
-        "ancient_shard",
-        "ancient_shard"
-      ]
+      "clue": "세 수호자의 가면을 모으면 꼭짓점 셋이 맞물린다. 중심으로 가는 길은 아직 닫혀 있다."
     }
   }
 ]

@@ -206,7 +206,7 @@ internal sealed class CombatSummaryView
         return new HeadingLine(_names[unit.Id], row, color, status, statusColor);
     }
 
-    /// <summary>"행동 12 · 준 피해 1170 (지속 230) · 회복 96 · 받은 피해 610". 0인 회복·보호막·MP·소환수 항목은 뺀다.</summary>
+    /// <summary>"행동 12 · 준 피해 1170 (지속 230) · 회복 96 · 받은 피해 610". 0인 회복·보호막·MP·소환수·면역·봉쇄 항목은 뺀다.</summary>
     private static string Stats(UnitSummary s)
     {
         var parts = new List<string>
@@ -238,6 +238,16 @@ internal sealed class CombatSummaryView
         if (s.SummonHealing > 0)
         {
             parts.Add($"소환수 회복 {s.SummonHealing}");
+        }
+
+        if (s.Nullified > 0)
+        {
+            parts.Add($"면역에 막힘 {s.Nullified}");
+        }
+
+        if (s.HealsBlocked > 0)
+        {
+            parts.Add($"봉쇄된 회복 {s.HealsBlocked}");
         }
 
         return string.Join(" · ", parts);

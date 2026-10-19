@@ -77,6 +77,11 @@ internal static class GameIcons
 
     public static (string Icon, Color Color) Item(ItemDefinition item)
     {
+        if (item.Slot == EquipmentSlot.Trinket)
+        {
+            return ("trinket", Theme.Gold);
+        }
+
         var color = MasteryColor(item.Mastery);
         if (item.Slot.IsArmor() && item.Mastery is { } material)
         {

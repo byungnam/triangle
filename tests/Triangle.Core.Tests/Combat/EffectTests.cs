@@ -2,7 +2,6 @@ using Triangle.Core.Actions;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
 using Triangle.Core.Effects;
-using Triangle.Core.Masteries;
 using Triangle.Core.Skills;
 using Triangle.Core.Tactics;
 using Triangle.Core.Units;
@@ -227,21 +226,6 @@ public class EffectTests
         var events = result.Events.ToList();
         var died = events.FindIndex(e => e is Died { UnitId: "e" });
         Assert.DoesNotContain(events.Skip(died), e => e is EffectTicked { TargetId: "e" } or EffectExpired { TargetId: "e" });
-    }
-
-    [Fact]
-    public void Damage_over_time_counts_as_damage_taken_for_armor_mastery()
-    {
-        CombatantSetup Armored(string id, params Tactic[] tactics) =>
-            new(id, id, new Stats(10, 10, 100, 10, 10), Row.Front, null, "plate", SkillSet.NoSkills, tactics);
-
-        var result = CombatSimulator.Run([Armored("a")], [Unit("e", tactics: Use("poison_hit"))], Catalog, seed: 1,
-            new CombatRules { MaxActions = 10 });
-
-        var ticked = -result.Events.OfType<EffectTicked>().Where(t => t.TargetId == "a").Sum(t => t.HpChange);
-        var gain = Assert.Single(MasteryGain.ForAllies(result));
-        Assert.True(ticked > 0);
-        Assert.Equal(ticked / MasteryRules.Default.DamageTakenPerXp + MasteryRules.Default.ResultXp(result.Outcome), gain.Armor["plate"]);
     }
 
     [Fact]

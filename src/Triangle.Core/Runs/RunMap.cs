@@ -1,0 +1,121 @@
+using System.Text.Json.Serialization;
+
+namespace Triangle.Core.Runs;
+
+public enum RunNodeKind
+{
+    Fight,
+    Elite,
+    Shop,
+    Rest,
+    Event,
+    Boss,
+}
+
+/// <summary>지도의 지점. <paramref name="Next"/>는 다음 층에서 갈 수 있는 지점 ID다. 보스는 마지막 층 다음에 하나 있다.</summary>
+public sealed record RunNode(int Id, int Floor, int Lane, RunNodeKind Kind, IReadOnlyList<int> Next);
+
+/// <summary>
+/// 막 하나의 갈림길 지도 (Slay the Spire식). 층(<see cref="RunNode.Floor"/>) × 칸(<see cref="RunNode.Lane"/>) 격자에서 경로 몇 개를
+/// 첫 층부터 아래로 긋고(한 층 내려갈 때 칸을 -1, 0, +1 중 하나만큼 옮긴다), 그 경로들이 지난 자리를 지점으로, 이은 선을 길로 삼는다.
+/// 길은 서로 엇갈리지 않는다. 마지막 층의 지점은 모두 보스로 이어진다. 첫 층은 늘 전투, 보스 바로 앞 층은 늘 휴식이다.
+/// 정예·상점·휴식은 한 길에서 연달아 나오지 않는다(바로 앞 지점과 같은 종류는 뽑지 않는다).
+/// </summary>
+public sealed record RunMap(int Floors, IReadOnlyList<RunNode> Nodes)
+{
+    [JsonIgnore]
+    public RunNode Boss => Nodes[^1];
+
+    [JsonIgnore]
+    public IEnumerable<RunNode> Starts => Nodes.Where(n => n.Floor == 0);
+
+    public RunNode Node(int id) => Nodes[id];
+
+    /// <param name="hasElites">정예 후보가 없는 막이면 정예 지점을 두지 않는다.</param>
+    public static RunMap Generate(RunMapRules rules, int floors, bool hasElites, int seed)
+    {
+        var random = new Random(seed);
+        var width = Math.Max(1, rules.Width);
+        var edges = new HashSet<(int Floor, int From, int To)>();
+        var spots = new HashSet<(int Floor, int Lane)>();
+        // 첫 층의 갈래: 폭을 갈래 수만큼 나눠 구간마다 한 칸씩 고른다 (한쪽에 몰리지 않게).
+        var paths = Math.Max(1, rules.Paths);
+        var starts = Math.Clamp(rules.Starts, 1, Math.Min(width, paths));
+        var startLanes = Enumerable.Range(0, starts)
+            .Select(i => i * width / starts + random.Next((i + 1) * width / starts - i * width / starts)).ToList();
+        for (var path = 0; path < paths; path++)
+        {
+            // 경로를 갈래에 돌아가며 나눠 모든 갈래가 쓰이게 한다.
+            var lane = startLanes[path % starts];
+            spots.Add((0, lane));
+            for (var floor = 1; floor < floors; floor++)
+            {
+                // 다른 경로의 길과 엇갈리면 곧게 내려간다 (곧은 길은 엇갈리지 않는다).
+                var next = Math.Clamp(lane + random.Next(-1, 2), 0, width - 1);
+                var from = lane;
+                var to = next;
+                if (edges.Any(e => e.Floor == floor - 1 && Math.Sign(e.From - from) * Math.Sign(e.To - to) < 0))
+                {
+                    next = lane;
+                }
+
+                edges.Add((floor - 1, lane, next));
+                spots.Add((floor, next));
+                lane = next;
+            }
+        }
+
+        var ordered = spots.OrderBy(s => s.Floor).ThenBy(s => s.Lane).ToList();
+        var ids = ordered.Select((s, i) => (s, i)).ToDictionary(x => x.s, x => x.i);
+        var bossId = ordered.Count;
+        var nodes = new List<RunNode>();
+        var kinds = new Dictionary<(int Floor, int Lane), RunNodeKind>();
+        foreach (var (floor, lane) in ordered)
+        {
+            var next = floor == floors - 1
+                ? [bossId]
+                : edges.Where(e => e.Floor == floor && e.From == lane).Select(e => ids[(floor + 1, e.To)]).Distinct().Order().ToList();
+            var parents = edges.Where(e => e.Floor == floor - 1 && e.To == lane).Select(e => kinds[(floor - 1, e.From)]).ToHashSet();
+            kinds[(floor, lane)] = Kind(rules, floor, floors, hasElites, parents, random);
+            nodes.Add(new RunNode(ids[(floor, lane)], floor, lane, kinds[(floor, lane)], next));
+        }
+
+        nodes.Add(new RunNode(bossId, floors, width / 2, RunNodeKind.Boss, []));
+        return new RunMap(floors, nodes);
+    }
+
+    /// <param name="parents">이 지점으로 오는 바로 앞 지점들의 종류. 정예·상점·휴식은 그와 겹치지 않게 뽑는다.</param>
+    private static RunNodeKind Kind(RunMapRules rules, int floor, int floors, bool hasElites, IReadOnlySet<RunNodeKind> parents, Random random)
+    {
+        if (floor == 0)
+        {
+            return RunNodeKind.Fight;
+        }
+
+        if (floor == floors - 1)
+        {
+            return RunNodeKind.Rest;
+        }
+
+        // 정예와 휴식은 너무 이르지 않게, 휴식은 보스 앞 휴식 바로 전 층에도 두지 않는다.
+        var special = floor >= rules.SpecialFrom;
+        var weights = new (RunNodeKind Kind, int Weight)[]
+        {
+            (RunNodeKind.Fight, rules.Fight),
+            (RunNodeKind.Elite, special && hasElites && !parents.Contains(RunNodeKind.Elite) ? rules.Elite : 0),
+            (RunNodeKind.Shop, parents.Contains(RunNodeKind.Shop) ? 0 : rules.Shop),
+            (RunNodeKind.Rest, special && floor < floors - 2 && !parents.Contains(RunNodeKind.Rest) ? rules.Rest : 0),
+            (RunNodeKind.Event, rules.Event),
+        };
+        var roll = random.Next(Math.Max(1, weights.Sum(w => w.Weight)));
+        foreach (var (kind, weight) in weights)
+        {
+            if ((roll -= weight) < 0)
+            {
+                return kind;
+            }
+        }
+
+        return RunNodeKind.Fight;
+    }
+}

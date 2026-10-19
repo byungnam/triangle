@@ -1,4 +1,4 @@
-using Triangle.Core.Expeditions;
+using Triangle.Core.Runs;
 using Triangle.Core.Items;
 
 namespace Triangle.Core.Data;
@@ -19,14 +19,17 @@ public static class DataLint
         return warnings;
     }
 
-    /// <summary>공용도, 무기 행동도, 소환 행동도 아니고 주는 아이템도 없는 행동 (적도 아이템 행동만 쓴다).</summary>
+    /// <summary>공용도, 무기 행동도, 소환 행동도 아니고 주는 아이템도, 클래스 카드도, 적의 행동 목록에도 없는 행동.</summary>
     private static void CheckActions(GameData data, List<string> warnings)
     {
         var summonActions = data.Actions.Values
             .Select(a => a.Summon?.ActionId)
             .OfType<string>()
             .ToHashSet();
-        var itemActions = data.Items.Values.SelectMany(i => i.Actions).ToHashSet();
+        var itemActions = data.Items.Values.SelectMany(i => i.Actions)
+            .Concat(data.Classes.Values.SelectMany(c => c.Skills))
+            .Concat(data.Encounters.Values.SelectMany(e => e.Units).SelectMany(u => u.Actions ?? []))
+            .ToHashSet();
 
         foreach (var action in data.Actions.Values)
         {
@@ -49,6 +52,8 @@ public static class DataLint
     {
         var used = data.Actions.Values
             .SelectMany(a => a.Applies.Select(x => x.EffectId).Append(a.BonusAgainst?.EffectId))
+            .Concat(data.Encounters.Values.SelectMany(e => e.Units).SelectMany(u => u.Effects))
+            .Concat(data.Items.Values.SelectMany(i => i.Effects))
             .OfType<string>()
             .ToHashSet();
         foreach (var effect in data.Effects.Values.Where(e => !used.Contains(e.Id)))
@@ -61,40 +66,38 @@ public static class DataLint
     {
         var used = data.Zones.Values.SelectMany(z => z.Encounters).Select(e => e.EncounterId)
             .Concat(data.Zones.Values.Select(z => z.Boss?.EncounterId).OfType<string>())
+            .Concat(data.Run?.Acts.SelectMany(a => a.Bosses.Concat(a.Elites)) ?? [])
             .ToHashSet();
         foreach (var encounter in data.Encounters.Values.Where(e => !used.Contains(e.Id)))
         {
-            warnings.Add($"{GameDataLoader.EncountersFile} '{encounter.Id}': no zone uses it");
+            warnings.Add($"{GameDataLoader.EncountersFile} '{encounter.Id}': no zone or run act uses it");
         }
     }
 
-    /// <summary>상점, 전리품, 제작, 신입 시작 장비 중 어디로도 얻을 수 없는 아이템. 재료는 제작에 안 쓰여도 경고.</summary>
+    /// <summary>
+    /// 판에서 멤버가 끼는 부위(무기, 방어구, 장신구)인데 아무도 쓸 수 없는 아이템: 판의 상점에 나오지 않고(무기는 그 계열 클래스가 없거나
+    /// 막의 상점 티어가 아님), 클래스 기본 장비도 아니고, 적도 끼지 않는다. 보조·머리·신발은 적과 전술 측정만 쓰므로 보지 않고,
+    /// 아직 어느 클래스도 쓰지 않는 계열(나중 클래스용)의 무기도 보지 않는다.
+    /// </summary>
     private static void CheckItems(GameData data, List<string> warnings)
     {
-        var rewards = data.Zones.Values.Select(z => z.Rewards).ToList();
-        var dropped = rewards.SelectMany(r => r.ItemDrops).Select(d => d.ItemId)
-            .Concat(data.Zones.Values.SelectMany(z => z.Boss?.FirstClearItems ?? []))
-            .ToHashSet();
-        var tierDrops = rewards.Select(r => r.EquipmentDrop).OfType<TierDrop>().ToList();
-        var recruitGear = data.Recruits.Values.SelectMany(r => r.Equipment.Values).ToHashSet();
-        var materials = data.Recipes.Values.SelectMany(r => r.Materials).Select(m => m.ItemId).ToHashSet();
-
-        foreach (var item in data.Items.Values)
+        var tiers = data.Run?.Acts.Select(a => a.ShopTier).ToHashSet() ?? [];
+        var maxTier = tiers.Count == 0 ? 0 : tiers.Max();
+        var classGear = data.Classes.Values.SelectMany(c => new[] { c.Weapon, c.Armor }).ToHashSet();
+        var enemyGear = data.Encounters.Values.SelectMany(e => e.Units).SelectMany(u => u.Equipment.Values).ToHashSet();
+        var families = data.Classes.Values.SelectMany(c => c.Families).ToHashSet();
+        foreach (var item in data.Items.Values.Where(i => i.Slot is EquipmentSlot.Body or EquipmentSlot.Trinket
+                     || (i.Slot == EquipmentSlot.MainHand && i.Mastery is not null && families.Contains(i.Mastery))))
         {
-            var at = $"{GameDataLoader.ItemsFile} '{item.Id}'";
-            var obtainable = dropped.Contains(item.Id)
-                || (item.IsEquipment && (Shop.Sells(item)
-                    || tierDrops.Any(d => item.Tier >= d.MinTier && item.Tier <= d.MaxTier)
-                    || data.Recipes.ContainsKey(item.Id)
-                    || recruitGear.Contains(item.Id)));
-            if (!obtainable)
+            var sold = item.Slot switch
             {
-                warnings.Add($"{at}: cannot be obtained (not sold, dropped, crafted or given to recruits)");
-            }
-
-            if (!item.IsEquipment && !materials.Contains(item.Id))
+                EquipmentSlot.MainHand => tiers.Contains(item.Tier) && data.Classes.Values.Any(c => c.CanWield(item)),
+                EquipmentSlot.Body => tiers.Contains(item.Tier),
+                _ => item.Tier <= maxTier,
+            };
+            if (!sold && !classGear.Contains(item.Id) && !enemyGear.Contains(item.Id))
             {
-                warnings.Add($"{at}: material used by no recipe");
+                warnings.Add($"{GameDataLoader.ItemsFile} '{item.Id}': used by no one (not sold in a run, not class gear, not worn by an enemy)");
             }
         }
     }

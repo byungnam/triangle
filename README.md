@@ -1,6 +1,6 @@
 # Triangle
 
-유닛을 육성하고, 유닛마다 "조건 → 행동" 전술을 짜서 팀을 꾸린 뒤 자동 전투로 승부하는 싱글플레이 RPG. MonoGame으로 개발 중.
+유닛마다 "조건 → 행동" 전술을 짜서 자동 전투로 승부하는 싱글플레이 로그라이트. 한 판(원정) 동안 갈림길 지도를 따라가며 보상으로 스킬 사본과 줄 상한을 얻어 전술을 키운다. MonoGame으로 개발 중.
 
 2015년 Java/Android 프로토타입을 새로 만드는 프로젝트다. 기존 구현 분석은 [docs/legacy/](docs/legacy/README.md)에, 새 구조는 [docs/architecture.md](docs/architecture.md)에 있다.
 
@@ -24,15 +24,12 @@ docs/                       설계 문서
 ```bash
 dotnet build
 dotnet test
-dotnet run --project src/Triangle.Desktop
-dotnet run --project src/Triangle.Desktop -- --screenshot shot.png                # 첫 화면(마을)을 PNG로 저장하고 종료
-dotnet run --project src/Triangle.Desktop -- --combat --screenshot shot.png       # 전투가 끝난 화면
-dotnet run --project src/Triangle.Desktop -- --combat --screenshot shot.png 40    # 로그 40줄까지 진행한 중간 화면
-dotnet run --project src/Triangle.Desktop -- --combat --summary --screenshot shot.png  # 전투 요약 탭
-dotnet run --project src/Triangle.Desktop -- --exploration --screenshot shot.png  # 탐사 기록 화면
-dotnet run --project src/Triangle.Desktop -- --scene editor:equipment --screenshot shot.png  # 편성 화면 장비 탭
-#   --scene: editor, editor:equipment, editor:preview, editor:stats, editor:picker, training, shop
-dotnet run --project src/Triangle.Desktop -- --save /tmp/test-save.json            # 세이브 위치 바꾸기 (기본: ~/.config/Triangle/save.json)
+dotnet run --project src/Triangle.Desktop                                          # 원정(판): 진행 중인 판을 이어 하거나 파티를 고른다
+dotnet run --project src/Triangle.Desktop -- --screenshot shot.png                # 첫 화면을 PNG로 저장하고 종료
+dotnet run --project src/Triangle.Desktop -- --scene run:map --screenshot shot.png  # 시험 판의 지도 (임시 폴더, 실제 세이브는 그대로)
+#   --scene run:*: map, reward, shop, rest, event, editor, equipment, picker, end, party, unlocks, combat
+dotnet run --project src/Triangle.Desktop -- --scene run:combat --screenshot shot.png 40  # 전투 기록을 40줄까지 진행한 화면 (--summary: 요약 탭)
+dotnet run --project src/Triangle.Desktop -- --save /tmp/triangle-save              # 세이브 폴더 바꾸기 (기본: ~/.config/Triangle, 판 run.json과 기록 profile.json)
 ```
 
 ## 데이터 검사 · 조회 · 수정
@@ -41,7 +38,7 @@ dotnet run --project src/Triangle.Desktop -- --save /tmp/test-save.json         
 
 ```bash
 dotnet run --project src/Triangle.DataTool -- validate                      # 오류 있으면 종료 코드 1, --strict면 경고도 1
-dotnet run --project src/Triangle.DataTool -- list items --mastery sword    # 종류: masteries skills actions effects items encounters zones recipes recruits
+dotnet run --project src/Triangle.DataTool -- list items --mastery sword    # 종류: masteries skills actions effects items encounters zones classes unlocks
 dotnet run --project src/Triangle.DataTool -- list items --type 한손검 --tier 2
 dotnet run --project src/Triangle.DataTool -- list actions --mastery fire   # 화염 계열 아이템이 주는 행동
 dotnet run --project src/Triangle.DataTool -- show heal                     # 원본 JSON + 쓰는 곳
@@ -62,11 +59,39 @@ $D new effects '{"id":"dazed","name":"멍함","kind":"Debuff"}' --after weakened
 $D delete items rusty_sword                                       # 가리키는 곳이 남아 있으면 검증에서 막힌다
 ```
 
-- `<id>`: 쉼표로 여럿, `*`는 아무 글자. 제작법은 결과 아이템 id로 고른다.
+- `<id>`: 쉼표로 여럿, `*`는 아무 글자.
 - `<값>`: JSON으로 읽히면 JSON(`50`, `true`, `["a"]`, `{"skillId":"archery","level":1}`), 아니면 문자열.
 - `--where`: `=` `!=` `>=` `<=` `>` `<`, 여러 번 주면 모두 만족. 배열의 `=`는 "포함". 파일에 적힌 값만 본다.
 
 콘텐츠(`src/Triangle.Desktop/Content/Content.mgcb`)는 빌드할 때 함께 처리된다. 에디터는 `src/Triangle.Desktop`에서 `dotnet tool restore && dotnet mgcb-editor`로 연다.
+
+## 전술 측정
+
+기준 파티가 전술 세트마다 적 조합과 HP·MP가 가득 찬 한 판을 싸운 승률이다. 만능 세트 하나로 모든 적을 이기는지, 적마다 세트를 바꿔야 하는지 본다. 정의는 `tools/bench/bench.json`, 아직 지역에 넣지 않은 시제품 적 조합과 그 적만 쓰는 효과는 `tools/bench/encounters.json`, `effects.json`이다(게임 데이터 뒤에 붙여 같은 검증을 받는다). 세트는 전술과 함께 장비 교체도 가질 수 있다. 설명과 측정 결과는 [docs/architecture.md](docs/architecture.md#전술-측정-2026-10-17)에 있다.
+
+```bash
+$D bench                                            # 맞대결 × 세트 승률 표
+$D bench --encounter 'oath_*,penitent_*' --set universal,vs_bulwark
+$D bench --search --from all                        # 자동 탐색: 공통 최선 세트와 적마다 맞춘 세트, 그 차이(특색). 수 분 걸린다
+```
+
+## 드래프트 시뮬레이션
+
+로그라이트 재편(설계, 구현 전)의 한 판을 지금 데이터로 돌린다. 클래스 파티가 막마다 지역 적 조합과 보스를 싸우고, 이길 때마다 카드(스킬 사본, 패시브, 줄 상한 +1) 하나를 고른다. 무작위로 고르는 봇과 앞을 보고 고르는 봇의 클리어율 차이로 "고르기가 결과를 바꾸는가"를 본다. 정의는 `tools/draft/draft.json`, 규칙과 결과는 [docs/architecture.md](docs/architecture.md#드래프트-시뮬레이션-2026-10-18)에 있다.
+
+```bash
+$D draft                                            # 두 봇 × 판 200개
+$D draft --start-lines 1,2,3 --runs 100             # 시작 줄 상한을 바꿔 가며
+```
+
+## 판 시뮬레이션
+
+게임의 판 규칙(`data/run.json`) 그대로 봇이 판을 끝까지 둔다. 아무렇게나 두는 봇과 카드를 미리 싸워 보고 고르는 똑똑한 봇의 클리어율, 막별 탈락, 막·적 조합별 진 비율과 이긴 뒤 남은 HP, 카드와 골드가 들어오고 쓰이는 곳, 판이 끝날 때 노는 사본을 보여 준다. 숫자 맞추기의 측정용이다. 봇 규칙과 측정 결과는 [docs/architecture.md](docs/architecture.md#판-시뮬레이션-2026-10-19)에 있다.
+
+```bash
+$D runs                                             # 두 봇 × 판 200개 (해금 없는 처음 판)
+$D runs --bot smart --unlocks all --party knight,warrior,archer,priest
+```
 
 ## 라이선스
 

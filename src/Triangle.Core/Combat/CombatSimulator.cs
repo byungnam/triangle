@@ -47,6 +47,16 @@ public sealed class CombatSimulator
         {
             c.TieBreak = _nextTieBreak++;
         }
+
+        // 타고난 효과는 전투 시작부터 걸려 있고 지워지기 전까지 끝나지 않는다.
+        foreach (var (setup, unit) in allies.Concat(enemies).Zip(_combatants))
+        {
+            foreach (var effectId in setup.StartingEffects)
+            {
+                unit.Effects.Add(new ActiveEffect(catalog.Effects[effectId], EffectApplied.Permanent, unit.Id));
+                _events.Add(new EffectApplied(unit.Id, effectId, EffectApplied.Permanent, false));
+            }
+        }
     }
 
     public static CombatResult Run(
@@ -87,6 +97,11 @@ public sealed class CombatSimulator
                 throw new ArgumentException($"Combatant '{setup.Id}' has unknown skill '{skillId}'.");
             }
 
+            foreach (var effectId in setup.StartingEffects.Where(id => !catalog.Effects.ContainsKey(id)))
+            {
+                throw new ArgumentException($"Combatant '{setup.Id}' starts with unknown effect '{effectId}'.");
+            }
+
             var skills = new SkillSet(setup.Skills, catalog.Skills);
             foreach (var tactic in setup.Tactics)
             {
@@ -115,6 +130,10 @@ public sealed class CombatSimulator
             var actor = _combatants
                 .Where(c => c.IsAlive)
                 .MinBy(c => (c.NextActionTime, c.TieBreak))!;
+            if (actor.NextActionTime > _rules.TimeLimit)
+            {
+                return Finish(_rules.ActionLimitOutcome, action - 1);
+            }
 
             actor.TurnCount++;
             _events.Add(new TurnStarted(action, actor.Id, actor.NextActionTime));
@@ -220,6 +239,12 @@ public sealed class CombatSimulator
                 continue;
             }
 
+            if (percent > 0 && HealBlocker(unit) is { } blocker)
+            {
+                _events.Add(new HealBlocked(unit.Id, blocker.Id));
+                continue;
+            }
+
             var amount = Math.Max(1, Ratio.ApplyPercent(unit.MaxHp, Math.Abs(percent)));
             var change = percent < 0 ? -Math.Min(unit.Hp, amount) : Math.Min(unit.MaxHp - unit.Hp, amount);
             unit.Hp += change;
@@ -235,7 +260,7 @@ public sealed class CombatSimulator
     /// <summary>턴이 끝나면 남은 횟수를 줄이고, 다 된 효과를 지운다.</summary>
     private void EndTurnEffects(Combatant unit)
     {
-        foreach (var effect in unit.Effects.ToList())
+        foreach (var effect in unit.Effects.Where(e => e.Remaining != EffectApplied.Permanent).ToList())
         {
             if (--effect.Remaining <= 0)
             {
@@ -251,6 +276,12 @@ public sealed class CombatSimulator
         foreach (var application in action.Applies)
         {
             var definition = _catalog.Effects[application.EffectId];
+            if (definition.Kind == EffectKind.Debuff && target.Effects.FirstOrDefault(e => e.Definition.ImmuneToDebuffs) is { } ward)
+            {
+                _events.Add(new Immune(target.Id, ward.Definition.Id, definition.Id));
+                continue;
+            }
+
             var duration = application.Duration + bonus;
             var existing = target.Effects.FirstOrDefault(e => e.Definition.Id == definition.Id);
             if (existing is not null)
@@ -441,6 +472,8 @@ public sealed class CombatSimulator
             Condition.AnyAllyLacksActionEffect => allies.Any(Lacks),
             Condition.AnyEnemyLacksActionEffect => enemies.Any(Lacks),
             Condition.AnyAllyHasDebuff => allies.Any(a => a.HasEffect(d => d.Kind == EffectKind.Debuff)),
+            Condition.SelfDisplaced => actor.Row != actor.StartRow,
+            Condition.AnyEnemyHasBuff => enemies.Any(e => e.HasEffect(d => d.Kind == EffectKind.Buff)),
 
             _ => throw new InvalidOperationException($"Unknown condition {condition.Condition}."),
         };
@@ -500,6 +533,9 @@ public sealed class CombatSimulator
             case TargetRule.WithDebuffFirst:
                 var debuffed = candidates.Where(c => c.HasEffect(d => d.Kind == EffectKind.Debuff)).ToList();
                 return debuffed.Count > 0 ? PickRandom(debuffed) : LowestHp(candidates);
+            case TargetRule.WithBuffFirst:
+                var buffed = candidates.Where(c => c.HasEffect(d => d.Kind == EffectKind.Buff)).ToList();
+                return PickRandom(buffed.Count > 0 ? buffed : candidates);
             default:
                 return PickRandom(candidates);
         }
@@ -558,6 +594,14 @@ public sealed class CombatSimulator
 
         foreach (var target in Targets(action, plan.Targets))
         {
+            // 면역이면 그 대상에게는 피해도, 효과도, 넘어뜨림·줄 옮기기도 없다.
+            if (action.Effect == ActionEffect.Damage
+                && target.Effects.FirstOrDefault(e => e.Definition.ImmuneDamageTypes.Contains(action.DamageType)) is { } immunity)
+            {
+                _events.Add(new Immune(target.Id, immunity.Definition.Id));
+                continue;
+            }
+
             for (var hit = 0; hit < action.Hits && target.IsAlive; hit++)
             {
                 Apply(actor, action, target);
@@ -644,6 +688,9 @@ public sealed class CombatSimulator
                 _events.Add(new MpRestored(target.Id, amount, target.Mp));
                 break;
             }
+            case ActionEffect.Heal when HealBlocker(target) is { } blocker:
+                _events.Add(new HealBlocked(target.Id, blocker.Id));
+                break;
             case ActionEffect.Heal:
             {
                 var amount = Math.Min(target.MaxHp - target.Hp, HealAmount(actor, action));
@@ -667,7 +714,7 @@ public sealed class CombatSimulator
         }
     }
 
-    /// <summary>타격이 끝난 뒤 살아 있는 대상에게 한 번: 넘어뜨림, MP 깎기, 줄 옮기기, 디버프 지우기.</summary>
+    /// <summary>타격이 끝난 뒤 살아 있는 대상에게 한 번: 넘어뜨림, MP 깎기, 줄 옮기기, 디버프·버프 지우기.</summary>
     private void AfterHits(ActionDefinition action, Combatant target)
     {
         if (action.PushBack > 0)
@@ -699,7 +746,20 @@ public sealed class CombatSimulator
                 _events.Add(new EffectExpired(target.Id, effect.Definition.Id));
             }
         }
+
+        if (action.RemovesBuffs)
+        {
+            foreach (var effect in target.Effects.Where(e => e.Definition.Kind == EffectKind.Buff).ToList())
+            {
+                target.Effects.Remove(effect);
+                _events.Add(new EffectExpired(target.Id, effect.Definition.Id));
+            }
+        }
     }
+
+    /// <summary>회복을 막는 효과 (치유 봉쇄). 없으면 null.</summary>
+    private static EffectDefinition? HealBlocker(Combatant unit) =>
+        unit.Effects.FirstOrDefault(e => e.Definition.HealBlock)?.Definition;
 
     /// <summary>회복·보호막 양: 위력 × 지능 보정 × (회복 + 위력 보너스) × 무기 위력 배율.</summary>
     private int HealAmount(Combatant actor, ActionDefinition action) =>

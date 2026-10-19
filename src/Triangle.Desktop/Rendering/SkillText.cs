@@ -34,6 +34,4 @@ internal static class SkillText
     /// <summary>레벨 표시, 예: "■■■□□".</summary>
     public static string LevelPips(int level) =>
         new string('■', level) + new string('□', SkillDefinition.MaxLevel - level);
-
-    public static string Number(int value) => value.ToString("N0");
 }

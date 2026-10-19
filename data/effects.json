@@ -372,5 +372,19 @@
     "description": "임시 수치",
     "kind": "Buff",
     "taunt": true
+  },
+  {
+    "id": "heal_block",
+    "name": "치유 봉쇄",
+    "description": "HP를 회복하지 못한다. 보호막은 받는다 (2026-10-17). 임시 수치",
+    "kind": "Debuff",
+    "healBlock": true
+  },
+  {
+    "id": "steadfast",
+    "name": "굳건함",
+    "description": "임시. 디버프에 걸리지 않는다 (장신구 정결한 성표).",
+    "kind": "Buff",
+    "immuneToDebuffs": true
   }
 ]

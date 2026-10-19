@@ -33,7 +33,7 @@ public class DataLintTests
 
     private const string Encounters = """
         [
-          { "id": "camp", "name": "야영지", "units": [ { "id": "e1", "name": "적", "row": "Front", "equipment": { "MainHand": "old_sword" },
+          { "id": "camp", "name": "야영지", "units": [ { "id": "e1", "name": "적", "row": "Front", "equipment": { "MainHand": "old_sword", "Body": "worn_mail" },
             "stats": { "str": 10, "dex": 10, "vital": 20, "intel": 10, "speed": 10 },
             "tactics": [ { "priority": 1, "condition": "Always", "value": 0, "actionId": "strike" } ] } ] },
           { "id": "lonely", "name": "아무 지역에도 없음", "units": [ { "id": "e1", "name": "적", "row": "Front",
@@ -44,24 +44,25 @@ public class DataLintTests
     private const string Items = """
         [
           { "id": "old_sword", "name": "낡은 검", "slot": "MainHand", "mastery": "sword", "tier": 1, "actions": [ "slash" ] },
-          { "id": "relic_sword", "name": "잃어버린 검", "slot": "MainHand", "mastery": "sword", "tier": 4 },
-          { "id": "crafted_sword", "name": "만든 검", "slot": "MainHand", "mastery": "sword", "tier": 4 },
-          { "id": "iron", "name": "쇳조각", "slot": "Material" },
-          { "id": "pebble", "name": "조약돌", "slot": "Material" }
+          { "id": "lost_sword", "name": "잃어버린 검", "slot": "MainHand", "mastery": "sword", "tier": 3 },
+          { "id": "lost_mail", "name": "잃어버린 갑옷", "slot": "Body", "mastery": "plate", "tier": 3 },
+          { "id": "worn_mail", "name": "적이 입은 갑옷", "slot": "Body", "mastery": "plate", "tier": 3 },
+          { "id": "lost_ring", "name": "잃어버린 반지", "slot": "Trinket", "tier": 1 }
         ]
         """;
 
     private const string Zones = """
-        [ { "id": "forest", "name": "숲", "maxBattles": 3, "encounters": [ { "encounterId": "camp", "weight": 1 } ],
-            "rewards": { "itemDrops": [ { "itemId": "iron", "chance": 10 } ] } } ]
+        [ { "id": "forest", "name": "숲", "encounters": [ { "encounterId": "camp", "weight": 1 } ] } ]
         """;
 
-    private const string Recipes = """
-        [ { "result": "crafted_sword", "gold": 10, "materials": [ { "itemId": "iron", "count": 2 } ] } ]
+    /// <summary>검 클래스 하나. 판의 상점은 티어 1만 판다(run.json 없이도 클래스 무기는 본다).</summary>
+    private const string Classes = """
+        [ { "id": "knight", "name": "기사", "row": "Front", "stats": { "str": 10, "dex": 10, "vital": 20, "intel": 10, "speed": 10 },
+            "families": [ "sword" ], "weapon": "old_sword", "armor": "worn_mail", "startingSkill": "slash", "skills": [ "slash" ], "passives": [] } ]
         """;
 
     private static GameData Load() =>
-        GameDataLoader.Parse(Masteries, Skills, Actions, Encounters, Effects, Items, Zones, recipesJson: Recipes);
+        GameDataLoader.Parse(Masteries, Skills, Actions, Encounters, Effects, Items, Zones, classesJson: Classes);
 
     [Fact]
     public void Warns_about_unreachable_content()
@@ -73,10 +74,10 @@ public class DataLintTests
                 "actions.json 'orphan': no item grants it",
                 "actions.json 'spirit_bite': summonOnly but no summon uses it",
                 "effects.json 'unused_buff': no action applies it",
-                "encounters.json 'lonely': no zone uses it",
-                "items.json 'relic_sword': cannot be obtained (not sold, dropped, crafted or given to recruits)",
-                "items.json 'pebble': cannot be obtained (not sold, dropped, crafted or given to recruits)",
-                "items.json 'pebble': material used by no recipe",
+                "encounters.json 'lonely': no zone or run act uses it",
+                "items.json 'lost_sword': used by no one (not sold in a run, not class gear, not worn by an enemy)",
+                "items.json 'lost_mail': used by no one (not sold in a run, not class gear, not worn by an enemy)",
+                "items.json 'lost_ring': used by no one (not sold in a run, not class gear, not worn by an enemy)",
             ],
             warnings);
     }
@@ -95,17 +96,15 @@ public class DataLintTests
         var data = Load();
 
         Assert.Equal(["actions.json 'slash': applies"], DataReferences.Find(data, "bleed"));
-        Assert.Equal(["recipes.json 'crafted_sword': result"], DataReferences.Find(data, "crafted_sword"));
-        Assert.Equal(
-            ["zones.json 'forest': itemDrops", "recipes.json 'crafted_sword': materials"],
-            DataReferences.Find(data, "iron"));
+        Assert.Equal(["zones.json 'forest': encounters"], DataReferences.Find(data, "camp"));
         Assert.Equal(
             [
                 "items.json 'old_sword': mastery",
-                "items.json 'relic_sword': mastery",
-                "items.json 'crafted_sword': mastery",
+                "items.json 'lost_sword': mastery",
+                "classes.json 'knight': families",
             ],
             DataReferences.Find(data, "sword").Where(r => !r.StartsWith("skills.json")).ToList());
+        Assert.Equal(["encounters.json 'camp' unit 'e1': equipment", "classes.json 'knight': armor"], DataReferences.Find(data, "worn_mail"));
         Assert.Contains("encounters.json 'camp' unit 'e1': equipment", DataReferences.Find(data, "old_sword"));
         Assert.Empty(DataReferences.Find(data, "nothing"));
     }

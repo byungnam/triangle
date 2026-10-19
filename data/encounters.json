@@ -8,10 +8,10 @@
         "id": "training_soldier_1",
         "name": "훈련병",
         "stats": {
-          "str": 13,
+          "str": 20,
           "dex": 13,
-          "vital": 23,
-          "intel": 20,
+          "vital": 35,
+          "intel": 30,
           "speed": 12
         },
         "row": "Front",
@@ -24,6 +24,9 @@
           "swordsmanship": 1,
           "defense": 1
         },
+        "actions": [
+          "shield_wall"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -43,10 +46,10 @@
         "id": "training_soldier_2",
         "name": "훈련병",
         "stats": {
-          "str": 12,
+          "str": 18,
           "dex": 14,
-          "vital": 22,
-          "intel": 20,
+          "vital": 34,
+          "intel": 30,
           "speed": 13
         },
         "row": "Front",
@@ -58,6 +61,9 @@
           "spearmanship": 1,
           "defense": 1
         },
+        "actions": [
+          "harrying_thrust"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -77,10 +83,10 @@
         "id": "training_priest",
         "name": "견습 사제",
         "stats": {
-          "str": 10,
+          "str": 15,
           "dex": 11,
-          "vital": 20,
-          "intel": 25,
+          "vital": 30,
+          "intel": 38,
           "speed": 11
         },
         "row": "Back",
@@ -91,6 +97,9 @@
         "skills": {
           "healing": 2
         },
+        "actions": [
+          "heal"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -117,10 +126,10 @@
         "id": "elite_soldier_1",
         "name": "정예병",
         "stats": {
-          "str": 13,
+          "str": 16,
           "dex": 13,
-          "vital": 19,
-          "intel": 20,
+          "vital": 23,
+          "intel": 24,
           "speed": 13
         },
         "row": "Front",
@@ -134,6 +143,9 @@
           "shield_mastery": 1,
           "defense": 1
         },
+        "actions": [
+          "heavy_strike"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -153,10 +165,10 @@
         "id": "elite_soldier_2",
         "name": "정예병",
         "stats": {
-          "str": 13,
+          "str": 16,
           "dex": 13,
-          "vital": 19,
-          "intel": 20,
+          "vital": 23,
+          "intel": 24,
           "speed": 13
         },
         "row": "Front",
@@ -167,6 +179,9 @@
         "skills": {
           "swordsmanship": 2
         },
+        "actions": [
+          "greatsword_sweep"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -186,10 +201,10 @@
         "id": "elite_archer",
         "name": "정예 궁수",
         "stats": {
-          "str": 11,
+          "str": 13,
           "dex": 13,
-          "vital": 18,
-          "intel": 22,
+          "vital": 22,
+          "intel": 27,
           "speed": 14
         },
         "row": "Back",
@@ -201,6 +216,10 @@
           "archery": 3,
           "mobility": 1
         },
+        "actions": [
+          "poison_arrow",
+          "fire_arrow"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -220,10 +239,10 @@
         "id": "elite_priest",
         "name": "정예 사제",
         "stats": {
-          "str": 10,
+          "str": 12,
           "dex": 11,
-          "vital": 20,
-          "intel": 21,
+          "vital": 24,
+          "intel": 26,
           "speed": 12
         },
         "row": "Back",
@@ -235,6 +254,10 @@
         "skills": {
           "healing": 2
         },
+        "actions": [
+          "heal",
+          "prayer_of_protection"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -267,11 +290,12 @@
         "id": "dog_1",
         "name": "들개",
         "row": "Front",
+        "actions": [],
         "stats": {
-          "str": 7,
+          "str": 17,
           "dex": 8,
-          "vital": 8,
-          "intel": 4,
+          "vital": 20,
+          "intel": 10,
           "speed": 12
         },
         "tactics": [
@@ -287,11 +311,12 @@
         "id": "dog_2",
         "name": "들개",
         "row": "Front",
+        "actions": [],
         "stats": {
-          "str": 7,
+          "str": 17,
           "dex": 8,
-          "vital": 8,
-          "intel": 4,
+          "vital": 20,
+          "intel": 10,
           "speed": 12
         },
         "tactics": [
@@ -307,11 +332,12 @@
         "id": "dog_3",
         "name": "들개",
         "row": "Front",
+        "actions": [],
         "stats": {
-          "str": 7,
+          "str": 17,
           "dex": 8,
-          "vital": 8,
-          "intel": 4,
+          "vital": 20,
+          "intel": 10,
           "speed": 12
         },
         "tactics": [
@@ -334,10 +360,10 @@
         "id": "bandit_1",
         "name": "도적",
         "stats": {
-          "str": 10,
+          "str": 28,
           "dex": 9,
-          "vital": 10,
-          "intel": 8,
+          "vital": 28,
+          "intel": 22,
           "speed": 10
         },
         "row": "Front",
@@ -345,6 +371,9 @@
           "MainHand": "old_hatchet",
           "Body": "leather_armor"
         },
+        "actions": [
+          "bleeding_cut"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -364,10 +393,10 @@
         "id": "bandit_2",
         "name": "도적",
         "stats": {
-          "str": 10,
+          "str": 28,
           "dex": 9,
-          "vital": 10,
-          "intel": 8,
+          "vital": 28,
+          "intel": 22,
           "speed": 10
         },
         "row": "Front",
@@ -375,6 +404,9 @@
           "MainHand": "old_sword",
           "Body": "leather_armor"
         },
+        "actions": [
+          "disarm"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -401,10 +433,10 @@
         "id": "poacher_1",
         "name": "밀렵꾼",
         "stats": {
-          "str": 10,
+          "str": 35,
           "dex": 9,
-          "vital": 12,
-          "intel": 8,
+          "vital": 42,
+          "intel": 28,
           "speed": 10
         },
         "row": "Front",
@@ -412,6 +444,9 @@
           "MainHand": "old_spear",
           "Body": "leather_armor"
         },
+        "actions": [
+          "javelin"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -431,10 +466,10 @@
         "id": "poacher_archer",
         "name": "밀렵 궁수",
         "stats": {
-          "str": 8,
+          "str": 28,
           "dex": 10,
-          "vital": 10,
-          "intel": 12,
+          "vital": 35,
+          "intel": 42,
           "speed": 10
         },
         "row": "Back",
@@ -442,6 +477,10 @@
           "MainHand": "hunting_bow",
           "Body": "leather_armor"
         },
+        "actions": [
+          "harass_shot",
+          "fire_arrow"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -474,10 +513,10 @@
         "id": "deserter_1",
         "name": "탈영병",
         "stats": {
-          "str": 11,
+          "str": 33,
           "dex": 9,
-          "vital": 12,
-          "intel": 10,
+          "vital": 36,
+          "intel": 30,
           "speed": 10
         },
         "row": "Front",
@@ -489,6 +528,9 @@
         "skills": {
           "spearmanship": 1
         },
+        "actions": [
+          "harrying_thrust"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -508,10 +550,10 @@
         "id": "deserter_2",
         "name": "탈영병",
         "stats": {
-          "str": 11,
+          "str": 33,
           "dex": 9,
-          "vital": 12,
-          "intel": 10,
+          "vital": 36,
+          "intel": 30,
           "speed": 10
         },
         "row": "Front",
@@ -522,6 +564,9 @@
         "skills": {
           "spearmanship": 1
         },
+        "actions": [
+          "spear_sweep"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -548,10 +593,10 @@
         "id": "fort_guard",
         "name": "방패병",
         "stats": {
-          "str": 11,
+          "str": 31,
           "dex": 9,
-          "vital": 13,
-          "intel": 10,
+          "vital": 37,
+          "intel": 28,
           "speed": 10
         },
         "row": "Front",
@@ -564,6 +609,9 @@
         "skills": {
           "defense": 2
         },
+        "actions": [
+          "shield_wall"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -583,10 +631,10 @@
         "id": "fort_archer_1",
         "name": "요새 석궁수",
         "stats": {
-          "str": 8,
+          "str": 23,
           "dex": 11,
-          "vital": 9,
-          "intel": 14,
+          "vital": 26,
+          "intel": 40,
           "speed": 11
         },
         "row": "Back",
@@ -597,6 +645,10 @@
         "skills": {
           "crossbow_mastery": 2
         },
+        "actions": [
+          "barbed_bolt",
+          "bolt_shot"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -629,10 +681,10 @@
         "id": "chief",
         "name": "도적 두목",
         "stats": {
-          "str": 12,
+          "str": 29,
           "dex": 11,
-          "vital": 14,
-          "intel": 14,
+          "vital": 34,
+          "intel": 34,
           "speed": 11
         },
         "row": "Front",
@@ -643,6 +695,9 @@
         "skills": {
           "axemanship": 2
         },
+        "actions": [
+          "reckless_blow"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -662,10 +717,10 @@
         "id": "chief_bandit_1",
         "name": "도적",
         "stats": {
-          "str": 10,
+          "str": 24,
           "dex": 9,
-          "vital": 10,
-          "intel": 8,
+          "vital": 24,
+          "intel": 20,
           "speed": 10
         },
         "row": "Front",
@@ -673,6 +728,9 @@
           "MainHand": "old_hatchet",
           "Body": "leather_armor"
         },
+        "actions": [
+          "bleeding_cut"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -699,10 +757,10 @@
         "id": "dead_infantry_1",
         "name": "망자 보병",
         "stats": {
-          "str": 9,
+          "str": 29,
           "dex": 9,
-          "vital": 10,
-          "intel": 9,
+          "vital": 32,
+          "intel": 29,
           "speed": 10
         },
         "row": "Front",
@@ -715,6 +773,9 @@
           "mace_mastery": 2,
           "defense": 1
         },
+        "actions": [
+          "bone_crusher"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -740,10 +801,10 @@
         "id": "dead_infantry_2",
         "name": "망자 보병",
         "stats": {
-          "str": 9,
+          "str": 29,
           "dex": 9,
-          "vital": 10,
-          "intel": 9,
+          "vital": 32,
+          "intel": 29,
           "speed": 10
         },
         "row": "Front",
@@ -755,6 +816,9 @@
           "mace_mastery": 2,
           "defense": 1
         },
+        "actions": [
+          "quake_slam"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -780,10 +844,10 @@
         "id": "dead_archer",
         "name": "망자 궁수",
         "stats": {
-          "str": 7,
+          "str": 22,
           "dex": 8,
-          "vital": 8,
-          "intel": 10,
+          "vital": 26,
+          "intel": 32,
           "speed": 9
         },
         "row": "Back",
@@ -794,6 +858,10 @@
         "skills": {
           "archery": 2
         },
+        "actions": [
+          "poison_arrow",
+          "fire_arrow"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -826,10 +894,10 @@
         "id": "wraith_rider_1",
         "name": "망령 기수",
         "stats": {
-          "str": 10,
+          "str": 41,
           "dex": 9,
-          "vital": 8,
-          "intel": 9,
+          "vital": 33,
+          "intel": 37,
           "speed": 13
         },
         "row": "Front",
@@ -840,6 +908,9 @@
         "skills": {
           "mobility": 1
         },
+        "actions": [
+          "javelin"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -859,10 +930,10 @@
         "id": "wraith_rider_2",
         "name": "망령 기수",
         "stats": {
-          "str": 10,
+          "str": 41,
           "dex": 9,
-          "vital": 8,
-          "intel": 9,
+          "vital": 33,
+          "intel": 37,
           "speed": 13
         },
         "row": "Front",
@@ -873,6 +944,9 @@
         "skills": {
           "mobility": 1
         },
+        "actions": [
+          "hamstring"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -899,10 +973,10 @@
         "id": "cult_guard",
         "name": "교단 호위병",
         "stats": {
-          "str": 9,
+          "str": 30,
           "dex": 8,
-          "vital": 8,
-          "intel": 9,
+          "vital": 26,
+          "intel": 30,
           "speed": 9
         },
         "row": "Front",
@@ -914,6 +988,9 @@
         "skills": {
           "defense": 1
         },
+        "actions": [
+          "heavy_blow"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -933,10 +1010,10 @@
         "id": "cult_mage",
         "name": "교단 주술사",
         "stats": {
-          "str": 6,
+          "str": 20,
           "dex": 8,
-          "vital": 8,
-          "intel": 13,
+          "vital": 26,
+          "intel": 43,
           "speed": 9
         },
         "row": "Back",
@@ -947,6 +1024,10 @@
         "skills": {
           "pyromancy": 2
         },
+        "actions": [
+          "fireball",
+          "ember"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -972,10 +1053,10 @@
         "id": "cult_priest",
         "name": "교단 사제",
         "stats": {
-          "str": 6,
+          "str": 20,
           "dex": 8,
-          "vital": 8,
-          "intel": 11,
+          "vital": 26,
+          "intel": 36,
           "speed": 9
         },
         "row": "Back",
@@ -986,6 +1067,9 @@
         "skills": {
           "healing": 2
         },
+        "actions": [
+          "heal"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1012,10 +1096,10 @@
         "id": "boss_chief",
         "name": "넝마주이 우두머리",
         "stats": {
-          "str": 17,
+          "str": 16,
           "dex": 10,
-          "vital": 68,
-          "intel": 16,
+          "vital": 65,
+          "intel": 15,
           "speed": 10
         },
         "row": "Front",
@@ -1028,6 +1112,10 @@
           "axemanship": 2,
           "defense": 1
         },
+        "actions": [
+          "berserk",
+          "reckless_blow"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1053,9 +1141,9 @@
         "id": "boss_chief_guard",
         "name": "넝마주이",
         "stats": {
-          "str": 13,
+          "str": 12,
           "dex": 9,
-          "vital": 27,
+          "vital": 26,
           "intel": 10,
           "speed": 10
         },
@@ -1065,6 +1153,9 @@
           "Body": "leather_armor"
         },
         "skills": {},
+        "actions": [
+          "bleeding_cut"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1086,8 +1177,8 @@
         "stats": {
           "str": 10,
           "dex": 11,
-          "vital": 22,
-          "intel": 16,
+          "vital": 21,
+          "intel": 15,
           "speed": 11
         },
         "row": "Back",
@@ -1096,6 +1187,10 @@
           "Body": "leather_armor"
         },
         "skills": {},
+        "actions": [
+          "lead_shot",
+          "sling_stone"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1122,10 +1217,10 @@
         "id": "boss_regiment_shield",
         "name": "연대 방패병",
         "stats": {
-          "str": 17,
+          "str": 22,
           "dex": 10,
-          "vital": 35,
-          "intel": 20,
+          "vital": 45,
+          "intel": 26,
           "speed": 10
         },
         "row": "Front",
@@ -1139,6 +1234,9 @@
         "skills": {
           "defense": 1
         },
+        "actions": [
+          "shield_wall"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1158,10 +1256,10 @@
         "id": "boss_regiment_halberd",
         "name": "연대 미늘창병",
         "stats": {
-          "str": 19,
+          "str": 24,
           "dex": 11,
-          "vital": 31,
-          "intel": 20,
+          "vital": 40,
+          "intel": 26,
           "speed": 11
         },
         "row": "Front",
@@ -1172,6 +1270,9 @@
         "skills": {
           "spearmanship": 2
         },
+        "actions": [
+          "spear_sweep"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1191,10 +1292,10 @@
         "id": "boss_regiment_chaplain",
         "name": "연대 군목",
         "stats": {
-          "str": 12,
+          "str": 15,
           "dex": 10,
-          "vital": 28,
-          "intel": 29,
+          "vital": 36,
+          "intel": 37,
           "speed": 11
         },
         "row": "Back",
@@ -1205,6 +1306,9 @@
         "skills": {
           "healing": 1
         },
+        "actions": [
+          "heal"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1224,10 +1328,10 @@
         "id": "boss_regiment_musketeer",
         "name": "연대 머스킷병",
         "stats": {
-          "str": 14,
+          "str": 18,
           "dex": 12,
-          "vital": 24,
-          "intel": 23,
+          "vital": 31,
+          "intel": 29,
           "speed": 10
         },
         "row": "Back",
@@ -1236,6 +1340,10 @@
           "Body": "leather_armor"
         },
         "skills": {},
+        "actions": [
+          "volley",
+          "bayonet"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1262,10 +1370,10 @@
         "id": "boss_guardian_iron",
         "name": "쇠의 수호자",
         "stats": {
-          "str": 16,
+          "str": 18,
           "dex": 12,
-          "vital": 32,
-          "intel": 19,
+          "vital": 36,
+          "intel": 21,
           "speed": 11
         },
         "row": "Front",
@@ -1279,6 +1387,9 @@
           "mace_mastery": 2,
           "defense": 1
         },
+        "actions": [
+          "crush"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1298,10 +1409,10 @@
         "id": "boss_guardian_fire",
         "name": "불의 수호자",
         "stats": {
-          "str": 16,
+          "str": 18,
           "dex": 13,
-          "vital": 27,
-          "intel": 17,
+          "vital": 31,
+          "intel": 19,
           "speed": 13
         },
         "row": "Front",
@@ -1313,6 +1424,10 @@
           "axemanship": 2,
           "mobility": 1
         },
+        "actions": [
+          "berserk",
+          "reckless_blow"
+        ],
         "tactics": [
           {
             "priority": 1,
@@ -1338,10 +1453,10 @@
         "id": "boss_guardian_mana",
         "name": "마력의 수호자",
         "stats": {
-          "str": 9,
+          "str": 10,
           "dex": 11,
-          "vital": 25,
-          "intel": 28,
+          "vital": 28,
+          "intel": 32,
           "speed": 12
         },
         "row": "Back",
@@ -1353,6 +1468,10 @@
           "cryomancy": 2,
           "meditation": 1
         },
+        "actions": [
+          "blizzard",
+          "ice_lance"
+        ],
         "tactics": [
           {
             "priority": 1,

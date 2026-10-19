@@ -1,0 +1,287 @@
+[
+  {
+    "id": "knight",
+    "name": "기사",
+    "description": "검·방패·판금 계열. 맞으며 버티고 지킨다.",
+    "row": "Front",
+    "stats": {
+      "str": 14,
+      "dex": 12,
+      "vital": 23,
+      "intel": 19,
+      "speed": 12
+    },
+    "families": [
+      "sword",
+      "shield",
+      "plate"
+    ],
+    "weapon": "old_sword",
+    "armor": "plate_armor",
+    "startingSkill": "shield_wall",
+    "skills": [
+      "heavy_strike",
+      "duel_stance",
+      "disarm",
+      "double_slash",
+      "greatsword_sweep",
+      "cleave_down",
+      "blood_whirl",
+      "execute",
+      "first_aid",
+      "shield_wall",
+      "shield_bash",
+      "oath_of_protection",
+      "brace",
+      "war_cry",
+      "provoke",
+      "charge",
+      "step_forward"
+    ],
+    "passives": [
+      "swordsmanship",
+      "flurry",
+      "shield_mastery",
+      "shield_training",
+      "defense",
+      "endurance"
+    ]
+  },
+  {
+    "id": "archer",
+    "name": "궁수",
+    "description": "활·가죽 계열. 상태 이상과 후열 노리기.",
+    "row": "Back",
+    "stats": {
+      "str": 10,
+      "dex": 14,
+      "vital": 20,
+      "intel": 23,
+      "speed": 13
+    },
+    "families": [
+      "bow",
+      "leather"
+    ],
+    "weapon": "hunting_bow",
+    "armor": "leather_armor",
+    "startingSkill": "fire_arrow",
+    "skills": [
+      "fire_arrow",
+      "harass_shot",
+      "poison_arrow",
+      "rapid_volley",
+      "snipe",
+      "take_aim",
+      "arrow_rain",
+      "mark_prey",
+      "hide",
+      "throwing_knife",
+      "hamstring",
+      "fleet_foot"
+    ],
+    "passives": [
+      "archery",
+      "rapid_fire",
+      "precision_shooting",
+      "mobility",
+      "evasion_training"
+    ]
+  },
+  {
+    "id": "elementalist",
+    "name": "원소술사",
+    "description": "화염·냉기·전기·천 계열. 광역과 지속 피해.",
+    "row": "Back",
+    "stats": {
+      "str": 9,
+      "dex": 11,
+      "vital": 19,
+      "intel": 25,
+      "speed": 12
+    },
+    "families": [
+      "fire",
+      "frost",
+      "lightning",
+      "cloth"
+    ],
+    "weapon": "apprentice_staff",
+    "armor": "cloth_robe",
+    "startingSkill": "fireball",
+    "skills": [
+      "ember",
+      "fireball",
+      "ash_storm",
+      "flame_pillar",
+      "frost_bolt",
+      "ice_lance",
+      "blizzard",
+      "deep_freeze",
+      "static_shock",
+      "shock",
+      "chain_lightning",
+      "thunderbolt",
+      "arcane_haste",
+      "arcane_ward",
+      "mana_overload",
+      "step_back",
+      "summon_fire_lesser",
+      "summon_fire_middle",
+      "summon_fire_greater",
+      "summon_frost_lesser",
+      "summon_frost_middle",
+      "summon_frost_greater",
+      "summon_lightning_lesser",
+      "summon_lightning_middle",
+      "summon_lightning_greater"
+    ],
+    "passives": [
+      "pyromancy",
+      "fire_efficiency",
+      "fire_communion",
+      "cryomancy",
+      "frost_efficiency",
+      "frost_communion",
+      "electromancy",
+      "lightning_efficiency",
+      "lightning_communion",
+      "meditation",
+      "arcane_focus"
+    ]
+  },
+  {
+    "id": "priest",
+    "name": "사제",
+    "description": "치유·재생·보호막 계열. 회복과 보호.",
+    "row": "Back",
+    "stats": {
+      "str": 10,
+      "dex": 11,
+      "vital": 21,
+      "intel": 24,
+      "speed": 11
+    },
+    "families": [
+      "restoration",
+      "renewal",
+      "warding"
+    ],
+    "weapon": "wooden_relic",
+    "armor": "cloth_robe",
+    "startingSkill": "heal",
+    "skills": [
+      "heal",
+      "greater_heal",
+      "light_of_prayer",
+      "life_share",
+      "regen",
+      "wave_of_renewal",
+      "dawn_grace",
+      "purify",
+      "guard",
+      "sanctuary",
+      "martyrdom",
+      "holy_shield"
+    ],
+    "passives": [
+      "healing",
+      "restoration_efficiency",
+      "holy_magic",
+      "renewal_magic",
+      "renewal_efficiency",
+      "life_cycle",
+      "ward_magic",
+      "ward_efficiency",
+      "sacred_barrier"
+    ]
+  },
+  {
+    "id": "warrior",
+    "name": "전사",
+    "description": "도끼·둔기 계열. 출혈과 기절, 둔화로 몰아붙인다.",
+    "row": "Front",
+    "stats": {
+      "str": 16,
+      "dex": 11,
+      "vital": 23,
+      "intel": 18,
+      "speed": 12
+    },
+    "families": [
+      "axe",
+      "mace"
+    ],
+    "weapon": "old_greataxe",
+    "armor": "plate_armor",
+    "startingSkill": "bleeding_cut",
+    "skills": [
+      "bleeding_cut",
+      "open_wound",
+      "axe_throw",
+      "blood_scent",
+      "berserk",
+      "reckless_blow",
+      "whirlwind",
+      "armor_cleave",
+      "bone_crusher",
+      "weaken",
+      "heavy_blow",
+      "skull_bash",
+      "quake_slam",
+      "crush",
+      "knockback",
+      "earth_tremor"
+    ],
+    "passives": [
+      "axemanship",
+      "ferocity",
+      "mace_mastery",
+      "heavy_hand"
+    ]
+  },
+  {
+    "id": "gunner",
+    "name": "총사",
+    "description": "석궁·화기 계열. 느리지만 한 발이 크다.",
+    "row": "Back",
+    "stats": {
+      "str": 12,
+      "dex": 14,
+      "vital": 20,
+      "intel": 21,
+      "speed": 13
+    },
+    "families": [
+      "crossbow",
+      "firearm"
+    ],
+    "weapon": "old_crossbow",
+    "armor": "leather_armor",
+    "startingSkill": "bolt_shot",
+    "skills": [
+      "bolt_shot",
+      "piercing_bolt",
+      "armor_piercer",
+      "barbed_bolt",
+      "heavy_bolt",
+      "siege_bolt",
+      "scatter_bolt",
+      "emplace",
+      "volley",
+      "true_aim",
+      "reload",
+      "bayonet",
+      "bombard",
+      "line_breaker",
+      "thunderclap",
+      "point_blank"
+    ],
+    "passives": [
+      "crossbow_mastery",
+      "reloading",
+      "gunnery",
+      "steady_aim"
+    ]
+  }
+]

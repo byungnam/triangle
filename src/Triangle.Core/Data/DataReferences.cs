@@ -51,7 +51,9 @@ public static class DataReferences
                 var at = $"{GameDataLoader.EncountersFile} '{e.Id}' unit '{u.Id}'";
                 Add(u.Equipment.Values.Contains(id), $"{at}: equipment");
                 Add(u.Skills.ContainsKey(id), $"{at}: skills");
+                Add(u.Actions?.Contains(id) == true, $"{at}: actions");
                 Add(u.Tactics.Any(t => t.ActionId == id), $"{at}: tactics");
+                Add(u.Effects.Contains(id), $"{at}: effects");
             }
         }
 
@@ -59,23 +61,43 @@ public static class DataReferences
         {
             var at = $"{GameDataLoader.ZonesFile} '{z.Id}'";
             Add(z.Encounters.Any(e => e.EncounterId == id), $"{at}: encounters");
-            Add(z.Rewards.ItemDrops.Any(d => d.ItemId == id), $"{at}: itemDrops");
             Add(z.Boss?.EncounterId == id, $"{at}: boss");
-            Add(z.Boss?.FirstClearItems.Contains(id) == true, $"{at}: boss firstClearItems");
         }
 
-        foreach (var r in data.Recipes.Values)
+        foreach (var c in data.Classes.Values)
         {
-            var at = $"{GameDataLoader.RecipesFile} '{r.Result}'";
-            Add(r.Result == id, $"{at}: result");
-            Add(r.Materials.Any(m => m.ItemId == id), $"{at}: materials");
+            var at = $"{GameDataLoader.ClassesFile} '{c.Id}'";
+            Add(c.Families.Contains(id), $"{at}: families");
+            Add(c.Weapon == id, $"{at}: weapon");
+            Add(c.Armor == id, $"{at}: armor");
+            Add(c.StartingSkill == id, $"{at}: startingSkill");
+            Add(c.Skills.Contains(id), $"{at}: skills");
+            Add(c.Passives.Contains(id), $"{at}: passives");
         }
 
-        foreach (var r in data.Recruits.Values)
+        foreach (var u in data.Unlocks.Values)
         {
-            var at = $"{GameDataLoader.RecruitsFile} '{r.Id}'";
-            Add(r.Equipment.Values.Contains(id), $"{at}: equipment");
-            Add(r.Tactics.Any(t => t.ActionId == id), $"{at}: tactics");
+            var at = $"{GameDataLoader.UnlocksFile} '{u.Id}'";
+            Add(u.Classes.Contains(id), $"{at}: classes");
+            Add(u.Cards.Contains(id), $"{at}: cards");
+            Add(u.Items.Contains(id), $"{at}: items");
+        }
+
+        if (data.Run is { } run)
+        {
+            for (var i = 0; i < run.Acts.Count; i++)
+            {
+                var act = run.Acts[i];
+                var at = $"{GameDataLoader.RunFile} acts[{i}]";
+                Add(act.ZoneId == id, $"{at}: zoneId");
+                Add(act.Bosses.Contains(id), $"{at}: bosses");
+                Add(act.Elites.Contains(id), $"{at}: elites");
+            }
+
+            foreach (var e in run.Events)
+            {
+                Add(e.Options.Any(o => o.Join == id), $"{GameDataLoader.RunFile} event '{e.Id}': join");
+            }
         }
 
         return found;

@@ -426,7 +426,13 @@
     "bonusAgainst": {
       "effectId": "bleeding",
       "percent": 100
-    }
+    },
+    "applies": [
+      {
+        "effectId": "heal_block",
+        "duration": 3
+      }
+    ]
   },
   {
     "id": "axe_throw",
@@ -2289,6 +2295,19 @@
     "requirements": []
   },
   {
+    "id": "dispel",
+    "name": "주문 깨기",
+    "description": "적 하나의 버프를 모두 지운다(타고난 버프도). 성물 (2026-10-17). 임시 수치",
+    "mpCost": 20,
+    "effect": "None",
+    "rule": "WithBuffFirst",
+    "ignoresCover": true,
+    "tags": [
+      "holy"
+    ],
+    "removesBuffs": true
+  },
+  {
     "id": "brace",
     "name": "버티기",
     "description": "임시 수치",
@@ -2373,6 +2392,15 @@
     "ignoresCover": false,
     "tags": [],
     "requirements": []
+  },
+  {
+    "id": "step_forward",
+    "name": "나서기",
+    "description": "자신을 전위로 옮긴다. 판금 신발 (2026-10-17). 임시 수치",
+    "mpCost": 5,
+    "effect": "None",
+    "side": "Self",
+    "moveTo": "Front"
   },
   {
     "id": "hide",

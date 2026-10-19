@@ -51,6 +51,18 @@ public sealed record EffectDefinition
 
     /// <summary>엄호 불가: 이 유닛은 후위를 엄호하지 못한다.</summary>
     public bool NoCover { get; init; }
+
+    /// <summary>
+    /// 면역: 이 피해 종류의 행동은 이 유닛에게 아무것도 하지 못한다(피해도, 그 행동이 거는 효과도, 넘어뜨림·줄 옮기기도 없다).
+    /// 지속 피해는 종류가 없어 막지 않는다 (2026-10-17).
+    /// </summary>
+    public IReadOnlyList<Actions.DamageType> ImmuneDamageTypes { get; init; } = [];
+
+    /// <summary>디버프 면역: 이 유닛에게 디버프가 걸리지 않는다 (2026-10-17).</summary>
+    public bool ImmuneToDebuffs { get; init; }
+
+    /// <summary>치유 봉쇄: 이 유닛은 HP를 회복하지 못한다(회복 행동과 지속 회복). 보호막은 받는다 (2026-10-17).</summary>
+    public bool HealBlock { get; init; }
 }
 
 /// <summary>행동이 대상에게 거는 효과와 지속시간(대상의 행동 횟수).</summary>

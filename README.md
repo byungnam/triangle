@@ -44,7 +44,7 @@ dotnet run --project src/Triangle.Desktop -- --save /tmp/test-save.json         
 
 ```bash
 dotnet run --project src/Triangle.DataTool -- validate                      # 오류 있으면 종료 코드 1, --strict면 경고도 1
-dotnet run --project src/Triangle.DataTool -- list items --mastery sword    # 종류: masteries skills actions effects items encounters zones recipes recruits classes
+dotnet run --project src/Triangle.DataTool -- list items --mastery sword    # 종류: masteries skills actions effects items encounters zones recipes recruits classes unlocks
 dotnet run --project src/Triangle.DataTool -- list items --type 한손검 --tier 2
 dotnet run --project src/Triangle.DataTool -- list actions --mastery fire   # 화염 계열 아이템이 주는 행동
 dotnet run --project src/Triangle.DataTool -- show heal                     # 원본 JSON + 쓰는 곳

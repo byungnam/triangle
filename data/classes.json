@@ -195,5 +195,93 @@
       "ward_efficiency",
       "sacred_barrier"
     ]
+  },
+  {
+    "id": "warrior",
+    "name": "전사",
+    "description": "전열. 도끼·둔기 계열. 출혈과 기절, 둔화로 몰아붙인다.",
+    "row": "Front",
+    "stats": {
+      "str": 16,
+      "dex": 11,
+      "vital": 23,
+      "intel": 18,
+      "speed": 12
+    },
+    "families": [
+      "axe",
+      "mace"
+    ],
+    "weapon": "old_greataxe",
+    "armor": "plate_armor",
+    "startingSkill": "bleeding_cut",
+    "skills": [
+      "bleeding_cut",
+      "open_wound",
+      "axe_throw",
+      "blood_scent",
+      "berserk",
+      "reckless_blow",
+      "whirlwind",
+      "armor_cleave",
+      "bone_crusher",
+      "weaken",
+      "heavy_blow",
+      "skull_bash",
+      "quake_slam",
+      "crush",
+      "knockback",
+      "earth_tremor"
+    ],
+    "passives": [
+      "axemanship",
+      "ferocity",
+      "mace_mastery",
+      "heavy_hand"
+    ]
+  },
+  {
+    "id": "gunner",
+    "name": "총사",
+    "description": "후열. 석궁·화기 계열. 느리지만 한 발이 크다.",
+    "row": "Back",
+    "stats": {
+      "str": 12,
+      "dex": 14,
+      "vital": 20,
+      "intel": 21,
+      "speed": 13
+    },
+    "families": [
+      "crossbow",
+      "firearm"
+    ],
+    "weapon": "old_crossbow",
+    "armor": "leather_armor",
+    "startingSkill": "bolt_shot",
+    "skills": [
+      "bolt_shot",
+      "piercing_bolt",
+      "armor_piercer",
+      "barbed_bolt",
+      "heavy_bolt",
+      "siege_bolt",
+      "scatter_bolt",
+      "emplace",
+      "volley",
+      "true_aim",
+      "reload",
+      "bayonet",
+      "bombard",
+      "line_breaker",
+      "thunderclap",
+      "point_blank"
+    ],
+    "passives": [
+      "crossbow_mastery",
+      "reloading",
+      "gunnery",
+      "steady_aim"
+    ]
   }
 ]

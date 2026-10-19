@@ -1,0 +1,82 @@
+[
+  {
+    "id": "class_warrior",
+    "name": "전사",
+    "description": "도끼와 둔기를 드는 전열 클래스.",
+    "cost": 30,
+    "classes": [
+      "warrior"
+    ]
+  },
+  {
+    "id": "class_gunner",
+    "name": "총사",
+    "description": "석궁과 화기를 드는 후열 클래스.",
+    "cost": 30,
+    "classes": [
+      "gunner"
+    ]
+  },
+  {
+    "id": "knight_cards",
+    "name": "기사의 비기",
+    "description": "기사 카드 풀에 내려찍기와 처형을 더한다.",
+    "cost": 15,
+    "cards": [
+      "cleave_down",
+      "execute"
+    ]
+  },
+  {
+    "id": "archer_cards",
+    "name": "궁수의 비기",
+    "description": "궁수 카드 풀에 저격과 화살비를 더한다.",
+    "cost": 15,
+    "cards": [
+      "snipe",
+      "arrow_rain"
+    ]
+  },
+  {
+    "id": "elementalist_cards",
+    "name": "고위 정령",
+    "description": "원소술사 카드 풀에 중급·상급 정령 소환 여섯 장을 더한다.",
+    "cost": 20,
+    "cards": [
+      "summon_fire_middle",
+      "summon_fire_greater",
+      "summon_frost_middle",
+      "summon_frost_greater",
+      "summon_lightning_middle",
+      "summon_lightning_greater"
+    ]
+  },
+  {
+    "id": "priest_cards",
+    "name": "사제의 비기",
+    "description": "사제 카드 풀에 큰 치유와 신성 방벽을 더한다.",
+    "cost": 15,
+    "cards": [
+      "greater_heal",
+      "sanctuary"
+    ]
+  },
+  {
+    "id": "rare_trinkets",
+    "name": "희귀 장신구",
+    "description": "상점과 이벤트에 도전의 깃발, 트롤의 부적, 정결한 성표가 나온다.",
+    "cost": 20,
+    "items": [
+      "banner_of_defiance",
+      "troll_amulet",
+      "pure_sigil"
+    ]
+  },
+  {
+    "id": "war_chest",
+    "name": "군자금",
+    "description": "판을 시작할 때 골드 50을 더 받는다.",
+    "cost": 15,
+    "startGold": 50
+  }
+]

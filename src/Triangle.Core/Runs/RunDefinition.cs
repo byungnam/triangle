@@ -32,6 +32,20 @@ public sealed record RunDefinition
 
     /// <summary>이벤트 지점에서 뽑는 이벤트 (같은 가중치).</summary>
     public IReadOnlyList<RunEvent> Events { get; init; } = [];
+
+    public RunRenownRules Renown { get; init; } = new();
+}
+
+/// <summary>판이 끝나면 받는 명성 (해금에 쓴다): 이긴 전투마다, 그리고 판을 이기면 더.</summary>
+public sealed record RunRenownRules
+{
+    public int Fight { get; init; } = 1;
+
+    public int Elite { get; init; } = 3;
+
+    public int Boss { get; init; } = 8;
+
+    public int Victory { get; init; } = 10;
 }
 
 /// <summary>막 하나. 보통 전투는 지역의 적 조합을 가중치로 뽑는다.</summary>

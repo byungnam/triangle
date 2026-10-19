@@ -134,5 +134,11 @@
         }
       ]
     }
-  ]
+  ],
+  "renown": {
+    "fight": 1,
+    "elite": 3,
+    "boss": 8,
+    "victory": 10
+  }
 }

@@ -28,7 +28,8 @@ public class RunTests
         return GameDataLoader.Parse(
             Read(GameDataLoader.MasteriesFile), Read(GameDataLoader.SkillsFile), Read(GameDataLoader.ActionsFile), Read(GameDataLoader.EncountersFile),
             Read(GameDataLoader.EffectsFile), Read(GameDataLoader.ItemsFile), Read(GameDataLoader.ZonesFile), Read(GameDataLoader.RecruitsFile),
-            Read(GameDataLoader.RecipesFile), Read(GameDataLoader.ClassesFile), JsonSerializer.Serialize(change(Shipped.Run!), GameDataJson.Options));
+            Read(GameDataLoader.RecipesFile), Read(GameDataLoader.ClassesFile), JsonSerializer.Serialize(change(Shipped.Run!), GameDataJson.Options),
+            Read(GameDataLoader.UnlocksFile));
     }
 
     /// <summary>첫 층 다음 층이 모두 <paramref name="kind"/>인 막 하나 (층 3개: 전투, kind, 휴식).</summary>
@@ -46,11 +47,11 @@ public class RunTests
     });
 
     /// <summary>첫 전투를 이긴 판 (보상 단계). 이기는 시드를 찾는다.</summary>
-    private static Run WonFirstFight(GameData data, IReadOnlyList<string> party, int from = 0)
+    private static Run WonFirstFight(GameData data, IReadOnlyList<string> party, int from = 0, RunUnlocks? unlocks = null)
     {
         for (var seed = from; seed < from + 50; seed++)
         {
-            var run = Run.Start(data, party, seed);
+            var run = Run.Start(data, party, seed, unlocks);
             run.Enter(data, run.Choices[0].Id);
             if (run.Phase == RunPhase.Reward)
             {
@@ -62,9 +63,9 @@ public class RunTests
     }
 
     /// <summary>첫 전투를 이기고 보상을 건너뛴 뒤 다음 지점에 들어간 판.</summary>
-    private static Run AtSecondFloor(GameData data, IReadOnlyList<string>? party = null)
+    private static Run AtSecondFloor(GameData data, IReadOnlyList<string>? party = null, int from = 0, RunUnlocks? unlocks = null)
     {
-        var run = WonFirstFight(data, party ?? Party);
+        var run = WonFirstFight(data, party ?? Party, from, unlocks);
         run.Skip();
         run.Enter(data, run.Choices[0].Id);
         return run;
@@ -724,6 +725,163 @@ public class RunTests
             Assert.Equal(LoadStatus.Recovered, broken.Status);
             Assert.True(File.Exists(broken.BrokenFilePath));
             Assert.False(File.Exists(store.Path));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    // ── 해금과 기록 ───────────────────────────────────────
+
+    /// <summary>아무것도 열지 않은 처음 상태의 해금.</summary>
+    private static readonly RunUnlocks Fresh = RunUnlocks.For(Shipped, new HashSet<string>());
+
+    [Fact]
+    public void Unopened_unlocks_lock_their_classes_cards_and_items_and_opened_ones_add_start_gold()
+    {
+        Assert.Contains("warrior", Fresh.Locked);
+        Assert.Contains("gunner", Fresh.Locked);
+        Assert.Contains("snipe", Fresh.Locked);
+        Assert.Contains("troll_amulet", Fresh.Locked);
+        Assert.DoesNotContain("knight", Fresh.Locked);
+        Assert.Equal(0, Fresh.StartGold);
+
+        var rich = RunUnlocks.For(Shipped, new HashSet<string> { "war_chest", "class_warrior" });
+        Assert.Equal(50, rich.StartGold);
+        Assert.DoesNotContain("warrior", rich.Locked);
+        Assert.Equal(Shipped.Run!.StartGold + 50, Run.Start(Shipped, ["warrior"], 1, rich).Gold);
+
+        Assert.Contains("전사", Run.WhyCannotStart(Shipped, ["knight", "warrior"], Fresh));
+        Assert.Throws<InvalidOperationException>(() => Run.Start(Shipped, ["warrior"], 1, Fresh));
+        Assert.Null(Run.WhyCannotStart(Shipped, ["warrior"]));
+    }
+
+    [Fact]
+    public void Locked_cards_items_and_classes_never_show_up_in_a_run()
+    {
+        bool Locked(string? id) => id is not null && Fresh.Locked.Contains(id);
+
+        // 보상: 원소술사와 궁수 카드에는 잠긴 카드가 많다.
+        var actives = With(r => r with { Reward = r.Reward with { Active = 1, Passive = 0, Line = 0 }, Acts = [r.Acts[0]] });
+        for (var from = 0; from < 40; from += 4)
+        {
+            var run = WonFirstFight(actives, ["elementalist", "archer"], from, Fresh);
+            Assert.DoesNotContain(run.Offer, c => Locked(c.Id));
+        }
+
+        // 상점: 3막 상점은 잠긴 T3 장신구도 파는 티어다.
+        var shop = SecondFloor("shop", r => r with { Acts = [r.Acts[0] with { Floors = 3, ShopTier = 3 }], Shop = r.Shop with { Items = 30, Skills = 40, Recruits = 6 } });
+        var stock = AtSecondFloor(shop, ["elementalist", "archer"], unlocks: Fresh).Stock;
+        Assert.Contains(stock, s => s.Kind == RunStockKind.Item && shop.Items[s.Id].Slot == EquipmentSlot.Trinket);
+        Assert.DoesNotContain(stock, s => Locked(s.Id));
+        Assert.Contains(AtSecondFloor(shop, ["elementalist", "archer"]).Stock, s => Locked(s.Id));
+
+        // 이벤트: 아무 클래스 합류는 열린 클래스에서만, 잠긴 클래스를 데려오는 선택지는 고를 수 없다.
+        RunEvent join = new()
+        {
+            Id = "join",
+            Name = "합류",
+            Options = [new RunEventOption { Text = "아무나", Join = "any" }, new RunEventOption { Text = "전사", Join = "warrior" }],
+        };
+        var events = SecondFloor("event", r => r with { Events = [join] });
+        for (var from = 0; from < 30; from += 3)
+        {
+            var run = AtSecondFloor(events, ["knight", "archer", "priest"], from, Fresh);
+            Assert.Equal("아직 열지 않은 클래스다", run.WhyCannotChoose(1));
+            run.Choose(events, 0);
+            Assert.DoesNotContain(run.Members, m => Locked(m.ClassId));
+        }
+
+        // 판을 저장해도 잠긴 것은 그대로다.
+        var saved = WonFirstFight(Shipped, Party, unlocks: Fresh);
+        Assert.Equal(Fresh.Locked.Order(), Run.Deserialize(saved.Serialize(), Shipped).Locked.Order());
+    }
+
+    [Fact]
+    public void A_finished_run_gives_renown_and_records_and_renown_opens_unlocks()
+    {
+        var renown = Shipped.Run!.Renown;
+        var lost = WonFirstFight(Shipped, Party);
+        var first = Assert.Single(lost.History);
+        Assert.Equal((0, RunNodeKind.Fight, CombatOutcome.Victory), (first.Act, first.Kind, first.Outcome));
+        Assert.Throws<InvalidOperationException>(() => new Profile().Record(lost, Shipped));
+        lost.Abandon();
+
+        var profile = new Profile();
+        Assert.Equal(renown.Fight, profile.Record(lost, Shipped));
+        Assert.Equal((renown.Fight, 1, 0, 0), (profile.Renown, profile.Runs, profile.Victories, profile.BestActs));
+        Assert.Equal(new EncounterRecord(1, 1), profile.Encounters[first.EncounterId]);
+
+        // 두 막을 이긴 판: 보통 전투 둘, 보스 둘, 승리.
+        var data = With(r => r with { Acts = [new RunAct("outskirts_forest", 2) { Bosses = ["wild_dogs"] }, new RunAct("outskirts_forest", 2) { Bosses = ["wild_dogs"] }] });
+        var won = Enumerable.Range(0, 30).Select(seed => PlayThrough(data, seed)).First(r => r.Phase == RunPhase.Victory);
+        Assert.Equal(renown.Fight * 2 + renown.Boss * 2 + renown.Victory, Profile.RenownFor(won, data));
+        profile.Record(won, data);
+        Assert.Equal((2, 1, 2), (profile.Runs, profile.Victories, profile.BestActs));
+        Assert.Equal(2, profile.Encounters["wild_dogs"].Wins);
+
+        // 명성을 내고 연다. 모자라면, 이미 열었으면, 없는 해금이면 열 수 없다.
+        var cost = Shipped.Unlocks["class_warrior"].Cost;
+        var before = profile.Renown;
+        Assert.True(before < cost);
+        Assert.StartsWith("명성이 모자란다", profile.WhyCannotUnlock(Shipped, "class_warrior"));
+        Assert.NotNull(profile.WhyCannotUnlock(Shipped, "nope"));
+        var cheap = Shipped.Unlocks.Values.Where(u => u.Cost <= before).MinBy(u => u.Cost)!;
+        profile.Unlock(Shipped, cheap.Id);
+        Assert.Equal(before - cheap.Cost, profile.Renown);
+        Assert.Equal("이미 열었다", profile.WhyCannotUnlock(Shipped, cheap.Id));
+        Assert.DoesNotContain(cheap.Locks.FirstOrDefault() ?? "", profile.UnlocksForRun(Shipped).Locked);
+    }
+
+    /// <summary>판을 끝까지 둔다: 첫 지점, 보상은 건너뛰기, 휴식은 봉인 풀기.</summary>
+    private static Run PlayThrough(GameData data, int seed)
+    {
+        var run = Run.Start(data, Party, seed);
+        while (!run.Finished)
+        {
+            switch (run.Phase)
+            {
+                case RunPhase.Map:
+                    run.Enter(data, run.Choices[0].Id);
+                    break;
+                case RunPhase.Rest:
+                    run.RestUnseal(data);
+                    break;
+                default:
+                    run.Skip();
+                    break;
+            }
+        }
+
+        return run;
+    }
+
+    [Fact]
+    public void The_profile_is_saved_and_a_broken_one_is_set_aside()
+    {
+        var run = WonFirstFight(Shipped, Party);
+        run.Abandon();
+        var profile = new Profile();
+        profile.Record(run, Shipped);
+        var json = profile.Serialize();
+        Assert.Equal(json, Profile.Deserialize(json, Shipped).Serialize());
+
+        // 지금 데이터에 없는 해금은 버린다.
+        var stale = json.Replace("\"unlocked\": []", "\"unlocked\": [ \"gone\" ]");
+        Assert.Empty(Profile.Deserialize(stale, Shipped).Unlocked);
+
+        var dir = Path.Combine(Path.GetTempPath(), "triangle-profile-" + Guid.NewGuid());
+        try
+        {
+            var store = new ProfileStore(Path.Combine(dir, "profile.json"));
+            Assert.Equal(LoadStatus.NewGame, store.Load(Shipped).Status);
+            store.Save(profile);
+            Assert.Equal(json, store.Load(Shipped).Profile.Serialize());
+            File.WriteAllText(store.Path, "{ \"version\": 7 }");
+            var broken = store.Load(Shipped);
+            Assert.Equal((LoadStatus.Recovered, 0), (broken.Status, broken.Profile.Runs));
+            Assert.True(File.Exists(broken.BrokenFilePath));
         }
         finally
         {

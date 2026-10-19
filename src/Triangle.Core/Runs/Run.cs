@@ -60,6 +60,21 @@ public sealed record RunStock(RunStockKind Kind, string Id, int Price)
     public bool Sold { get; init; }
 }
 
+/// <summary>판의 전투 기록 한 줄 (판이 끝나면 명성과 탐사 기록에 쓴다).</summary>
+public sealed record RunBattleRecord(int Act, string EncounterId, RunNodeKind Kind, CombatOutcome Outcome);
+
+/// <summary>판을 시작할 때 해금이 정하는 것: 이 판에 나오지 않는 클래스·카드·아이템과 더 받는 시작 골드.</summary>
+public sealed record RunUnlocks(IReadOnlySet<string> Locked, int StartGold)
+{
+    /// <summary>모두 열린 판 (시험·설계 도구용).</summary>
+    public static RunUnlocks All { get; } = new(new HashSet<string>(), 0);
+
+    /// <summary>연 해금 ID로 정한다: 열지 않은 해금이 적은 것은 잠기고, 연 해금의 시작 골드를 더한다.</summary>
+    public static RunUnlocks For(GameData data, IReadOnlySet<string> unlocked) => new(
+        data.Unlocks.Values.Where(u => !unlocked.Contains(u.Id)).SelectMany(u => u.Locks).ToHashSet(),
+        data.Unlocks.Values.Where(u => unlocked.Contains(u.Id)).Sum(u => u.StartGold));
+}
+
 /// <summary>전투 하나의 결과. 봉인되거나 죽은 멤버 ID와 받은 골드를 함께 준다.</summary>
 public sealed record RunBattle(string EncounterId, RunNodeKind Kind, CombatResult Result, IReadOnlyList<string> Sealed, IReadOnlyList<string> Died, int Gold);
 
@@ -81,15 +96,23 @@ public sealed partial class Run
 
     private readonly List<RunStock> _stock = [];
     private readonly List<int> _path = [];
+    private readonly List<RunBattleRecord> _history = [];
     private bool _bossCleared;
 
-    private Run(int seed, IReadOnlyList<RunMap> maps, IReadOnlyList<string> bosses, int gold)
+    private Run(int seed, IReadOnlyList<RunMap> maps, IReadOnlyList<string> bosses, int gold, IReadOnlySet<string> locked)
     {
         Seed = seed;
         Maps = maps;
         Bosses = bosses;
         Gold = gold;
+        Locked = locked;
     }
+
+    /// <summary>이 판에 나오지 않는 클래스·카드·아이템 (아직 열지 않은 해금, 판을 시작할 때 정한다).</summary>
+    public IReadOnlySet<string> Locked { get; }
+
+    /// <summary>치른 전투 (치른 순서).</summary>
+    public IReadOnlyList<RunBattleRecord> History => _history;
 
     public int Seed { get; }
 
@@ -151,8 +174,13 @@ public sealed partial class Run
         }
     }
 
-    public static string? WhyCannotStart(GameData data, IReadOnlyList<string> classIds)
+    public static string? WhyCannotStart(GameData data, IReadOnlyList<string> classIds, RunUnlocks? unlocks = null)
     {
+        if (unlocks is not null && classIds.FirstOrDefault(unlocks.Locked.Contains) is { } locked && data.Classes.TryGetValue(locked, out var lockedClass))
+        {
+            return $"아직 열지 않은 클래스: {lockedClass.Name}";
+        }
+
         var rules = Rules(data);
         if (classIds.Count < 1 || classIds.Count > rules.PartySize)
         {
@@ -163,9 +191,11 @@ public sealed partial class Run
     }
 
     /// <summary>판을 시작한다. 막마다 지도를 만들고 보스를 정해 공개한다. 멤버는 클래스의 기본 장비와 시작 스킬 한 줄로 시작한다.</summary>
-    public static Run Start(GameData data, IReadOnlyList<string> classIds, int seed)
+    /// <param name="unlocks">해금이 정하는 잠긴 것과 시작 골드. null이면 모두 열린 판이다.</param>
+    public static Run Start(GameData data, IReadOnlyList<string> classIds, int seed, RunUnlocks? unlocks = null)
     {
-        if (WhyCannotStart(data, classIds) is { } reason)
+        unlocks ??= RunUnlocks.All;
+        if (WhyCannotStart(data, classIds, unlocks) is { } reason)
         {
             throw new InvalidOperationException(reason);
         }
@@ -174,7 +204,7 @@ public sealed partial class Run
         var maps = rules.Acts.Select((a, i) => RunMap.Generate(rules.Map, a.Floors, a.Elites.Count > 0, Seeds.Derive(seed, 100 + i))).ToList();
         var random = new Random(Seeds.Derive(seed, 200));
         var bosses = rules.Acts.Select(a => a.Bosses.Count > 0 ? a.Bosses[random.Next(a.Bosses.Count)] : data.Zones[a.ZoneId].Boss!.EncounterId).ToList();
-        var run = new Run(seed, maps, bosses, rules.StartGold);
+        var run = new Run(seed, maps, bosses, rules.StartGold + unlocks.StartGold, unlocks.Locked);
         foreach (var classId in classIds)
         {
             run.Join(data, classId);
@@ -237,8 +267,10 @@ public sealed partial class Run
             _ => Draw(data.Zones[act.ZoneId].Encounters, random),
         };
         Fights++;
+        var at = Act;
         var allies = Living.Select(m => Setup(data, m)).ToList();
         var result = CombatSimulator.Run(allies, data.CreateEncounterTeam(encounter), Catalog(data), Seeds.Derive(Seed, Fights));
+        _history.Add(new RunBattleRecord(at, encounter, kind, result.Outcome));
         if (result.Outcome != CombatOutcome.Victory)
         {
             Phase = RunPhase.Defeat;
@@ -477,6 +509,11 @@ public sealed partial class Run
             return $"골드가 모자란다 ({-o.Gold}G)";
         }
 
+        if (o.Join is { } join && join != "any" && !Open(join))
+        {
+            return "아직 열지 않은 클래스다";
+        }
+
         return o.Join is not null && Living.Count() >= Company.MaxLineup ? $"파티는 {Company.MaxLineup}명까지다" : null;
     }
 
@@ -494,7 +531,7 @@ public sealed partial class Run
         Gold += o.Gold;
         if (o.Join is { } join)
         {
-            var classes = data.Classes.Keys.ToList();
+            var classes = data.Classes.Keys.Where(Open).ToList();
             Join(data, join == "any" ? classes[random.Next(classes.Count)] : join);
         }
 
@@ -513,7 +550,7 @@ public sealed partial class Run
         if (o.Trinket)
         {
             var tier = Rules(data).Acts[Act].ShopTier;
-            var trinkets = data.Items.Values.Where(i => i.Slot == EquipmentSlot.Trinket && i.Tier <= tier).ToList();
+            var trinkets = data.Items.Values.Where(i => i.Slot == EquipmentSlot.Trinket && i.Tier <= tier && Open(i.Id)).ToList();
             if (trinkets.Count > 0)
             {
                 Bag.Add(trinkets[random.Next(trinkets.Count)].Id);
@@ -741,6 +778,7 @@ public sealed partial class Run
         var tier = rules.Acts[Act].ShopTier;
         var classes = Living.Select(m => data.Classes[m.ClassId]).Distinct().ToList();
         var items = data.Items.Values
+            .Where(i => Open(i.Id))
             .Where(i => i.Slot switch
             {
                 EquipmentSlot.MainHand => i.Tier == tier && classes.Any(c => c.CanWield(i)),
@@ -751,9 +789,9 @@ public sealed partial class Run
             .ToList();
         _stock.Clear();
         _stock.AddRange(Pick(items, rules.Shop.Items, random).Select(i => new RunStock(RunStockKind.Item, i.Id, i.Price)));
-        _stock.AddRange(Pick(classes.SelectMany(c => c.Skills).Distinct().ToList(), rules.Shop.Skills, random)
+        _stock.AddRange(Pick(classes.SelectMany(c => c.Skills).Where(Open).Distinct().ToList(), rules.Shop.Skills, random)
             .Select(id => new RunStock(RunStockKind.Skill, id, rules.Shop.SkillPrice)));
-        _stock.AddRange(Pick(data.Classes.Keys.ToList(), rules.Shop.Recruits, random)
+        _stock.AddRange(Pick(data.Classes.Keys.Where(Open).ToList(), rules.Shop.Recruits, random)
             .Select(id => new RunStock(RunStockKind.Recruit, id, rules.Shop.RecruitPrice)));
         Phase = RunPhase.Shop;
     }
@@ -775,7 +813,8 @@ public sealed partial class Run
             RunCard? card = null;
             if (roll < reward.Active)
             {
-                card = c.Skills.Count == 0 ? null : new RunCard(RunCardKind.Active, c.Id, c.Skills[random.Next(c.Skills.Count)]);
+                var pool = c.Skills.Where(Open).ToList();
+                card = pool.Count == 0 ? null : new RunCard(RunCardKind.Active, c.Id, pool[random.Next(pool.Count)]);
             }
             else if (roll < reward.Active + reward.Passive)
             {
@@ -816,6 +855,9 @@ public sealed partial class Run
         var roll = random.Next(encounters.Sum(e => e.Weight));
         return encounters.First(e => (roll -= e.Weight) < 0).EncounterId;
     }
+
+    /// <summary>이 판에 나오는 클래스·카드·아이템인가 (해금으로 잠기지 않았다).</summary>
+    private bool Open(string id) => !Locked.Contains(id);
 
     /// <summary>이 결정의 무작위 줄기. 같은 시드, 같은 결정 순서면 같다.</summary>
     private Random Stream(int purpose) => new(Seeds.Derive(Seeds.Derive(Seed, 1000 + Step), purpose));

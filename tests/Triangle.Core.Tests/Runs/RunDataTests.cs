@@ -54,7 +54,9 @@ public class RunDataTests
     [Fact]
     public void Shipped_classes_are_the_four_narrow_ones_and_own_their_material_actions()
     {
-        Assert.Equal(["knight", "archer", "elementalist", "priest"], Shipped.Classes.Keys);
+        // 처음 넷은 처음부터 열려 있고, 나머지는 해금으로 연다.
+        Assert.Equal(["knight", "archer", "elementalist", "priest", "warrior", "gunner"], Shipped.Classes.Keys);
+        Assert.Equal(["warrior", "gunner"], Shipped.Unlocks.Values.SelectMany(u => u.Classes));
         Assert.All(Shipped.Classes.Values, c =>
         {
             Assert.Contains(c.StartingSkill, c.Skills);
@@ -68,6 +70,27 @@ public class RunDataTests
         Assert.Contains("step_back", Shipped.Classes["elementalist"].Skills);
         Assert.Contains("heal", Shipped.Classes["priest"].Skills);
         Assert.Equal(Row.Front, Shipped.Classes["knight"].Row);
+    }
+
+    [Fact]
+    public void Unlocks_check_what_they_lock()
+    {
+        IReadOnlyList<string> Errors(string unlocks) => Assert.Throws<GameDataException>(() =>
+            GameDataLoader.Parse(Masteries, Skills, Actions, "[]", itemsJson: Items, classesJson: $"[{Class()}]", unlocksJson: unlocks)).Errors;
+
+        Assert.Contains(Errors("""[ { "id": "a", "name": "A", "cards": [ "shot" ] } ]"""), e => e.Contains("card 'shot' is in no class's skills"));
+        Assert.Contains(Errors("""[ { "id": "a", "name": "A", "cards": [ "slash" ] } ]"""), e => e.Contains("starting skill of 'knight'"));
+        Assert.Contains(Errors("""[ { "id": "a", "name": "A", "classes": [ "knight" ] } ]"""), e => e.Contains("every class is locked"));
+        Assert.Contains(Errors("""[ { "id": "a", "name": "A" } ]"""), e => e.Contains("opens nothing"));
+        var unknown = Errors("""[ { "id": "a", "name": "A", "classes": [ "bard" ], "items": [ "nope" ], "cost": -1 } ]""");
+        Assert.Contains(unknown, e => e.Contains("unknown class 'bard'"));
+        Assert.Contains(unknown, e => e.Contains("unknown item 'nope'"));
+        Assert.Contains(unknown, e => e.Contains("cost"));
+        Assert.Contains(Errors("""[ { "id": "a", "name": "A", "items": [ "bow" ] }, { "id": "b", "name": "B", "items": [ "bow" ] } ]"""),
+            e => e.Contains("'bow' is locked by more than one unlock (a, b)"));
+
+        Assert.Equal(50, Shipped.Unlocks["war_chest"].StartGold);
+        Assert.All(Shipped.Unlocks.Values, u => Assert.True(u.Cost > 0));
     }
 
     [Fact]

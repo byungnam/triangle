@@ -49,6 +49,12 @@ public sealed record RunSaveFile
 
     /// <summary>막 보스를 이기고 보상을 고르는 중이다 (고르면 다음 막으로 간다).</summary>
     public bool BossCleared { get; init; }
+
+    /// <summary>이 판에 나오지 않는 클래스·카드·아이템 (판을 시작할 때의 해금).</summary>
+    public IReadOnlyList<string> Locked { get; init; } = [];
+
+    /// <summary>치른 전투.</summary>
+    public IReadOnlyList<RunBattleRecord> History { get; init; } = [];
 }
 
 public sealed record SavedRunMember
@@ -115,6 +121,8 @@ public sealed partial class Run
         Stock = Stock.ToList(),
         Event = Event?.Id,
         BossCleared = _bossCleared,
+        Locked = Locked.Order(StringComparer.Ordinal).ToList(),
+        History = History.ToList(),
     };
 
     /// <summary>세이브 JSON을 읽는다. 형식이 틀리거나 게임 데이터와 맞지 않으면 <see cref="SaveGameException"/>.</summary>
@@ -161,7 +169,8 @@ public sealed partial class Run
             errors.Add("run save: the path leaves the map");
         }
 
-        errors.AddRange(file.Bosses.Where(id => !data.Encounters.ContainsKey(id)).Select(id => $"run save: unknown encounter '{id}'"));
+        errors.AddRange(file.Bosses.Concat(file.History.Select(h => h.EncounterId)).Distinct().Where(id => !data.Encounters.ContainsKey(id))
+            .Select(id => $"run save: unknown encounter '{id}'"));
         errors.AddRange(file.Copies.Keys.Where(id => !data.Actions.ContainsKey(id)).Select(id => $"run save: unknown action '{id}' in copies"));
         errors.AddRange(file.Bag.Where(id => !data.Items.ContainsKey(id)).Select(id => $"run save: unknown item '{id}' in bag"));
         foreach (var m in file.Members)
@@ -225,7 +234,7 @@ public sealed partial class Run
             throw new SaveGameException(errors);
         }
 
-        var run = new Run(file.Seed, file.Maps, file.Bosses, file.Gold)
+        var run = new Run(file.Seed, file.Maps, file.Bosses, file.Gold, file.Locked.ToHashSet())
         {
             Phase = file.Phase,
             Act = file.Act,
@@ -238,6 +247,7 @@ public sealed partial class Run
         };
         run._stock.AddRange(file.Stock);
         run._path.AddRange(file.Path);
+        run._history.AddRange(file.History);
         run.Bag.AddRange(file.Bag);
         foreach (var (id, count) in file.Copies)
         {

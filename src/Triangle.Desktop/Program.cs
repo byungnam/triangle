@@ -8,7 +8,8 @@ using Triangle.Desktop;
 //   --exploration                옛 탐사 기록 화면으로 시작
 //   --scene <이름>               이 화면으로 시작: village(옛 마을), editor, editor:equipment, editor:stats, editor:picker,
 //                                editor:preview, training, shop, infirmary,
-//                                run:map, run:reward, run:shop, run:rest, run:event, run:editor, run:equipment, run:picker, run:end
+//                                run:map, run:reward, run:shop, run:rest, run:event, run:editor, run:equipment, run:picker, run:end,
+//                                run:party, run:unlocks
 //                                (run:*은 임시 폴더의 시험 판이다)
 //   --save <path>                옛 회사 세이브 경로 (기본: OS별 사용자 설정 폴더의 Triangle/save.json). 판 세이브는 같은 폴더에 둔다
 //   --screenshot <path> [줄 수]  첫 화면을 QHD PNG로 저장하고 종료.

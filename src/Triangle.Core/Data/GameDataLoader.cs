@@ -28,6 +28,7 @@ public static class GameDataLoader
     public const string RecipesFile = "recipes.json";
     public const string ClassesFile = "classes.json";
     public const string RunFile = "run.json";
+    public const string UnlocksFile = "unlocks.json";
 
     /// <param name="extraDirectory">
     /// 게임 데이터 밖의 추가 데이터 폴더 (전술 측정의 시제품, <see cref="Balance.BenchDefinition.ExtraData"/>).
@@ -65,12 +66,13 @@ public static class GameDataLoader
         var recipes = Read(RecipesFile);
         var classes = Read(ClassesFile);
         var run = Read(RunFile);
+        var unlocks = Read(UnlocksFile);
         if (errors.Count > 0)
         {
             throw new GameDataException(errors);
         }
 
-        return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, recruits!, recipes!, classes!, run!);
+        return Parse(masteries!, skills!, actions!, encounters!, effects!, items!, zones!, recruits!, recipes!, classes!, run!, unlocks!);
     }
 
     /// <summary>두 JSON 배열을 이어 붙인다. 배열이 아니거나 읽을 수 없으면 오류를 남기고 원래 것을 돌려준다.</summary>
@@ -97,7 +99,7 @@ public static class GameDataLoader
 
     public static GameData Parse(string masteriesJson, string skillsJson, string actionsJson, string encountersJson, string effectsJson = "[]",
         string itemsJson = "[]", string zonesJson = "[]", string recruitsJson = "[]", string recipesJson = "[]", string classesJson = "[]",
-        string? runJson = null)
+        string? runJson = null, string unlocksJson = "[]")
     {
         var errors = new List<string>();
 
@@ -112,6 +114,7 @@ public static class GameDataLoader
         var recipes = Deserialize<RecipeDefinition>(recipesJson, RecipesFile, errors);
         var classes = Deserialize<ClassDefinition>(classesJson, ClassesFile, errors);
         var run = runJson is null ? null : DeserializeObject<RunDefinition>(runJson, RunFile, errors);
+        var unlocks = Deserialize<UnlockDefinition>(unlocksJson, UnlocksFile, errors);
 
         // 형식 오류가 있으면 참조 검증은 의미가 없다.
         if (errors.Count > 0)
@@ -138,6 +141,7 @@ public static class GameDataLoader
         var zoneMap = ToMap(zones!, z => z.Id, ZonesFile, errors);
         var recruitMap = ToMap(recruits!, r => r.Id, RecruitsFile, errors);
         var classMap = ToMap(classes!, c => c.Id, ClassesFile, errors);
+        var unlockMap = ToMap(unlocks!, u => u.Id, UnlocksFile, errors);
         var recipeMap = new Dictionary<string, RecipeDefinition>();
         foreach (var recipe in recipes!)
         {
@@ -209,12 +213,14 @@ public static class GameDataLoader
             ValidateRun(run, zoneMap, encounterMap, classMap, errors);
         }
 
+        ValidateUnlocks(unlocks!, classMap, actionMap, itemMap, errors);
+
         if (errors.Count > 0)
         {
             throw new GameDataException(errors);
         }
 
-        return new GameData(masteryMap, skillMap, actionMap, effectMap, encounterMap, itemMap, zoneMap, recruitMap, recipeMap, classMap) { Run = run };
+        return new GameData(masteryMap, skillMap, actionMap, effectMap, encounterMap, itemMap, zoneMap, recruitMap, recipeMap, classMap) { Run = run, Unlocks = unlockMap };
     }
 
     private static List<T>? Deserialize<T>(string json, string fileName, List<string> errors)
@@ -255,6 +261,71 @@ public static class GameDataLoader
             var line = e.LineNumber is { } n ? $" line {n + 1}" : "";
             errors.Add($"{fileName}{line}: {e.Message}");
             return null;
+        }
+    }
+
+    /// <summary>
+    /// 해금: 이름과 값, 여는 것의 참조(클래스, 그 클래스 풀의 카드, 무기·방어구·장신구). 한 가지는 한 해금만 잠근다.
+    /// 시작 카드는 잠글 수 없고, 처음부터 고를 수 있는 클래스가 하나는 있어야 한다.
+    /// </summary>
+    private static void ValidateUnlocks(
+        IReadOnlyList<UnlockDefinition> unlocks,
+        IReadOnlyDictionary<string, ClassDefinition> classes,
+        IReadOnlyDictionary<string, ActionDefinition> actions,
+        IReadOnlyDictionary<string, ItemDefinition> items,
+        List<string> errors)
+    {
+        foreach (var u in unlocks)
+        {
+            var at = $"{UnlocksFile} '{u.Id}'";
+            DataValidation.RequireText(u.Id, $"{UnlocksFile}: id", errors);
+            DataValidation.RequireText(u.Name, $"{at}: name", errors);
+            DataValidation.RequireNonNegative(u.Cost, $"{at}: cost", errors);
+            DataValidation.RequireNonNegative(u.StartGold, $"{at}: startGold", errors);
+            if (!u.Locks.Any() && u.StartGold == 0)
+            {
+                errors.Add($"{at}: opens nothing");
+            }
+
+            errors.AddRange(u.Classes.Where(id => !classes.ContainsKey(id)).Select(id => $"{at}: unknown class '{id}'"));
+            foreach (var card in u.Cards)
+            {
+                if (!actions.ContainsKey(card))
+                {
+                    errors.Add($"{at}: unknown action '{card}'");
+                }
+                else if (classes.Values.FirstOrDefault(c => c.Skills.Contains(card)) is not { } owner)
+                {
+                    errors.Add($"{at}: card '{card}' is in no class's skills");
+                }
+                else if (owner.StartingSkill == card)
+                {
+                    errors.Add($"{at}: card '{card}' is the starting skill of '{owner.Id}'");
+                }
+            }
+
+            foreach (var id in u.Items)
+            {
+                if (!items.TryGetValue(id, out var item))
+                {
+                    errors.Add($"{at}: unknown item '{id}'");
+                }
+                else if (item.Slot is not (EquipmentSlot.MainHand or EquipmentSlot.Body or EquipmentSlot.Trinket))
+                {
+                    errors.Add($"{at}: item '{id}' is not a weapon, armor or trinket");
+                }
+            }
+        }
+
+        foreach (var twice in unlocks.SelectMany(u => u.Locks.Distinct().Select(id => (id, u.Id))).GroupBy(x => x.id).Where(g => g.Count() > 1))
+        {
+            errors.Add($"{UnlocksFile}: '{twice.Key}' is locked by more than one unlock ({string.Join(", ", twice.Select(x => x.Item2))})");
+        }
+
+        var lockedClasses = unlocks.SelectMany(u => u.Classes).ToHashSet();
+        if (classes.Count > 0 && classes.Keys.All(lockedClasses.Contains))
+        {
+            errors.Add($"{UnlocksFile}: every class is locked; at least one must be open from the start");
         }
     }
 
@@ -335,6 +406,11 @@ public static class GameDataLoader
         if (new[] { shop.Items, shop.Skills, shop.SkillPrice, shop.Recruits, shop.RecruitPrice, shop.UnsealPrice }.Any(v => v < 0))
         {
             errors.Add($"{RunFile}: shop counts and prices must not be negative");
+        }
+
+        if (new[] { run.Renown.Fight, run.Renown.Elite, run.Renown.Boss, run.Renown.Victory }.Any(v => v < 0))
+        {
+            errors.Add($"{RunFile}: renown must not be negative");
         }
 
         if (run.Rest.Unseal < 0 || run.Rest.TrainCards < 1)

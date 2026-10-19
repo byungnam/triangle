@@ -91,6 +91,14 @@ public static class DataReferences
             Add(c.Passives.Contains(id), $"{at}: passives");
         }
 
+        foreach (var u in data.Unlocks.Values)
+        {
+            var at = $"{GameDataLoader.UnlocksFile} '{u.Id}'";
+            Add(u.Classes.Contains(id), $"{at}: classes");
+            Add(u.Cards.Contains(id), $"{at}: cards");
+            Add(u.Items.Contains(id), $"{at}: items");
+        }
+
         if (data.Run is { } run)
         {
             for (var i = 0; i < run.Acts.Count; i++)

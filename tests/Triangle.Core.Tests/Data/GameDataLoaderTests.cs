@@ -569,7 +569,7 @@ public class GameDataLoaderTests
 
             var errors = Assert.Throws<GameDataException>(() => GameDataLoader.LoadDirectory(dir)).Errors;
 
-            Assert.Equal(9, errors.Count);
+            Assert.Equal(10, errors.Count);
             Assert.Contains(errors, e => e.StartsWith("items.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("recipes.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("zones.json: cannot read"));
@@ -579,6 +579,7 @@ public class GameDataLoaderTests
             Assert.Contains(errors, e => e.StartsWith("encounters.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("classes.json: cannot read"));
             Assert.Contains(errors, e => e.StartsWith("run.json: cannot read"));
+            Assert.Contains(errors, e => e.StartsWith("unlocks.json: cannot read"));
         }
         finally
         {

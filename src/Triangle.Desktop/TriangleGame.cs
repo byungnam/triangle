@@ -22,7 +22,7 @@ namespace Triangle.Desktop;
 /// <param name="StartScene">
 /// 판 대신 이 화면으로 시작한다. village(옛 마을), 옛 화면 확인용 editor, editor:equipment, editor:stats, editor:picker, editor:preview,
 /// training, shop, infirmary, 판 화면 확인용 run:map, run:reward, run:shop, run:rest, run:event, run:editor, run:equipment, run:picker,
-/// run:end (임시 폴더의 시험 판으로, 실제 판 세이브는 건드리지 않는다).
+/// run:end, run:party, run:unlocks (임시 폴더의 시험 판과 기록으로, 실제 세이브는 건드리지 않는다).
 /// </param>
 /// <param name="StartInSummary">전투 화면으로 시작할 때 요약 탭을 연다.</param>
 public sealed record LaunchOptions(
@@ -211,16 +211,22 @@ public class TriangleGame : Game
     /// <summary>판 세이브: 회사 세이브와 같은 폴더의 run.json. 판 화면 확인용 시작이면 임시 폴더를 쓴다.</summary>
     private RunSession CreateRunSession(GameData data)
     {
-        var path = _options.StartScene?.StartsWith("run:") == true ? Path.Combine(Path.GetTempPath(), $"triangle-demo-run-{Guid.NewGuid():N}.json")
-            : _options.SavePath is { } save ? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(save))!, "run.json")
-            : RunStore.DefaultPath;
-        var store = new RunStore(path);
+        var directory = _options.StartScene?.StartsWith("run:") == true ? Path.Combine(Path.GetTempPath(), $"triangle-demo-{Guid.NewGuid():N}")
+            : _options.SavePath is { } save ? Path.GetDirectoryName(Path.GetFullPath(save))!
+            : null;
+        var store = new RunStore(directory is null ? RunStore.DefaultPath : Path.Combine(directory, "run.json"));
+        var profiles = new ProfileStore(directory is null ? ProfileStore.DefaultPath : Path.Combine(directory, "profile.json"));
         var loaded = store.Load(data);
-        var session = new RunSession(data, store);
+        var profile = profiles.Load(data);
+        var session = new RunSession(data, store, profiles, profile.Profile);
         session.Resume(loaded.Run);
         if (loaded.Status == LoadStatus.Recovered)
         {
             session.Notice = ($"원정 세이브를 읽지 못해 새로 시작합니다. 원래 파일: {Path.GetFileName(loaded.BrokenFilePath)}", Theme.Enemy);
+        }
+        else if (profile.Status == LoadStatus.Recovered)
+        {
+            session.Notice = ($"기록을 읽지 못해 새로 시작합니다. 원래 파일: {Path.GetFileName(profile.BrokenFilePath)}", Theme.Enemy);
         }
 
         return session;
@@ -241,7 +247,7 @@ public class TriangleGame : Game
 
         return Runs.Run switch
         {
-            null => new RunPartyScene(_ui, Runs, Bounds, StartRun),
+            null => new RunPartyScene(_ui, Runs, Bounds, StartRun, OpenUnlocks),
             { Finished: true } => new RunEndScene(_ui, Runs, Bounds, NewRun),
             { Phase: RunPhase.Reward } => new RunRewardScene(_ui, Runs, Bounds, Changed, battle),
             { Phase: RunPhase.Shop } => new RunShopScene(_ui, Runs, Bounds, Changed),
@@ -257,11 +263,14 @@ public class TriangleGame : Game
         ShowRun();
     }
 
+    /// <summary>끝난 판의 명성과 기록을 받고 파티 고르기로 간다.</summary>
     private void NewRun()
     {
-        Runs.Clear();
+        Runs.Finish();
         ShowRun();
     }
+
+    private void OpenUnlocks() => _scene = new RunUnlockScene(_ui, Runs, Bounds, back: () => ShowRun());
 
     private void AbandonRun()
     {
@@ -340,6 +349,10 @@ public class TriangleGame : Game
 
         switch (view)
         {
+            case "unlocks" or "party":
+                run.Abandon();
+                Runs.Finish();
+                return view == "party" ? RunSceneFor(null) : new RunUnlockScene(_ui, Runs, Bounds, back: () => ShowRun());
             case "end":
                 run.Abandon();
                 break;

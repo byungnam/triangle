@@ -62,6 +62,11 @@ internal static class Listing
                     $"시작 {c.StartingSkill}", $"액티브 {c.Skills.Count}", $"패시브 {c.Passives.Count}"))
                 .ToList(),
 
+            "unlocks" => data.Unlocks.Values
+                .Where(u => Matches(u.Id, u.Name))
+                .Select(u => Row(u.Id, u.Name, $"명성 {u.Cost}", string.Join(", ", u.Locks), u.StartGold > 0 ? $"시작 골드 +{u.StartGold}" : ""))
+                .ToList(),
+
             "recruits" => data.Recruits.Values
                 .Where(r => Matches(r.Id, r.Name))
                 .Select(r => Row(r.Id, r.Name, $"{r.Price}G", r.Row.ToString(), string.Join(", ", r.Equipment.Values)))

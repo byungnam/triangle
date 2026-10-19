@@ -69,6 +69,9 @@ public sealed class GameData
     /// <summary>한 판(원정)의 규칙 (로그라이트 재편, `run.json`). 데이터 폴더에서 읽으면 늘 있다.</summary>
     public RunDefinition? Run { get; init; }
 
+    /// <summary>해금 (로그라이트 재편, `unlocks.json`, 데이터 순서).</summary>
+    public IReadOnlyDictionary<string, UnlockDefinition> Unlocks { get; init; } = new Dictionary<string, UnlockDefinition>();
+
     /// <summary>클래스 (로그라이트 재편, 데이터 순서). 원정을 시작할 때 이것으로 파티를 고른다.</summary>
     public IReadOnlyDictionary<string, ClassDefinition> Classes { get; }
 

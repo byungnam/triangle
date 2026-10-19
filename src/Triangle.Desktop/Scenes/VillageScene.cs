@@ -133,7 +133,7 @@ internal sealed class VillageScene : IScene
         var goldFont = _ui.BoldFont(24);
         _ui.Text(batch, goldFont, gold, new Vector2(_bounds.Right - Margin - goldFont.MeasureString(gold).X, _bounds.Top + 22), Theme.Cover);
 
-        const string help = "Ctrl+S  저장     Esc  종료";
+        const string help = "Ctrl+S  저장     Esc  종료     F8  음악 끄기     F9·F10  음량";
         _ui.Text(batch, _ui.Font(16), help, new Vector2(_bounds.Left + Margin, _bounds.Bottom - FooterHeight + 10), Theme.TextDim);
         if (_session.Notice is { } notice)
         {

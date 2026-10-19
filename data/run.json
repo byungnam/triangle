@@ -36,8 +36,9 @@
     }
   ],
   "map": {
-    "width": 7,
+    "width": 6,
     "paths": 6,
+    "starts": 3,
     "specialFrom": 5,
     "fight": 50,
     "elite": 12,

@@ -356,6 +356,10 @@ public static class GameDataLoader
         {
             errors.Add($"{RunFile}: map width and paths must be at least 1");
         }
+        else if (map.Starts < 1 || map.Starts > Math.Min(map.Width, map.Paths))
+        {
+            errors.Add($"{RunFile}: map starts must be 1-{Math.Min(map.Width, map.Paths)} (at most width and paths), got {map.Starts}");
+        }
 
         if (new[] { map.Fight, map.Elite, map.Shop, map.Rest, map.Event }.Any(w => w < 0) || map.Fight + map.Elite + map.Shop + map.Rest + map.Event == 0)
         {

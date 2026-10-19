@@ -72,20 +72,29 @@ public class RunTests
     private static Tactic Line(string action, Condition condition = Condition.Always, int value = 0, int priority = 1) =>
         Tactic.Create(priority, [new(condition, value)], action);
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(7)]
+    public void Map_starts_must_fit_the_width_and_paths(int starts)
+    {
+        var errors = Assert.Throws<GameDataException>(() => With(r => r with { Map = r.Map with { Starts = starts } })).Errors;
+        Assert.Contains(errors, e => e.Contains("map starts must be 1-6"));
+    }
+
     [Fact]
     public void Maps_are_deterministic_connected_and_keep_the_floor_rules()
     {
-        // 게임의 지도: 한 막 15층, 폭 7칸, 경로 6개.
+        // 게임의 지도: 한 막 15층, 폭 6칸, 경로 6개, 첫 층 3갈래.
         var rules = Shipped.Run!.Map;
         var floors = Shipped.Run.Acts[0].Floors;
-        Assert.Equal((15, 7, 6, 5), (floors, rules.Width, rules.Paths, rules.SpecialFrom));
+        Assert.Equal((15, 6, 6, 3, 5), (floors, rules.Width, rules.Paths, rules.Starts, rules.SpecialFrom));
         var kinds = new HashSet<RunNodeKind>();
         for (var seed = 0; seed < 200; seed++)
         {
             var map = RunMap.Generate(rules, floors, hasElites: true, seed);
             Assert.Equal(Describe(map), Describe(RunMap.Generate(rules, floors, hasElites: true, seed)));
             Assert.Equal((RunNodeKind.Boss, map.Nodes.Count - 1, floors), (map.Boss.Kind, map.Boss.Id, map.Boss.Floor));
-            Assert.True(map.Starts.Count() >= 2, "갈림길이 생기도록 첫 층에 지점이 둘 이상 있다");
+            Assert.Equal(rules.Starts, map.Starts.Count());
 
             foreach (var node in map.Nodes.SkipLast(1))
             {

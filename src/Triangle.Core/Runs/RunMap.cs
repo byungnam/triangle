@@ -38,12 +38,15 @@ public sealed record RunMap(int Floors, IReadOnlyList<RunNode> Nodes)
         var width = Math.Max(1, rules.Width);
         var edges = new HashSet<(int Floor, int From, int To)>();
         var spots = new HashSet<(int Floor, int Lane)>();
-        var firstLane = 0;
-        for (var path = 0; path < Math.Max(1, rules.Paths); path++)
+        // 첫 층의 갈래: 폭을 갈래 수만큼 나눠 구간마다 한 칸씩 고른다 (한쪽에 몰리지 않게).
+        var paths = Math.Max(1, rules.Paths);
+        var starts = Math.Clamp(rules.Starts, 1, Math.Min(width, paths));
+        var startLanes = Enumerable.Range(0, starts)
+            .Select(i => i * width / starts + random.Next((i + 1) * width / starts - i * width / starts)).ToList();
+        for (var path = 0; path < paths; path++)
         {
-            // 처음 두 경로는 서로 다른 칸에서 시작해 갈림길이 생기게 한다.
-            var lane = path == 1 && width > 1 ? (firstLane + 1 + random.Next(width - 1)) % width : random.Next(width);
-            firstLane = path == 0 ? lane : firstLane;
+            // 경로를 갈래에 돌아가며 나눠 모든 갈래가 쓰이게 한다.
+            var lane = startLanes[path % starts];
             spots.Add((0, lane));
             for (var floor = 1; floor < floors; floor++)
             {

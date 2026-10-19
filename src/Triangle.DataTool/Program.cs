@@ -27,6 +27,11 @@ const string Usage = """
                                  --bot <random|greedy|both> (기본 both)   --runs <n> 판 수 (기본 200)
                                  --start-lines <n,…> 시작 줄 상한 (기본: 정의대로)   --lookahead <n> 미리 싸워 보는 시드 수 (기본 4)
                                  --draft <파일>  시뮬레이션 정의 파일
+      runs [옵션]                판 시뮬레이션: 게임의 판 규칙(data/run.json) 그대로 봇이 판을 끝까지 둔다.
+                                 클리어율, 막별 탈락, 막·적 조합별 진 비율과 남은 HP, 카드·골드가 들어오고 쓰이는 곳, 노는 사본.
+                                 --bot <random|smart|both> (기본 both)   --runs <n> 판 수 (기본 200)   --seed <n> 첫 시드 (기본 0)
+                                 --party <클래스,…> (기본 knight,archer,elementalist,priest)
+                                 --unlocks <none|all> 해금 (기본 none: 처음 판)   --lookahead <n> 미리 싸워 보는 시드 수 (기본 3)
 
     수정 명령 (고친 뒤 검증을 통과해야 저장한다. 실패하면 아무 파일도 바꾸지 않는다):
       set <종류> <id> <경로> <값>      값을 바꾼다. 없는 속성은 만든다.
@@ -166,6 +171,9 @@ switch (command)
 
     case "draft" when rest.Count == 0:
         return Draft.Run(options, directory, data);
+
+    case "runs" when rest.Count == 0:
+        return RunReport.Run(options, data);
 
     default:
         Console.Error.WriteLine(Usage);

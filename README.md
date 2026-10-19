@@ -84,6 +84,15 @@ $D draft                                            # 두 봇 × 판 200개
 $D draft --start-lines 1,2,3 --runs 100             # 시작 줄 상한을 바꿔 가며
 ```
 
+## 판 시뮬레이션
+
+게임의 판 규칙(`data/run.json`) 그대로 봇이 판을 끝까지 둔다. 아무렇게나 두는 봇과 카드를 미리 싸워 보고 고르는 똑똑한 봇의 클리어율, 막별 탈락, 막·적 조합별 진 비율과 이긴 뒤 남은 HP, 카드와 골드가 들어오고 쓰이는 곳, 판이 끝날 때 노는 사본을 보여 준다. 숫자 맞추기의 측정용이다. 봇 규칙과 측정 결과는 [docs/architecture.md](docs/architecture.md#판-시뮬레이션-2026-10-19)에 있다.
+
+```bash
+$D runs                                             # 두 봇 × 판 200개 (해금 없는 처음 판)
+$D runs --bot smart --unlocks all --party knight,warrior,archer,priest
+```
+
 ## 라이선스
 
 Apache License 2.0 — [LICENSE](LICENSE)

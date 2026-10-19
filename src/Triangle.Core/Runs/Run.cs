@@ -568,7 +568,7 @@ public sealed partial class Run
         if (o.Trinket)
         {
             var tier = Rules(data).Acts[Act].ShopTier;
-            var trinkets = data.Items.Values.Where(i => i.Slot == EquipmentSlot.Trinket && i.Tier <= tier && Open(i.Id)).ToList();
+            var trinkets = data.Items.Values.Where(i => i.Slot == EquipmentSlot.Trinket && i.Shop && i.Tier <= tier && Open(i.Id)).ToList();
             if (trinkets.Count > 0)
             {
                 Bag.Add(trinkets[random.Next(trinkets.Count)].Id);
@@ -732,7 +732,7 @@ public sealed partial class Run
 
     /// <summary>
     /// 멤버의 전투 입력: 클래스 스탯과 줄, 낀 장비의 보너스와 효과, 패시브, 켜진 전술 줄에 "항상 → 기본 공격"을 붙인 것.
-    /// 쓸 수 있는 행동은 공용 행동과 켜진 줄의 행동뿐이다.
+    /// 쓸 수 있는 행동은 공용 행동과 켜진 줄의 행동뿐이다. 무기가 기본 공격을 바꾸면 기본 공격 줄은 모두 그 행동이 된다.
     /// </summary>
     public CombatantSetup Setup(GameData data, RunMember member)
     {
@@ -750,13 +750,22 @@ public sealed partial class Run
 
         worn.AddRange(member.Trinkets.Select(t => (EquipmentSlot.Trinket, data.Items[t])));
         var lines = member.ActiveTactics;
-        List<Tactic> tactics = [.. lines.Select((t, i) => t with { Priority = i + 1 }), Tactic.Create(lines.Count + 1, [new(Condition.Always, 0)], DraftTactics.Fallback)];
+        var basic = BasicAttack(data, member);
+        List<Tactic> tactics =
+        [
+            .. lines.Select((t, i) => t with { Priority = i + 1, ActionId = t.ActionId == DraftTactics.Fallback ? basic : t.ActionId }),
+            Tactic.Create(lines.Count + 1, [new(Condition.Always, 0)], basic),
+        ];
         var setup = new CombatantSetup(member.Id, Name(data, member), c.Stats, member.Row, null, null, member.Passives.ToDictionary(), tactics);
         return new Loadout(worn).Apply(setup, data.Actions.Values, _ => 0) with
         {
-            GrantedActions = lines.Select(t => t.ActionId).Where(id => !data.Actions[id].Universal).ToHashSet(),
+            GrantedActions = tactics.Select(t => t.ActionId).Where(id => !data.Actions[id].Universal).ToHashSet(),
         };
     }
+
+    /// <summary>멤버의 기본 공격: 든 무기가 바꾸면 그 행동(<see cref="ItemDefinition.BasicAttack"/>), 아니면 공용 기본 공격.</summary>
+    public static string BasicAttack(GameData data, RunMember member) =>
+        member.Weapon is { } weapon && data.Items[weapon].BasicAttack is { } basic ? basic : DraftTactics.Fallback;
 
     /// <summary>그 막의 그 지점에서 만나는 적 조합: 막이 지점 종류마다 정한 세기(<see cref="RunAct.Strength"/>)를 HP·위력 보너스로 얹는다.</summary>
     public static IReadOnlyList<CombatantSetup> EnemyTeam(GameData data, int act, RunNodeKind kind, string encounterId)
@@ -822,8 +831,8 @@ public sealed partial class Run
     }
 
     /// <summary>
-    /// 상점의 물건: 이 막 티어의 무기(살아 있는 멤버 클래스가 쓰는 것)와 방어구, 그 티어 이하의 장신구에서 아이템을, 살아 있는 멤버
-    /// 클래스의 카드에서 스킬을, 모든 클래스에서 합류를 뽑는다.
+    /// 상점의 물건: 판에서 파는 아이템(<see cref="ItemDefinition.Shop"/>) 중 이 막 티어 이하의 무기(살아 있는 멤버 클래스가 쓰는 것)·방어구·
+    /// 장신구에서 아이템을, 살아 있는 멤버 클래스의 카드에서 스킬을, 모든 클래스에서 합류를 뽑는다.
     /// </summary>
     private void OpenShop(GameData data, Random random)
     {
@@ -831,12 +840,11 @@ public sealed partial class Run
         var tier = rules.Acts[Act].ShopTier;
         var classes = Living.Select(m => data.Classes[m.ClassId]).Distinct().ToList();
         var items = data.Items.Values
-            .Where(i => Open(i.Id))
+            .Where(i => i.Shop && i.Tier <= tier && Open(i.Id))
             .Where(i => i.Slot switch
             {
-                EquipmentSlot.MainHand => i.Tier == tier && classes.Any(c => c.CanWield(i)),
-                EquipmentSlot.Body => i.Tier == tier,
-                EquipmentSlot.Trinket => i.Tier <= tier,
+                EquipmentSlot.MainHand => classes.Any(c => c.CanWield(i)),
+                EquipmentSlot.Body or EquipmentSlot.Trinket => true,
                 _ => false,
             })
             .ToList();

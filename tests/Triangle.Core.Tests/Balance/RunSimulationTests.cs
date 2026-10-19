@@ -53,6 +53,13 @@ public class RunSimulationTests
                 Assert.Equal(r.Last.Act, r.Act);
             }
 
+            // 상점에서는 나온 물건만 사고, 쓴 골드만큼 골드가 준다.
+            foreach (var shop in r.Shops)
+            {
+                Assert.All(shop.Bought, b => Assert.Contains(shop.Offered, o => o.Id == b.Id && o.Kind == b.Kind));
+                Assert.Equal(shop.GoldIn - shop.Bought.Sum(b => b.Price) - shop.Unseals * Data.Run.Shop.UnsealPrice, shop.GoldOut);
+            }
+
             // 막마다 첫 층에서 시작해 층을 하나씩 올라 보스로 간다.
             foreach (var act in r.Fights.GroupBy(f => f.Act))
             {

@@ -32,6 +32,12 @@ public sealed record Damaged(string TargetId, int Amount, int HpAfter) : CombatE
 
 public sealed record Healed(string TargetId, int Amount, int HpAfter) : CombatEvent;
 
+/// <summary>흡혈: <paramref name="UnitId"/>가 준 피해의 일부만큼 회복했다.</summary>
+public sealed record Drained(string UnitId, int Amount, int HpAfter) : CombatEvent;
+
+/// <summary>가시: <paramref name="UnitId"/>가 <paramref name="SourceId"/>를 때리다 가시에 찔려 피해를 받았다.</summary>
+public sealed record Thorned(string UnitId, string SourceId, int Amount, int HpAfter) : CombatEvent;
+
 public sealed record Died(string UnitId) : CombatEvent;
 
 public sealed record MpRestored(string TargetId, int Amount, int MpAfter) : CombatEvent;

@@ -49,6 +49,20 @@ public enum RunSpend
 /// <param name="Time">전투가 끝난 시각 (마지막 행동의 전투 시계).</param>
 public sealed record RunSimFight(int Act, int Floor, RunNodeKind Kind, string EncounterId, CombatOutcome Outcome, double AllyHp, int Downs, long Time);
 
+/// <summary>상점에 한 번 들른 기록.</summary>
+/// <param name="GoldIn">들어갈 때 골드.</param>
+/// <param name="GoldOut">나올 때 골드.</param>
+/// <param name="Offered">나온 물건 (산 것도 포함, 처음 모습).</param>
+/// <param name="Bought">산 물건 (산 차례대로).</param>
+/// <param name="Unseals">골드로 푼 봉인 수.</param>
+/// <param name="Sealed">들어갈 때 살아 있는 멤버의 봉인 합.</param>
+/// <param name="Values">똑똑한 봇이 들어가자마자 잰 값어치: 살 수 있던 것마다 사 봤을 때 미리 싸운 점수가 나아진 정도.</param>
+public sealed record RunSimShop(
+    int Act, int GoldIn, int GoldOut, IReadOnlyList<RunStock> Offered, IReadOnlyList<RunStock> Bought, int Unseals, int Sealed, IReadOnlyList<RunSimValue> Values);
+
+/// <summary>상점에서 살 수 있던 것 하나의 값어치. <paramref name="Stock"/>이 null이면 봉인 풀기다.</summary>
+public sealed record RunSimValue(RunStock? Stock, int Price, double Gain);
+
 /// <summary>한 판의 결과.</summary>
 /// <param name="Act">끝난 막 (0부터). 클리어면 막 수.</param>
 /// <param name="Floor">끝난 지점의 층 (0부터). 클리어면 마지막 막의 보스 층.</param>
@@ -61,6 +75,7 @@ public sealed record RunSimFight(int Act, int Floor, RunNodeKind Kind, string En
 /// <param name="Placed">그중 켜진 전술 줄에 놓인 사본 수 (나머지는 놀고 있다).</param>
 /// <param name="Lines">끝날 때 살아 있는 멤버의 얻은 줄 상한 합.</param>
 /// <param name="Maxed">끝날 때 줄 상한이 최대에 닿은 멤버 수.</param>
+/// <param name="Shops">들른 상점 (들른 차례대로).</param>
 public sealed record RunSimResult(
     bool Cleared,
     int Act,
@@ -77,7 +92,8 @@ public sealed record RunSimResult(
     int Copies,
     int Placed,
     int Lines,
-    int Maxed)
+    int Maxed,
+    IReadOnlyList<RunSimShop> Shops)
 {
     /// <summary>마지막 전투 (판을 끝낸 상대). 싸우지 않고 끝났으면 null.</summary>
     public RunSimFight? Last => Fights.Count > 0 ? Fights[^1] : null;
@@ -89,14 +105,16 @@ public sealed record RunSimResult(
 /// <list type="bullet">
 /// <item>전술은 두 봇 모두 <see cref="DraftTactics"/>로 짠다: 사본을 그 클래스 멤버에게 나눠 주고(남는 줄이 많은 멤버부터), 멤버마다
 /// 줄을 최대치까지 적는다. 켜지는 것은 위에서부터 줄 상한만큼이다.</item>
-/// <item>장비도 두 봇 모두 같은 규칙으로 낀다: 가방의 무기·방어구가 지금 것보다 티어가 높으면(방어구는 같은 재질) 바꿔 끼고,
-/// 장신구는 칸이 빈 멤버가 낀다.</item>
+/// <item>무기·방어구는 살 때 낄 멤버를 정한다(똑똑한 봇은 멤버마다 미리 싸워 보고, 아무렇게나 봇은 아무나). 장신구는 칸이 빈 멤버가 낀다.</item>
 /// <item>줄(전열·후열)은 클래스의 처음 값 그대로 둔다.</item>
 /// </list>
 /// </summary>
 public sealed class RunSimulation
 {
     private const int LookaheadSalt = 0x5EED;
+
+    /// <summary>똑똑한 봇이 상점에서 사는 가장 작은 나아짐 (미리 싸운 점수, 이기면 1점대).</summary>
+    private const double MinShopGain = 0.01;
 
     private readonly GameData _data;
     private readonly RunDefinition _rules;
@@ -197,7 +215,8 @@ public sealed class RunSimulation
             run.Copies.Values.Sum(),
             living.Sum(m => m.ActiveTactics.Count(t => !_data.Actions[t.ActionId].Universal)),
             living.Sum(m => m.Earned),
-            living.Count(m => m.Earned >= _rules.MaxLines));
+            living.Count(m => m.Earned >= _rules.MaxLines),
+            tally.Shops);
     }
 
     /// <summary>
@@ -227,27 +246,32 @@ public sealed class RunSimulation
         }
     }
 
-    /// <summary>가방의 무기·방어구가 지금 것보다 티어가 높으면 바꿔 끼고(방어구는 같은 재질), 장신구는 칸이 빈 멤버가 낀다.</summary>
+    /// <summary>가방의 장신구를 칸이 빈 멤버가 낀다. 무기·방어구는 살 때 받을 멤버를 골라 끼므로 여기서 바꾸지 않는다.</summary>
     private void Equip(Run run)
     {
-        int Tier(string? id) => id is null ? 0 : _data.Items[id].Tier;
         for (var i = 0; i < run.Bag.Count; i++)
         {
-            var item = _data.Items[run.Bag[i]];
-            var target = item.Slot switch
-            {
-                EquipmentSlot.MainHand => run.Living.Where(m => _data.Classes[m.ClassId].CanWield(item) && Tier(m.Weapon) < item.Tier).MinBy(m => Tier(m.Weapon)),
-                EquipmentSlot.Body => run.Living.Where(m => Tier(m.Armor) < item.Tier && (m.Armor is null || _data.Items[m.Armor].Mastery == item.Mastery))
-                    .MinBy(m => Tier(m.Armor)),
-                EquipmentSlot.Trinket => run.Living.Where(m => m.Trinkets.Count < _rules.MaxTrinkets).MinBy(m => m.Trinkets.Count),
-                _ => null,
-            };
-            if (target is not null && run.WhyCannotEquip(_data, target, i) is null)
+            if (_data.Items[run.Bag[i]].Slot == EquipmentSlot.Trinket
+                && run.Living.Where(m => m.Trinkets.Count < _rules.MaxTrinkets).MinBy(m => m.Trinkets.Count) is { } target)
             {
                 run.Equip(_data, target, i);
                 i = -1;
             }
         }
+    }
+
+    /// <summary>무기·방어구를 낄 수 있는 멤버 (무기는 그 계열 클래스). 장신구 등은 비어 있다.</summary>
+    private IEnumerable<RunMember> Wearers(Run run, ItemDefinition item) => item.Slot switch
+    {
+        EquipmentSlot.MainHand => run.Living.Where(m => _data.Classes[m.ClassId].CanWield(item)),
+        EquipmentSlot.Body => run.Living,
+        _ => [],
+    };
+
+    /// <summary>방금 산 무기·방어구(가방 맨 끝)를 그 멤버가 낀다.</summary>
+    private void Wear(Run run, string memberId)
+    {
+        run.Equip(_data, run.Members.Single(m => m.Id == memberId), run.Bag.Count - 1);
     }
 
     /// <summary>
@@ -329,6 +353,7 @@ public sealed class RunSimulation
     /// <summary>그 막의 보통 적 조합, 정예, 보스를 미리 싸운 평균 점수. 이기면 1 + 0.5 × 남은 HP 비율, 지면 0.5 × 깎은 적 HP 비율.</summary>
     private double Lookahead(Run run)
     {
+        Equip(run);
         Arrange(run);
         var act = _rules.Acts[run.Act];
         var encounters = _data.Zones[act.ZoneId].Encounters.Select(e => (Kind: RunNodeKind.Fight, Id: e.EncounterId))
@@ -353,21 +378,31 @@ public sealed class RunSimulation
     }
 
     /// <summary>
-    /// 상점. 아무렇게나 봇은 물건마다 반반의 확률로 사고 봉인도 반반으로 푼다. 똑똑한 봇은 봉인부터 풀고, 합류 → 쓸 사람이 있는 장비 →
-    /// 켤 줄이 남는 클래스의 스킬 순으로 산다(값이 싼 것부터).
+    /// 상점. 아무렇게나 봇은 물건마다 반반의 확률로 사고 봉인도 반반으로 푼다. 똑똑한 봇은 살 수 있는 것(물건, 가장 많이 봉인된 멤버의 봉인
+    /// 풀기)마다 사 본 판으로 그 막의 적을 미리 싸워 보고, 골드 1당 나아지는 정도가 가장 큰 것부터 산다. 나아지는 것이
+    /// <see cref="MinShopGain"/>보다 작으면 그만 산다(골드를 다음 상점에 남기는 셈이다).
     /// </summary>
     private void Shop(Run run, Random random, Tally tally)
     {
-        void Buy(int i)
+        var (goldIn, offered, sealedLines) = (run.Gold, run.Stock.ToList(), run.Living.Sum(m => m.Sealed));
+        var (bought, unseals, values) = (new List<RunStock>(), 0, new List<RunSimValue>());
+        void Buy(int i, string? wearer = null)
         {
             var stock = run.Stock[i];
             run.Buy(_data, i);
+            if (wearer is not null)
+            {
+                Wear(run, wearer);
+            }
+
+            bought.Add(stock);
             tally.Spend(stock.Kind switch { RunStockKind.Item => RunSpend.Item, RunStockKind.Skill => RunSpend.Skill, _ => RunSpend.Recruit }, stock.Price);
         }
 
         void Unseal(RunMember member)
         {
             run.Unseal(_data, member);
+            unseals++;
             tally.Spend(RunSpend.Unseal, _rules.Shop.UnsealPrice);
         }
 
@@ -377,7 +412,9 @@ public sealed class RunSimulation
             {
                 if (random.Next(2) == 0 && run.WhyCannotBuy(_data, i) is null)
                 {
-                    Buy(i);
+                    // 무기·방어구는 낄 수 있는 멤버 아무에게나 낀다.
+                    var wearers = run.Stock[i].Kind == RunStockKind.Item ? Wearers(run, _data.Items[run.Stock[i].Id]).ToList() : [];
+                    Buy(i, wearers.Count > 0 ? wearers[random.Next(wearers.Count)].Id : null);
                 }
             }
 
@@ -390,54 +427,76 @@ public sealed class RunSimulation
                     Unseal(member);
                 }
             }
-
-            return;
         }
-
-        while (run.Living.Where(m => m.Sealed > 0).MaxBy(m => m.Sealed) is { } member && run.WhyCannotUnseal(_data, member) is null)
+        else
         {
-            Unseal(member);
-        }
-
-        foreach (var i in Enumerable.Range(0, run.Stock.Count).OrderByDescending(i => Want(run, run.Stock[i])).ThenBy(i => run.Stock[i].Price).ToList())
-        {
-            if (Want(run, run.Stock[i]) > 0 && run.WhyCannotBuy(_data, i) is null)
+            while (true)
             {
-                Buy(i);
+                var baseline = Lookahead(Run.Restore(run.ToSave(), _data));
+                // 무기·방어구는 낄 멤버마다 따로 재 본다.
+                var options = Enumerable.Range(0, run.Stock.Count)
+                    .Where(i => run.WhyCannotBuy(_data, i) is null)
+                    .SelectMany(i =>
+                    {
+                        var wearers = run.Stock[i].Kind == RunStockKind.Item ? Wearers(run, _data.Items[run.Stock[i].Id]).Select(m => (string?)m.Id).ToList() : [];
+                        return (wearers.Count > 0 ? wearers : [null]).Select(m => (Stock: (int?)i, Member: m, Price: run.Stock[i].Price));
+                    })
+                    .ToList();
+                if (run.Living.Where(m => m.Sealed > 0).MaxBy(m => m.Sealed) is { } most && run.WhyCannotUnseal(_data, most) is null)
+                {
+                    options.Add((null, most.Id, _rules.Shop.UnsealPrice));
+                }
+
+                var gains = options
+                    .Select(o =>
+                    {
+                        var copy = Run.Restore(run.ToSave(), _data);
+                        if (o.Stock is { } i)
+                        {
+                            copy.Buy(_data, i);
+                            if (o.Member is { } wearer)
+                            {
+                                Wear(copy, wearer);
+                            }
+                        }
+                        else
+                        {
+                            copy.Unseal(_data, copy.Members.Single(m => m.Id == o.Member));
+                        }
+
+                        return (Option: o, Gain: Lookahead(copy) - baseline);
+                    })
+                    .ToList();
+                if (bought.Count == 0 && unseals == 0)
+                {
+                    // 물건마다 가장 잘 맞는 멤버에게 낀 값어치.
+                    values.AddRange(gains.GroupBy(g => g.Option.Stock ?? -1).Select(g => g.MaxBy(x => x.Gain))
+                        .Select(g => new RunSimValue(g.Option.Stock is { } i ? run.Stock[i] : null, g.Option.Price, g.Gain)));
+                }
+
+                var best = gains
+                    .Where(x => x.Gain >= MinShopGain)
+                    .OrderByDescending(x => x.Gain / Math.Max(1, x.Option.Price))
+                    .FirstOrDefault();
+                if (best.Option.Price == 0)
+                {
+                    break;
+                }
+
+                if (best.Option.Stock is { } stock)
+                {
+                    Buy(stock, best.Option.Member);
+                }
+                else
+                {
+                    Unseal(run.Members.Single(m => m.Id == best.Option.Member));
+                }
+
+                Equip(run);
             }
         }
-    }
 
-    /// <summary>똑똑한 봇이 상점 물건을 원하는 정도. 0이면 사지 않는다.</summary>
-    private int Want(Run run, RunStock stock)
-    {
-        if (stock.Sold)
-        {
-            return 0;
-        }
-
-        int Tier(string? id) => id is null ? 0 : _data.Items[id].Tier;
-        switch (stock.Kind)
-        {
-            case RunStockKind.Recruit:
-                return run.Living.Count() < Run.MaxMembers ? 3 : 0;
-            case RunStockKind.Item:
-                var item = _data.Items[stock.Id];
-                var useful = item.Slot switch
-                {
-                    EquipmentSlot.MainHand => run.Living.Any(m => _data.Classes[m.ClassId].CanWield(item) && Tier(m.Weapon) < item.Tier),
-                    EquipmentSlot.Body => run.Living.Any(m => Tier(m.Armor) < item.Tier && (m.Armor is null || _data.Items[m.Armor].Mastery == item.Mastery)),
-                    EquipmentSlot.Trinket => run.Living.Sum(m => _rules.MaxTrinkets - m.Trinkets.Count) > run.Bag.Count(id => _data.Items[id].Slot == EquipmentSlot.Trinket),
-                    _ => false,
-                };
-                return useful ? 2 : 0;
-            default:
-                // 그 클래스 멤버의 켤 줄 수가 이미 가진 그 클래스 사본보다 많을 때만 산다 (놀 사본은 사지 않는다).
-                var owner = _owners[stock.Id];
-                var lines = run.Living.Where(m => m.ClassId == owner).Sum(m => m.Lines);
-                var copies = run.Copies.Where(p => _owners.GetValueOrDefault(p.Key) == owner).Sum(p => p.Value);
-                return lines > copies ? 1 : 0;
-        }
+        tally.Shops.Add(new RunSimShop(run.Act, goldIn, run.Gold, offered, bought, unseals, sealedLines, values));
     }
 
     /// <summary>
@@ -478,6 +537,8 @@ public sealed class RunSimulation
         public List<RunSimFight> Fights { get; } = [];
 
         public List<RunCard> Picks { get; } = [];
+
+        public List<RunSimShop> Shops { get; } = [];
 
         public Dictionary<RunSpend, int> Spent { get; } = [];
 

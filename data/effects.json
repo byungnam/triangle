@@ -386,5 +386,12 @@
     "description": "임시. 디버프에 걸리지 않는다 (장신구 정결한 성표).",
     "kind": "Buff",
     "immuneToDebuffs": true
+  },
+  {
+    "id": "smoldering",
+    "name": "그을림",
+    "description": "업화의 지팡이를 든 사람이 받는 대가: 매 턴 최대 HP의 2%를 잃는다. 임시 수치.",
+    "kind": "Debuff",
+    "tickHpPercent": -2
   }
 ]

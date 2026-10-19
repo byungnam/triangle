@@ -150,6 +150,17 @@ public static class CombatSummary
                 case Healed h:
                     CreditHealing(actor, h.Amount);
                     break;
+                case Drained dr:
+                    CreditHealing(dr.UnitId, dr.Amount);
+                    break;
+                case Thorned th:
+                    CreditDamage(th.SourceId, th.Amount, overTime: false);
+                    if (Of(th.UnitId) is { } pricked)
+                    {
+                        pricked.DamageTaken += th.Amount;
+                    }
+
+                    break;
                 case ShieldGained g when actor is not null && Of(actor) is { } shielder:
                     shielder.Shielding += g.Amount;
                     break;

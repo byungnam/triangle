@@ -627,11 +627,6 @@ public static class GameDataLoader
         }
         else
         {
-            if (item.Effects.Count > 0)
-            {
-                errors.Add($"{at}: only a trinket can have effects");
-            }
-
             if (item.Mastery is null)
             {
                 errors.Add($"{at}: equipment needs a mastery");
@@ -647,9 +642,26 @@ public static class GameDataLoader
             errors.Add($"{at}: only a main-hand item can be twoHanded");
         }
 
-        if (item.Slot != EquipmentSlot.MainHand && (item.PowerMultiplierPercent != 100 || item.EffectDurationBonus != 0))
+        if (item.Slot != EquipmentSlot.MainHand && (item.PowerMultiplierPercent != 100 || item.EffectDurationBonus != 0 || item.BasicAttack is not null))
         {
-            errors.Add($"{at}: only a main-hand item can have powerMultiplierPercent or effectDurationBonus");
+            errors.Add($"{at}: only a main-hand item can have powerMultiplierPercent, effectDurationBonus or basicAttack");
+        }
+
+        if (item.BasicAttack is { } basic)
+        {
+            if (!actions.TryGetValue(basic, out var attack))
+            {
+                errors.Add($"{at}: unknown basicAttack '{basic}'");
+            }
+            else if (attack.MpCost > 0 || attack.HpCost > 0 || attack.Universal || attack.SummonOnly || attack.Chant > 1 || attack.Effect == ActionEffect.Summon)
+            {
+                errors.Add($"{at}: basicAttack '{basic}' must cost nothing, take one turn and not be universal, summon-only or a summon");
+            }
+        }
+
+        if (item.Shop && item.Slot is not (EquipmentSlot.MainHand or EquipmentSlot.Body or EquipmentSlot.Trinket))
+        {
+            errors.Add($"{at}: only a weapon, armor or trinket can be sold in a run (shop)");
         }
 
         if (item.PowerMultiplierPercent < 1)

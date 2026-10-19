@@ -34,6 +34,10 @@ internal sealed class CombatLogFormatter(
 
         Healed h => new($"{Name(h.TargetId)} {h.Amount} 회복 (HP {h.HpAfter})", Theme.Heal, Indented: true),
 
+        Drained dr => new($"{Name(dr.UnitId)} 흡혈로 {dr.Amount} 회복 (HP {dr.HpAfter})", Theme.Heal, Indented: true),
+
+        Thorned th => new($"{EunNeun(Name(th.UnitId))} {Name(th.SourceId)}의 가시에 찔려 {th.Amount} 피해 (HP {th.HpAfter})", Theme.Damage, Indented: true),
+
         Died d => new($"{IGa(Name(d.UnitId))} 쓰러졌다!", Theme.Death, Indented: true),
 
         ShieldGained g => new($"{Name(g.TargetId)} 보호막 {g.Amount} (보호막 {g.ShieldAfter})", Theme.Heal, Indented: true),

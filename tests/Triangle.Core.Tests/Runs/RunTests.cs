@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Triangle.Core.Balance;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
 using Triangle.Core.Items;
@@ -502,6 +503,7 @@ public class RunTests
         Assert.All(run.Stock.Where(s => s.Kind == RunStockKind.Item).Select(s => data.Items[s.Id]), item =>
         {
             Assert.Contains(item.Slot, (EquipmentSlot[])[EquipmentSlot.MainHand, EquipmentSlot.Body, EquipmentSlot.Trinket]);
+            Assert.True(item.Shop, $"{item.Id} is not sold in a run");
             Assert.Equal(1, item.Tier);
             Assert.True(item.Slot != EquipmentSlot.MainHand || classes.Any(c => c.CanWield(item)));
         });
@@ -653,6 +655,26 @@ public class RunTests
         Assert.Contains("unknown action", run.WhyCannotSetTactics(Drafting, second, [Line("nope")]));
         Assert.Contains("percent", run.WhyCannotSetTactics(Drafting, second, [Line("focus", Condition.SelfHpAtMost, 150)]));
         Assert.Throws<InvalidOperationException>(() => run.SetTactics(Drafting, second, [Line("nope")]));
+    }
+
+    [Fact]
+    public void A_weapon_can_replace_the_basic_attack()
+    {
+        var run = Run.Start(Drafting, ["archer"], 1);
+        var archer = run.Members[0];
+        run.SetTactics(Drafting, archer, [Line(DraftTactics.Fallback, Condition.SelfHpAtMost, 50)]);
+        Assert.Equal(DraftTactics.Fallback, Run.BasicAttack(Drafting, archer));
+        run.Bag.Add("longbow");
+        run.Equip(Drafting, archer, 0);
+        Assert.Equal("longbow_shot", Run.BasicAttack(Drafting, archer));
+
+        // 기본 공격을 놓은 줄과 맨 아래 줄이 모두 장궁의 공격이 되고, 전투에서 그 행동을 쓴다.
+        var setup = run.Setup(Drafting, archer);
+        Assert.Equal(["longbow_shot", "longbow_shot"], setup.Tactics.Select(t => t.ActionId));
+        Assert.Contains("longbow_shot", setup.GrantedActions!);
+        var result = CombatSimulator.Run([setup], Drafting.CreateEncounterTeam("wild_dogs"), Run.Catalog(Drafting), 1);
+        Assert.Contains(result.Events.OfType<ActionUsed>(), a => a.ActorId == archer.Id && a.ActionId == "longbow_shot");
+        Assert.DoesNotContain(result.Events.OfType<ActionUsed>(), a => a.ActorId == archer.Id && a.ActionId == DraftTactics.Fallback);
     }
 
     [Fact]

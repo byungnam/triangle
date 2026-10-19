@@ -7,6 +7,7 @@ namespace Triangle.Desktop.Audio;
 /// <summary>
 /// 배경음악. 화면마다 곡 이름(<see cref="Tracks"/>)을 정하면 지금 곡을 줄여 끄고 새 곡을 키우며 반복 재생한다.
 /// 곡은 실행 폴더의 Music/&lt;이름&gt;.ogg이고, 파일이 없는 곡은 조용히 넘어간다.
+/// Music/&lt;이름&gt;-1.ogg, -2.ogg처럼 여러 벌을 두면 그 곡을 틀 때마다 하나를 고른다 (바로 전에 튼 것은 피한다).
 /// 소리 장치가 없으면 (헤드리스 확인 등) 아무것도 하지 않는다.
 /// </summary>
 internal sealed class MusicPlayer : IDisposable
@@ -16,6 +17,7 @@ internal sealed class MusicPlayer : IDisposable
 
     private readonly string _directory;
     private readonly Dictionary<string, Song?> _songs = [];
+    private readonly Dictionary<string, string> _lastFile = [];
     private bool _disabled;
     private string? _wanted;
     private string? _playing;
@@ -84,7 +86,7 @@ internal sealed class MusicPlayer : IDisposable
         MediaPlayer.Stop();
         _playing = _wanted;
         _fade = 0f;
-        if (_playing is not null && Load(_playing) is { } song)
+        if (_playing is not null && Pick(_playing) is { } file && Load(file) is { } song)
         {
             MediaPlayer.IsRepeating = true;
             MediaPlayer.Volume = 0f;
@@ -92,22 +94,49 @@ internal sealed class MusicPlayer : IDisposable
         }
     }
 
-    /// <summary>곡을 처음 쓸 때 읽어 둔다. 파일이 없거나 읽지 못하면 null (다시 시도하지 않는다).</summary>
-    private Song? Load(string track)
+    /// <summary>곡 이름에 맞는 파일 하나를 고른다. 여러 벌이면 바로 전에 튼 것을 빼고 무작위로 고른다. 없으면 null.</summary>
+    private string? Pick(string track)
     {
-        if (!_songs.TryGetValue(track, out var song))
+        string[] files;
+        try
         {
-            var path = Path.Combine(_directory, track + ".ogg");
+            files = Directory.Exists(_directory)
+                ? Directory.GetFiles(_directory, track + "-*.ogg").Order().ToArray()
+                : [];
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            files = [];
+        }
+
+        if (files.Length == 0)
+        {
+            return Path.Combine(_directory, track + ".ogg");
+        }
+
+        var candidates = files.Length > 1 && _lastFile.TryGetValue(track, out var last)
+            ? files.Where(f => f != last).ToArray()
+            : files;
+        var file = candidates[Random.Shared.Next(candidates.Length)];
+        _lastFile[track] = file;
+        return file;
+    }
+
+    /// <summary>곡 파일을 처음 쓸 때 읽어 둔다. 파일이 없거나 읽지 못하면 null (다시 시도하지 않는다).</summary>
+    private Song? Load(string path)
+    {
+        if (!_songs.TryGetValue(path, out var song))
+        {
             try
             {
-                song = File.Exists(path) ? Song.FromUri(track, new Uri(path)) : null;
+                song = File.Exists(path) ? Song.FromUri(Path.GetFileNameWithoutExtension(path), new Uri(path)) : null;
             }
             catch (Exception e) when (e is IOException or InvalidDataException or ArgumentException)
             {
                 song = null;
             }
 
-            _songs[track] = song;
+            _songs[path] = song;
         }
 
         return song;
@@ -142,6 +171,6 @@ internal static class Tracks
     /// <summary>원정 화면 (전투 사이).</summary>
     public const string Expedition = "expedition";
 
-    /// <summary>전투 기록 화면.</summary>
+    /// <summary>전투 기록 화면. 여러 벌(battle-1.ogg 등)을 두고 전투마다 하나를 고른다.</summary>
     public const string Battle = "battle";
 }

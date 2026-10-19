@@ -72,6 +72,30 @@ public class CombatSimulatorTests
     }
 
     [Fact]
+    public void The_time_limit_follows_the_combat_clock_not_the_number_of_units()
+    {
+        // 아무도 쓰러뜨리지 못하는 전투는 시계가 시간 제한을 넘으면 무승부로 끝난다. 유닛이 늘어도 한 유닛이 움직이는 횟수는 같다.
+        var rules = new CombatRules { TimeLimit = 1000 };
+        CombatResult Stalemate(int units) => Run(
+            Enumerable.Range(0, units).Select(i => Unit($"a{i}", vital: 5000)).ToArray(),
+            [Unit("e", vital: 5000, speed: 20, tactics: Always("slow_strike"))],
+            rules: rules);
+
+        var few = Stalemate(1);
+        var many = Stalemate(4);
+        Assert.Equal(CombatOutcome.Draw, few.Outcome);
+        Assert.Equal(CombatOutcome.Draw, many.Outcome);
+        Assert.All(few.Events.Concat(many.Events).OfType<TurnStarted>(), t => Assert.InRange(t.Time, 0, rules.TimeLimit));
+        int Turns(CombatResult r, string id) => r.Events.OfType<TurnStarted>().Count(t => t.ActorId == id);
+        Assert.Equal(Turns(few, "a0"), Turns(many, "a0"));
+        Assert.Equal(Turns(few, "e"), Turns(many, "e"));
+
+        // 대기가 긴 행동(2000 / 속도 20 = 100)은 기본 대기(1000 / 20 = 50)보다 덜 자주 움직인다.
+        Assert.Equal(rules.TimeLimit / 100 + 1, Turns(few, "e"));
+        Assert.Equal(rules.TimeLimit / 100 + 1, Turns(few, "a0"));
+    }
+
+    [Fact]
     public void Faster_units_act_proportionally_more_often()
     {
         var result = Run(

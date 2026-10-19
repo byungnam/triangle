@@ -130,6 +130,10 @@ public sealed class CombatSimulator
             var actor = _combatants
                 .Where(c => c.IsAlive)
                 .MinBy(c => (c.NextActionTime, c.TieBreak))!;
+            if (actor.NextActionTime > _rules.TimeLimit)
+            {
+                return Finish(_rules.ActionLimitOutcome, action - 1);
+            }
 
             actor.TurnCount++;
             _events.Add(new TurnStarted(action, actor.Id, actor.NextActionTime));

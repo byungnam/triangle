@@ -18,19 +18,31 @@ public class RunTests
 
     private static readonly GameData Shipped = GameDataLoader.LoadDirectory(DataDirectory);
 
+    /// <summary>
+    /// 보통 전투도 카드를 주는 게임 데이터. 게임은 보통 전투에 골드만 주지만, 보상 규칙을 보는 테스트는 첫 전투 뒤의 보상을 쓴다.
+    /// </summary>
+    private static readonly GameData Drafting = With(r => r);
+
     private static readonly string[] Party = ["knight", "archer", "elementalist", "priest"];
 
-    /// <summary>판의 규칙만 바꾼 게임 데이터 (로더 검증을 거친다).</summary>
+    /// <summary>판의 규칙만 바꾼 게임 데이터 (로더 검증을 거친다). 보통 전투도 카드를 준다(<see cref="Drafting"/>).</summary>
     private static GameData With(Func<RunDefinition, RunDefinition> change)
     {
         string Read(string file) => File.ReadAllText(Path.Combine(DataDirectory, file));
+        var drafting = Shipped.Run! with { Reward = Shipped.Run.Reward with { FightCards = Shipped.Run.Reward.Cards } };
         return GameDataLoader.Parse(
             Read(GameDataLoader.MasteriesFile), Read(GameDataLoader.SkillsFile), Read(GameDataLoader.ActionsFile), Read(GameDataLoader.EncountersFile),
-            Read(GameDataLoader.EffectsFile), Read(GameDataLoader.ItemsFile), Read(GameDataLoader.ZonesFile), Read(GameDataLoader.ClassesFile), JsonSerializer.Serialize(change(Shipped.Run!), GameDataJson.Options),
+            Read(GameDataLoader.EffectsFile), Read(GameDataLoader.ItemsFile), Read(GameDataLoader.ZonesFile), Read(GameDataLoader.ClassesFile), JsonSerializer.Serialize(change(drafting), GameDataJson.Options),
             Read(GameDataLoader.UnlocksFile));
     }
 
-    /// <summary>첫 층 다음 층이 모두 <paramref name="kind"/>인 막 하나 (층 3개: 전투, kind, 휴식).</summary>
+    /// <summary>약한 보통 전투 (작은 파티로도 첫 전투를 이기게).</summary>
+    private static readonly RunStrength Weak = new() { Hp = 30, Power = 30 };
+
+    /// <summary>첫 막의 보통 전투를 약하게 한 규칙.</summary>
+    private static RunDefinition Easy(RunDefinition r) => r with { Acts = [r.Acts[0] with { FightStrength = Weak }, .. r.Acts.Skip(1)] };
+
+    /// <summary>첫 층 다음 층이 모두 <paramref name="kind"/>인 막 하나 (층 3개: 전투, kind, 휴식). 보통 전투는 약하다.</summary>
     private static GameData SecondFloor(string kind, Func<RunDefinition, RunDefinition>? also = null) => With(r =>
     {
         var map = new RunMapRules { SpecialFrom = 1, Fight = 0, Elite = 0, Shop = 0, Rest = 0, Event = 0 };
@@ -40,7 +52,7 @@ public class RunTests
             "event" => map with { Event = 1 },
             _ => map with { Fight = 1 },
         };
-        var run = r with { Acts = [r.Acts[0] with { Floors = 3 }], Map = map };
+        var run = r with { Acts = [r.Acts[0] with { Floors = 3, FightStrength = Weak }], Map = map };
         return also?.Invoke(run) ?? run;
     });
 
@@ -85,8 +97,8 @@ public class RunTests
     public void Maps_are_deterministic_connected_and_keep_the_floor_rules()
     {
         // 게임의 지도: 한 막 15층, 폭 6칸, 경로 6개, 첫 층 3갈래.
-        var rules = Shipped.Run!.Map;
-        var floors = Shipped.Run.Acts[0].Floors;
+        var rules = Drafting.Run!.Map;
+        var floors = Drafting.Run.Acts[0].Floors;
         Assert.Equal((15, 6, 6, 3, 5), (floors, rules.Width, rules.Paths, rules.Starts, rules.SpecialFrom));
         var kinds = new HashSet<RunNodeKind>();
         for (var seed = 0; seed < 200; seed++)
@@ -152,29 +164,29 @@ public class RunTests
     [Fact]
     public void Starting_gives_each_member_the_class_kit_and_one_line_and_reveals_the_bosses()
     {
-        var run = Run.Start(Shipped, ["knight", "knight", "priest"], 1);
+        var run = Run.Start(Drafting, ["knight", "knight", "priest"], 1);
 
         Assert.Equal(["m1", "m2", "m3"], run.Members.Select(m => m.Id));
-        Assert.Equal(["기사 1", "기사 2", "사제"], run.Members.Select(m => run.Name(Shipped, m)));
+        Assert.Equal(["기사 1", "기사 2", "사제"], run.Members.Select(m => run.Name(Drafting, m)));
         Assert.Equal(new Dictionary<string, int> { ["shield_wall"] = 2, ["heal"] = 1 }, run.Copies);
         Assert.All(run.Members, m =>
         {
-            var c = Shipped.Classes[m.ClassId];
+            var c = Drafting.Classes[m.ClassId];
             Assert.Equal((c.Weapon, c.Armor), (m.Weapon, m.Armor));
-            Assert.Equal(Shipped.Run!.StartLines, m.Lines);
+            Assert.Equal(Drafting.Run!.StartLines, m.Lines);
             Assert.Equal([c.StartingSkill], m.Tactics.Select(t => t.ActionId));
         });
 
-        Assert.Equal(Shipped.Run!.Acts.Select(a => Shipped.Zones[a.ZoneId].Boss!.EncounterId), run.Bosses);
-        Assert.Equal(Shipped.Run.Acts.Count, run.Maps.Count);
-        Assert.Equal((RunPhase.Map, 0, (int?)null, Shipped.Run.StartGold), (run.Phase, run.Act, run.Position, run.Gold));
+        Assert.Equal(Drafting.Run!.Acts.Select(a => Drafting.Zones[a.ZoneId].Boss!.EncounterId), run.Bosses);
+        Assert.Equal(Drafting.Run.Acts.Count, run.Maps.Count);
+        Assert.Equal((RunPhase.Map, 0, (int?)null, Drafting.Run.StartGold), (run.Phase, run.Act, run.Position, run.Gold));
         Assert.Equal(run.Map.Starts, run.Choices);
-        Assert.Equal(run.Maps.Select(Describe), Run.Start(Shipped, ["priest"], 1).Maps.Select(Describe));
+        Assert.Equal(run.Maps.Select(Describe), Run.Start(Drafting, ["priest"], 1).Maps.Select(Describe));
 
-        Assert.NotNull(Run.WhyCannotStart(Shipped, []));
-        Assert.NotNull(Run.WhyCannotStart(Shipped, ["knight", "knight", "knight", "knight", "knight"]));
-        Assert.Contains("bard", Run.WhyCannotStart(Shipped, ["bard"]));
-        Assert.Throws<InvalidOperationException>(() => Run.Start(Shipped, ["bard"], 1));
+        Assert.NotNull(Run.WhyCannotStart(Drafting, []));
+        Assert.NotNull(Run.WhyCannotStart(Drafting, ["knight", "knight", "knight", "knight", "knight"]));
+        Assert.Contains("bard", Run.WhyCannotStart(Drafting, ["bard"]));
+        Assert.Throws<InvalidOperationException>(() => Run.Start(Drafting, ["bard"], 1));
     }
 
     [Fact]
@@ -190,18 +202,18 @@ public class RunTests
     public void Rows_are_chosen_per_member_and_not_fixed_by_the_class()
     {
         // 처음 값은 클래스가 정하고, 시작할 때 고르거나 판 중에 바꾼다.
-        var run = Run.Start(Shipped, ["knight", "priest", "knight"], 1, rows: [Units.Row.Back, Units.Row.Front]);
+        var run = Run.Start(Drafting, ["knight", "priest", "knight"], 1, rows: [Units.Row.Back, Units.Row.Front]);
         Assert.Equal([Units.Row.Back, Units.Row.Front, Units.Row.Front], run.Members.Select(m => m.Row));
-        Assert.Equal(Units.Row.Back, run.Setup(Shipped, run.Members[0]).Row);
+        Assert.Equal(Units.Row.Back, run.Setup(Drafting, run.Members[0]).Row);
 
         run.SetRow(run.Members[0], Units.Row.Front);
-        Assert.Equal(Units.Row.Front, run.Setup(Shipped, run.Members[0]).Row);
+        Assert.Equal(Units.Row.Front, run.Setup(Drafting, run.Members[0]).Row);
         run.SetRow(run.Members[1], Units.Row.Back);
 
         // 세이브에 남고, 줄이 없는 세이브는 클래스의 처음 값이 된다.
-        Assert.Equal(run.Members.Select(m => m.Row), Run.Deserialize(run.Serialize(), Shipped).Members.Select(m => m.Row));
+        Assert.Equal(run.Members.Select(m => m.Row), Run.Deserialize(run.Serialize(), Drafting).Members.Select(m => m.Row));
         var old = run.ToSave() with { Members = run.ToSave().Members.Select(m => m with { Row = null }).ToList() };
-        Assert.Equal([Units.Row.Front, Units.Row.Back, Units.Row.Front], Run.Restore(old, Shipped).Members.Select(m => m.Row));
+        Assert.Equal([Units.Row.Front, Units.Row.Back, Units.Row.Front], Run.Restore(old, Drafting).Members.Select(m => m.Row));
 
         run.Members[2].Dead = true;
         Assert.NotNull(run.WhyCannotSetRow(run.Members[2]));
@@ -212,29 +224,29 @@ public class RunTests
     [Fact]
     public void Battle_setup_uses_only_the_lines_under_the_cap_and_ends_with_the_basic_attack()
     {
-        var run = Run.Start(Shipped, ["elementalist"], 1);
+        var run = Run.Start(Drafting, ["elementalist"], 1);
         var member = run.Members[0];
         run.Copies["ember"] = 1;
-        run.SetTactics(Shipped, member, [Line("fireball"), Line("ember"), Line("focus")]);
+        run.SetTactics(Drafting, member, [Line("fireball"), Line("ember"), Line("focus")]);
 
-        var setup = run.Setup(Shipped, member);
+        var setup = run.Setup(Drafting, member);
         Assert.Equal(["fireball", "ember", "basic_attack"], setup.Tactics.Select(t => t.ActionId));
         Assert.Equal([1, 2, 3], setup.Tactics.Select(t => t.Priority));
         Assert.Equal(["ember", "fireball"], setup.GrantedActions!.Order());
-        Assert.Equal(Shipped.Classes["elementalist"].Row, setup.Row);
+        Assert.Equal(Drafting.Classes["elementalist"].Row, setup.Row);
 
         // 봉인되면 맨 아래 줄부터 꺼진다. 줄은 남아 있어 봉인이 풀리면 다시 켜진다.
         member.Sealed = 1;
-        Assert.Equal(["fireball", "basic_attack"], run.Setup(Shipped, member).Tactics.Select(t => t.ActionId));
-        Assert.Equal(["fireball"], run.Setup(Shipped, member).GrantedActions!);
+        Assert.Equal(["fireball", "basic_attack"], run.Setup(Drafting, member).Tactics.Select(t => t.ActionId));
+        Assert.Equal(["fireball"], run.Setup(Drafting, member).GrantedActions!);
         Assert.Equal(3, member.Tactics.Count);
     }
 
     [Fact]
     public void Winning_a_fight_pays_gold_and_offers_cards_and_skipping_returns_to_the_map()
     {
-        var run = WonFirstFight(Shipped, Party);
-        var reward = Shipped.Run!.Reward;
+        var run = WonFirstFight(Drafting, Party);
+        var reward = Drafting.Run!.Reward;
 
         Assert.Equal(1, run.Fights);
         Assert.InRange(run.Gold, reward.GoldMin, reward.GoldMax);
@@ -242,14 +254,14 @@ public class RunTests
         Assert.Equal(run.Offer.Count, run.Offer.Distinct().Count());
         Assert.All(run.Offer.Where(c => c.Kind != RunCardKind.Line), c => Assert.Contains(c.ClassId, Party));
         Assert.Empty(run.Choices);
-        Assert.Throws<InvalidOperationException>(() => run.Enter(Shipped, run.Map.Starts.First().Id));
+        Assert.Throws<InvalidOperationException>(() => run.Enter(Drafting, run.Map.Starts.First().Id));
 
         var at = run.Position!.Value;
         Assert.Equal([at], run.Path);
         run.Skip();
         Assert.Equal((RunPhase.Map, 0), (run.Phase, run.Offer.Count));
         Assert.Equal(run.Map.Node(at).Next, run.Choices.Select(n => n.Id));
-        Assert.NotNull(run.WhyCannotTake(Shipped, 0, null));
+        Assert.NotNull(run.WhyCannotTake(Drafting, 0, null));
         Assert.Throws<InvalidOperationException>(run.Skip);
     }
 
@@ -257,7 +269,7 @@ public class RunTests
     public void Cards_go_to_the_party_or_to_a_member_of_the_right_class()
     {
         static GameData Only(int active, int passive, int line) =>
-            With(r => r with { Reward = r.Reward with { Active = active, Passive = passive, Line = line } });
+            With(r => Easy(r) with { Reward = r.Reward with { Active = active, Passive = passive, Line = line } });
 
         // 액티브는 파티의 사본이 된다 (멤버를 묻지 않는다).
         var actives = Only(1, 0, 0);
@@ -324,9 +336,9 @@ public class RunTests
             Assert.True(m.Dead);
             Assert.Empty(m.Tactics);
             Assert.Equal(((string?)null, (string?)null), (m.Weapon, m.Armor));
-            Assert.Contains(Shipped.Classes[m.ClassId].Weapon, run.Bag);
+            Assert.Contains(Drafting.Classes[m.ClassId].Weapon, run.Bag);
             Assert.DoesNotContain(m, run.Living);
-            Assert.Equal(1, run.Copies[Shipped.Classes[m.ClassId].StartingSkill]);
+            Assert.Equal(1, run.Copies[Drafting.Classes[m.ClassId].StartingSkill]);
             Assert.NotNull(run.WhyCannotSetTactics(fort, m, []));
             Assert.NotNull(run.WhyCannotEquip(fort, m, 0));
         });
@@ -417,6 +429,64 @@ public class RunTests
         }
 
         Assert.Fail("두 막을 모두 이기는 시드가 없다");
+    }
+
+    [Fact]
+    public void Normal_fights_give_only_gold_and_elites_give_cards()
+    {
+        // 게임 규칙: 보통 전투는 골드만 주고 바로 지도로 돌아간다.
+        var reward = Shipped.Run!.Reward;
+        Assert.Equal(0, reward.FightCards);
+        var won = Enumerable.Range(0, 50).Select(seed => Run.Start(Shipped, Party, seed))
+            .First(run => run.Enter(Shipped, run.Choices[0].Id)!.Result.Outcome == CombatOutcome.Victory);
+        Assert.Equal((RunPhase.Map, 0), (won.Phase, won.Offer.Count));
+        Assert.InRange(won.Gold, reward.GoldMin, reward.GoldMax);
+        Assert.NotEmpty(won.Choices);
+
+        // 정예는 후보 카드를 더 많이 준다.
+        var data = With(r => r with
+        {
+            Reward = r.Reward with { FightCards = 0 },
+            Acts = [r.Acts[0] with { Floors = 3, FightStrength = Weak, EliteStrength = Weak }],
+            Map = new RunMapRules { SpecialFrom = 1, Fight = 0, Elite = 1, Shop = 0, Rest = 0, Event = 0 },
+        });
+        foreach (var seed in Enumerable.Range(0, 50))
+        {
+            var run = Run.Start(data, Party, seed);
+            run.Enter(data, run.Choices[0].Id);
+            if (run.Phase == RunPhase.Map && run.Enter(data, run.Choices[0].Id) is { Result.Outcome: CombatOutcome.Victory } elite)
+            {
+                Assert.Equal(RunNodeKind.Elite, elite.Kind);
+                Assert.Equal((RunPhase.Reward, reward.Cards + reward.EliteExtraCards), (run.Phase, run.Offer.Count));
+                return;
+            }
+        }
+
+        Assert.Fail("첫 전투와 정예를 이기는 시드가 없다");
+    }
+
+    [Fact]
+    public void Act_strength_makes_enemies_tougher_by_node_kind()
+    {
+        var data = With(r => r with { Acts = [r.Acts[0] with { FightStrength = new RunStrength { Hp = 200, Power = 150 } }, .. r.Acts.Skip(1)] });
+        var id = data.Zones[data.Run!.Acts[0].ZoneId].Encounters[0].EncounterId;
+        var plain = data.CreateEncounterTeam(id);
+        Assert.Equal(plain.Select(e => e.ItemBonuses.Count), Run.EnemyTeam(data, 0, RunNodeKind.Elite, id).Select(e => e.ItemBonuses.Count));
+        var tough = Run.EnemyTeam(data, 0, RunNodeKind.Fight, id);
+        Assert.All(tough, e => Assert.Contains(new ItemBonus(BonusKind.MaxHpPercent, 100), e.ItemBonuses));
+        Assert.All(tough, e => Assert.Contains(new ItemBonus(BonusKind.PowerPercent, 50), e.ItemBonuses));
+
+        // 같은 전투를 세게 만든 적과 싸우면 적의 최대 HP가 두 배다.
+        var start = Run.Start(data, Party, 1);
+        var allies = start.Living.Select(m => start.Setup(data, m)).ToList();
+        int MaxHp(IReadOnlyList<CombatantSetup> team) =>
+            CombatSimulator.Run(allies, team, Run.Catalog(data), 1).Combatants.Where(c => c.Side == CombatSide.Enemy).Sum(c => c.MaxHp);
+        Assert.Equal(2 * MaxHp(plain), MaxHp(tough));
+
+        var errors = Assert.Throws<GameDataException>(() => With(r => r with { Acts = [r.Acts[0] with { BossStrength = new RunStrength { Hp = 5 } }] })).Errors;
+        Assert.Contains(errors, e => e.Contains("strength hp and power are percents"));
+        errors = Assert.Throws<GameDataException>(() => With(r => r with { Reward = r.Reward with { FightCards = -1 } })).Errors;
+        Assert.Contains(errors, e => e.Contains("reward needs"));
     }
 
     [Fact]
@@ -561,56 +631,56 @@ public class RunTests
     [Fact]
     public void Tactic_lines_are_limited_by_party_copies_class_cards_and_the_line_maximum()
     {
-        var run = Run.Start(Shipped, ["knight", "knight", "elementalist"], 1);
+        var run = Run.Start(Drafting, ["knight", "knight", "elementalist"], 1);
         var (first, second, mage) = (run.Members[0], run.Members[1], run.Members[2]);
 
         // 사본 2장을 두 기사가 한 줄씩 쓰고 있다.
-        Assert.StartsWith("사본이 모자란다", run.WhyCannotSetTactics(Shipped, first, [Line("shield_wall"), Line("shield_wall")]));
-        run.SetTactics(Shipped, second, [Line("focus")]);
-        run.SetTactics(Shipped, first, [Line("shield_wall", Condition.SelfHpAtMost, 50, priority: 7), Line("shield_wall", priority: 3)]);
+        Assert.StartsWith("사본이 모자란다", run.WhyCannotSetTactics(Drafting, first, [Line("shield_wall"), Line("shield_wall")]));
+        run.SetTactics(Drafting, second, [Line("focus")]);
+        run.SetTactics(Drafting, first, [Line("shield_wall", Condition.SelfHpAtMost, 50, priority: 7), Line("shield_wall", priority: 3)]);
         Assert.Equal([1, 2], first.Tactics.Select(t => t.Priority));
         Assert.Equal((Condition.SelfHpAtMost, 50), (first.Tactics[0].Condition, first.Tactics[0].Value));
 
         // 공용 행동은 사본이 없어도 된다. 다른 클래스의 카드는 놓을 수 없다.
-        Assert.Null(run.WhyCannotSetTactics(Shipped, second, [Line("basic_attack"), Line("focus")]));
-        Assert.Contains("기사의 카드가 아니다", run.WhyCannotSetTactics(Shipped, second, [Line("fireball")]));
-        Assert.Null(run.WhyCannotSetTactics(Shipped, mage, [Line("fireball")]));
-        Assert.StartsWith("사본이 모자란다", run.WhyCannotSetTactics(Shipped, mage, [Line("fireball"), Line("ember")]));
+        Assert.Null(run.WhyCannotSetTactics(Drafting, second, [Line("basic_attack"), Line("focus")]));
+        Assert.Contains("기사의 카드가 아니다", run.WhyCannotSetTactics(Drafting, second, [Line("fireball")]));
+        Assert.Null(run.WhyCannotSetTactics(Drafting, mage, [Line("fireball")]));
+        Assert.StartsWith("사본이 모자란다", run.WhyCannotSetTactics(Drafting, mage, [Line("fireball"), Line("ember")]));
 
         // 줄은 줄 상한의 최대치까지 적을 수 있고, 조건은 데이터 검증과 같다.
-        Assert.Null(run.WhyCannotSetTactics(Shipped, second, Enumerable.Repeat(Line("focus"), Shipped.Run!.MaxLines).ToList()));
-        Assert.NotNull(run.WhyCannotSetTactics(Shipped, second, Enumerable.Repeat(Line("focus"), Shipped.Run.MaxLines + 1).ToList()));
-        Assert.Contains("unknown action", run.WhyCannotSetTactics(Shipped, second, [Line("nope")]));
-        Assert.Contains("percent", run.WhyCannotSetTactics(Shipped, second, [Line("focus", Condition.SelfHpAtMost, 150)]));
-        Assert.Throws<InvalidOperationException>(() => run.SetTactics(Shipped, second, [Line("nope")]));
+        Assert.Null(run.WhyCannotSetTactics(Drafting, second, Enumerable.Repeat(Line("focus"), Drafting.Run!.MaxLines).ToList()));
+        Assert.NotNull(run.WhyCannotSetTactics(Drafting, second, Enumerable.Repeat(Line("focus"), Drafting.Run.MaxLines + 1).ToList()));
+        Assert.Contains("unknown action", run.WhyCannotSetTactics(Drafting, second, [Line("nope")]));
+        Assert.Contains("percent", run.WhyCannotSetTactics(Drafting, second, [Line("focus", Condition.SelfHpAtMost, 150)]));
+        Assert.Throws<InvalidOperationException>(() => run.SetTactics(Drafting, second, [Line("nope")]));
     }
 
     [Fact]
     public void Equipment_comes_from_the_bag_and_keeps_to_class_weapons_and_the_trinket_limit()
     {
-        var run = Run.Start(Shipped, ["knight"], 1);
+        var run = Run.Start(Drafting, ["knight"], 1);
         var knight = run.Members[0];
 
         run.Unequip(knight, EquipmentSlot.MainHand);
         Assert.Null(knight.Weapon);
         Assert.Equal(["old_sword"], run.Bag);
-        run.Equip(Shipped, knight, 0);
+        run.Equip(Drafting, knight, 0);
         Assert.Equal(("old_sword", 0), (knight.Weapon, run.Bag.Count));
         Assert.Throws<InvalidOperationException>(() => run.Unequip(knight, EquipmentSlot.Trinket));
 
         run.Bag.AddRange(["hunting_bow", "plate_helm", "leather_armor", "frost_ring", "mana_crystal", "banner_of_defiance"]);
-        Assert.Contains("쓰지 않는다", run.WhyCannotEquip(Shipped, knight, 0));
-        Assert.NotNull(run.WhyCannotEquip(Shipped, knight, 1));
-        Assert.NotNull(run.WhyCannotEquip(Shipped, knight, 9));
+        Assert.Contains("쓰지 않는다", run.WhyCannotEquip(Drafting, knight, 0));
+        Assert.NotNull(run.WhyCannotEquip(Drafting, knight, 1));
+        Assert.NotNull(run.WhyCannotEquip(Drafting, knight, 9));
 
-        run.Equip(Shipped, knight, 2);
+        run.Equip(Drafting, knight, 2);
         Assert.Equal("leather_armor", knight.Armor);
         Assert.Equal("plate_armor", run.Bag[^1]);
 
-        run.Equip(Shipped, knight, run.Bag.IndexOf("banner_of_defiance"));
-        run.Equip(Shipped, knight, run.Bag.IndexOf("frost_ring"));
-        Assert.Equal("장신구는 2개까지다", run.WhyCannotEquip(Shipped, knight, run.Bag.IndexOf("mana_crystal")));
-        Assert.Contains("taunting", run.Setup(Shipped, knight).StartingEffects);
+        run.Equip(Drafting, knight, run.Bag.IndexOf("banner_of_defiance"));
+        run.Equip(Drafting, knight, run.Bag.IndexOf("frost_ring"));
+        Assert.Equal("장신구는 2개까지다", run.WhyCannotEquip(Drafting, knight, run.Bag.IndexOf("mana_crystal")));
+        Assert.Contains("taunting", run.Setup(Drafting, knight).StartingEffects);
 
         run.Unequip(knight, EquipmentSlot.Trinket, 0);
         Assert.Equal(["frost_ring"], knight.Trinkets);
@@ -622,23 +692,23 @@ public class RunTests
     {
         static string Play(int seed)
         {
-            var run = Run.Start(Shipped, Party, seed);
+            var run = Run.Start(Drafting, Party, seed);
             var log = new List<string>();
             while (!run.Finished && run.Fights < 8)
             {
                 switch (run.Phase)
                 {
                     case RunPhase.Map:
-                        var battle = run.Enter(Shipped, run.Choices[^1].Id);
+                        var battle = run.Enter(Drafting, run.Choices[^1].Id);
                         log.Add($"{run.Position}:{battle?.EncounterId}:{battle?.Result.Outcome}:{battle?.Gold}");
                         break;
                     case RunPhase.Reward:
                         log.Add(string.Join(",", run.Offer));
                         var card = run.Offer[0];
-                        var member = run.Living.FirstOrDefault(m => run.WhyCannotTake(Shipped, 0, m) is null);
+                        var member = run.Living.FirstOrDefault(m => run.WhyCannotTake(Drafting, 0, m) is null);
                         if (card.Kind == RunCardKind.Active || member is not null)
                         {
-                            run.Take(Shipped, 0, member);
+                            run.Take(Drafting, 0, member);
                         }
                         else
                         {
@@ -651,11 +721,11 @@ public class RunTests
                         run.LeaveShop();
                         break;
                     case RunPhase.Rest:
-                        run.RestTrain(Shipped);
+                        run.RestTrain(Drafting);
                         break;
                     case RunPhase.Event:
                         log.Add(run.Event!.Id);
-                        run.Choose(Shipped, run.Event.Options.Count - 1);
+                        run.Choose(Drafting, run.Event.Options.Count - 1);
                         break;
                 }
             }
@@ -671,7 +741,7 @@ public class RunTests
     public void A_saved_run_continues_exactly_like_the_original()
     {
         // 지도, 보상, 상점, 이벤트 단계에서 저장했다가 되살려도 같은 선택이면 같은 판이 된다.
-        foreach (var data in new[] { Shipped, SecondFloor("shop", r => r with { StartGold = 500 }), SecondFloor("event") })
+        foreach (var data in new[] { Drafting, SecondFloor("shop", r => r with { StartGold = 500 }), SecondFloor("event") })
         {
             var original = WonFirstFight(data, Party);
             for (var step = 0; step < 4 && !original.Finished; step++)
@@ -718,23 +788,23 @@ public class RunTests
     [Fact]
     public void Saves_that_do_not_match_the_game_data_are_rejected()
     {
-        var run = Run.Start(Shipped, ["knight"], 1);
+        var run = Run.Start(Drafting, ["knight"], 1);
         var file = run.ToSave();
 
-        Assert.Contains(Assert.Throws<SaveGameException>(() => Run.Restore(file with { Version = 99 }, Shipped)).Errors, e => e.Contains("version 99"));
+        Assert.Contains(Assert.Throws<SaveGameException>(() => Run.Restore(file with { Version = 99 }, Drafting)).Errors, e => e.Contains("version 99"));
         var errors = Assert.Throws<SaveGameException>(() => Run.Restore(file with
         {
             Members = [file.Members[0] with { ClassId = "bard", Weapon = "no_sword" }],
             Bag = ["no_item"],
             Phase = RunPhase.Event,
             Position = 999,
-        }, Shipped)).Errors;
+        }, Drafting)).Errors;
         Assert.Contains(errors, e => e.Contains("unknown class 'bard'"));
         Assert.Contains(errors, e => e.Contains("unknown item 'no_sword'"));
         Assert.Contains(errors, e => e.Contains("unknown item 'no_item' in bag"));
         Assert.Contains(errors, e => e.Contains("position 999"));
         Assert.Contains(errors, e => e.Contains("event phase needs an event"));
-        Assert.Throws<SaveGameException>(() => Run.Deserialize("{ \"version\": 1 }", Shipped));
+        Assert.Throws<SaveGameException>(() => Run.Deserialize("{ \"version\": 1 }", Drafting));
     }
 
     [Fact]
@@ -744,21 +814,21 @@ public class RunTests
         try
         {
             var store = new RunStore(Path.Combine(dir, "run.json"));
-            Assert.Equal((null, LoadStatus.NewGame), (store.Load(Shipped).Run, store.Load(Shipped).Status));
+            Assert.Equal((null, LoadStatus.NewGame), (store.Load(Drafting).Run, store.Load(Drafting).Status));
 
-            var run = Run.Start(Shipped, Party, 5);
+            var run = Run.Start(Drafting, Party, 5);
             store.Save(run);
-            var loaded = store.Load(Shipped);
+            var loaded = store.Load(Drafting);
             Assert.Equal(LoadStatus.Loaded, loaded.Status);
             Assert.Equal(run.Serialize(), loaded.Run!.Serialize());
 
             run.Abandon();
             Assert.Equal(RunPhase.Defeat, run.Phase);
             store.Delete();
-            Assert.Equal(LoadStatus.NewGame, store.Load(Shipped).Status);
+            Assert.Equal(LoadStatus.NewGame, store.Load(Drafting).Status);
 
             File.WriteAllText(store.Path, "not json");
-            var broken = store.Load(Shipped);
+            var broken = store.Load(Drafting);
             Assert.Equal(LoadStatus.Recovered, broken.Status);
             Assert.True(File.Exists(broken.BrokenFilePath));
             Assert.False(File.Exists(store.Path));
@@ -772,7 +842,7 @@ public class RunTests
     // ── 해금과 기록 ───────────────────────────────────────
 
     /// <summary>아무것도 열지 않은 처음 상태의 해금.</summary>
-    private static readonly RunUnlocks Fresh = RunUnlocks.For(Shipped, new HashSet<string>());
+    private static readonly RunUnlocks Fresh = RunUnlocks.For(Drafting, new HashSet<string>());
 
     [Fact]
     public void Unopened_unlocks_lock_their_classes_cards_and_items_and_opened_ones_add_start_gold()
@@ -784,14 +854,14 @@ public class RunTests
         Assert.DoesNotContain("knight", Fresh.Locked);
         Assert.Equal(0, Fresh.StartGold);
 
-        var rich = RunUnlocks.For(Shipped, new HashSet<string> { "war_chest", "class_warrior" });
+        var rich = RunUnlocks.For(Drafting, new HashSet<string> { "war_chest", "class_warrior" });
         Assert.Equal(50, rich.StartGold);
         Assert.DoesNotContain("warrior", rich.Locked);
-        Assert.Equal(Shipped.Run!.StartGold + 50, Run.Start(Shipped, ["warrior"], 1, rich).Gold);
+        Assert.Equal(Drafting.Run!.StartGold + 50, Run.Start(Drafting, ["warrior"], 1, rich).Gold);
 
-        Assert.Contains("전사", Run.WhyCannotStart(Shipped, ["knight", "warrior"], Fresh));
-        Assert.Throws<InvalidOperationException>(() => Run.Start(Shipped, ["warrior"], 1, Fresh));
-        Assert.Null(Run.WhyCannotStart(Shipped, ["warrior"]));
+        Assert.Contains("전사", Run.WhyCannotStart(Drafting, ["knight", "warrior"], Fresh));
+        Assert.Throws<InvalidOperationException>(() => Run.Start(Drafting, ["warrior"], 1, Fresh));
+        Assert.Null(Run.WhyCannotStart(Drafting, ["warrior"]));
     }
 
     [Fact]
@@ -800,7 +870,7 @@ public class RunTests
         bool Locked(string? id) => id is not null && Fresh.Locked.Contains(id);
 
         // 보상: 원소술사와 궁수 카드에는 잠긴 카드가 많다.
-        var actives = With(r => r with { Reward = r.Reward with { Active = 1, Passive = 0, Line = 0 }, Acts = [r.Acts[0]] });
+        var actives = With(r => r with { Reward = r.Reward with { Active = 1, Passive = 0, Line = 0 }, Acts = [r.Acts[0] with { FightStrength = Weak }] });
         for (var from = 0; from < 40; from += 4)
         {
             var run = WonFirstFight(actives, ["elementalist", "archer"], from, Fresh);
@@ -831,22 +901,22 @@ public class RunTests
         }
 
         // 판을 저장해도 잠긴 것은 그대로다.
-        var saved = WonFirstFight(Shipped, Party, unlocks: Fresh);
-        Assert.Equal(Fresh.Locked.Order(), Run.Deserialize(saved.Serialize(), Shipped).Locked.Order());
+        var saved = WonFirstFight(Drafting, Party, unlocks: Fresh);
+        Assert.Equal(Fresh.Locked.Order(), Run.Deserialize(saved.Serialize(), Drafting).Locked.Order());
     }
 
     [Fact]
     public void A_finished_run_gives_renown_and_records_and_renown_opens_unlocks()
     {
-        var renown = Shipped.Run!.Renown;
-        var lost = WonFirstFight(Shipped, Party);
+        var renown = Drafting.Run!.Renown;
+        var lost = WonFirstFight(Drafting, Party);
         var first = Assert.Single(lost.History);
         Assert.Equal((0, RunNodeKind.Fight, CombatOutcome.Victory), (first.Act, first.Kind, first.Outcome));
-        Assert.Throws<InvalidOperationException>(() => new Profile().Record(lost, Shipped));
+        Assert.Throws<InvalidOperationException>(() => new Profile().Record(lost, Drafting));
         lost.Abandon();
 
         var profile = new Profile();
-        Assert.Equal(renown.Fight, profile.Record(lost, Shipped));
+        Assert.Equal(renown.Fight, profile.Record(lost, Drafting));
         Assert.Equal((renown.Fight, 1, 0, 0), (profile.Renown, profile.Runs, profile.Victories, profile.BestActs));
         Assert.Equal(new EncounterRecord(1, 1), profile.Encounters[first.EncounterId]);
 
@@ -859,16 +929,16 @@ public class RunTests
         Assert.Equal(2, profile.Encounters["wild_dogs"].Wins);
 
         // 명성을 내고 연다. 모자라면, 이미 열었으면, 없는 해금이면 열 수 없다.
-        var cost = Shipped.Unlocks["class_warrior"].Cost;
+        var cost = Drafting.Unlocks["class_warrior"].Cost;
         var before = profile.Renown;
         Assert.True(before < cost);
-        Assert.StartsWith("명성이 모자란다", profile.WhyCannotUnlock(Shipped, "class_warrior"));
-        Assert.NotNull(profile.WhyCannotUnlock(Shipped, "nope"));
-        var cheap = Shipped.Unlocks.Values.Where(u => u.Cost <= before).MinBy(u => u.Cost)!;
-        profile.Unlock(Shipped, cheap.Id);
+        Assert.StartsWith("명성이 모자란다", profile.WhyCannotUnlock(Drafting, "class_warrior"));
+        Assert.NotNull(profile.WhyCannotUnlock(Drafting, "nope"));
+        var cheap = Drafting.Unlocks.Values.Where(u => u.Cost <= before).MinBy(u => u.Cost)!;
+        profile.Unlock(Drafting, cheap.Id);
         Assert.Equal(before - cheap.Cost, profile.Renown);
-        Assert.Equal("이미 열었다", profile.WhyCannotUnlock(Shipped, cheap.Id));
-        Assert.DoesNotContain(cheap.Locks.FirstOrDefault() ?? "", profile.UnlocksForRun(Shipped).Locked);
+        Assert.Equal("이미 열었다", profile.WhyCannotUnlock(Drafting, cheap.Id));
+        Assert.DoesNotContain(cheap.Locks.FirstOrDefault() ?? "", profile.UnlocksForRun(Drafting).Locked);
     }
 
     /// <summary>판을 끝까지 둔다: 첫 지점, 보상은 건너뛰기, 휴식은 봉인 풀기.</summary>
@@ -897,26 +967,26 @@ public class RunTests
     [Fact]
     public void The_profile_is_saved_and_a_broken_one_is_set_aside()
     {
-        var run = WonFirstFight(Shipped, Party);
+        var run = WonFirstFight(Drafting, Party);
         run.Abandon();
         var profile = new Profile();
-        profile.Record(run, Shipped);
+        profile.Record(run, Drafting);
         var json = profile.Serialize();
-        Assert.Equal(json, Profile.Deserialize(json, Shipped).Serialize());
+        Assert.Equal(json, Profile.Deserialize(json, Drafting).Serialize());
 
         // 지금 데이터에 없는 해금은 버린다.
         var stale = json.Replace("\"unlocked\": []", "\"unlocked\": [ \"gone\" ]");
-        Assert.Empty(Profile.Deserialize(stale, Shipped).Unlocked);
+        Assert.Empty(Profile.Deserialize(stale, Drafting).Unlocked);
 
         var dir = Path.Combine(Path.GetTempPath(), "triangle-profile-" + Guid.NewGuid());
         try
         {
             var store = new ProfileStore(Path.Combine(dir, "profile.json"));
-            Assert.Equal(LoadStatus.NewGame, store.Load(Shipped).Status);
+            Assert.Equal(LoadStatus.NewGame, store.Load(Drafting).Status);
             store.Save(profile);
-            Assert.Equal(json, store.Load(Shipped).Profile.Serialize());
+            Assert.Equal(json, store.Load(Drafting).Profile.Serialize());
             File.WriteAllText(store.Path, "{ \"version\": 7 }");
-            var broken = store.Load(Shipped);
+            var broken = store.Load(Drafting);
             Assert.Equal((LoadStatus.Recovered, 0), (broken.Status, broken.Profile.Runs));
             Assert.True(File.Exists(broken.BrokenFilePath));
         }

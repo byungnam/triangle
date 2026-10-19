@@ -85,7 +85,7 @@ internal sealed class CombatLogFormatter(
         {
             CombatOutcome.Victory => "전투 종료 — 승리!",
             CombatOutcome.Defeat => "전투 종료 — 패배...",
-            _ => "전투 종료 — 무승부 (행동 횟수 상한)",
+            _ => "전투 종료 — 무승부 (시간 초과)",
         }, end.Outcome == CombatOutcome.Victory ? Theme.Heal : Theme.Enemy),
 
         _ => null,

@@ -65,10 +65,6 @@
       {
         "encounterId": "black_sun_cult",
         "weight": 2
-      },
-      {
-        "encounterId": "elite",
-        "weight": 2
       }
     ],
     "boss": {

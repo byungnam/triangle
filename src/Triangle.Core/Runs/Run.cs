@@ -221,7 +221,8 @@ public sealed partial class Run
         Phase != RunPhase.Map ? [] : Position is { } at ? Map.Node(at).Next.Select(Map.Node).ToList() : Map.Starts.ToList();
 
     /// <summary>
-    /// 지점에 들어간다. 전투·정예·보스면 바로 싸우고 그 결과를 돌려준다(이기면 보상 단계, 지거나 비기면 패배).
+    /// 지점에 들어간다. 전투·정예·보스면 바로 싸우고 그 결과를 돌려준다(이기면 고를 카드가 있을 때 보상 단계, 없으면 지도 단계,
+    /// 지거나 비기면 패배).
     /// 상점·휴식·이벤트면 그 단계가 되고 null을 돌려준다.
     /// </summary>
     public RunBattle? Enter(GameData data, int nodeId)
@@ -272,7 +273,7 @@ public sealed partial class Run
         Fights++;
         var at = Act;
         var allies = Living.Select(m => Setup(data, m)).ToList();
-        var result = CombatSimulator.Run(allies, data.CreateEncounterTeam(encounter), Catalog(data), Seeds.Derive(Seed, Fights));
+        var result = CombatSimulator.Run(allies, EnemyTeam(data, Act, kind, encounter), Catalog(data), Seeds.Derive(Seed, Fights));
         _history.Add(new RunBattleRecord(at, encounter, kind, result.Outcome));
         if (result.Outcome != CombatOutcome.Victory)
         {
@@ -316,9 +317,23 @@ public sealed partial class Run
         }
         else
         {
+            // 보통 전투는 골드만 줄 수 있다(카드 0장). 고를 카드가 없으면 바로 지도로(보스면 다음 막으로) 간다.
             _bossCleared = kind == RunNodeKind.Boss;
-            Offer = MakeOffer(data, random, reward.Cards + (kind == RunNodeKind.Elite ? reward.EliteExtraCards : 0));
-            Phase = RunPhase.Reward;
+            var cards = kind switch
+            {
+                RunNodeKind.Elite => reward.Cards + reward.EliteExtraCards,
+                RunNodeKind.Boss => reward.Cards,
+                _ => reward.FightCards,
+            };
+            Offer = cards > 0 ? MakeOffer(data, random, cards) : [];
+            if (Offer.Count > 0)
+            {
+                Phase = RunPhase.Reward;
+            }
+            else
+            {
+                FinishReward();
+            }
         }
 
         return new RunBattle(encounter, kind, result, sealedIds, died, gold);
@@ -741,6 +756,20 @@ public sealed partial class Run
         {
             GrantedActions = lines.Select(t => t.ActionId).Where(id => !data.Actions[id].Universal).ToHashSet(),
         };
+    }
+
+    /// <summary>그 막의 그 지점에서 만나는 적 조합: 막이 지점 종류마다 정한 세기(<see cref="RunAct.Strength"/>)를 HP·위력 보너스로 얹는다.</summary>
+    public static IReadOnlyList<CombatantSetup> EnemyTeam(GameData data, int act, RunNodeKind kind, string encounterId)
+    {
+        var strength = Rules(data).Acts[act].Strength(kind);
+        var team = data.CreateEncounterTeam(encounterId);
+        if (strength is { Hp: 100, Power: 100 })
+        {
+            return team;
+        }
+
+        ItemBonus[] bonuses = [new(BonusKind.MaxHpPercent, strength.Hp - 100), new(BonusKind.PowerPercent, strength.Power - 100)];
+        return team.Select(e => e with { ItemBonuses = [.. e.ItemBonuses, .. bonuses] }).ToList();
     }
 
     /// <summary>표시 이름: 클래스 이름. 같은 클래스가 여럿이면 합류 순서 번호를 붙인다.</summary>

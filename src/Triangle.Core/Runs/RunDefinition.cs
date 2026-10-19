@@ -60,6 +60,32 @@ public sealed record RunAct(string ZoneId, int Floors)
 
     /// <summary>이 막의 상점이 파는 무기·방어구의 티어. 장신구는 이 티어 이하.</summary>
     public int ShopTier { get; init; } = 1;
+
+    /// <summary>이 막의 보통 전투 적의 세기. 적 조합 데이터를 막마다 따로 두지 않고 세기를 맞춘다.</summary>
+    public RunStrength FightStrength { get; init; } = new();
+
+    /// <summary>이 막의 정예 적의 세기.</summary>
+    public RunStrength EliteStrength { get; init; } = new();
+
+    /// <summary>이 막의 보스의 세기.</summary>
+    public RunStrength BossStrength { get; init; } = new();
+
+    public RunStrength Strength(RunNodeKind kind) => kind switch
+    {
+        RunNodeKind.Elite => EliteStrength,
+        RunNodeKind.Boss => BossStrength,
+        _ => FightStrength,
+    };
+}
+
+/// <summary>적의 세기 배율(%). 적 조합에 보너스로 얹는다.</summary>
+public sealed record RunStrength
+{
+    /// <summary>최대 HP 배율.</summary>
+    public int Hp { get; init; } = 100;
+
+    /// <summary>위력 배율: 피해, 회복, 보호막.</summary>
+    public int Power { get; init; } = 100;
 }
 
 /// <summary>지도 모양과 지점 종류의 가중치. 첫 층은 늘 전투, 보스 바로 앞 층은 늘 휴식이다.</summary>
@@ -88,17 +114,25 @@ public sealed record RunMapRules
     public int Event { get; init; } = 18;
 }
 
-/// <summary>전투 보상. 이기면 골드를 받고 후보 카드 중 하나를 고른다(건너뛸 수도 있다).</summary>
+/// <summary>
+/// 전투 보상. 이기면 골드를 받는다. 정예와 보스는 후보 카드 중 하나도 고른다(건너뛸 수도 있다). 보통 전투는 골드만 준다
+/// (2026-10-19 사용자 결정: 전투마다 카드를 고르면 너무 빨리 강해진다).
+/// </summary>
 public sealed record RunRewardRules
 {
+    /// <summary>정예·보스·이벤트 카드의 후보 수.</summary>
     public int Cards { get; init; } = 3;
+
+    /// <summary>보통 전투를 이기면 나오는 후보 카드 수. 0이면 골드만 받는다.</summary>
+    public int FightCards { get; init; }
 
     /// <summary>정예를 이기면 후보가 이만큼 더 나온다.</summary>
     public int EliteExtraCards { get; init; } = 2;
 
-    public int Active { get; init; } = 6;
+    /// <summary>후보 카드 종류의 가중치. 줄 상한 +1은 희귀하다(2026-10-19 사용자 결정, 그 전에는 6 : 3 : 1).</summary>
+    public int Active { get; init; } = 12;
 
-    public int Passive { get; init; } = 3;
+    public int Passive { get; init; } = 7;
 
     public int Line { get; init; } = 1;
 

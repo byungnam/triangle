@@ -24,7 +24,9 @@ internal static class RunText
     /// <summary>지점 설명 (지도에서 마우스를 올렸을 때).</summary>
     public static string NodeHint(RunNodeKind kind, RunDefinition rules) => kind switch
     {
-        RunNodeKind.Fight => $"보통 전투. 이기면 골드 {rules.Reward.GoldMin}~{rules.Reward.GoldMax}와 카드 {rules.Reward.Cards}장 중 하나.",
+        RunNodeKind.Fight => rules.Reward.FightCards > 0
+            ? $"보통 전투. 이기면 골드 {rules.Reward.GoldMin}~{rules.Reward.GoldMax}와 카드 {rules.Reward.FightCards}장 중 하나."
+            : $"보통 전투. 이기면 골드 {rules.Reward.GoldMin}~{rules.Reward.GoldMax}. 카드는 없다.",
         RunNodeKind.Elite => $"강한 적. 이기면 골드 {rules.Reward.EliteGoldMin}~{rules.Reward.EliteGoldMax}와 카드 {rules.Reward.Cards + rules.Reward.EliteExtraCards}장 중 하나.",
         RunNodeKind.Shop => "아이템, 스킬 사본, 동료를 사고 봉인을 풀 수 있다.",
         RunNodeKind.Rest => $"모두의 봉인을 {rules.Rest.Unseal}개씩 풀거나, 패시브 {rules.Rest.TrainCards}장 중 하나를 고른다.",

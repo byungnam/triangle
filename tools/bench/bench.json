@@ -272,7 +272,7 @@
     { "encounterId": "shadow_hunters", "state": "t2", "counters": ["vs_hunters"] },
     { "encounterId": "wraith_host", "state": "t2", "counters": ["vs_wraiths_dispel", "vs_wraiths_magic"] },
     { "encounterId": "hook_raiders", "state": "t2", "counters": ["vs_raiders_formation", "vs_raiders_burst", "vs_hunters"] },
-    { "encounterId": "pure_choir", "state": "t2", "counters": ["vs_choir_dispel", "vs_choir_direct"] },
+    { "encounterId": "pure_choir", "state": "t2" },
     { "encounterId": "hammer_vanguard", "state": "t2", "counters": ["vs_raiders_formation"] }
   ]
 }

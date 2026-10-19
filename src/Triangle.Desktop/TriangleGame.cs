@@ -212,7 +212,7 @@ public class TriangleGame : Game
 
     private void OpenRunEditor() => _scene = new RunEditorScene(_ui, Runs, Bounds, back: () => ShowRun());
 
-    /// <summary>지점에 들어간다. 전투면 결과를 저장한 뒤 전투 기록을 보여주고, 다 보면 보상(또는 결과)으로 간다.</summary>
+    /// <summary>지점에 들어간다. 전투면 결과를 저장한 뒤 전투 기록을 보여주고, 다 보면 보상(카드가 없으면 지도, 끝났으면 결과)으로 간다.</summary>
     private void EnterNode(int nodeId)
     {
         var run = Runs.Run!;
@@ -226,7 +226,7 @@ public class TriangleGame : Game
         }
 
         var combat = new CombatLogScene(_ui, Runs.Data, battle.Result, battle.EncounterId, $"{title} · {RunText.Node(battle.Kind).Name}", Bounds,
-            () => ShowRun(battle), run.Finished ? "결과로" : "보상으로");
+            () => ShowRun(battle), run.Finished ? "결과로" : run.Phase == RunPhase.Reward ? "보상으로" : "지도로");
         combat.SetRewardLines(RunText.Battle(battle, run, Runs.Data).Skip(1).ToList());
         _scene = combat;
     }
@@ -239,7 +239,7 @@ public class TriangleGame : Game
         Runs.Resume(run);
         var (phase, kind) = view switch
         {
-            "reward" => (RunPhase.Reward, RunNodeKind.Fight),
+            "reward" => (RunPhase.Reward, RunNodeKind.Elite),
             "shop" => (RunPhase.Shop, RunNodeKind.Shop),
             "rest" => (RunPhase.Rest, RunNodeKind.Rest),
             "event" => (RunPhase.Event, RunNodeKind.Event),

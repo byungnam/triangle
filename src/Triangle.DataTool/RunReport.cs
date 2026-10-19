@@ -82,6 +82,7 @@ internal static class RunReport
         }
 
         Console.WriteLine($"({watch.Elapsed.TotalSeconds:F0}초) 쓰러짐 = 이긴 전투에서 쓰러진 횟수(봉인이 된다). 카드 = 고른 보상 카드(전투, 단련, 이벤트).");
+        Console.WriteLine("전투 시간 = 전투 시계(속도 10인 유닛이 보통 행동 한 번에 100씩 간다).");
         foreach (var (bot, results) in details)
         {
             Details(data, rules, bot, results);
@@ -97,7 +98,7 @@ internal static class RunReport
         Console.WriteLine();
         Console.WriteLine($"[{Name(bot)}]");
         Console.WriteLine("  " + Bench.Pad("막", 6) + Bench.Pad("전투/판 (보통·정예·보스)", 26) + Bench.Pad("이긴 뒤 남은 HP", 16, true)
-            + Bench.Pad("쓰러짐/전투", 13, true) + Bench.Pad("진 전투", 9, true));
+            + Bench.Pad("쓰러짐/전투", 13, true) + Bench.Pad("진 전투", 9, true) + Bench.Pad("전투 시간", 11, true));
         for (var act = 0; act < rules.Acts.Count; act++)
         {
             var inAct = fights.Where(f => f.Act == act).ToList();
@@ -112,11 +113,12 @@ internal static class RunReport
                 + Bench.Pad($"{(double)inAct.Count / runs:F1} ({PerRun(RunNodeKind.Fight):F1}·{PerRun(RunNodeKind.Elite):F1}·{PerRun(RunNodeKind.Boss):F2})", 26)
                 + Bench.Pad(won.Count == 0 ? "-" : $"{100 * won.Average(f => f.AllyHp):F0}%", 16, true)
                 + Bench.Pad($"{won.Sum(f => f.Downs) / (double)Math.Max(1, won.Count):F2}", 13, true)
-                + Bench.Pad($"{100.0 * (inAct.Count - won.Count) / inAct.Count:F1}%", 9, true));
+                + Bench.Pad($"{100.0 * (inAct.Count - won.Count) / inAct.Count:F1}%", 9, true)
+                + Bench.Pad(won.Count == 0 ? "-" : $"{won.Average(f => f.Time):F0}", 11, true));
         }
 
         Console.WriteLine();
-        Console.WriteLine("  적 조합별 (싸운 수 · 진 비율 · 이긴 뒤 남은 HP · 쓰러짐/전투):");
+        Console.WriteLine("  적 조합별 (싸운 수 · 진 비율 · 이긴 뒤 남은 HP · 쓰러짐/전투 · 이긴 전투의 시간 평균과 가장 긴 것):");
         foreach (var group in fights.GroupBy(f => (f.Act, f.Kind, f.EncounterId)).OrderBy(g => g.Key.Act).ThenBy(g => g.Key.Kind).ThenByDescending(g => g.Count()))
         {
             var won = group.Where(f => f.Outcome == CombatOutcome.Victory).ToList();
@@ -125,7 +127,8 @@ internal static class RunReport
                 + Bench.Pad($"{group.Count()}", 7, true)
                 + Bench.Pad($"{100.0 * (group.Count() - won.Count) / group.Count():F1}%", 9, true)
                 + Bench.Pad(won.Count == 0 ? "-" : $"{100 * won.Average(f => f.AllyHp):F0}%", 8, true)
-                + Bench.Pad($"{won.Sum(f => f.Downs) / (double)Math.Max(1, won.Count):F2}", 8, true));
+                + Bench.Pad($"{won.Sum(f => f.Downs) / (double)Math.Max(1, won.Count):F2}", 8, true)
+                + Bench.Pad(won.Count == 0 ? "-" : $"{won.Average(f => f.Time):F0} / {won.Max(f => f.Time)}", 14, true));
         }
 
         var ends = results.Where(r => !r.Cleared && r.Last is not null).GroupBy(r => r.Last!.EncounterId).OrderByDescending(g => g.Count()).Take(6).ToList();

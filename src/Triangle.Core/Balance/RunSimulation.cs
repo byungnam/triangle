@@ -46,7 +46,8 @@ public enum RunSpend
 /// <param name="Floor">지점의 층 (0부터, 보스는 막의 층 수).</param>
 /// <param name="AllyHp">끝났을 때 아군(소환수 빼고)의 남은 HP 합 / 최대 HP 합.</param>
 /// <param name="Downs">쓰러진 아군 수 (소환수 빼고).</param>
-public sealed record RunSimFight(int Act, int Floor, RunNodeKind Kind, string EncounterId, CombatOutcome Outcome, double AllyHp, int Downs);
+/// <param name="Time">전투가 끝난 시각 (마지막 행동의 전투 시계).</param>
+public sealed record RunSimFight(int Act, int Floor, RunNodeKind Kind, string EncounterId, CombatOutcome Outcome, double AllyHp, int Downs, long Time);
 
 /// <summary>한 판의 결과.</summary>
 /// <param name="Act">끝난 막 (0부터). 클리어면 막 수.</param>
@@ -100,7 +101,7 @@ public sealed class RunSimulation
     private readonly GameData _data;
     private readonly RunDefinition _rules;
     private readonly RunSimOptions _options;
-    private readonly Dictionary<string, IReadOnlyList<CombatantSetup>> _teams = [];
+    private readonly Dictionary<(int Act, RunNodeKind Kind, string EncounterId), IReadOnlyList<CombatantSetup>> _teams = [];
     private readonly Dictionary<string, string> _owners;
 
     public RunSimulation(GameData data, RunSimOptions? options = null)
@@ -108,13 +109,17 @@ public sealed class RunSimulation
         _data = data;
         _rules = data.Run ?? throw new InvalidOperationException("run.json이 없다");
         _options = options ?? new RunSimOptions();
-        foreach (var act in _rules.Acts)
+        for (var i = 0; i < _rules.Acts.Count; i++)
         {
+            var act = _rules.Acts[i];
             var zone = data.Zones[act.ZoneId];
             var bosses = act.Bosses.Count > 0 ? act.Bosses : [zone.Boss!.EncounterId];
-            foreach (var id in zone.Encounters.Select(e => e.EncounterId).Concat(act.Elites).Concat(bosses))
+            var fights = zone.Encounters.Select(e => (Kind: RunNodeKind.Fight, Id: e.EncounterId))
+                .Concat(act.Elites.Select(id => (Kind: RunNodeKind.Elite, Id: id)))
+                .Concat(bosses.Select(id => (Kind: RunNodeKind.Boss, Id: id)));
+            foreach (var (kind, id) in fights.Distinct())
             {
-                _teams[id] = data.CreateEncounterTeam(id);
+                _teams[(i, kind, id)] = Run.EnemyTeam(data, i, kind, id);
             }
         }
 
@@ -246,7 +251,7 @@ public sealed class RunSimulation
     }
 
     /// <summary>
-    /// 갈 지점: 지점 종류마다 지금 형편에 맞는 값을 매기고(봉인이 있으면 휴식, 골드가 있으면 상점, 정예는 카드가 많아서 조금 더), 남은 길의
+    /// 갈 지점: 지점 종류마다 지금 형편에 맞는 값을 매기고(봉인이 있으면 휴식, 골드가 있으면 상점, 정예는 카드를 주므로 더), 남은 길의
     /// 값을 멀수록 덜 쳐서 더한 것이 가장 큰 길로 간다.
     /// </summary>
     private RunNode Route(Run run)
@@ -256,8 +261,8 @@ public sealed class RunSimulation
         {
             RunNodeKind.Rest => sealedLines > 0 ? 2.5 : 0.3,
             RunNodeKind.Shop => run.Gold >= _rules.Shop.SkillPrice ? 1.8 : 0.3,
-            RunNodeKind.Elite => 1.5,
-            RunNodeKind.Event => 1.1,
+            RunNodeKind.Elite => 2.0,
+            RunNodeKind.Event => 1.2,
             RunNodeKind.Fight => 1.0,
             _ => 0,
         };
@@ -326,14 +331,18 @@ public sealed class RunSimulation
     {
         Arrange(run);
         var act = _rules.Acts[run.Act];
-        var encounters = _data.Zones[act.ZoneId].Encounters.Select(e => e.EncounterId).Concat(act.Elites).Append(run.Bosses[run.Act]).Distinct().ToList();
+        var encounters = _data.Zones[act.ZoneId].Encounters.Select(e => (Kind: RunNodeKind.Fight, Id: e.EncounterId))
+            .Concat(act.Elites.Select(id => (Kind: RunNodeKind.Elite, Id: id)))
+            .Append((Kind: RunNodeKind.Boss, Id: run.Bosses[run.Act]))
+            .Distinct()
+            .ToList();
         var allies = run.Living.Select(m => run.Setup(_data, m)).ToList();
         var score = 0.0;
-        foreach (var encounter in encounters)
+        foreach (var (kind, encounter) in encounters)
         {
             for (var s = 0; s < _options.LookaheadSeeds; s++)
             {
-                var result = CombatSimulator.Run(allies, _teams[encounter], Run.Catalog(_data), Seeds.Derive(LookaheadSalt, s));
+                var result = CombatSimulator.Run(allies, _teams[(run.Act, kind, encounter)], Run.Catalog(_data), Seeds.Derive(LookaheadSalt, s));
                 score += result.Outcome == CombatOutcome.Victory
                     ? 1 + 0.5 * HpFraction(result, CombatSide.Ally)
                     : 0.5 * (1 - HpFraction(result, CombatSide.Enemy));
@@ -484,7 +493,7 @@ public sealed class RunSimulation
         {
             var allies = battle.Result.Combatants.Where(c => c.Side == CombatSide.Ally && !c.IsSummon).ToList();
             Fights.Add(new RunSimFight(run.Act, node.Floor, battle.Kind, battle.EncounterId, battle.Result.Outcome,
-                HpFraction(battle.Result, CombatSide.Ally), allies.Count(c => !c.IsAlive)));
+                HpFraction(battle.Result, CombatSide.Ally), allies.Count(c => !c.IsAlive), battle.Result.Events.OfType<TurnStarted>().LastOrDefault()?.Time ?? 0));
             Deaths += battle.Died.Count;
             Earned += battle.Gold;
         }

@@ -349,6 +349,11 @@ public static class GameDataLoader
             {
                 errors.Add($"{at}: shopTier must be 1-{ItemDefinition.MaxTier}, got {act.ShopTier}");
             }
+
+            if (new[] { act.FightStrength, act.EliteStrength, act.BossStrength }.Any(st => st.Hp < 10 || st.Power < 10))
+            {
+                errors.Add($"{at}: strength hp and power are percents and must be at least 10");
+            }
         }
 
         var map = run.Map;
@@ -367,7 +372,7 @@ public static class GameDataLoader
         }
 
         var reward = run.Reward;
-        if (reward.Cards < 1 || reward.EliteExtraCards < 0 || new[] { reward.Active, reward.Passive, reward.Line }.Any(w => w < 0)
+        if (reward.Cards < 1 || reward.FightCards < 0 || reward.EliteExtraCards < 0 || new[] { reward.Active, reward.Passive, reward.Line }.Any(w => w < 0)
             || reward.Active + reward.Passive + reward.Line == 0)
         {
             errors.Add($"{RunFile}: reward needs at least one card and one positive weight");

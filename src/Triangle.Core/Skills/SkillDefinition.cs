@@ -23,6 +23,12 @@ public enum BonusKind
 
     /// <summary>방어(물리·마법) 증가. 주로 방어구가 준다.</summary>
     DefensePercent,
+
+    /// <summary>흡혈: 준 피해(보호막에 막힌 것 포함)의 이 %만큼 회복한다 (2026-10-19).</summary>
+    LifestealPercent,
+
+    /// <summary>가시: 상대 편에게 받은 피해의 이 %를 때린 유닛에게 돌려준다 (2026-10-19).</summary>
+    ThornsPercent,
 }
 
 /// <param name="Level">1–5.</param>

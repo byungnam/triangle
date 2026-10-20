@@ -165,10 +165,10 @@ internal sealed class MusicPlayer : IDisposable
 /// <summary>곡 이름. Music 폴더의 파일 이름(.ogg 앞)과 같다.</summary>
 internal static class Tracks
 {
-    /// <summary>마을과 마을에서 여는 화면들 (편성, 상점, 제작 등).</summary>
-    public const string Village = "village";
+    /// <summary>판 밖의 화면: 파티 고르기, 해금·기록, 결과.</summary>
+    public const string Lobby = "lobby";
 
-    /// <summary>원정 화면 (전투 사이).</summary>
+    /// <summary>진행 중인 판의 화면 (지도, 보상, 상점, 휴식, 이벤트, 편성).</summary>
     public const string Expedition = "expedition";
 
     /// <summary>전투 기록 화면. 여러 벌(battle-1.ogg 등)을 두고 전투마다 하나를 고른다.</summary>

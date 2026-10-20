@@ -1,0 +1,271 @@
+{
+  "partySize": 4,
+  "startLines": 2,
+  "maxLines": 6,
+  "maxTrinkets": 2,
+  "startGold": 0,
+  "acts": [
+    {
+      "zoneId": "outskirts_forest",
+      "floors": 20,
+      "bosses": [
+        "boss_scavenger_chief",
+        "wolf_pack"
+      ],
+      "elites": [
+        "bandit_chief",
+        "deserters"
+      ],
+      "shopTier": 1,
+      "fightStrength": {
+        "hp": 90,
+        "power": 90
+      },
+      "eliteStrength": {
+        "hp": 90,
+        "power": 90
+      },
+      "bossStrength": {
+        "hp": 90,
+        "power": 90
+      }
+    },
+    {
+      "zoneId": "abandoned_fort",
+      "floors": 20,
+      "bosses": [
+        "boss_halted_regiment",
+        "fort_penitents"
+      ],
+      "elites": [
+        "black_sun_cult",
+        "wraith_riders",
+        "plague_doctors"
+      ],
+      "shopTier": 2,
+      "fightStrength": {
+        "hp": 90,
+        "power": 90
+      },
+      "eliteStrength": {
+        "hp": 90,
+        "power": 90
+      },
+      "bossStrength": {
+        "hp": 90,
+        "power": 90
+      }
+    },
+    {
+      "zoneId": "ashen_capital",
+      "floors": 20,
+      "bosses": [
+        "boss_triad_guardians",
+        "archmage_circle"
+      ],
+      "elites": [
+        "elite",
+        "vampire_court"
+      ],
+      "shopTier": 3,
+      "fightStrength": {
+        "hp": 85,
+        "power": 85
+      },
+      "eliteStrength": {
+        "hp": 85,
+        "power": 85
+      },
+      "bossStrength": {
+        "hp": 85,
+        "power": 85
+      }
+    },
+    {
+      "zoneId": "sunken_sanctum",
+      "floors": 20,
+      "bosses": [
+        "sanctum_bulwark",
+        "necro_king"
+      ],
+      "elites": [
+        "sanctum_choir",
+        "elite",
+        "vampire_court"
+      ],
+      "shopTier": 3,
+      "fightStrength": {
+        "hp": 110,
+        "power": 110
+      },
+      "eliteStrength": {
+        "hp": 112,
+        "power": 112
+      },
+      "bossStrength": {
+        "hp": 110,
+        "power": 110
+      }
+    },
+    {
+      "zoneId": "triangle_heart",
+      "floors": 20,
+      "bosses": [],
+      "elites": [
+        "sanctum_choir",
+        "sanctum_bulwark"
+      ],
+      "shopTier": 3,
+      "fightStrength": {
+        "hp": 117,
+        "power": 117
+      },
+      "eliteStrength": {
+        "hp": 120,
+        "power": 120
+      },
+      "bossStrength": {
+        "hp": 90,
+        "power": 90
+      }
+    }
+  ],
+  "map": {
+    "width": 6,
+    "paths": 6,
+    "starts": 3,
+    "specialFrom": 5,
+    "fight": 50,
+    "elite": 12,
+    "shop": 10,
+    "rest": 10,
+    "event": 18
+  },
+  "reward": {
+    "cards": 3,
+    "eliteExtraCards": 2,
+    "active": 12,
+    "passive": 7,
+    "line": 1,
+    "goldMin": 15,
+    "goldMax": 25,
+    "eliteGoldMin": 35,
+    "eliteGoldMax": 50,
+    "bossGold": 80
+  },
+  "shop": {
+    "items": 4,
+    "skills": 3,
+    "skillPrice": 50,
+    "recruits": 0,
+    "recruitPrice": 200,
+    "unsealPrice": 60
+  },
+  "rest": {
+    "unseal": 1,
+    "trainCards": 3
+  },
+  "events": [
+    {
+      "id": "wandering_sellsword",
+      "name": "떠돌이 용병",
+      "text": "길가에 앉은 용병이 일거리를 찾는다.",
+      "weight": 1,
+      "options": [
+        {
+          "text": "100골드를 주고 데려간다",
+          "gold": -100,
+          "join": "any"
+        },
+        {
+          "text": "지나간다"
+        }
+      ]
+    },
+    {
+      "id": "old_shrine",
+      "name": "낡은 제단",
+      "text": "이끼 낀 제단에 아직 촛불이 타고 있다.",
+      "options": [
+        {
+          "text": "기도한다 (모두 봉인 하나 풀기)",
+          "unseal": 1
+        },
+        {
+          "text": "30골드를 바친다 (카드 하나)",
+          "gold": -30,
+          "card": true
+        },
+        {
+          "text": "지나간다"
+        }
+      ]
+    },
+    {
+      "id": "abandoned_cart",
+      "name": "버려진 수레",
+      "text": "뒤집힌 수레 밑에 무언가 반짝인다. 덫이 있을지도 모른다.",
+      "options": [
+        {
+          "text": "뒤진다 (장신구 하나, 누군가 봉인 하나)",
+          "trinket": true,
+          "seal": 1
+        },
+        {
+          "text": "지나간다"
+        }
+      ]
+    },
+    {
+      "id": "training_ground",
+      "name": "버려진 훈련장",
+      "text": "허수아비와 녹슨 무기가 남아 있다.",
+      "options": [
+        {
+          "text": "무리하게 훈련한다 (카드 하나, 누군가 봉인 하나)",
+          "card": true,
+          "seal": 1
+        },
+        {
+          "text": "지나간다"
+        }
+      ]
+    },
+    {
+      "id": "wandering_peddler",
+      "name": "떠도는 행상",
+      "text": "짐을 진 행상이 반짝이는 장신구를 늘어놓는다.",
+      "options": [
+        {
+          "text": "70골드에 장신구 하나를 산다",
+          "gold": -70,
+          "trinket": true
+        },
+        {
+          "text": "지나간다"
+        }
+      ]
+    },
+    {
+      "id": "field_hospital",
+      "name": "버려진 야전 병원",
+      "text": "부서진 침상 사이에 쓸 만한 약이 남아 있다.",
+      "options": [
+        {
+          "text": "40골드어치 약을 챙긴다 (모두 봉인 하나 풀기)",
+          "gold": -40,
+          "unseal": 1
+        },
+        {
+          "text": "지나간다"
+        }
+      ]
+    }
+  ],
+  "renown": {
+    "fight": 1,
+    "elite": 3,
+    "boss": 8,
+    "victory": 10
+  }
+}

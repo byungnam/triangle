@@ -41,7 +41,14 @@ public sealed record UnitSummary(
     int SummonHealing,
     int? DownedAt,
     IReadOnlyList<TacticUsage> Tactics,
-    IReadOnlyList<LostTurn> LostTurns);
+    IReadOnlyList<LostTurn> LostTurns)
+{
+    /// <summary>이 유닛의 행동이 면역에 막힌 횟수 (대상 하나당 한 번, 피해와 디버프 모두, 2026-10-17).</summary>
+    public int Nullified { get; init; }
+
+    /// <summary>이 유닛의 회복이 치유 봉쇄에 막힌 횟수 (2026-10-17).</summary>
+    public int HealsBlocked { get; init; }
+}
 
 /// <summary>전투 기록(이벤트 목록)에서 유닛별 결과와 전술별 사용 횟수를 센다. 전투 기록 화면의 요약이 쓴다.</summary>
 public static class CombatSummary
@@ -143,6 +150,17 @@ public static class CombatSummary
                 case Healed h:
                     CreditHealing(actor, h.Amount);
                     break;
+                case Drained dr:
+                    CreditHealing(dr.UnitId, dr.Amount);
+                    break;
+                case Thorned th:
+                    CreditDamage(th.SourceId, th.Amount, overTime: false);
+                    if (Of(th.UnitId) is { } pricked)
+                    {
+                        pricked.DamageTaken += th.Amount;
+                    }
+
+                    break;
                 case ShieldGained g when actor is not null && Of(actor) is { } shielder:
                     shielder.Shielding += g.Amount;
                     break;
@@ -159,6 +177,12 @@ public static class CombatSummary
                     break;
                 case EffectTicked { HpChange: > 0 } tick:
                     CreditHealing(tick.SourceId, tick.HpChange);
+                    break;
+                case Immune when actor is not null && Of(actor) is { } nullified:
+                    nullified.Nullified++;
+                    break;
+                case HealBlocked when actor is not null && Of(actor) is { } healer:
+                    healer.HealsBlocked++;
                     break;
                 case Died d when Of(d.UnitId) is { } downed:
                     downed.DownedAt = actionNumber;
@@ -187,6 +211,8 @@ public static class CombatSummary
         public int SummonDamage;
         public int SummonHealing;
         public int? DownedAt;
+        public int Nullified;
+        public int HealsBlocked;
         public readonly List<LostTurn> LostTurns = [];
 
         public Use Usage(int priority)
@@ -211,7 +237,11 @@ public static class CombatSummary
 
             return new UnitSummary(
                 c.Id, c.Side, Turns, Actions, DamageDealt, DotDamage, Healing, Shielding, MpRestored, DamageTaken,
-                SummonDamage, SummonHealing, DownedAt, tactics, LostTurns);
+                SummonDamage, SummonHealing, DownedAt, tactics, LostTurns)
+            {
+                Nullified = Nullified,
+                HealsBlocked = HealsBlocked,
+            };
         }
     }
 

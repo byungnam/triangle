@@ -1,0 +1,11 @@
+[
+  {
+    "id": "incorporeal",
+    "name": "실체 없음",
+    "description": "물리 공격을 받지 않는다. 망령의 시제품 적의 타고난 특성 (2026-10-17). 임시 수치",
+    "kind": "Buff",
+    "immuneDamageTypes": [
+      "Physical"
+    ]
+  }
+]

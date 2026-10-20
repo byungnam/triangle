@@ -426,7 +426,13 @@
     "bonusAgainst": {
       "effectId": "bleeding",
       "percent": 100
-    }
+    },
+    "applies": [
+      {
+        "effectId": "heal_block",
+        "duration": 3
+      }
+    ]
   },
   {
     "id": "axe_throw",
@@ -2289,6 +2295,19 @@
     "requirements": []
   },
   {
+    "id": "dispel",
+    "name": "주문 깨기",
+    "description": "적 하나의 버프를 모두 지운다(타고난 버프도). 성물 (2026-10-17). 임시 수치",
+    "mpCost": 20,
+    "effect": "None",
+    "rule": "WithBuffFirst",
+    "ignoresCover": true,
+    "tags": [
+      "holy"
+    ],
+    "removesBuffs": true
+  },
+  {
     "id": "brace",
     "name": "버티기",
     "description": "임시 수치",
@@ -2373,6 +2392,15 @@
     "ignoresCover": false,
     "tags": [],
     "requirements": []
+  },
+  {
+    "id": "step_forward",
+    "name": "나서기",
+    "description": "자신을 전위로 옮긴다. 판금 신발 (2026-10-17). 임시 수치",
+    "mpCost": 5,
+    "effect": "None",
+    "side": "Self",
+    "moveTo": "Front"
   },
   {
     "id": "hide",
@@ -2973,5 +3001,574 @@
     },
     "chant": 3,
     "oncePerBattle": true
+  },
+  {
+    "id": "rapier_flurry",
+    "name": "연속 찌르기",
+    "description": "결투가의 레이피어의 기본 공격: 앞의 적을 두 번 찌른다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 45,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "hits": 2
+  },
+  {
+    "id": "greatsword_cleave",
+    "name": "대검 휩쓸기",
+    "description": "피에 굶주린 대검의 기본 공격: 전열의 적 모두를 벤다. 느리다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 55,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "FrontOnly",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "delay": 1300
+  },
+  {
+    "id": "longbow_shot",
+    "name": "멀리 쏘기",
+    "description": "명사수의 장궁의 기본 공격: 엄호를 무시하고 후열부터 쏜다. 조금 느리다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 85,
+    "side": "Enemy",
+    "rule": "BackFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [],
+    "requirements": [],
+    "delay": 1100
+  },
+  {
+    "id": "venom_shot",
+    "name": "독 묻은 화살",
+    "description": "독사의 활의 기본 공격: 아직 독이 없는 적부터 쏘아 독(3턴)을 건다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 50,
+    "side": "Enemy",
+    "rule": "WithoutEffectFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "poisoned",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "frost_lash",
+    "name": "냉기 화살",
+    "description": "서리 지팡이의 기본 공격: 냉기 마법(지팡이 배율을 받는다). 맞으면 둔화(2턴). 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 30,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "frost"
+    ],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "slowed",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "spark_chain",
+    "name": "튀는 전격",
+    "description": "폭풍 지팡이의 기본 공격: 전기 마법이 적 셋에게 튄다(지팡이 배율을 받는다). 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 18,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "lightning"
+    ],
+    "requirements": [],
+    "extraTargets": 2
+  },
+  {
+    "id": "flame_lash",
+    "name": "불꽃 채찍",
+    "description": "업화의 지팡이의 기본 공격: 화염 마법(지팡이 배율을 받는다). 맞으면 화상(2턴). 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 25,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "fire"
+    ],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "burning",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "mending_touch",
+    "name": "치유의 손길",
+    "description": "생명의 성배의 기본 공격 대신: HP 비율이 가장 낮은 아군을 조금 치유한다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Heal",
+    "damageType": "Magical",
+    "power": 35,
+    "side": "Ally",
+    "rule": "LowestHpRatio",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "smite",
+    "name": "징벌의 빛",
+    "description": "심판의 홀의 기본 공격: 지능으로 때리는 마법 공격. 맞으면 쇠약(2턴). 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 80,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "enfeebled",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "rending_chop",
+    "name": "피 베기",
+    "description": "도살자의 도끼의 기본 공격: 앞의 적을 베어 출혈(3턴)을 건다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 45,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "bleeding",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "ground_slam",
+    "name": "땅 구르기",
+    "description": "지진 망치의 기본 공격: 적 모두를 흔들어 둔화(1턴)시킨다. 느리다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 32,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "delay": 1500,
+    "applies": [
+      {
+        "effectId": "slowed",
+        "duration": 1
+      }
+    ]
+  },
+  {
+    "id": "repeater_burst",
+    "name": "연발 사격",
+    "description": "연발 석궁의 기본 공격: 아무 적에게나 세 발. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 26,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "hits": 3
+  },
+  {
+    "id": "scatter_blast",
+    "name": "산탄 발사",
+    "description": "산탄총의 기본 공격: 적 모두에게 흩뿌린다. 느리다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 32,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "delay": 1300
+  },
+  {
+    "id": "cannon_blast",
+    "name": "대포 발사",
+    "description": "손대포의 기본 공격: 엄호를 무시하고 후열부터 아주 세게. 매우 느리다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 170,
+    "side": "Enemy",
+    "rule": "BackFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [],
+    "requirements": [],
+    "delay": 2200
+  },
+  {
+    "id": "wolf_bite",
+    "name": "물어뜯기",
+    "description": "늑대 무리의 공격. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 45,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "alpha_howl",
+    "name": "우두머리의 울부짖음",
+    "description": "늑대 우두머리: 무리가 쓰러지면 울부짖어 광분한다(위력 +35%). 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "None",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "berserk",
+        "duration": 20
+      }
+    ]
+  },
+  {
+    "id": "alpha_ravage",
+    "name": "찢어발기기",
+    "description": "늑대 우두머리의 큰 공격: HP 비율이 가장 낮은 적을 노린다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 95,
+    "side": "Enemy",
+    "rule": "LowestHpRatio",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [],
+    "requirements": [],
+    "delay": 1300
+  },
+  {
+    "id": "beetle_bite",
+    "name": "등딱지 들이받기",
+    "description": "가시 등딱지의 공격. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 40,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "plague_cloud",
+    "name": "역병 구름",
+    "description": "역병 의사단: 적 모두에게 독(3턴)을 뿌린다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 12,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "poisoned",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "rot_touch",
+    "name": "썩은 손길",
+    "description": "역병 의사단: 치유 봉쇄(3턴)를 건다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 10,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 30,
+    "side": "Enemy",
+    "rule": "WithoutEffectFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "heal_block",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "mana_bite",
+    "name": "마력 물어뜯기",
+    "description": "마력 포식자: 물면서 MP를 30 깎는다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 40,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "mpDamage": 30
+  },
+  {
+    "id": "backstab",
+    "name": "등 찌르기",
+    "description": "그림자 암살단: 엄호를 무시하고 HP 비율이 가장 낮은 적을 찌른다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 70,
+    "side": "Enemy",
+    "rule": "LowestHpRatio",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "crimson_slash",
+    "name": "핏빛 베기",
+    "description": "흡혈 귀족: 베어 출혈(2턴)을 건다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 55,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "bleeding",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "doom_chant",
+    "name": "멸망의 주문",
+    "description": "영창의 대마법사: 세 차례 영창한 뒤 적 모두에게 큰 마법 피해. 기절하면 영창이 끊긴다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 75,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "chant": 3
+  },
+  {
+    "id": "arcane_bolt",
+    "name": "비전 화살",
+    "description": "대마법사의 견제 마법. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 35,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "raise_skeleton",
+    "name": "해골 일으키기",
+    "description": "사령술사: 해골 병사를 일으킨다(해골의 행동 6번 동안). 사령술사가 쓰러지면 해골도 무너진다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 20,
+    "effect": "Summon",
+    "damageType": "Physical",
+    "power": 0,
+    "side": "Self",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "delay": 1200,
+    "summon": {
+      "name": "해골 병사",
+      "row": "Front",
+      "stats": {
+        "str": 26,
+        "dex": 8,
+        "vital": 9,
+        "intel": 4,
+        "speed": 10
+      },
+      "actionId": "skeleton_slash",
+      "duration": 6
+    }
+  },
+  {
+    "id": "skeleton_slash",
+    "name": "해골 베기",
+    "description": "해골 병사의 공격. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 45,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "summonOnly": true
+  },
+  {
+    "id": "bone_crush",
+    "name": "뼈 부수기",
+    "description": "뼈 기사의 느리고 무거운 일격. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 90,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "delay": 1400
   }
 ]

@@ -8,13 +8,30 @@ const string Usage = """
 
     명령:
       validate [--strict]        로더 검증(오류)과 추가 검사(경고)를 돌린다. --strict면 경고도 실패로 본다.
-      list <종류> [필터…]        종류: masteries skills actions effects items encounters zones recipes recruits
+      list <종류> [필터…]        종류: masteries skills actions effects items encounters zones classes unlocks
                                  필터: --search <글자> (id·이름·종류에 포함)
                                        items: --mastery <id> --slot <부위> --tier <n> --type <종류>
                                        actions: --mastery <id> (그 계열 아이템이 주거나 그 계열 무기 행동)
                                        skills: --mastery <id>
       show <id>                  그 id의 원본 JSON과 쓰는 곳.
       refs <id>                  그 id를 가리키는 곳만.
+      bench [옵션]               전술 측정: 기준 파티가 전술 세트마다 적 조합과 싸운 승률 (tools/bench/bench.json,
+                                 시제품 적 조합과 효과는 tools/bench/encounters.json, effects.json).
+                                 --encounter <id,…>  맞대결 거르기 (*는 아무 글자)   --set <id,…>  세트 거르기
+                                 --seeds <n>  시드 수 (기본 200)   --bench <파일>  측정 정의 파일
+                                 --search  자동 탐색: 공통 최선 세트와 적마다 맞춘 세트를 찾아 특색(승률 차이)을 본다
+                                           --from <세트,…|all> 출발 세트 (기본: 첫 세트)  --generations <n> (기본 120)
+                                           --train-seeds <n> (기본 60)
+      draft [옵션]               드래프트 시뮬레이션: 로그라이트 재편(설계)의 한 판을 지금 데이터로 돌린다 (tools/draft/draft.json).
+                                 봇마다 클리어율, 막별 탈락, 쓰러짐·사망, 첫 봉인, 빌드 차이, 많이 고른 카드.
+                                 --bot <random|greedy|both> (기본 both)   --runs <n> 판 수 (기본 200)
+                                 --start-lines <n,…> 시작 줄 상한 (기본: 정의대로)   --lookahead <n> 미리 싸워 보는 시드 수 (기본 4)
+                                 --draft <파일>  시뮬레이션 정의 파일
+      runs [옵션]                판 시뮬레이션: 게임의 판 규칙(data/run.json) 그대로 봇이 판을 끝까지 둔다.
+                                 클리어율, 막별 탈락, 막·적 조합별 진 비율과 남은 HP, 카드·골드가 들어오고 쓰이는 곳, 노는 사본.
+                                 --bot <random|smart|both> (기본 both)   --runs <n> 판 수 (기본 200)   --seed <n> 첫 시드 (기본 0)
+                                 --party <클래스,…> (기본 knight,archer,elementalist,priest)
+                                 --unlocks <none|all> 해금 (기본 none: 처음 판)   --lookahead <n> 미리 싸워 보는 시드 수 (기본 3)
 
     수정 명령 (고친 뒤 검증을 통과해야 저장한다. 실패하면 아무 파일도 바꾸지 않는다):
       set <종류> <id> <경로> <값>      값을 바꾼다. 없는 속성은 만든다.
@@ -25,7 +42,7 @@ const string Usage = """
       copy <종류> <원본id> <새id> [--after <id>]  항목을 복사한다 (기본: 원본 바로 뒤).
       delete <종류> <id>               항목을 지운다. 가리키는 곳이 남아 있으면 검증에서 막힌다.
 
-      <id>: 쉼표로 여럿, *는 아무 글자 (예: old_*, '*'). 제작법은 결과 아이템 id.
+      <id>: 쉼표로 여럿, *는 아무 글자 (예: old_*, '*').
       <경로>: 점으로 잇는다. 배열 원소는 번호(0부터)나 id. 예: price, rewards.goldMin, units.e1.stats.str
       <값>: JSON으로 읽히면 JSON(50, true, ["a"], {"skillId":"archery","level":1}), 아니면 문자열.
             *=1.2  /=2  +=10  -=5 는 지금 숫자로 계산한다 (정수는 반올림).
@@ -59,6 +76,12 @@ var rest = options.Positional.Skip(1).ToList();
 if (Editing.Commands.Contains(command))
 {
     return Editing.Run(command, rest, options, directory);
+}
+
+// 측정은 시제품 적 조합을 더해 데이터를 따로 읽는다.
+if (command == "bench" && rest.Count == 0)
+{
+    return Bench.Run(options, directory);
 }
 
 GameData data;
@@ -145,6 +168,12 @@ switch (command)
     case "refs" when rest.Count == 1:
         PrintRefs(data, rest[0]);
         return 0;
+
+    case "draft" when rest.Count == 0:
+        return Draft.Run(options, directory, data);
+
+    case "runs" when rest.Count == 0:
+        return RunReport.Run(options, data);
 
     default:
         Console.Error.WriteLine(Usage);

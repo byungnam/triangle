@@ -28,9 +28,6 @@ public sealed class Loadout
     /// <summary>몸통 방어구의 재질 계열 ID (표시용, 없으면 null).</summary>
     public string? ArmorMastery => In(EquipmentSlot.Body)?.Mastery;
 
-    /// <summary>입은 방어구 부위별 재질 (방어구 숙련 경험치를 나눈다).</summary>
-    public IReadOnlyList<string> ArmorPieces => Worn.Where(w => w.Slot.IsArmor()).Select(w => w.Item.Mastery!).ToList();
-
     /// <summary>착용 중인 아이템의 행동과, 든 주무기 계열이 주는 행동(예: 정령 소환).</summary>
     public IReadOnlySet<string> GrantedActions(IEnumerable<ActionDefinition> actions)
     {
@@ -45,7 +42,7 @@ public sealed class Loadout
 
     /// <summary>착용 중인 아이템의 보너스. masteryLevel은 계열 ID별 숙련 레벨 (숙련 아이템 파워).</summary>
     public IReadOnlyList<ItemBonus> ItemBonuses(Func<string, int> masteryLevel) =>
-        Worn.SelectMany(w => w.Item.BonusesAt(masteryLevel(w.Item.Mastery!))).ToList();
+        Worn.SelectMany(w => w.Item.Mastery is null ? w.Item.Bonuses : w.Item.BonusesAt(masteryLevel(w.Item.Mastery))).ToList();
 
     /// <summary>전투 입력에 장비가 정하는 값(계열, 행동, 보너스, 위력 배율)을 넣는다.</summary>
     public CombatantSetup Apply(CombatantSetup setup, IEnumerable<ActionDefinition> actions, Func<string, int> masteryLevel) =>
@@ -55,10 +52,10 @@ public sealed class Loadout
             Armor = ArmorMastery,
             GrantedActions = GrantedActions(actions),
             ItemBonuses = ItemBonuses(masteryLevel),
-            ArmorPieces = ArmorPieces,
             OffHand = OffHandMastery,
             PowerMultiplierPercent = MainHand?.PowerMultiplierPercent ?? 100,
             EffectDurationBonus = MainHand?.EffectDurationBonus ?? 0,
+            StartingEffects = setup.StartingEffects.Concat(Worn.SelectMany(w => w.Item.Effects)).Distinct().ToList(),
         };
 
     private ItemDefinition? In(EquipmentSlot slot) => Worn.Where(w => w.Slot == slot).Select(w => w.Item).FirstOrDefault();

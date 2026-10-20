@@ -34,6 +34,10 @@ internal sealed class CombatLogFormatter(
 
         Healed h => new($"{Name(h.TargetId)} {h.Amount} 회복 (HP {h.HpAfter})", Theme.Heal, Indented: true),
 
+        Drained dr => new($"{Name(dr.UnitId)} 흡혈로 {dr.Amount} 회복 (HP {dr.HpAfter})", Theme.Heal, Indented: true),
+
+        Thorned th => new($"{EunNeun(Name(th.UnitId))} {Name(th.SourceId)}의 가시에 찔려 {th.Amount} 피해 (HP {th.HpAfter})", Theme.Damage, Indented: true),
+
         Died d => new($"{IGa(Name(d.UnitId))} 쓰러졌다!", Theme.Death, Indented: true),
 
         ShieldGained g => new($"{Name(g.TargetId)} 보호막 {g.Amount} (보호막 {g.ShieldAfter})", Theme.Heal, Indented: true),
@@ -59,7 +63,8 @@ internal sealed class CombatLogFormatter(
         MpRestored m => new($"{Name(m.TargetId)} MP {m.Amount} 회복 (MP {m.MpAfter})", Theme.MpBar, Indented: true),
 
         EffectApplied a => new(
-            a.Refreshed
+            a.Duration == EffectApplied.Permanent ? $"{Name(a.TargetId)}: {Effect(a.EffectId)} (타고남)"
+            : a.Refreshed
                 ? $"{Name(a.TargetId)}의 {Effect(a.EffectId)} 갱신 ({a.Duration}턴)"
                 : $"{Name(a.TargetId)}에게 {Effect(a.EffectId)} ({a.Duration}턴)",
             effects[a.EffectId].Kind == EffectKind.Buff ? Theme.Cover : Theme.Enemy,
@@ -71,11 +76,20 @@ internal sealed class CombatLogFormatter(
 
         EffectExpired x => new($"{Name(x.TargetId)}의 {Effect(x.EffectId)} 효과가 끝났다", Theme.TextDim, Indented: true),
 
+        Immune i => new(
+            i.BlockedEffectId is { } blocked
+                ? $"{Name(i.TargetId)}에게는 {IGa(Effect(blocked))} 듣지 않는다 ({Effect(i.EffectId)})"
+                : $"{Name(i.TargetId)}에게는 듣지 않는다 ({Effect(i.EffectId)})",
+            Theme.TextDim,
+            Indented: true),
+
+        HealBlocked h => new($"{EunNeun(Name(h.TargetId))} 회복하지 못했다 ({Effect(h.EffectId)})", Theme.Enemy, Indented: true),
+
         CombatEnded end => new(end.Outcome switch
         {
             CombatOutcome.Victory => "전투 종료 — 승리!",
             CombatOutcome.Defeat => "전투 종료 — 패배...",
-            _ => "전투 종료 — 무승부 (행동 횟수 상한)",
+            _ => "전투 종료 — 무승부 (시간 초과)",
         }, end.Outcome == CombatOutcome.Victory ? Theme.Heal : Theme.Enemy),
 
         _ => null,

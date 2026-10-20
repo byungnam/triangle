@@ -14,9 +14,16 @@ public sealed record CombatRules
     /// <summary>행동 간격 = (행동의 delay, 없으면 TimeConstant) / speed (버림) × (100 − 대기 감소%) / 100.</summary>
     public int TimeConstant { get; init; } = 1000;
 
-    /// <summary>전투 전체에서 허용하는 행동 횟수(라운드가 아니라 개별 행동).</summary>
-    public int MaxActions { get; init; } = 100;
+    /// <summary>
+    /// 시간 제한 (전투 시계). 다음 행동의 시각이 이를 넘으면 전투가 끝난다(<see cref="ActionLimitOutcome"/>). 속도와 행동의 대기가
+    /// 시계를 정하므로 유닛 수와 상관없다. 속도 10인 유닛이 보통 행동을 30번 하는 시간이다(2026-10-19, 그 전에는 행동 100번 상한).
+    /// </summary>
+    public long TimeLimit { get; init; } = 3000;
 
+    /// <summary>전투 전체에서 허용하는 행동 횟수(라운드가 아니라 개별 행동). 시간 제한이 먼저 걸리도록 넉넉한 안전장치다.</summary>
+    public int MaxActions { get; init; } = 1000;
+
+    /// <summary>시간 제한이나 행동 상한에 걸렸을 때의 결과.</summary>
     public CombatOutcome ActionLimitOutcome { get; init; } = CombatOutcome.Draw;
 
     public int HpPerVital { get; init; } = 28;

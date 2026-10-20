@@ -72,6 +72,57 @@ public class CombatSimulatorTests
     }
 
     [Fact]
+    public void Lifesteal_heals_the_attacker_by_part_of_the_damage_it_deals()
+    {
+        var vampire = Unit("v", tactics: Always("strike")) with { StartHp = 100, ItemBonuses = [new(BonusKind.LifestealPercent, 50)] };
+        var result = Run([vampire], [Unit("e", vital: 100)], rules: new CombatRules { MaxActions = 4 });
+
+        var hit = result.Events.OfType<Damaged>().First(d => d.TargetId == "e");
+        var drained = result.Events.OfType<Drained>().First();
+        Assert.Equal("v", drained.UnitId);
+        Assert.InRange(drained.Amount, hit.Amount / 2 - 1, hit.Amount / 2 + 1);
+        Assert.Equal(100 + drained.Amount, drained.HpAfter);
+    }
+
+    [Fact]
+    public void Thorns_return_damage_to_the_attacker_and_can_kill_it()
+    {
+        var thorny = Unit("t", vital: 100) with { ItemBonuses = [new(BonusKind.ThornsPercent, 100)] };
+        var result = Run([Unit("a", tactics: Always("strike")) with { StartHp = 5 }], [thorny], rules: new CombatRules { MaxActions = 4 });
+
+        var hit = result.Events.OfType<Damaged>().First(d => d.TargetId == "t");
+        var thorned = result.Events.OfType<Thorned>().First();
+        Assert.Equal(("a", "t", 5, 0), (thorned.UnitId, thorned.SourceId, thorned.Amount, thorned.HpAfter));
+        Assert.True(hit.Amount >= 5);
+        Assert.Contains(result.Events.OfType<Died>(), d => d.UnitId == "a");
+        Assert.Equal(CombatOutcome.Defeat, result.Outcome);
+    }
+
+    [Fact]
+    public void The_time_limit_follows_the_combat_clock_not_the_number_of_units()
+    {
+        // 아무도 쓰러뜨리지 못하는 전투는 시계가 시간 제한을 넘으면 무승부로 끝난다. 유닛이 늘어도 한 유닛이 움직이는 횟수는 같다.
+        var rules = new CombatRules { TimeLimit = 1000 };
+        CombatResult Stalemate(int units) => Run(
+            Enumerable.Range(0, units).Select(i => Unit($"a{i}", vital: 5000)).ToArray(),
+            [Unit("e", vital: 5000, speed: 20, tactics: Always("slow_strike"))],
+            rules: rules);
+
+        var few = Stalemate(1);
+        var many = Stalemate(4);
+        Assert.Equal(CombatOutcome.Draw, few.Outcome);
+        Assert.Equal(CombatOutcome.Draw, many.Outcome);
+        Assert.All(few.Events.Concat(many.Events).OfType<TurnStarted>(), t => Assert.InRange(t.Time, 0, rules.TimeLimit));
+        int Turns(CombatResult r, string id) => r.Events.OfType<TurnStarted>().Count(t => t.ActorId == id);
+        Assert.Equal(Turns(few, "a0"), Turns(many, "a0"));
+        Assert.Equal(Turns(few, "e"), Turns(many, "e"));
+
+        // 대기가 긴 행동(2000 / 속도 20 = 100)은 기본 대기(1000 / 20 = 50)보다 덜 자주 움직인다.
+        Assert.Equal(rules.TimeLimit / 100 + 1, Turns(few, "e"));
+        Assert.Equal(rules.TimeLimit / 100 + 1, Turns(few, "a0"));
+    }
+
+    [Fact]
     public void Faster_units_act_proportionally_more_often()
     {
         var result = Run(

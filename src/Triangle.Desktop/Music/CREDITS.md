@@ -6,8 +6,8 @@
 
 | 파일 | 쓰는 화면 | 곡 | 작가 | 라이선스 | 출처 |
 |---|---|---|---|---|---|
-| `village.ogg` | 마을과 마을에서 여는 화면 | Medieval: The Bard's Tale | RandomMind | CC0 | https://opengameart.org/content/medieval-the-bards-tale |
-| `expedition.ogg` | 원정 (전투 사이) | RPG Ambience - Dungeon | Hitctrl | CC BY 3.0 | https://opengameart.org/content/rpg-ambience-dungeon |
+| `lobby.ogg` | 파티 고르기, 해금·기록, 결과 | Medieval: The Bard's Tale | RandomMind | CC0 | https://opengameart.org/content/medieval-the-bards-tale |
+| `expedition.ogg` | 진행 중인 판 (지도, 보상, 상점, 휴식, 이벤트, 편성) | RPG Ambience - Dungeon | Hitctrl | CC BY 3.0 | https://opengameart.org/content/rpg-ambience-dungeon |
 | `battle-1.ogg` | 전투 기록 | Battle Theme A | cynicmusic (The Cynic Project) | CC0 | https://opengameart.org/content/battle-theme-a |
 | `battle-2.ogg` | 전투 기록 | Boss Battle Theme (Battle RPG Theme Var) | Cleyton Kauffman | CC0 | https://opengameart.org/content/boss-battle-theme |
 | `battle-3.ogg` | 전투 기록 | Battle Theme 1 (Battle themes) | Alexandr Zhelanov | CC BY 4.0 | https://opengameart.org/content/battle-themes |

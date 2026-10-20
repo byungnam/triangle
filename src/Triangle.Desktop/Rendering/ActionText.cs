@@ -81,6 +81,7 @@ internal static class ActionText
         TargetRule.LowestHpRatio => "HP 비율 최저",
         TargetRule.LowestMpRatio => "MP 비율 최저",
         TargetRule.WithDebuffFirst => "디버프 걸린 대상 우선",
+        TargetRule.WithBuffFirst => "버프 걸린 대상 우선",
         TargetRule.WithoutEffectFirst when action.Applies.Count > 0 && data.Effects.TryGetValue(action.Applies[0].EffectId, out var e) =>
             $"{e.Name} 없는 대상 우선",
         TargetRule.WithoutEffectFirst => "효과 없는 대상 우선",
@@ -219,6 +220,11 @@ internal static class ActionText
             yield return "디버프를 모두 지운다";
         }
 
+        if (action.RemovesBuffs)
+        {
+            yield return "버프를 모두 지운다 (타고난 버프도)";
+        }
+
         if (action.Chant > 1)
         {
             yield return $"영창 {action.Chant}회: 연달아 {action.Chant}번 써야 효과가 난다 (다른 행동, 기절, 넘어뜨림이 끊는다)";
@@ -278,6 +284,22 @@ internal static class ActionText
         if (effect.NoCover)
         {
             parts.Add("후위를 엄호하지 못한다");
+        }
+
+        if (effect.ImmuneDamageTypes.Count > 0)
+        {
+            var types = string.Join("·", effect.ImmuneDamageTypes.Select(t => t == DamageType.Physical ? "물리" : "마법"));
+            parts.Add($"{types} 공격을 받지 않는다 (피해도 효과도 없다)");
+        }
+
+        if (effect.ImmuneToDebuffs)
+        {
+            parts.Add("디버프에 걸리지 않는다");
+        }
+
+        if (effect.HealBlock)
+        {
+            parts.Add("HP를 회복하지 못한다 (보호막은 받는다)");
         }
 
         return string.Join(", ", parts);

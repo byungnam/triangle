@@ -1,0 +1,35 @@
+{
+  "description": "드래프트 시뮬레이션 정의 (triangle-data draft). 로그라이트 재편의 임시 규칙을 지금 게임 데이터 위에 얹는다. 클래스(스탯, 기본 무기·방어구, 카드 풀)는 data/classes.json의 것이다. 수치는 모두 임시.",
+  "party": [
+    "knight",
+    "archer",
+    "elementalist",
+    "priest"
+  ],
+  "startLines": 2,
+  "maxLines": 6,
+  "acts": [
+    {
+      "zoneId": "outskirts_forest",
+      "fights": 4,
+      "gearTier": 1
+    },
+    {
+      "zoneId": "abandoned_fort",
+      "fights": 4,
+      "gearTier": 2
+    },
+    {
+      "zoneId": "ashen_capital",
+      "fights": 4,
+      "gearTier": 3
+    }
+  ],
+  "offer": {
+    "cards": 3,
+    "active": 6,
+    "passive": 3,
+    "line": 1
+  },
+  "unsealAfterAct": 1
+}

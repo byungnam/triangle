@@ -16,7 +16,7 @@ namespace Triangle.Desktop;
 /// <param name="ScreenshotLines">전투 기록 화면(run:combat) 스크린샷 전에 진행할 로그 줄 수. null이면 전투 끝까지.</param>
 /// <param name="SaveDirectory">판 세이브(run.json)와 기록(profile.json)을 두는 폴더. null이면 OS별 기본 위치.</param>
 /// <param name="StartScene">
-/// 확인·스크린샷용으로 이 화면에서 시작한다: run:map, run:reward, run:shop, run:rest, run:event, run:editor, run:equipment, run:picker,
+/// 확인·스크린샷용으로 이 화면에서 시작한다: opening, title (오프닝), run:map, run:reward, run:shop, run:rest, run:event, run:editor, run:equipment, run:picker,
 /// run:end, run:party, run:unlocks, run:combat (임시 폴더의 시험 판과 기록으로, 실제 세이브는 건드리지 않는다).
 /// </param>
 /// <param name="StartInSummary">run:combat으로 시작할 때 요약 탭을 연다.</param>
@@ -24,7 +24,7 @@ public sealed record LaunchOptions(
     string? ScreenshotPath = null, int? ScreenshotLines = null, string? SaveDirectory = null, string? StartScene = null, bool StartInSummary = false);
 
 /// <summary>
-/// 화면 흐름 (로그라이트 재편, 2026-10-19): 파티 고르기 ↔ 해금·기록, 파티 고르기 → 지도 ↔ (편성, 전투 기록 → 보상, 상점, 휴식, 이벤트)
+/// 화면 흐름 (로그라이트 재편, 2026-10-19): 오프닝(서문과 제목) → 파티 고르기 ↔ 해금·기록, 파티 고르기 → 지도 ↔ (편성, 전투 기록 → 보상, 상점, 휴식, 이벤트)
 /// → 결과 → 파티 고르기. 판은 바뀔 때마다 자동 저장하고(<see cref="RunSession"/>), 껐다 켜면 그 단계에서 이어 간다.
 /// 옛 마을·원정·회사는 2026-10-19에 지웠다.
 /// 배경음악은 화면에 따라 바뀌고 (파티 고르기·판 진행·전투), 어느 화면에서나 F8 음소거, F9·F10 음량 조절이다.
@@ -129,6 +129,7 @@ public class TriangleGame : Game
     private string? TrackFor(IScene scene) => scene switch
     {
         ErrorScene => null,
+        OpeningScene => Tracks.Lobby,
         CombatLogScene => Tracks.Battle,
         _ when _runs?.Run is { Finished: false } => Tracks.Expedition,
         _ => Tracks.Lobby,
@@ -216,7 +217,15 @@ public class TriangleGame : Game
         }
 
         _runs = CreateRunSession(data);
-        return _options.StartScene?.Split(':') is ["run", var view] ? DemoRunScene(view) : RunSceneFor(null);
+        return _options.StartScene switch
+        {
+            "opening" => new OpeningScene(_ui, Bounds, () => ShowRun()),
+            "title" => new OpeningScene(_ui, Bounds, () => ShowRun(), startAtTitle: true),
+            _ when _options.StartScene?.Split(':') is ["run", var view] => DemoRunScene(view),
+            // 스크린샷 확인 실행은 오프닝을 건너뛰고 판 화면을 찍는다.
+            _ when _options.ScreenshotPath is not null => RunSceneFor(null),
+            _ => new OpeningScene(_ui, Bounds, () => ShowRun()),
+        };
     }
 
     /// <summary>판 세이브와 기록: 세이브 폴더의 run.json, profile.json. 확인용 시작(run:*)이면 임시 폴더를 쓴다.</summary>

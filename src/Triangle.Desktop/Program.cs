@@ -1,9 +1,10 @@
 using Triangle.Desktop;
 
 // 창은 QHD(2560×1440)로 열리고 크기를 바꿀 수 있다. F11은 전체 화면 전환. F8 음악 끄기, F9·F10 음량.
-// 게임은 원정(판)으로 시작한다: 진행 중인 판이 있으면 이어 하고, 없으면 파티를 고른다.
+// 게임은 오프닝(서문과 제목)으로 시작하고, 키를 누르면 원정(판)으로 간다: 진행 중인 판이 있으면 이어 하고, 없으면 파티를 고른다.
 // 실행 옵션:
 //   --save <폴더>                판 세이브(run.json)와 기록(profile.json)을 둘 폴더 (기본: OS별 사용자 설정 폴더의 Triangle)
+//   --scene opening | title      오프닝의 서문부터, 또는 제목 화면부터 시작 (스크린샷은 오프닝 없이 판 화면을 찍는다)
 //   --scene run:<화면>           확인용 시험 판으로 시작 (임시 폴더를 쓰고 실제 세이브는 건드리지 않는다):
 //                                map, reward, shop, rest, event, editor, equipment, picker, end, party, unlocks, combat
 //   --summary                    run:combat과 함께: 전투 기록의 요약 탭을 연다

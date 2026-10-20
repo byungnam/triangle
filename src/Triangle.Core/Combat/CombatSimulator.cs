@@ -303,6 +303,47 @@ public sealed class CombatSimulator
     }
 
     /// <summary>쓰러지면 효과와 보호막은 모두 사라진다 (부활이 없으므로 따로 기록하지 않는다). 부른 소환 유닛도 사라진다.</summary>
+    /// <summary>흡혈: 준 피해의 일부만큼 회복한다. 치유 봉쇄에 막힌다.</summary>
+    private void Drain(Combatant actor, int dealt)
+    {
+        var percent = actor.Skills.Bonus(BonusKind.LifestealPercent);
+        if (percent <= 0 || dealt <= 0 || !actor.IsAlive)
+        {
+            return;
+        }
+
+        if (HealBlocker(actor) is { } blocker)
+        {
+            _events.Add(new HealBlocked(actor.Id, blocker.Id));
+            return;
+        }
+
+        var amount = Math.Min(actor.MaxHp - actor.Hp, Ratio.ApplyPercent(dealt, percent));
+        if (amount > 0)
+        {
+            actor.Hp += amount;
+            _events.Add(new Drained(actor.Id, amount, actor.Hp));
+        }
+    }
+
+    /// <summary>가시: 상대 편에게 받은 피해의 일부를 때린 유닛에게 돌려준다. 그 피해로 쓰러질 수 있다.</summary>
+    private void Thorns(Combatant actor, Combatant target, int dealt)
+    {
+        var percent = target.Skills.Bonus(BonusKind.ThornsPercent);
+        if (percent <= 0 || dealt <= 0 || actor.Side == target.Side || !actor.IsAlive)
+        {
+            return;
+        }
+
+        var amount = Math.Min(actor.Hp, Math.Max(1, Ratio.ApplyPercent(dealt, percent)));
+        actor.Hp -= amount;
+        _events.Add(new Thorned(actor.Id, target.Id, amount, actor.Hp));
+        if (!actor.IsAlive)
+        {
+            Die(actor);
+        }
+    }
+
     private void Die(Combatant unit)
     {
         unit.Effects.Clear();
@@ -594,6 +635,12 @@ public sealed class CombatSimulator
 
         foreach (var target in Targets(action, plan.Targets))
         {
+            // 가시에 찔려 쓰러지면 행동이 거기서 끝난다.
+            if (!actor.IsAlive)
+            {
+                break;
+            }
+
             // 면역이면 그 대상에게는 피해도, 효과도, 넘어뜨림·줄 옮기기도 없다.
             if (action.Effect == ActionEffect.Damage
                 && target.Effects.FirstOrDefault(e => e.Definition.ImmuneDamageTypes.Contains(action.DamageType)) is { } immunity)
@@ -602,7 +649,7 @@ public sealed class CombatSimulator
                 continue;
             }
 
-            for (var hit = 0; hit < action.Hits && target.IsAlive; hit++)
+            for (var hit = 0; hit < action.Hits && target.IsAlive && actor.IsAlive; hit++)
             {
                 Apply(actor, action, target);
             }
@@ -679,6 +726,8 @@ public sealed class CombatSimulator
                     Die(target);
                 }
 
+                Drain(actor, absorbed + hpLoss);
+                Thorns(actor, target, absorbed + hpLoss);
                 break;
             }
             case ActionEffect.RestoreMp:

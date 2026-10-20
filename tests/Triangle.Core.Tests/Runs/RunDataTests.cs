@@ -137,18 +137,26 @@ public class RunDataTests
     }
 
     [Fact]
-    public void Only_trinkets_carry_effects_and_trinkets_carry_no_actions_or_mastery()
+    public void Trinkets_carry_no_mastery_gear_may_carry_effects_and_only_weapons_change_the_basic_attack()
     {
         const string bad = """
             [
               { "id": "charm", "name": "부적", "slot": "Trinket", "mastery": "sword" },
-              { "id": "helm", "name": "투구", "slot": "Body", "mastery": "plate", "effects": [ "regenerating" ] }
+              { "id": "helm", "name": "투구", "slot": "Body", "mastery": "plate", "effects": [ "regenerating" ] },
+              { "id": "spiked", "name": "가시 갑옷", "slot": "Body", "mastery": "plate", "basicAttack": "slash" },
+              { "id": "costly", "name": "비싼 칼", "slot": "MainHand", "mastery": "sword", "basicAttack": "pricey" },
+              { "id": "nowhere", "name": "없는 칼", "slot": "MainHand", "mastery": "sword", "basicAttack": "nope" }
             ]
             """;
         const string effects = """[ { "id": "regenerating", "name": "재생", "kind": "Buff", "tickHpPercent": 5 } ]""";
-        var errors = Assert.Throws<GameDataException>(() => GameDataLoader.Parse(Masteries, Skills, Actions, "[]", effects, bad)).Errors;
+        var actions = Actions.Replace("""{ "id": "shot", "name": "화살", "power": 20 }""",
+            """{ "id": "shot", "name": "화살", "power": 20 }, { "id": "pricey", "name": "비싼 베기", "power": 20, "mpCost": 5 }""");
+        var errors = Assert.Throws<GameDataException>(() => GameDataLoader.Parse(Masteries, Skills, actions, "[]", effects, bad)).Errors;
 
         Assert.Contains(errors, e => e.Contains("'charm': a trinket has no mastery"));
-        Assert.Contains(errors, e => e.Contains("'helm': only a trinket can have effects"));
+        Assert.DoesNotContain(errors, e => e.Contains("'helm'"));
+        Assert.Contains(errors, e => e.Contains("'spiked': only a main-hand item can have powerMultiplierPercent, effectDurationBonus or basicAttack"));
+        Assert.Contains(errors, e => e.Contains("'costly': basicAttack 'pricey' must cost nothing"));
+        Assert.Contains(errors, e => e.Contains("'nowhere': unknown basicAttack 'nope'"));
     }
 }

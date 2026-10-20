@@ -41,6 +41,8 @@ public static class DataReferences
             Add(i.Mastery == id, $"{at}: mastery");
             Add(i.Requirements.Any(r => r.SkillId == id), $"{at}: requirements");
             Add(i.Actions.Contains(id), $"{at}: actions");
+            Add(i.BasicAttack == id, $"{at}: basicAttack");
+            Add(i.Effects.Contains(id), $"{at}: effects");
             Add(i.Bonuses.Any(b => b.Tag == id), $"{at}: bonuses tag");
         }
 

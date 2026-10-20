@@ -241,7 +241,9 @@ internal sealed class RunEditorScene : RunScene
         var last = new HorizontalStackPanel { Spacing = 8, Margin = new Thickness(9, 0, 0, 0) };
         var badge = Badge("끝", Theme.PanelBorder);
         last.Widgets.Add(badge);
-        last.Widgets.Add(W.Label("항상 → 기본 공격 (켜진 줄이 모두 맞지 않으면. 늘 맨 아래에 붙는다)", 15, Theme.TextDim));
+        var basic = Triangle.Core.Runs.Run.BasicAttack(Data, member);
+        var basicName = basic == Triangle.Core.Balance.DraftTactics.Fallback ? "기본 공격" : $"{Data.Actions[basic].Name} (무기의 기본 공격)";
+        last.Widgets.Add(W.Label($"항상 → {basicName} (켜진 줄이 모두 맞지 않으면. 늘 맨 아래에 붙는다)", 15, Theme.TextDim));
         rows.Widgets.Add(last);
 
         var add = Button("+ 줄 추가", () => Edit(list => list.Add(Condition.Always, 0, FirstFreeAction() ?? "basic_attack")),

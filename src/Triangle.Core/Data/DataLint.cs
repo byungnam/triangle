@@ -27,6 +27,7 @@ public static class DataLint
             .OfType<string>()
             .ToHashSet();
         var itemActions = data.Items.Values.SelectMany(i => i.Actions)
+            .Concat(data.Items.Values.Select(i => i.BasicAttack).OfType<string>())
             .Concat(data.Classes.Values.SelectMany(c => c.Skills))
             .Concat(data.Encounters.Values.SelectMany(e => e.Units).SelectMany(u => u.Actions ?? []))
             .ToHashSet();
@@ -75,29 +76,22 @@ public static class DataLint
     }
 
     /// <summary>
-    /// 판에서 멤버가 끼는 부위(무기, 방어구, 장신구)인데 아무도 쓸 수 없는 아이템: 판의 상점에 나오지 않고(무기는 그 계열 클래스가 없거나
-    /// 막의 상점 티어가 아님), 클래스 기본 장비도 아니고, 적도 끼지 않는다. 보조·머리·신발은 적과 전술 측정만 쓰므로 보지 않고,
-    /// 아직 어느 클래스도 쓰지 않는 계열(나중 클래스용)의 무기도 보지 않는다.
+    /// 판에서 판다고 적었는데(<see cref="ItemDefinition.Shop"/>) 어느 상점에도 나올 수 없는 아이템: 막의 상점 티어보다 높거나, 무기인데 그 계열을
+    /// 쓰는 클래스가 없다. 팔지 않는 무기·방어구는 적, 클래스 기본 장비, 전술 측정의 성장 장비(같은 종류의 다음 티어)가 쓴다.
     /// </summary>
     private static void CheckItems(GameData data, List<string> warnings)
     {
-        var tiers = data.Run?.Acts.Select(a => a.ShopTier).ToHashSet() ?? [];
+        var tiers = data.Run?.Acts.Select(a => a.ShopTier).ToList() ?? [];
         var maxTier = tiers.Count == 0 ? 0 : tiers.Max();
-        var classGear = data.Classes.Values.SelectMany(c => new[] { c.Weapon, c.Armor }).ToHashSet();
-        var enemyGear = data.Encounters.Values.SelectMany(e => e.Units).SelectMany(u => u.Equipment.Values).ToHashSet();
-        var families = data.Classes.Values.SelectMany(c => c.Families).ToHashSet();
-        foreach (var item in data.Items.Values.Where(i => i.Slot is EquipmentSlot.Body or EquipmentSlot.Trinket
-                     || (i.Slot == EquipmentSlot.MainHand && i.Mastery is not null && families.Contains(i.Mastery))))
+        foreach (var item in data.Items.Values.Where(i => i.Shop))
         {
-            var sold = item.Slot switch
+            if (item.Tier > maxTier)
             {
-                EquipmentSlot.MainHand => tiers.Contains(item.Tier) && data.Classes.Values.Any(c => c.CanWield(item)),
-                EquipmentSlot.Body => tiers.Contains(item.Tier),
-                _ => item.Tier <= maxTier,
-            };
-            if (!sold && !classGear.Contains(item.Id) && !enemyGear.Contains(item.Id))
+                warnings.Add($"{GameDataLoader.ItemsFile} '{item.Id}': sold in a run but no act shop sells tier {item.Tier}");
+            }
+            else if (item.Slot == EquipmentSlot.MainHand && !data.Classes.Values.Any(c => c.CanWield(item)))
             {
-                warnings.Add($"{GameDataLoader.ItemsFile} '{item.Id}': used by no one (not sold in a run, not class gear, not worn by an enemy)");
+                warnings.Add($"{GameDataLoader.ItemsFile} '{item.Id}': sold in a run but no class wields '{item.Mastery}'");
             }
         }
     }

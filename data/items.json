@@ -2995,6 +2995,7 @@
     "type": "장신구",
     "tier": 1,
     "price": 60,
+    "shop": true,
     "bonuses": [
       {
         "kind": "PowerPercent",
@@ -3011,6 +3012,7 @@
     "type": "장신구",
     "tier": 1,
     "price": 60,
+    "shop": true,
     "bonuses": [
       {
         "kind": "PowerPercent",
@@ -3027,6 +3029,7 @@
     "type": "장신구",
     "tier": 1,
     "price": 60,
+    "shop": true,
     "bonuses": [
       {
         "kind": "PowerPercent",
@@ -3043,6 +3046,7 @@
     "type": "장신구",
     "tier": 1,
     "price": 60,
+    "shop": true,
     "bonuses": [
       {
         "kind": "PowerPercent",
@@ -3059,6 +3063,7 @@
     "type": "장신구",
     "tier": 1,
     "price": 60,
+    "shop": true,
     "bonuses": [
       {
         "kind": "PowerPercent",
@@ -3075,6 +3080,7 @@
     "type": "장신구",
     "tier": 1,
     "price": 60,
+    "shop": true,
     "bonuses": [
       {
         "kind": "MaxMpPercent",
@@ -3090,6 +3096,7 @@
     "type": "장신구",
     "tier": 2,
     "price": 110,
+    "shop": true,
     "bonuses": [
       {
         "kind": "HealPercent",
@@ -3105,6 +3112,7 @@
     "type": "장신구",
     "tier": 2,
     "price": 110,
+    "shop": true,
     "bonuses": [
       {
         "kind": "DamageTakenReductionPercent",
@@ -3120,6 +3128,7 @@
     "type": "장신구",
     "tier": 2,
     "price": 110,
+    "shop": true,
     "bonuses": [
       {
         "kind": "DelayReductionPercent",
@@ -3135,6 +3144,7 @@
     "type": "장신구",
     "tier": 2,
     "price": 110,
+    "shop": true,
     "bonuses": [
       {
         "kind": "MpCostReductionPercent",
@@ -3150,6 +3160,7 @@
     "type": "장신구",
     "tier": 2,
     "price": 110,
+    "shop": true,
     "effects": [
       "taunting"
     ]
@@ -3162,6 +3173,7 @@
     "type": "장신구",
     "tier": 3,
     "price": 180,
+    "shop": true,
     "effects": [
       "regenerating"
     ]
@@ -3174,8 +3186,535 @@
     "type": "장신구",
     "tier": 3,
     "price": 180,
+    "shop": true,
     "effects": [
       "steadfast"
+    ]
+  },
+  {
+    "id": "duelist_rapier",
+    "name": "결투가의 레이피어",
+    "type": "레이피어",
+    "description": "판 상점. 두 번 찌르는 기본 공격, 모든 행동이 빨라지지만 몸이 드러난다. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "sword",
+    "tier": 1,
+    "price": 70,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "DelayReductionPercent",
+        "percent": 15
+      },
+      {
+        "kind": "DefensePercent",
+        "percent": -10
+      }
+    ],
+    "basicAttack": "rapier_flurry"
+  },
+  {
+    "id": "hungering_greatsword",
+    "name": "피에 굶주린 대검",
+    "type": "대검",
+    "description": "판 상점. 전열 전체를 베는 기본 공격, 세지만 방어가 크게 준다. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "sword",
+    "tier": 2,
+    "price": 120,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 35
+      },
+      {
+        "kind": "DefensePercent",
+        "percent": -15
+      }
+    ],
+    "basicAttack": "greatsword_cleave"
+  },
+  {
+    "id": "vampire_blade",
+    "name": "흡혈검",
+    "type": "흡혈검",
+    "description": "판 상점. 준 피해의 50%를 회복하지만 최대 HP가 준다. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "sword",
+    "tier": 3,
+    "price": 170,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "LifestealPercent",
+        "percent": 50
+      },
+      {
+        "kind": "MaxHpPercent",
+        "percent": -10
+      }
+    ]
+  },
+  {
+    "id": "longbow",
+    "name": "명사수의 장궁",
+    "type": "명사수 장궁",
+    "description": "판 상점. 활 위력 +15%, 엄호를 무시하고 후열부터 쏘는 기본 공격. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "bow",
+    "tier": 1,
+    "price": 70,
+    "shop": true,
+    "basicAttack": "longbow_shot",
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "bow"
+      }
+    ]
+  },
+  {
+    "id": "viper_bow",
+    "name": "독사의 활",
+    "type": "독사의 활",
+    "description": "판 상점. 활 위력 +10%, 기본 공격이 독을 건다. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "bow",
+    "tier": 2,
+    "price": 120,
+    "shop": true,
+    "basicAttack": "venom_shot",
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10,
+        "tag": "bow"
+      }
+    ]
+  },
+  {
+    "id": "gale_bow",
+    "name": "질풍의 활",
+    "type": "질풍의 활",
+    "description": "판 상점. 아주 빠르게 움직이지만 위력이 낮다. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "bow",
+    "tier": 3,
+    "price": 170,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "DelayReductionPercent",
+        "percent": 35
+      },
+      {
+        "kind": "PowerPercent",
+        "percent": -15
+      }
+    ]
+  },
+  {
+    "id": "rime_staff",
+    "name": "서리 지팡이",
+    "type": "서리 지팡이",
+    "description": "판 상점. 냉기 마법 두 배, 기본 공격이 둔화를 거는 냉기 화살. 화염·전기 마법은 배율을 잃는다. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "frost",
+    "tier": 1,
+    "price": 70,
+    "shop": true,
+    "powerMultiplierPercent": 200,
+    "basicAttack": "frost_lash"
+  },
+  {
+    "id": "storm_staff",
+    "name": "폭풍 지팡이",
+    "type": "폭풍 지팡이",
+    "description": "판 상점. 전기 마법 두 배, 기본 공격이 셋에게 튀는 전격. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "lightning",
+    "tier": 2,
+    "price": 120,
+    "shop": true,
+    "powerMultiplierPercent": 200,
+    "basicAttack": "spark_chain"
+  },
+  {
+    "id": "inferno_staff",
+    "name": "업화의 지팡이",
+    "type": "업화의 지팡이",
+    "description": "판 상점. 화염 마법 2.6배에 화염 위력 +15%, 기본 공격이 화상을 건다. 대신 든 사람이 매 턴 그을린다. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "fire",
+    "tier": 3,
+    "price": 170,
+    "shop": true,
+    "powerMultiplierPercent": 260,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15,
+        "tag": "fire"
+      }
+    ],
+    "effects": [
+      "smoldering"
+    ],
+    "basicAttack": "flame_lash"
+  },
+  {
+    "id": "life_chalice",
+    "name": "생명의 성배",
+    "type": "성배",
+    "description": "판 상점. 회복량 +20%, 기본 공격 대신 아군을 치유한다. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "restoration",
+    "tier": 1,
+    "price": 70,
+    "shop": true,
+    "basicAttack": "mending_touch",
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 20
+      }
+    ]
+  },
+  {
+    "id": "judgment_scepter",
+    "name": "심판의 홀",
+    "type": "홀",
+    "description": "판 상점. 위력 +20%, 기본 공격이 지능으로 때리는 마법이 되고 쇠약을 건다. 회복은 약해진다. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "warding",
+    "tier": 2,
+    "price": 120,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20
+      },
+      {
+        "kind": "HealPercent",
+        "percent": -15
+      }
+    ],
+    "basicAttack": "smite"
+  },
+  {
+    "id": "martyr_reliquary",
+    "name": "순교자의 성물함",
+    "type": "성물함",
+    "description": "판 상점. 회복이 크게 늘지만 최대 HP가 준다. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "renewal",
+    "tier": 3,
+    "price": 170,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "HealPercent",
+        "percent": 45
+      },
+      {
+        "kind": "MaxHpPercent",
+        "percent": -20
+      }
+    ]
+  },
+  {
+    "id": "butcher_axe",
+    "name": "도살자의 도끼",
+    "type": "도살 도끼",
+    "description": "판 상점. 위력 +10%, 기본 공격이 출혈을 건다. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "axe",
+    "tier": 1,
+    "price": 70,
+    "shop": true,
+    "basicAttack": "rending_chop",
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 10
+      }
+    ]
+  },
+  {
+    "id": "berserker_axe",
+    "name": "광전사의 도끼",
+    "type": "광전사 도끼",
+    "description": "판 상점. 늘 광분(위력 +35%)하고 흡혈 20%, 대신 받는 피해가 15% 는다. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "axe",
+    "tier": 2,
+    "price": 120,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percent": -15
+      },
+      {
+        "kind": "LifestealPercent",
+        "percent": 20
+      }
+    ],
+    "effects": [
+      "berserk"
+    ]
+  },
+  {
+    "id": "quake_maul",
+    "name": "지진 망치",
+    "type": "지진 망치",
+    "description": "판 상점. 기본 공격이 적 모두를 흔들어 둔화시킨다(느리다). 단단해진다. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "mace",
+    "tier": 3,
+    "price": 170,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "MaxHpPercent",
+        "percent": 15
+      },
+      {
+        "kind": "DefensePercent",
+        "percent": 15
+      }
+    ],
+    "basicAttack": "ground_slam"
+  },
+  {
+    "id": "repeater",
+    "name": "연발 석궁",
+    "type": "연발 석궁",
+    "description": "판 상점. 행동이 빨라지고 기본 공격이 세 발 연사. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "crossbow",
+    "tier": 1,
+    "price": 70,
+    "shop": true,
+    "basicAttack": "repeater_burst",
+    "bonuses": [
+      {
+        "kind": "DelayReductionPercent",
+        "percent": 15
+      }
+    ]
+  },
+  {
+    "id": "scattergun",
+    "name": "산탄총",
+    "type": "산탄총",
+    "description": "판 상점. 기본 공격이 적 모두에게 흩어진다. 느리고 방어가 조금 준다. 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "firearm",
+    "tier": 2,
+    "price": 120,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 15
+      },
+      {
+        "kind": "DefensePercent",
+        "percent": -10
+      }
+    ],
+    "basicAttack": "scatter_blast"
+  },
+  {
+    "id": "hand_cannon",
+    "name": "손대포",
+    "type": "손대포",
+    "description": "판 상점. 위력 +20%, 기본 공격이 후열을 노리는 아주 센 한 발(매우 느리다). 임시 수치.",
+    "slot": "MainHand",
+    "mastery": "firearm",
+    "tier": 3,
+    "price": 170,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20
+      }
+    ],
+    "basicAttack": "cannon_blast"
+  },
+  {
+    "id": "thorn_mail",
+    "name": "가시 갑옷",
+    "type": "가시 갑옷",
+    "description": "판 상점. 받은 피해의 30%를 때린 적에게 돌려준다. 무거워 조금 느리다. 임시 수치.",
+    "slot": "Body",
+    "mastery": "plate",
+    "tier": 1,
+    "price": 70,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "ThornsPercent",
+        "percent": 30
+      },
+      {
+        "kind": "DelayReductionPercent",
+        "percent": -10
+      }
+    ]
+  },
+  {
+    "id": "wind_robe",
+    "name": "바람의 로브",
+    "type": "바람의 로브",
+    "description": "판 상점. 빠르게 움직이지만 최대 HP가 준다. 임시 수치.",
+    "slot": "Body",
+    "mastery": "cloth",
+    "tier": 1,
+    "price": 70,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "DelayReductionPercent",
+        "percent": 15
+      },
+      {
+        "kind": "MaxHpPercent",
+        "percent": -15
+      }
+    ]
+  },
+  {
+    "id": "challenger_plate",
+    "name": "도전자의 판금",
+    "type": "도전자의 판금",
+    "description": "판 상점. 늘 도발해 적의 단일 공격을 받아 낸다. 방어와 HP가 오른다. 임시 수치.",
+    "slot": "Body",
+    "mastery": "plate",
+    "tier": 2,
+    "price": 120,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "DefensePercent",
+        "percent": 40
+      },
+      {
+        "kind": "MaxHpPercent",
+        "percent": 20
+      }
+    ],
+    "effects": [
+      "taunting"
+    ]
+  },
+  {
+    "id": "berserker_hide",
+    "name": "광전사의 가죽",
+    "type": "광전사의 가죽",
+    "description": "판 상점. 위력이 오르지만 방어가 크게 준다. 임시 수치.",
+    "slot": "Body",
+    "mastery": "leather",
+    "tier": 2,
+    "price": 120,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "PowerPercent",
+        "percent": 20
+      },
+      {
+        "kind": "DefensePercent",
+        "percent": -25
+      }
+    ]
+  },
+  {
+    "id": "monk_habit",
+    "name": "수도승의 법의",
+    "type": "수도승의 법의",
+    "description": "판 상점. 디버프에 걸리지 않는다(굳건함). 최대 MP가 오른다. 임시 수치.",
+    "slot": "Body",
+    "mastery": "cloth",
+    "tier": 2,
+    "price": 120,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "MaxMpPercent",
+        "percent": 20
+      }
+    ],
+    "effects": [
+      "steadfast"
+    ]
+  },
+  {
+    "id": "vampire_cloak",
+    "name": "흡혈귀의 망토",
+    "type": "흡혈귀의 망토",
+    "description": "판 상점. 준 피해의 20%를 회복하지만 최대 HP가 준다. 임시 수치.",
+    "slot": "Body",
+    "mastery": "leather",
+    "tier": 3,
+    "price": 170,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "LifestealPercent",
+        "percent": 20
+      },
+      {
+        "kind": "MaxHpPercent",
+        "percent": -10
+      }
+    ]
+  },
+  {
+    "id": "troll_hide",
+    "name": "트롤 가죽",
+    "type": "트롤 가죽",
+    "description": "판 상점. 최대 HP가 크게 오르지만 느려진다. 임시 수치.",
+    "slot": "Body",
+    "mastery": "leather",
+    "tier": 3,
+    "price": 170,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "MaxHpPercent",
+        "percent": 35
+      },
+      {
+        "kind": "DelayReductionPercent",
+        "percent": -15
+      }
+    ]
+  },
+  {
+    "id": "bastion_plate",
+    "name": "성채 갑옷",
+    "type": "성채 갑옷",
+    "description": "판 상점. 받는 피해가 크게 줄지만 아주 느려진다. 임시 수치.",
+    "slot": "Body",
+    "mastery": "plate",
+    "tier": 3,
+    "price": 170,
+    "shop": true,
+    "bonuses": [
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percent": 30
+      },
+      {
+        "kind": "DelayReductionPercent",
+        "percent": -25
+      }
     ]
   }
 ]

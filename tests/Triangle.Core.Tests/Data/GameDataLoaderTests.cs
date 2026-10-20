@@ -91,7 +91,7 @@ public class GameDataLoaderTests
             else if (action.Weapon is not null)
                 Assert.Contains(data.Items.Values, i => i.Slot == EquipmentSlot.MainHand && i.Mastery == action.Weapon);
             else
-                Assert.NotEmpty(data.ItemsGranting(action.Id));
+                Assert.True(data.ItemsGranting(action.Id).Any() || data.Items.Values.Any(i => i.BasicAttack == action.Id), $"{action.Id}: no item grants it");
         }
 
         // 모든 적 팀이 실제 전투에 들어갈 수 있어야 한다.
@@ -121,11 +121,13 @@ public class GameDataLoaderTests
         };
 
         // 종류(무기는 type, 방어구는 계열)·부위마다 T1~T3가 하나씩 있다. 장신구는 따로 본다(RunDataTests).
+        // 판 상점의 특색 장비(shop)는 한 점씩이라 보지 않는다: 적, 클래스 기본 장비, 전술 측정의 성장 장비가 이 줄을 쓴다.
         static (EquipmentSlot, string?, string?) Line(ItemDefinition i) => (i.Slot, i.Mastery, i.Type);
-        foreach (var line in data.Items.Values.Where(i => i.Slot != EquipmentSlot.Trinket).GroupBy(Line))
+        var lines = data.Items.Values.Where(i => i.Slot != EquipmentSlot.Trinket && !i.Shop).ToList();
+        foreach (var line in lines.GroupBy(Line))
             Assert.Equal([1, 2, 3], line.Select(i => i.Tier).Order());
 
-        foreach (var item in data.Items.Values.Where(i => i.Slot != EquipmentSlot.Trinket))
+        foreach (var item in lines)
         {
             var key = core[item.Mastery!];
             var levels = item.Requirements.ToDictionary(r => r.SkillId, r => r.Level);
@@ -145,7 +147,7 @@ public class GameDataLoaderTests
             // 티어가 오를수록 보너스가 커진다.
             if (item.Tier > 1)
             {
-                var lower = data.Items.Values.Single(i => Line(i) == Line(item) && i.Tier == item.Tier - 1);
+                var lower = lines.Single(i => Line(i) == Line(item) && i.Tier == item.Tier - 1);
                 Assert.True(item.Bonuses.Sum(b => b.Percent) > lower.Bonuses.Sum(b => b.Percent), $"{item.Id} should beat {lower.Id}");
                 Assert.True(item.Price > lower.Price);
             }
@@ -187,7 +189,7 @@ public class GameDataLoaderTests
         Assert.Contains("actions.json 'call': summon duration must be at least 1, got 0", errors);
         Assert.Contains("actions.json 'call': summon action 'strike' must be summonOnly", errors);
         Assert.Contains("actions.json 'call': summon statSkill unknown skill 'ghost_skill'", errors);
-        Assert.Contains("items.json 'orb': only a main-hand item can have powerMultiplierPercent or effectDurationBonus", errors);
+        Assert.Contains("items.json 'orb': only a main-hand item can have powerMultiplierPercent, effectDurationBonus or basicAttack", errors);
         Assert.Contains("items.json 'orb': offers summonOnly action 'spirit_hit'", errors);
         Assert.Contains("items.json 'zero': powerMultiplierPercent must be at least 1, got 0", errors);
     }

@@ -7,32 +7,112 @@
   "acts": [
     {
       "zoneId": "outskirts_forest",
-      "floors": 15,
+      "floors": 20,
       "bosses": [],
       "elites": [
         "bandit_chief",
         "deserters"
       ],
-      "shopTier": 1
+      "shopTier": 1,
+      "fightStrength": {
+        "hp": 90,
+        "power": 90
+      },
+      "eliteStrength": {
+        "hp": 90,
+        "power": 90
+      },
+      "bossStrength": {
+        "hp": 90,
+        "power": 90
+      }
     },
     {
       "zoneId": "abandoned_fort",
-      "floors": 15,
+      "floors": 20,
       "bosses": [],
       "elites": [
         "black_sun_cult",
         "wraith_riders"
       ],
-      "shopTier": 2
+      "shopTier": 2,
+      "fightStrength": {
+        "hp": 90,
+        "power": 90
+      },
+      "eliteStrength": {
+        "hp": 90,
+        "power": 90
+      },
+      "bossStrength": {
+        "hp": 90,
+        "power": 90
+      }
     },
     {
       "zoneId": "ashen_capital",
-      "floors": 15,
+      "floors": 20,
       "bosses": [],
       "elites": [
         "elite"
       ],
-      "shopTier": 3
+      "shopTier": 3,
+      "fightStrength": {
+        "hp": 85,
+        "power": 85
+      },
+      "eliteStrength": {
+        "hp": 85,
+        "power": 85
+      },
+      "bossStrength": {
+        "hp": 85,
+        "power": 85
+      }
+    },
+    {
+      "zoneId": "sunken_sanctum",
+      "floors": 20,
+      "bosses": [],
+      "elites": [
+        "sanctum_choir",
+        "elite"
+      ],
+      "shopTier": 3,
+      "fightStrength": {
+        "hp": 110,
+        "power": 110
+      },
+      "eliteStrength": {
+        "hp": 115,
+        "power": 115
+      },
+      "bossStrength": {
+        "hp": 110,
+        "power": 110
+      }
+    },
+    {
+      "zoneId": "triangle_heart",
+      "floors": 20,
+      "bosses": [],
+      "elites": [
+        "sanctum_choir",
+        "sanctum_bulwark"
+      ],
+      "shopTier": 3,
+      "fightStrength": {
+        "hp": 120,
+        "power": 120
+      },
+      "eliteStrength": {
+        "hp": 120,
+        "power": 120
+      },
+      "bossStrength": {
+        "hp": 90,
+        "power": 90
+      }
     }
   ],
   "map": {
@@ -52,18 +132,18 @@
     "active": 12,
     "passive": 7,
     "line": 1,
-    "goldMin": 10,
-    "goldMax": 20,
-    "eliteGoldMin": 30,
-    "eliteGoldMax": 45,
-    "bossGold": 60
+    "goldMin": 15,
+    "goldMax": 25,
+    "eliteGoldMin": 35,
+    "eliteGoldMax": 50,
+    "bossGold": 80
   },
   "shop": {
     "items": 4,
     "skills": 3,
     "skillPrice": 50,
-    "recruits": 1,
-    "recruitPrice": 100,
+    "recruits": 0,
+    "recruitPrice": 200,
     "unsealPrice": 60
   },
   "rest": {
@@ -75,10 +155,11 @@
       "id": "wandering_sellsword",
       "name": "떠돌이 용병",
       "text": "길가에 앉은 용병이 일거리를 찾는다.",
+      "weight": 1,
       "options": [
         {
-          "text": "50골드를 주고 데려간다",
-          "gold": -50,
+          "text": "100골드를 주고 데려간다",
+          "gold": -100,
           "join": "any"
         },
         {
@@ -129,6 +210,36 @@
           "text": "무리하게 훈련한다 (카드 하나, 누군가 봉인 하나)",
           "card": true,
           "seal": 1
+        },
+        {
+          "text": "지나간다"
+        }
+      ]
+    },
+    {
+      "id": "wandering_peddler",
+      "name": "떠도는 행상",
+      "text": "짐을 진 행상이 반짝이는 장신구를 늘어놓는다.",
+      "options": [
+        {
+          "text": "70골드에 장신구 하나를 산다",
+          "gold": -70,
+          "trinket": true
+        },
+        {
+          "text": "지나간다"
+        }
+      ]
+    },
+    {
+      "id": "field_hospital",
+      "name": "버려진 야전 병원",
+      "text": "부서진 침상 사이에 쓸 만한 약이 남아 있다.",
+      "options": [
+        {
+          "text": "40골드어치 약을 챙긴다 (모두 봉인 하나 풀기)",
+          "gold": -40,
+          "unseal": 1
         },
         {
           "text": "지나간다"

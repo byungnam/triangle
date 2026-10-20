@@ -91,10 +91,53 @@ internal static class RunText
 
         foreach (var effect in item.Effects.Select(id => data.Effects[id]))
         {
-            lines.Insert(lines.Count - (item.Price > 0 ? 1 : 0), new TextLine($"전투 내내 {effect.Name}: {ActionText.Effect(effect)}", Theme.Heal));
+            lines.Insert(lines.Count - (item.Price > 0 ? 1 : 0), new TextLine($"전투 내내 {effect.Name}: {ActionText.Effect(effect)}",
+                effect.Kind == Triangle.Core.Effects.EffectKind.Debuff ? Theme.Enemy : Theme.Heal));
+        }
+
+        if (item.BasicAttack is { } basic)
+        {
+            lines.Insert(lines.Count - (item.Price > 0 ? 1 : 0), new TextLine($"기본 공격이 바뀐다: {BasicAttackText(data.Actions[basic], data)}", Theme.Damage));
         }
 
         return lines;
+    }
+
+    /// <summary>무기가 바꾸는 기본 공격 한 줄: "멀리 쏘기 (위력 85, 엄호 무시, 후열 우선, 느림)".</summary>
+    public static string BasicAttackText(ActionDefinition action, GameData data)
+    {
+        var parts = new List<string>
+        {
+            action.Effect == ActionEffect.Heal ? $"치유 {action.Power}"
+                : $"{(action.DamageType == DamageType.Magical ? "마법" : "물리")} 위력 {action.Power}{(action.Hits > 1 ? $" × {action.Hits}번" : "")}",
+        };
+        if (action.Scope == TargetScope.All)
+        {
+            parts.Add(action.Rows == RowRestriction.FrontOnly ? "전열 모두" : "적 모두");
+        }
+
+        if (action.ExtraTargets > 0)
+        {
+            parts.Add($"{action.ExtraTargets + 1}명에게 튐");
+        }
+
+        if (action.IgnoresCover)
+        {
+            parts.Add("엄호 무시");
+        }
+
+        if (action.Rule == TargetRule.BackFirst)
+        {
+            parts.Add("후열 우선");
+        }
+
+        parts.AddRange(action.Applies.Select(a => $"{data.Effects[a.EffectId].Name} {a.Duration}턴"));
+        if (action.Delay is { } delay && delay > Triangle.Core.Combat.CombatRules.Default.TimeConstant)
+        {
+            parts.Add("느림");
+        }
+
+        return $"{action.Name} ({string.Join(", ", parts)})";
     }
 
     public static string CardKind(RunCardKind kind) => kind switch

@@ -7,7 +7,7 @@ using Triangle.Desktop.Rendering;
 namespace Triangle.Desktop.Scenes;
 
 /// <summary>
-/// 판 안의 상점: 왼쪽은 아이템과 스킬 사본, 오른쪽은 동료 합류와 봉인 풀기. 산 아이템은 가방으로 가고 편성에서 낀다.
+/// 판 안의 상점: 왼쪽은 아이템과 스킬 사본, 오른쪽은 봉인 풀기(상점이 합류를 팔면 동료 합류도). 산 아이템은 가방으로 가고 편성에서 낀다.
 /// </summary>
 internal sealed class RunShopScene : RunScene
 {
@@ -48,9 +48,14 @@ internal sealed class RunShopScene : RunScene
 
         var services = new VerticalStackPanel { Spacing = 8 };
         var serviceWidth = ServiceArea.Width - 32;
-        services.Widgets.Add(W.Header("figure", "동료 합류"));
-        AddStock(services, RunStockKind.Recruit, serviceWidth);
-        services.Widgets.Add(new Panel { Height = 4 });
+        // 동료 합류는 이벤트에서만 드물게 만난다(2026-10-20). 상점이 합류를 팔도록 정하면 여기 나온다.
+        if (Run.Stock.Any(s => s.Kind == RunStockKind.Recruit))
+        {
+            services.Widgets.Add(W.Header("figure", "동료 합류"));
+            AddStock(services, RunStockKind.Recruit, serviceWidth);
+            services.Widgets.Add(new Panel { Height = 4 });
+        }
+
         var price = Data.Run!.Shop.UnsealPrice;
         services.Widgets.Add(W.Header("lock", "봉인 풀기", $"하나에 {price} 골드"));
         var sealedMembers = Run.Living.Where(m => m.Sealed > 0).ToList();
@@ -88,7 +93,7 @@ internal sealed class RunShopScene : RunScene
         var stock = Run.Stock[index];
         var (icon, color, lines) = stock.Kind switch
         {
-            RunStockKind.Item => Describe(GameIcons.Item(Data.Items[stock.Id]), RunText.Item(Data.Items[stock.Id], Data).Take(3).ToList()),
+            RunStockKind.Item => Describe(GameIcons.Item(Data.Items[stock.Id]), Brief(RunText.Item(Data.Items[stock.Id], Data))),
             RunStockKind.Skill => Describe(GameIcons.Action(Data.Actions[stock.Id], Data),
                 [.. RunText.Action(Data.Actions[stock.Id], Data).Take(2), new TextLine(ActionText.Summary(Data.Actions[stock.Id], Data), Theme.Text, 14)]),
             _ => Describe(RunText.Portrait(Data.Classes[stock.Id], Data),
@@ -110,6 +115,13 @@ internal sealed class RunShopScene : RunScene
         buy.VerticalAlignment = VerticalAlignment.Center;
         row.Widgets.Add(buy);
         return row;
+    }
+
+    /// <summary>아이템 줄을 줄인다: 이름, 종류, 나머지(보너스, 효과, 바뀌는 기본 공격)를 한 줄로. 가격은 버튼에 있으니 뺀다.</summary>
+    private static IReadOnlyList<TextLine> Brief(IReadOnlyList<TextLine> lines)
+    {
+        var rest = lines.Skip(2).Where(l => !l.Text.StartsWith("가격")).ToList();
+        return rest.Count == 0 ? lines.Take(2).ToList() : [.. lines.Take(2), new TextLine(string.Join(" · ", rest.Select(l => l.Text)), rest[0].Color, 14)];
     }
 
     private static (string Icon, Color Color, IReadOnlyList<TextLine> Lines) Describe((string Icon, Color Color) icon, IReadOnlyList<TextLine> lines) =>

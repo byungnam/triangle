@@ -263,6 +263,12 @@ internal sealed class CombatLogScene : IScene
             case Healed h:
                 _units[h.TargetId].Hp = h.HpAfter;
                 break;
+            case Drained dr:
+                _units[dr.UnitId].Hp = dr.HpAfter;
+                break;
+            case Thorned th:
+                _units[th.UnitId].Hp = th.HpAfter;
+                break;
             case MpRestored m:
                 _units[m.TargetId].Mp = m.MpAfter;
                 break;

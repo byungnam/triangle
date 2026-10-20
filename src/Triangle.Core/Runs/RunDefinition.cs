@@ -30,7 +30,7 @@ public sealed record RunDefinition
 
     public RunRestRules Rest { get; init; } = new();
 
-    /// <summary>이벤트 지점에서 뽑는 이벤트 (같은 가중치).</summary>
+    /// <summary>이벤트 지점에서 가중치(<see cref="RunEvent.Weight"/>)로 뽑는 이벤트.</summary>
     public IReadOnlyList<RunEvent> Events { get; init; } = [];
 
     public RunRenownRules Renown { get; init; } = new();
@@ -136,15 +136,15 @@ public sealed record RunRewardRules
 
     public int Line { get; init; } = 1;
 
-    public int GoldMin { get; init; } = 10;
+    public int GoldMin { get; init; } = 15;
 
-    public int GoldMax { get; init; } = 20;
+    public int GoldMax { get; init; } = 25;
 
-    public int EliteGoldMin { get; init; } = 30;
+    public int EliteGoldMin { get; init; } = 35;
 
-    public int EliteGoldMax { get; init; } = 45;
+    public int EliteGoldMax { get; init; } = 50;
 
-    public int BossGold { get; init; } = 60;
+    public int BossGold { get; init; } = 80;
 }
 
 /// <summary>상점. 아이템은 그 아이템의 가격(<see cref="Items.ItemDefinition.Price"/>)으로 판다.</summary>
@@ -161,7 +161,7 @@ public sealed record RunShopRules
     /// <summary>합류시킬 수 있는 클래스 수와 값.</summary>
     public int Recruits { get; init; } = 1;
 
-    public int RecruitPrice { get; init; } = 100;
+    public int RecruitPrice { get; init; } = 200;
 
     /// <summary>봉인 하나를 푸는 값.</summary>
     public int UnsealPrice { get; init; } = 60;
@@ -185,6 +185,9 @@ public sealed record RunEvent
     public required string Name { get; init; }
 
     public string? Text { get; init; }
+
+    /// <summary>이벤트 지점에서 뽑히는 가중치 (기본 10). 동료 합류처럼 드문 이벤트는 작게 둔다.</summary>
+    public int Weight { get; init; } = 10;
 
     public required IReadOnlyList<RunEventOption> Options { get; init; }
 }

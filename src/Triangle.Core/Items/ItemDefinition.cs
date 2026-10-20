@@ -62,8 +62,20 @@ public sealed record ItemDefinition
     /// <summary>끼면 쓸 수 있는 행동 (모두 쓴다, 고르지 않는다. 2026-10-06).</summary>
     public IReadOnlyList<string> Actions { get; init; } = [];
 
-    /// <summary>끼고 있으면 전투를 시작할 때 걸려 있는 효과 (타고난 효과와 같다, 장신구만, 2026-10-19). 지워지기 전까지 끝나지 않는다.</summary>
+    /// <summary>
+    /// 끼고 있으면 전투를 시작할 때 걸려 있는 효과 (타고난 효과와 같다). 지워지기 전까지 끝나지 않는다. 처음에는 장신구만 가졌고
+    /// 2026-10-19부터 무기·방어구도 가진다(도발하는 갑옷, 몸을 태우는 지팡이 같은 특색).
+    /// </summary>
     public IReadOnlyList<string> Effects { get; init; } = [];
+
+    /// <summary>
+    /// 판에서 이 무기를 들면 기본 공격 대신 쓰는 행동 (주무기만, 2026-10-19). 전술의 맨 아래 "항상 → 기본 공격"과 기본 공격을 놓은 줄이
+    /// 모두 이 행동이 된다. MP·HP 비용이 없는 행동이어야 한다.
+    /// </summary>
+    public string? BasicAttack { get; init; }
+
+    /// <summary>판의 상점에서 판다 (막의 상점 티어 이하, 무기는 파티 클래스가 쓰는 계열만). 아니면 적, 클래스 기본 장비, 전술 측정만 쓴다.</summary>
+    public bool Shop { get; init; }
 
 
     /// <summary>

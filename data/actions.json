@@ -3001,5 +3001,293 @@
     },
     "chant": 3,
     "oncePerBattle": true
+  },
+  {
+    "id": "rapier_flurry",
+    "name": "연속 찌르기",
+    "description": "결투가의 레이피어의 기본 공격: 앞의 적을 두 번 찌른다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 45,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "hits": 2
+  },
+  {
+    "id": "greatsword_cleave",
+    "name": "대검 휩쓸기",
+    "description": "피에 굶주린 대검의 기본 공격: 전열의 적 모두를 벤다. 느리다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 55,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "FrontOnly",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "delay": 1300
+  },
+  {
+    "id": "longbow_shot",
+    "name": "멀리 쏘기",
+    "description": "명사수의 장궁의 기본 공격: 엄호를 무시하고 후열부터 쏜다. 조금 느리다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 85,
+    "side": "Enemy",
+    "rule": "BackFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [],
+    "requirements": [],
+    "delay": 1100
+  },
+  {
+    "id": "venom_shot",
+    "name": "독 묻은 화살",
+    "description": "독사의 활의 기본 공격: 아직 독이 없는 적부터 쏘아 독(3턴)을 건다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 50,
+    "side": "Enemy",
+    "rule": "WithoutEffectFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "poisoned",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "frost_lash",
+    "name": "냉기 화살",
+    "description": "서리 지팡이의 기본 공격: 냉기 마법(지팡이 배율을 받는다). 맞으면 둔화(2턴). 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 30,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "frost"
+    ],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "slowed",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "spark_chain",
+    "name": "튀는 전격",
+    "description": "폭풍 지팡이의 기본 공격: 전기 마법이 적 셋에게 튄다(지팡이 배율을 받는다). 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 18,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "lightning"
+    ],
+    "requirements": [],
+    "extraTargets": 2
+  },
+  {
+    "id": "flame_lash",
+    "name": "불꽃 채찍",
+    "description": "업화의 지팡이의 기본 공격: 화염 마법(지팡이 배율을 받는다). 맞으면 화상(2턴). 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 25,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [
+      "fire"
+    ],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "burning",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "mending_touch",
+    "name": "치유의 손길",
+    "description": "생명의 성배의 기본 공격 대신: HP 비율이 가장 낮은 아군을 조금 치유한다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Heal",
+    "damageType": "Magical",
+    "power": 35,
+    "side": "Ally",
+    "rule": "LowestHpRatio",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": []
+  },
+  {
+    "id": "smite",
+    "name": "징벌의 빛",
+    "description": "심판의 홀의 기본 공격: 지능으로 때리는 마법 공격. 맞으면 쇠약(2턴). 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Magical",
+    "power": 80,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "enfeebled",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "rending_chop",
+    "name": "피 베기",
+    "description": "도살자의 도끼의 기본 공격: 앞의 적을 베어 출혈(3턴)을 건다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 45,
+    "side": "Enemy",
+    "rule": "FrontFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "applies": [
+      {
+        "effectId": "bleeding",
+        "duration": 3
+      }
+    ]
+  },
+  {
+    "id": "ground_slam",
+    "name": "땅 구르기",
+    "description": "지진 망치의 기본 공격: 적 모두를 흔들어 둔화(1턴)시킨다. 느리다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 32,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "delay": 1500,
+    "applies": [
+      {
+        "effectId": "slowed",
+        "duration": 1
+      }
+    ]
+  },
+  {
+    "id": "repeater_burst",
+    "name": "연발 사격",
+    "description": "연발 석궁의 기본 공격: 아무 적에게나 세 발. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 26,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "hits": 3
+  },
+  {
+    "id": "scatter_blast",
+    "name": "산탄 발사",
+    "description": "산탄총의 기본 공격: 적 모두에게 흩뿌린다. 느리다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 32,
+    "side": "Enemy",
+    "rule": "Random",
+    "rows": "Any",
+    "scope": "All",
+    "ignoresCover": false,
+    "tags": [],
+    "requirements": [],
+    "delay": 1300
+  },
+  {
+    "id": "cannon_blast",
+    "name": "대포 발사",
+    "description": "손대포의 기본 공격: 엄호를 무시하고 후열부터 아주 세게. 매우 느리다. 임시 수치.",
+    "hpCost": 0,
+    "mpCost": 0,
+    "effect": "Damage",
+    "damageType": "Physical",
+    "power": 170,
+    "side": "Enemy",
+    "rule": "BackFirst",
+    "rows": "Any",
+    "scope": "Single",
+    "ignoresCover": true,
+    "tags": [],
+    "requirements": [],
+    "delay": 2200
   }
 ]

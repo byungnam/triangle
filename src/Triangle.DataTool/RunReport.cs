@@ -144,6 +144,7 @@ internal static class RunReport
             + $" · 줄 상한 {Avg(r => r.Picks.Count(p => p.Kind == RunCardKind.Line)):F1} · 고를 것이 없어 건너뜀 {Avg(r => r.Skipped):F1}");
         var spends = Enum.GetValues<RunSpend>().Select(s => $"{Spend(s)} {Avg(r => r.Spent.GetValueOrDefault(s)):F0}");
         Console.WriteLine($"  골드/판: 번 것 {Avg(r => r.GoldEarned):F0} · 쓴 곳 {string.Join(" · ", spends)} · 남긴 것 {Avg(r => r.GoldLeft):F0}");
+        Shops(data, rules, results);
         foreach (var (label, group) in new[] { ("모든 판", results), ("클리어한 판", results.Where(r => r.Cleared).ToList()) })
         {
             if (group.Count == 0)
@@ -160,6 +161,88 @@ internal static class RunReport
         foreach (var (name, count) in results.SelectMany(r => r.Picks).GroupBy(p => Label(data, p)).Select(g => (g.Key, g.Count())).OrderByDescending(x => x.Item2).Take(8))
         {
             Console.WriteLine($"    {(double)count / runs,5:F2}  {name}");
+        }
+    }
+
+    /// <summary>상점: 막마다 들를 때 골드, 쓴 골드, 산 수, 살 수 있는 것이 없던 방문, 종류별로 나온 것 중 산 비율과 값.</summary>
+    private static void Shops(GameData data, RunDefinition rules, IReadOnlyList<RunSimResult> results)
+    {
+        var visits = results.SelectMany(r => r.Shops).ToList();
+        if (visits.Count == 0)
+        {
+            return;
+        }
+
+        string KindOf(RunStock s) => s.Kind switch
+        {
+            RunStockKind.Item => data.Items[s.Id].Slot switch
+            {
+                Triangle.Core.Items.EquipmentSlot.MainHand => "무기",
+                Triangle.Core.Items.EquipmentSlot.Body => "방어구",
+                _ => "장신구",
+            },
+            RunStockKind.Skill => "스킬",
+            _ => "합류",
+        };
+        string[] kinds = ["무기", "방어구", "장신구", "스킬", "합류"];
+        Console.WriteLine();
+        Console.WriteLine($"  상점 (판당 {(double)visits.Count / results.Count:F2}번). 종류 칸은 나온 것 중 산 비율과 값의 평균:");
+        Console.WriteLine("    " + Bench.Pad("막", 5) + Bench.Pad("방문/판", 9, true) + Bench.Pad("들를 때", 9, true) + Bench.Pad("쓴 골드", 9, true)
+            + Bench.Pad("산 수", 7, true) + Bench.Pad("빈손", 7, true) + string.Concat(kinds.Select(k => Bench.Pad(k, 13, true))) + Bench.Pad("봉인 풀기", 11, true));
+        for (var act = 0; act < rules.Acts.Count; act++)
+        {
+            var inAct = visits.Where(v => v.Act == act).ToList();
+            if (inAct.Count == 0)
+            {
+                continue;
+            }
+
+            var cells = kinds.Select(k =>
+            {
+                var offered = inAct.SelectMany(v => v.Offered).Where(o => KindOf(o) == k).ToList();
+                var bought = inAct.Sum(v => v.Bought.Count(b => KindOf(b) == k));
+                return offered.Count == 0 ? "-" : $"{100.0 * bought / offered.Count:F0}% {offered.Average(o => o.Price):F0}G";
+            });
+            var broke = inAct.Count(v => v.Offered.All(o => o.Price > v.GoldIn) && (v.Sealed == 0 || rules.Shop.UnsealPrice > v.GoldIn));
+            Console.WriteLine("    " + Bench.Pad($"{act + 1}막", 5)
+                + Bench.Pad($"{(double)inAct.Count / results.Count:F2}", 9, true)
+                + Bench.Pad($"{inAct.Average(v => v.GoldIn):F0}", 9, true)
+                + Bench.Pad($"{inAct.Average(v => v.GoldIn - v.GoldOut):F0}", 9, true)
+                + Bench.Pad($"{inAct.Average(v => v.Bought.Count + v.Unseals):F2}", 7, true)
+                + Bench.Pad($"{100.0 * broke / inAct.Count:F0}%", 7, true)
+                + string.Concat(cells.Select(c => Bench.Pad(c, 13, true)))
+                + Bench.Pad($"{inAct.Average(v => v.Unseals):F2}", 11, true));
+        }
+
+        Console.WriteLine("    빈손 = 들를 때 골드로 아무것도(봉인이 있으면 봉인 풀기도) 살 수 없던 방문.");
+
+        // 똑똑한 봇만: 들어가자마자 살 수 있던 것마다 사 본 값어치 (미리 싸운 점수가 나아진 정도, 이기면 1점대).
+        var values = visits.SelectMany(v => v.Values.Select(x => (v.Act, Value: x))).ToList();
+        if (values.Count > 0)
+        {
+            Console.WriteLine("  값어치 (막별, 살 수 있던 것마다 사 봤을 때 점수가 나아진 평균 · 100골드당):");
+            foreach (var act in values.Select(x => x.Act).Distinct().Order())
+            {
+                var cells = kinds.Append("봉인 풀기").Select(k =>
+                {
+                    var xs = values.Where(x => x.Act == act && (x.Value.Stock is { } st ? KindOf(st) : "봉인 풀기") == k).Select(x => x.Value).ToList();
+                    return xs.Count == 0 ? $"{k} -" : $"{k} {xs.Average(x => x.Gain):F3} · {100 * xs.Average(x => x.Gain / Math.Max(1, x.Price)):F3}";
+                });
+                Console.WriteLine($"    {act + 1}막  " + string.Join("   ", cells));
+            }
+
+            // 아이템마다: 나온 횟수, 값어치 평균(가장 잘 맞는 멤버에게 낀 것), 산 비율.
+            var items = values.Where(x => x.Value.Stock is { Kind: RunStockKind.Item }).GroupBy(x => x.Value.Stock!.Id)
+                .Select(g => (Id: g.Key, Count: g.Count(), Gain: g.Average(x => x.Value.Gain),
+                    Rate: (double)visits.Sum(v => v.Bought.Count(b => b.Id == g.Key)) / Math.Max(1, visits.Sum(v => v.Offered.Count(o => o.Id == g.Key)))))
+                .OrderByDescending(x => x.Gain)
+                .ToList();
+            Console.WriteLine("  아이템별 값어치 (나온 수 · 값어치 평균 · 산 비율):");
+            foreach (var (id, count, gain, rate) in items)
+            {
+                Console.WriteLine("    " + Bench.Pad($"{data.Items[id].Name} ({KindOf(new RunStock(RunStockKind.Item, id, 0))} T{data.Items[id].Tier} {data.Items[id].Price}G)", 36)
+                    + Bench.Pad($"{count}", 6, true) + Bench.Pad($"{gain:F3}", 9, true) + Bench.Pad($"{100 * rate:F0}%", 7, true));
+            }
         }
     }
 

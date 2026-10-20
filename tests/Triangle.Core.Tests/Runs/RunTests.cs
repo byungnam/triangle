@@ -859,6 +859,36 @@ public class RunTests
     }
 
     [Fact]
+    public void A_run_saved_with_a_different_number_of_acts_is_set_aside()
+    {
+        // 막 3개일 때 저장한 판: 3막 보스 다음에 갈 지도가 없으므로 이어 하지 않는다.
+        var threeActs = With(r => r with { Acts = r.Acts.Take(3).ToList() });
+        var old = Run.Start(threeActs, Party, 5).Serialize();
+        Assert.Equal(3, Run.Deserialize(old, threeActs).Maps.Count);
+        var errors = Assert.Throws<SaveGameException>(() => Run.Deserialize(old, Drafting)).Errors;
+        Assert.Contains(errors, e => e.StartsWith(Run.ActCountChanged) && e.Contains("(save 3, game 5)"));
+
+        var dir = Path.Combine(Path.GetTempPath(), "triangle-run-" + Guid.NewGuid());
+        try
+        {
+            var store = new RunStore(Path.Combine(dir, "run.json"));
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(store.Path, old);
+            var loaded = store.Load(Drafting);
+            Assert.Equal((null, LoadStatus.Recovered), (loaded.Run, loaded.Status));
+            Assert.Contains(loaded.Errors!, e => e.StartsWith(Run.ActCountChanged));
+            Assert.True(File.Exists(loaded.BrokenFilePath));
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void The_run_store_keeps_one_run_and_sets_a_broken_one_aside()
     {
         var dir = Path.Combine(Path.GetTempPath(), "triangle-run-" + Guid.NewGuid());

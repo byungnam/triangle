@@ -53,6 +53,9 @@ public class RunSimulationTests
                 Assert.Equal(r.Last.Act, r.Act);
             }
 
+            // 똑똑한 봇은 보스마다 전술 방식과 줄 배치를 고르고 들어간다 (보스 대비). 다른 전투와 아무렇게나 봇은 고르지 않는다.
+            Assert.All(r.Fights, f => Assert.Equal(bot == RunBot.Smart && f.Kind == RunNodeKind.Boss, f.Plan is not null));
+
             // 상점에서는 나온 물건만 사고, 쓴 골드만큼 골드가 준다.
             foreach (var shop in r.Shops)
             {

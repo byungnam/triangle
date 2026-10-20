@@ -151,7 +151,12 @@ public class TriangleGame : Game
         var profile = profiles.Load(data);
         var session = new RunSession(data, store, profiles, profile.Profile);
         session.Resume(loaded.Run);
-        if (loaded.Status == LoadStatus.Recovered)
+        if (loaded.Status == LoadStatus.Recovered && loaded.Errors?.Any(e => e.StartsWith(Triangle.Core.Runs.Run.ActCountChanged)) == true)
+        {
+            session.Notice = ($"게임의 막이 {data.Run!.Acts.Count}개로 바뀌어 진행 중이던 원정을 이어 할 수 없습니다. 새로 시작합니다. 원래 파일: {Path.GetFileName(loaded.BrokenFilePath)}",
+                Theme.Cover);
+        }
+        else if (loaded.Status == LoadStatus.Recovered)
         {
             session.Notice = ($"원정 세이브를 읽지 못해 새로 시작합니다. 원래 파일: {Path.GetFileName(loaded.BrokenFilePath)}", Theme.Enemy);
         }

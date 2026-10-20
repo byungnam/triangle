@@ -90,6 +90,12 @@ public sealed partial class Run
     /// <summary>1: 처음 (2026-10-19).</summary>
     public const int SaveVersion = 1;
 
+    /// <summary>
+    /// 막 수가 바뀐 게임 데이터로 예전 판을 이어 할 때의 오류 머리말 (막 3개 → 5개, 2026-10-20). 지도는 판을 시작할 때 막마다 만들어
+    /// 세이브에 담으므로, 막 수가 다르면 마지막 막 다음에 갈 지도가 없거나 남는다. 화면은 이 머리말로 "게임이 바뀌어 새로 시작한다"를 알린다.
+    /// </summary>
+    public const string ActCountChanged = "run save: the game now has a different number of acts";
+
     public string Serialize() => JsonSerializer.Serialize(ToSave(), GameDataJson.Options);
 
     public RunSaveFile ToSave() => new()
@@ -158,6 +164,10 @@ public sealed partial class Run
         if (file.Maps.Count != file.Bosses.Count || file.Maps.Count == 0)
         {
             errors.Add("run save: maps and bosses must match and not be empty");
+        }
+        else if (file.Maps.Count != rules.Acts.Count)
+        {
+            errors.Add($"{ActCountChanged} (save {file.Maps.Count}, game {rules.Acts.Count})");
         }
 
         if (file.Act < 0 || file.Act >= file.Maps.Count || file.Act >= rules.Acts.Count)

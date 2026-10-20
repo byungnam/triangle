@@ -1,8 +1,10 @@
+using Triangle.Core.Actions;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
 using Triangle.Core.Items;
 using Triangle.Core.Runs;
 using Triangle.Core.Tactics;
+using Triangle.Core.Units;
 
 namespace Triangle.Core.Balance;
 
@@ -47,7 +49,51 @@ public enum RunSpend
 /// <param name="AllyHp">끝났을 때 아군(소환수 빼고)의 남은 HP 합 / 최대 HP 합.</param>
 /// <param name="Downs">쓰러진 아군 수 (소환수 빼고).</param>
 /// <param name="Time">전투가 끝난 시각 (마지막 행동의 전투 시계).</param>
-public sealed record RunSimFight(int Act, int Floor, RunNodeKind Kind, string EncounterId, CombatOutcome Outcome, double AllyHp, int Downs, long Time);
+/// <param name="Plan">보스와 싸우기 전에 똑똑한 봇이 고른 전술 방식과 줄 배치 (<see cref="RunSimulation.PlanName"/>). 보스가 아니면 null.</param>
+public sealed record RunSimFight(
+    int Act, int Floor, RunNodeKind Kind, string EncounterId, CombatOutcome Outcome, double AllyHp, int Downs, long Time, string? Plan = null);
+
+/// <summary>보스 대비 전술 방식: 기본 배치(<see cref="DraftTactics"/>)에서 줄을 빼거나 순서를 바꾼다.</summary>
+public enum RunTacticPlan
+{
+    Default,
+
+    /// <summary>디버프를 거는 줄을 뺀다 (상처 입으면 폭주하는 적).</summary>
+    NoDebuffs,
+
+    /// <summary>마법 피해 줄을 위로 (물리 면역).</summary>
+    Magic,
+
+    /// <summary>광역 피해 줄을 위로, 적 수 조건 없이 (도발·엄호 뒤의 적).</summary>
+    Area,
+
+    /// <summary>지속 피해를 거는 줄을 위로 (가시처럼 맞받아치는 적).</summary>
+    OverTime,
+
+    /// <summary>기절·둔화·약화를 거는 줄을 위로 (영창하는 적, 큰 한 방).</summary>
+    Disable,
+
+    /// <summary>회복·보호막·버프 줄을 위로 (오래 버티기).</summary>
+    Support,
+
+    /// <summary>피해를 주지 않는 줄을 뺀다 (빨리 잡기).</summary>
+    Damage,
+}
+
+/// <summary>보스 대비 줄 배치.</summary>
+public enum RunRowPlan
+{
+    /// <summary>클래스의 처음 줄.</summary>
+    Default,
+
+    AllFront,
+
+    /// <summary>가장 단단한(체력) 한 명만 전열, 나머지는 후열.</summary>
+    OneFront,
+
+    /// <summary>가장 단단한 두 명이 전열.</summary>
+    TwoFront,
+}
 
 /// <summary>상점에 한 번 들른 기록.</summary>
 /// <param name="GoldIn">들어갈 때 골드.</param>
@@ -116,6 +162,11 @@ public sealed class RunSimulation
     /// <summary>똑똑한 봇이 상점에서 사는 가장 작은 나아짐 (미리 싸운 점수, 이기면 1점대).</summary>
     private const double MinShopGain = 0.01;
 
+    private const int BossSalt = 0xB055;
+
+    /// <summary>보스 대비에서 방식마다 보스를 미리 싸워 보는 시드 수.</summary>
+    private const int BossSeeds = 4;
+
     private readonly GameData _data;
     private readonly RunDefinition _rules;
     private readonly RunSimOptions _options;
@@ -163,11 +214,13 @@ public sealed class RunSimulation
             {
                 case RunPhase.Map:
                     Equip(run);
+                    SetRows(run, RunRowPlan.Default);
                     Arrange(run);
                     var node = _options.Bot == RunBot.Random ? run.Choices[random.Next(run.Choices.Count)] : Route(run);
+                    var plan = node.Kind == RunNodeKind.Boss && _options.Bot == RunBot.Smart ? PrepareForBoss(run) : null;
                     if (run.Enter(_data, node.Id) is { } battle)
                     {
-                        tally.Record(run, node, battle);
+                        tally.Record(run, node, battle, plan);
                     }
 
                     break;
@@ -222,7 +275,7 @@ public sealed class RunSimulation
     /// <summary>
     /// 전술을 다시 짠다: 사본을 그 클래스의 살아 있는 멤버에게 나눠 주고(켤 줄이 많이 남은 멤버부터) <see cref="DraftTactics"/>로 줄을 적는다.
     /// </summary>
-    private void Arrange(Run run)
+    private void Arrange(Run run, RunTacticPlan plan = RunTacticPlan.Default)
     {
         var living = run.Living.ToList();
         foreach (var member in living)
@@ -242,8 +295,107 @@ public sealed class RunSimulation
 
         foreach (var member in living)
         {
-            run.SetTactics(_data, member, DraftTactics.Build(skills[member], _rules.MaxLines, _data).SkipLast(1).ToList());
+            run.SetTactics(_data, member, Apply(plan, DraftTactics.Build(skills[member], _rules.MaxLines, _data).SkipLast(1)).ToList());
         }
+    }
+
+    /// <summary>방식대로 줄을 빼거나 위로 올린다 (나머지 순서는 그대로).</summary>
+    private IEnumerable<Tactic> Apply(RunTacticPlan plan, IEnumerable<Tactic> lines)
+    {
+        ActionDefinition A(Tactic t) => _data.Actions[t.ActionId];
+        bool Applies(Tactic t, Func<Effects.EffectDefinition, bool> match) => A(t).Applies.Any(x => match(_data.Effects[x.EffectId]));
+        bool Debuffs(Tactic t) => Applies(t, e => e.Kind == Effects.EffectKind.Debuff);
+        IEnumerable<Tactic> First(Func<Tactic, bool> first) => lines.OrderBy(t => first(t) ? 0 : 1);
+        return plan switch
+        {
+            RunTacticPlan.NoDebuffs => lines.Where(t => !Debuffs(t)),
+            RunTacticPlan.Magic => First(t => A(t) is { Effect: ActionEffect.Damage, DamageType: DamageType.Magical }),
+            RunTacticPlan.Area => First(t => A(t) is { Effect: ActionEffect.Damage, Scope: TargetScope.All })
+                .Select(t => A(t).Scope == TargetScope.All && t.Condition == Condition.EnemyAliveAtLeast ? t with { Condition = Condition.Always, Value = 0 } : t),
+            RunTacticPlan.OverTime => First(t => Applies(t, e => e.TickHpPercent < 0)),
+            RunTacticPlan.Disable => First(t => Applies(t, e => e.Stun || e.Modifiers.Any(m => m.Percent < 0))),
+            RunTacticPlan.Support => First(t => A(t).Effect is ActionEffect.Heal or ActionEffect.Shield || A(t).Side != TargetSide.Enemy),
+            RunTacticPlan.Damage => lines.Where(t => A(t).Effect == ActionEffect.Damage),
+            _ => lines,
+        };
+    }
+
+    /// <summary>줄 배치: 처음 값, 모두 전열, 가장 단단한(클래스 체력) 한 명이나 두 명만 전열.</summary>
+    private void SetRows(Run run, RunRowPlan plan)
+    {
+        var sturdy = run.Living.OrderByDescending(m => _data.Classes[m.ClassId].Stats.Vital).ThenBy(m => _data.Classes[m.ClassId].Row).ToList();
+        for (var i = 0; i < sturdy.Count; i++)
+        {
+            var member = sturdy[i];
+            var row = plan switch
+            {
+                RunRowPlan.AllFront => Row.Front,
+                RunRowPlan.OneFront => i < 1 ? Row.Front : Row.Back,
+                RunRowPlan.TwoFront => i < 2 ? Row.Front : Row.Back,
+                _ => _data.Classes[member.ClassId].Row,
+            };
+            if (member.Row != row)
+            {
+                run.SetRow(member, row);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 보스 대비: 공개된 막 보스와 싸우기 전에 전술 방식과 줄 배치의 조합마다 판을 복사해 보스를 미리 싸워 보고, 가장 나은 조합으로 들어간다
+    /// (사람이 보스를 보고 전술을 고치는 것을 흉내 낸다). 같으면 기본에 가까운 쪽. 고른 조합의 이름을 돌려준다.
+    /// </summary>
+    private string PrepareForBoss(Run run)
+    {
+        var boss = _teams[(run.Act, RunNodeKind.Boss, run.Bosses[run.Act])];
+        var best = (Score: double.MinValue, Plan: RunTacticPlan.Default, Rows: RunRowPlan.Default);
+        foreach (var plan in Enum.GetValues<RunTacticPlan>())
+        {
+            foreach (var rows in Enum.GetValues<RunRowPlan>())
+            {
+                var copy = Run.Restore(run.ToSave(), _data);
+                SetRows(copy, rows);
+                Arrange(copy, plan);
+                var allies = copy.Living.Select(m => copy.Setup(_data, m)).ToList();
+                var score = Enumerable.Range(0, BossSeeds).Average(s =>
+                {
+                    var result = CombatSimulator.Run(allies, boss, Run.Catalog(_data), Seeds.Derive(BossSalt, s));
+                    return result.Outcome == CombatOutcome.Victory ? 1 + 0.5 * HpFraction(result, CombatSide.Ally) : 0.5 * (1 - HpFraction(result, CombatSide.Enemy));
+                });
+                if (score > best.Score + 1e-9)
+                {
+                    best = (score, plan, rows);
+                }
+            }
+        }
+
+        SetRows(run, best.Rows);
+        Arrange(run, best.Plan);
+        return PlanName(best.Plan, best.Rows);
+    }
+
+    /// <summary>보스 대비 조합의 이름 (기록과 보고용): "디버프 빼기 · 한 명만 전열".</summary>
+    public static string PlanName(RunTacticPlan plan, RunRowPlan rows)
+    {
+        var tactics = plan switch
+        {
+            RunTacticPlan.NoDebuffs => "디버프 빼기",
+            RunTacticPlan.Magic => "마법 먼저",
+            RunTacticPlan.Area => "광역 먼저",
+            RunTacticPlan.OverTime => "지속 피해 먼저",
+            RunTacticPlan.Disable => "기절·약화 먼저",
+            RunTacticPlan.Support => "회복·버프 먼저",
+            RunTacticPlan.Damage => "공격만",
+            _ => "기본 전술",
+        };
+        var line = rows switch
+        {
+            RunRowPlan.AllFront => "모두 전열",
+            RunRowPlan.OneFront => "한 명만 전열",
+            RunRowPlan.TwoFront => "둘 전열",
+            _ => "기본 줄",
+        };
+        return $"{tactics} · {line}";
     }
 
     /// <summary>가방의 장신구를 칸이 빈 멤버가 낀다. 무기·방어구는 살 때 받을 멤버를 골라 끼므로 여기서 바꾸지 않는다.</summary>
@@ -550,11 +702,11 @@ public sealed class RunSimulation
 
         public void Spend(RunSpend where, int gold) => Spent[where] = Spent.GetValueOrDefault(where) + gold;
 
-        public void Record(Run run, RunNode node, RunBattle battle)
+        public void Record(Run run, RunNode node, RunBattle battle, string? plan)
         {
             var allies = battle.Result.Combatants.Where(c => c.Side == CombatSide.Ally && !c.IsSummon).ToList();
             Fights.Add(new RunSimFight(run.Act, node.Floor, battle.Kind, battle.EncounterId, battle.Result.Outcome,
-                HpFraction(battle.Result, CombatSide.Ally), allies.Count(c => !c.IsAlive), battle.Result.Events.OfType<TurnStarted>().LastOrDefault()?.Time ?? 0));
+                HpFraction(battle.Result, CombatSide.Ally), allies.Count(c => !c.IsAlive), battle.Result.Events.OfType<TurnStarted>().LastOrDefault()?.Time ?? 0, plan));
             Deaths += battle.Died.Count;
             Earned += battle.Gold;
         }

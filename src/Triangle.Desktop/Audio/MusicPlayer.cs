@@ -165,7 +165,7 @@ internal sealed class MusicPlayer : IDisposable
 /// <summary>곡 이름. Music 폴더의 파일 이름(.ogg 앞)과 같다.</summary>
 internal static class Tracks
 {
-    /// <summary>판 밖의 화면: 파티 고르기, 해금·기록, 결과.</summary>
+    /// <summary>메인 테마. 판 밖의 화면: 파티 고르기, 해금·기록, 결과.</summary>
     public const string Lobby = "lobby";
 
     /// <summary>진행 중인 판의 화면 (지도, 보상, 상점, 휴식, 이벤트, 편성).</summary>

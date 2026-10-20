@@ -131,11 +131,30 @@ internal static class RunReport
                 + Bench.Pad(won.Count == 0 ? "-" : $"{won.Average(f => f.Time):F0} / {won.Max(f => f.Time)}", 14, true));
         }
 
+        // 보스 대비: 똑똑한 봇이 보스마다 고른 전술 방식과 줄 배치 (많이 고른 셋).
+        var plans = fights.Where(f => f.Plan is not null).GroupBy(f => (f.Act, f.EncounterId)).OrderBy(g => g.Key.Act).ToList();
+        if (plans.Count > 0)
+        {
+            Console.WriteLine("  보스 대비 (보스마다 고른 전술 방식 · 줄 배치, 많이 고른 셋):");
+            foreach (var g in plans)
+            {
+                var top = g.GroupBy(f => f.Plan!).OrderByDescending(p => p.Count()).Take(3).Select(p => $"{p.Key} {100.0 * p.Count() / g.Count():F0}%");
+                Console.WriteLine($"    {g.Key.Act + 1}막 {data.Encounters[g.Key.EncounterId].Name}: {string.Join(", ", top)}");
+            }
+        }
+
         var ends = results.Where(r => !r.Cleared && r.Last is not null).GroupBy(r => r.Last!.EncounterId).OrderByDescending(g => g.Count()).Take(6).ToList();
         if (ends.Count > 0)
         {
             Console.WriteLine("  판을 끝낸 적 (그중 무승부): " + string.Join(", ", ends.Select(g =>
                 $"{data.Encounters[g.Key].Name} {g.Count()}" + (g.Any(r => r.Last!.Outcome == CombatOutcome.Draw) ? $" ({g.Count(r => r.Last!.Outcome == CombatOutcome.Draw)})" : ""))));
+        }
+
+        // 시간 초과는 적이 세서가 아니라 싸움이 길어서 진 것이다 (소환·회복으로 버티는 적). 위의 여섯에 들지 않아도 모두 적는다.
+        var draws = results.Where(r => !r.Cleared && r.Last?.Outcome == CombatOutcome.Draw).GroupBy(r => r.Last!.EncounterId).OrderByDescending(g => g.Count()).ToList();
+        if (draws.Count > 0)
+        {
+            Console.WriteLine("  시간 초과로 판을 끝낸 적: " + string.Join(", ", draws.Select(g => $"{data.Encounters[g.Key].Name} {g.Count()}")));
         }
 
         Console.WriteLine();

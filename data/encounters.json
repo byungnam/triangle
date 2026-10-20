@@ -2418,5 +2418,933 @@
         ]
       }
     ]
+  },
+  {
+    "id": "wolf_pack",
+    "name": "늑대 무리와 우두머리",
+    "description": "1막 보스 후보 (2026-10-20). 늑대 셋이 앞에서 물고, 뒤의 우두머리는 무리가 쓰러지면 울부짖어 광분하고 가장 약한 적을 찢는다. 우두머리를 먼저(후열을 노려) 잡거나 무리를 한꺼번에 쓰러뜨려야 한다. 임시 수치.",
+    "units": [
+      {
+        "id": "pack_wolf_1",
+        "name": "늑대",
+        "stats": {
+          "str": 19,
+          "dex": 10,
+          "vital": 24,
+          "intel": 7,
+          "speed": 13
+        },
+        "row": "Front",
+        "actions": [
+          "wolf_bite"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "wolf_bite"
+          }
+        ]
+      },
+      {
+        "id": "pack_wolf_2",
+        "name": "늑대",
+        "stats": {
+          "str": 19,
+          "dex": 10,
+          "vital": 24,
+          "intel": 7,
+          "speed": 13
+        },
+        "row": "Front",
+        "actions": [
+          "wolf_bite"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "wolf_bite"
+          }
+        ]
+      },
+      {
+        "id": "pack_wolf_3",
+        "name": "늑대",
+        "stats": {
+          "str": 19,
+          "dex": 10,
+          "vital": 24,
+          "intel": 7,
+          "speed": 13
+        },
+        "row": "Front",
+        "actions": [
+          "wolf_bite"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "wolf_bite"
+          }
+        ]
+      },
+      {
+        "id": "pack_alpha",
+        "name": "늑대 우두머리",
+        "stats": {
+          "str": 24,
+          "dex": 12,
+          "vital": 40,
+          "intel": 9,
+          "speed": 12
+        },
+        "row": "Back",
+        "actions": [
+          "alpha_howl",
+          "alpha_ravage",
+          "wolf_bite"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "AllyDownAtLeast",
+            "value": 1,
+            "actionId": "alpha_howl",
+            "and": [
+              {
+                "condition": "SelfLacksActionEffect",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "priority": 2,
+            "condition": "AllyDownAtLeast",
+            "value": 2,
+            "actionId": "alpha_ravage"
+          },
+          {
+            "priority": 3,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "alpha_ravage"
+          },
+          {
+            "priority": 4,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "wolf_bite"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "thorn_beetles",
+    "name": "가시 등딱지",
+    "description": "2막 보통 (2026-10-20). 가시 갑옷처럼 받은 피해의 30%를 때린 쪽에 돌려준다. 여러 번 때리는 공격일수록 아프다. 지속 피해(독·화상·출혈)는 가시를 건드리지 않는다. 임시 수치.",
+    "units": [
+      {
+        "id": "thorn_beetle_1",
+        "name": "가시 등딱지",
+        "stats": {
+          "str": 27,
+          "dex": 8,
+          "vital": 45,
+          "intel": 12,
+          "speed": 9
+        },
+        "row": "Front",
+        "equipment": {
+          "Body": "thorn_mail"
+        },
+        "actions": [
+          "beetle_bite"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "beetle_bite"
+          }
+        ]
+      },
+      {
+        "id": "thorn_beetle_2",
+        "name": "가시 등딱지",
+        "stats": {
+          "str": 27,
+          "dex": 8,
+          "vital": 45,
+          "intel": 12,
+          "speed": 9
+        },
+        "row": "Front",
+        "equipment": {
+          "Body": "thorn_mail"
+        },
+        "actions": [
+          "beetle_bite"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "beetle_bite"
+          }
+        ]
+      },
+      {
+        "id": "thorn_beetle_queen",
+        "name": "가시 여왕",
+        "stats": {
+          "str": 21,
+          "dex": 8,
+          "vital": 39,
+          "intel": 18,
+          "speed": 9
+        },
+        "row": "Back",
+        "equipment": {
+          "Body": "thorn_mail"
+        },
+        "actions": [
+          "beetle_bite"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "beetle_bite"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "plague_doctors",
+    "name": "역병 의사단",
+    "description": "2막 정예 (2026-10-20). 적 모두에게 독을 뿌리고 치유 봉쇄를 건다. 정화나 디버프 면역(수도승의 법의)으로 버티거나 빨리 잡아야 한다. 임시 수치.",
+    "units": [
+      {
+        "id": "plague_orderly",
+        "name": "역병 간수",
+        "stats": {
+          "str": 17,
+          "dex": 10,
+          "vital": 32,
+          "intel": 11,
+          "speed": 10
+        },
+        "row": "Front",
+        "actions": [
+          "rot_touch"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAmountAtLeast",
+            "value": 10,
+            "actionId": "rot_touch",
+            "and": [
+              {
+                "condition": "AnyEnemyLacksActionEffect",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "plague_doctor_1",
+        "name": "역병 의사",
+        "stats": {
+          "str": 9,
+          "dex": 10,
+          "vital": 22,
+          "intel": 22,
+          "speed": 11
+        },
+        "row": "Back",
+        "actions": [
+          "plague_cloud",
+          "rot_touch"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 2,
+            "actionId": "plague_cloud"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "rot_touch"
+          }
+        ]
+      },
+      {
+        "id": "plague_doctor_2",
+        "name": "역병 의사",
+        "stats": {
+          "str": 9,
+          "dex": 10,
+          "vital": 22,
+          "intel": 22,
+          "speed": 11
+        },
+        "row": "Back",
+        "actions": [
+          "plague_cloud",
+          "rot_touch"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "OnTurn",
+            "value": 2,
+            "actionId": "plague_cloud"
+          },
+          {
+            "priority": 3,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "plague_cloud"
+          },
+          {
+            "priority": 4,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "rot_touch"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "fort_penitents",
+    "name": "고해 수도회",
+    "description": "2막 보스 후보 (전술 측정의 시제품 '고해 수도회'를 판용으로 옮김, 2026-10-20). 디버프를 하나라도 걸면 수도사는 공격하고 사제는 화염을 퍼붓는다. 디버프를 거는 줄을 빼고 싸워야 한다. 임시 수치.",
+    "units": [
+      {
+        "id": "fort_penitents_flagellant",
+        "name": "고행 수도사",
+        "stats": {
+          "str": 16,
+          "dex": 10,
+          "vital": 39,
+          "intel": 13,
+          "speed": 8
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_mace",
+          "Head": "plate_helm",
+          "Body": "plate_armor",
+          "Feet": "plate_boots"
+        },
+        "skills": {
+          "defense": 2
+        },
+        "actions": [],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "AnyAllyHasDebuff",
+            "value": 0,
+            "actionId": "basic_attack"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "focus"
+          }
+        ]
+      },
+      {
+        "id": "fort_penitents_confessor",
+        "name": "고해 사제",
+        "stats": {
+          "str": 5,
+          "dex": 10,
+          "vital": 31,
+          "intel": 52,
+          "speed": 19
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "apprentice_staff",
+          "Body": "cloth_robe"
+        },
+        "skills": {
+          "pyromancy": 2
+        },
+        "actions": [
+          "ash_storm",
+          "fireball"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "AnyAllyHasDebuff",
+            "value": 0,
+            "actionId": "ash_storm",
+            "and": [
+              {
+                "condition": "EveryNthTurn",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "priority": 3,
+            "condition": "AnyAllyHasDebuff",
+            "value": 0,
+            "actionId": "fireball"
+          },
+          {
+            "priority": 4,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "ash_storm"
+          },
+          {
+            "priority": 5,
+            "condition": "EveryNthTurn",
+            "value": 8,
+            "actionId": "ash_storm"
+          },
+          {
+            "priority": 6,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "focus"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mana_eaters",
+    "name": "마력 포식자",
+    "description": "3막 보통 (2026-10-20). 물 때마다 MP를 30씩 깎는다. MP가 마르면 스킬을 못 쓰고 기본 공격만 한다. MP를 덜 쓰는 전술이나 기본 공격을 바꾸는 무기가 버틴다. 임시 수치.",
+    "units": [
+      {
+        "id": "mana_eater_1",
+        "name": "마력 포식자",
+        "stats": {
+          "str": 34,
+          "dex": 10,
+          "vital": 50,
+          "intel": 29,
+          "speed": 13
+        },
+        "row": "Front",
+        "actions": [
+          "mana_bite"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "mana_bite"
+          }
+        ]
+      },
+      {
+        "id": "mana_eater_2",
+        "name": "마력 포식자",
+        "stats": {
+          "str": 34,
+          "dex": 10,
+          "vital": 50,
+          "intel": 29,
+          "speed": 13
+        },
+        "row": "Front",
+        "actions": [
+          "mana_bite"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "mana_bite"
+          }
+        ]
+      },
+      {
+        "id": "mana_eater_3",
+        "name": "마력 포식자",
+        "stats": {
+          "str": 34,
+          "dex": 10,
+          "vital": 50,
+          "intel": 29,
+          "speed": 13
+        },
+        "row": "Back",
+        "actions": [
+          "mana_bite"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "mana_bite"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "shadow_assassins",
+    "name": "그림자 암살단",
+    "description": "3막 보통 (2026-10-20). 그림자 장막(받는 피해 -25%)을 두르고, 엄호를 무시해 HP 비율이 가장 낮은 적을 찌른다. 도발이나 보호막으로 약한 멤버를 지켜야 한다. 임시 수치.",
+    "units": [
+      {
+        "id": "shadow_assassin_1",
+        "name": "그림자 암살자",
+        "stats": {
+          "str": 31,
+          "dex": 14,
+          "vital": 31,
+          "intel": 16,
+          "speed": 15
+        },
+        "row": "Front",
+        "actions": [
+          "backstab"
+        ],
+        "effects": [
+          "shadow_veil"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "backstab"
+          }
+        ]
+      },
+      {
+        "id": "shadow_assassin_2",
+        "name": "그림자 암살자",
+        "stats": {
+          "str": 31,
+          "dex": 14,
+          "vital": 31,
+          "intel": 16,
+          "speed": 15
+        },
+        "row": "Back",
+        "actions": [
+          "backstab"
+        ],
+        "effects": [
+          "shadow_veil"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "backstab"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "vampire_court",
+    "name": "흡혈 귀족",
+    "description": "3·4막 정예 (2026-10-20). 흡혈검과 흡혈귀의 망토로 준 피해만큼 회복한다. 치유 봉쇄(상처 벌리기)로 막거나 한꺼번에 몰아쳐야 한다. 임시 수치.",
+    "units": [
+      {
+        "id": "vampire_lord",
+        "name": "흡혈 영주",
+        "stats": {
+          "str": 44,
+          "dex": 12,
+          "vital": 72,
+          "intel": 32,
+          "speed": 12
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "vampire_blade"
+        },
+        "actions": [
+          "crimson_slash"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 2,
+            "actionId": "crimson_slash"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "vampire_lady",
+        "name": "흡혈 귀부인",
+        "stats": {
+          "str": 36,
+          "dex": 12,
+          "vital": 56,
+          "intel": 40,
+          "speed": 13
+        },
+        "row": "Back",
+        "equipment": {
+          "Body": "vampire_cloak"
+        },
+        "actions": [
+          "crimson_slash"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "crimson_slash"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "archmage_circle",
+    "name": "영창의 대마법사",
+    "description": "3막 보스 후보 (2026-10-20). 수호 기사 둘이 도발하며 막는 동안 대마법사가 세 차례 영창해 적 모두를 태운다. 기절로 영창을 끊거나 그 전에 대마법사를 잡아야 한다. 임시 수치.",
+    "units": [
+      {
+        "id": "archmage_guard_1",
+        "name": "수호 기사",
+        "stats": {
+          "str": 38,
+          "dex": 10,
+          "vital": 76,
+          "intel": 27,
+          "speed": 10
+        },
+        "row": "Front",
+        "actions": [
+          "provoke",
+          "shield_wall"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "provoke"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "provoke"
+          },
+          {
+            "priority": 3,
+            "condition": "SelfHpAtMost",
+            "value": 50,
+            "actionId": "shield_wall"
+          },
+          {
+            "priority": 4,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "archmage_guard_2",
+        "name": "수호 기사",
+        "stats": {
+          "str": 38,
+          "dex": 10,
+          "vital": 76,
+          "intel": 27,
+          "speed": 10
+        },
+        "row": "Front",
+        "actions": [
+          "provoke",
+          "shield_wall"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "OnTurn",
+            "value": 2,
+            "actionId": "provoke"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "provoke"
+          },
+          {
+            "priority": 3,
+            "condition": "SelfHpAtMost",
+            "value": 50,
+            "actionId": "shield_wall"
+          },
+          {
+            "priority": 4,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "archmage",
+        "name": "대마법사",
+        "stats": {
+          "str": 19,
+          "dex": 10,
+          "vital": 61,
+          "intel": 65,
+          "speed": 11
+        },
+        "row": "Back",
+        "actions": [
+          "doom_chant",
+          "arcane_bolt"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "FromTurn",
+            "value": 2,
+            "actionId": "doom_chant"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "arcane_bolt"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "necromancer",
+    "name": "사령술사",
+    "description": "4막 보통 (2026-10-20). 뒤에서 해골 병사를 계속 일으킨다. 사령술사가 쓰러지면 해골도 무너지니 후열을 노려 먼저 잡아야 한다. 임시 수치.",
+    "units": [
+      {
+        "id": "necro_ghoul",
+        "name": "구울",
+        "stats": {
+          "str": 78,
+          "dex": 10,
+          "vital": 74,
+          "intel": 20,
+          "speed": 11
+        },
+        "row": "Front",
+        "actions": [
+          "wolf_bite"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "wolf_bite"
+          }
+        ]
+      },
+      {
+        "id": "necromancer_caster",
+        "name": "사령술사",
+        "stats": {
+          "str": 24,
+          "dex": 10,
+          "vital": 29,
+          "intel": 69,
+          "speed": 11
+        },
+        "row": "Back",
+        "actions": [
+          "raise_skeleton",
+          "arcane_bolt"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "raise_skeleton"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "arcane_bolt"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "necro_king",
+    "name": "사령왕",
+    "description": "4막 보스 후보 (2026-10-20). 뼈 기사 둘이 무겁게 내리치는 동안 사령왕이 두 차례마다 해골을 일으킨다. 사령왕을 잡으면 해골이 모두 무너진다. 임시 수치.",
+    "units": [
+      {
+        "id": "bone_knight_1",
+        "name": "뼈 기사",
+        "stats": {
+          "str": 46,
+          "dex": 10,
+          "vital": 59,
+          "intel": 14,
+          "speed": 10
+        },
+        "row": "Front",
+        "actions": [
+          "bone_crush"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 2,
+            "actionId": "bone_crush"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "bone_knight_2",
+        "name": "뼈 기사",
+        "stats": {
+          "str": 46,
+          "dex": 10,
+          "vital": 59,
+          "intel": 14,
+          "speed": 10
+        },
+        "row": "Front",
+        "actions": [
+          "bone_crush"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 2,
+            "actionId": "bone_crush"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "necro_king_caster",
+        "name": "사령왕",
+        "stats": {
+          "str": 16,
+          "dex": 10,
+          "vital": 30,
+          "intel": 46,
+          "speed": 11
+        },
+        "row": "Back",
+        "actions": [
+          "raise_skeleton",
+          "arcane_bolt"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 2,
+            "actionId": "raise_skeleton"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "arcane_bolt"
+          }
+        ]
+      }
+    ]
   }
 ]

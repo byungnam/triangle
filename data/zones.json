@@ -42,6 +42,10 @@
       {
         "encounterId": "training",
         "weight": 2
+      },
+      {
+        "encounterId": "thorn_beetles",
+        "weight": 2
       }
     ],
     "boss": {
@@ -64,6 +68,14 @@
       },
       {
         "encounterId": "black_sun_cult",
+        "weight": 2
+      },
+      {
+        "encounterId": "mana_eaters",
+        "weight": 2
+      },
+      {
+        "encounterId": "shadow_assassins",
         "weight": 2
       }
     ],
@@ -91,6 +103,10 @@
       },
       {
         "encounterId": "wraith_riders",
+        "weight": 2
+      },
+      {
+        "encounterId": "necromancer",
         "weight": 2
       }
     ],

@@ -400,5 +400,17 @@
     "description": "디버프에 걸리지 않는다. 정결한 성가대의 타고난 특성 (전술 측정의 시제품에서 옮김, 2026-10-20). 임시 수치",
     "kind": "Buff",
     "immuneToDebuffs": true
+  },
+  {
+    "id": "shadow_veil",
+    "name": "그림자 장막",
+    "description": "그림자 암살단의 타고난 특성 (2026-10-20): 받는 피해 -25%. 임시 수치.",
+    "kind": "Buff",
+    "modifiers": [
+      {
+        "kind": "DamageTakenReductionPercent",
+        "percent": 25
+      }
+    ]
   }
 ]

@@ -8,7 +8,10 @@
     {
       "zoneId": "outskirts_forest",
       "floors": 20,
-      "bosses": [],
+      "bosses": [
+        "boss_scavenger_chief",
+        "wolf_pack"
+      ],
       "elites": [
         "bandit_chief",
         "deserters"
@@ -30,10 +33,14 @@
     {
       "zoneId": "abandoned_fort",
       "floors": 20,
-      "bosses": [],
+      "bosses": [
+        "boss_halted_regiment",
+        "fort_penitents"
+      ],
       "elites": [
         "black_sun_cult",
-        "wraith_riders"
+        "wraith_riders",
+        "plague_doctors"
       ],
       "shopTier": 2,
       "fightStrength": {
@@ -52,9 +59,13 @@
     {
       "zoneId": "ashen_capital",
       "floors": 20,
-      "bosses": [],
+      "bosses": [
+        "boss_triad_guardians",
+        "archmage_circle"
+      ],
       "elites": [
-        "elite"
+        "elite",
+        "vampire_court"
       ],
       "shopTier": 3,
       "fightStrength": {
@@ -73,10 +84,14 @@
     {
       "zoneId": "sunken_sanctum",
       "floors": 20,
-      "bosses": [],
+      "bosses": [
+        "sanctum_bulwark",
+        "necro_king"
+      ],
       "elites": [
         "sanctum_choir",
-        "elite"
+        "elite",
+        "vampire_court"
       ],
       "shopTier": 3,
       "fightStrength": {
@@ -84,8 +99,8 @@
         "power": 110
       },
       "eliteStrength": {
-        "hp": 115,
-        "power": 115
+        "hp": 112,
+        "power": 112
       },
       "bossStrength": {
         "hp": 110,
@@ -102,8 +117,8 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 120,
-        "power": 120
+        "hp": 117,
+        "power": 117
       },
       "eliteStrength": {
         "hp": 120,

@@ -82,8 +82,10 @@ public class GameDataLoaderTests
             Assert.Equal((slot, 1), (data.Items[id].Slot, data.Items[id].Tier));
         }
 
-        // 공용 행동이 아닌 행동은 모두 아군이 쓸 길이 있어야 한다: 아이템 행동 칸, 무기 계열(정령 소환), 소환수 행동.
+        // 공용 행동이 아닌 행동은 모두 쓸 길이 있어야 한다: 아이템 행동 칸, 무기가 바꾸는 기본 공격, 무기 계열(정령 소환), 소환수 행동,
+        // 적만 쓰는 행동(적 유닛의 행동 목록, 2026-10-20 적 기믹).
         var summonActions = data.Actions.Values.Where(a => a.Summon is not null).Select(a => a.Summon!.ActionId).ToHashSet();
+        var enemyActions = data.Encounters.Values.SelectMany(e => e.Units).SelectMany(u => u.Actions ?? []).ToHashSet();
         foreach (var action in data.Actions.Values.Where(a => !a.Universal))
         {
             if (action.SummonOnly)
@@ -91,7 +93,8 @@ public class GameDataLoaderTests
             else if (action.Weapon is not null)
                 Assert.Contains(data.Items.Values, i => i.Slot == EquipmentSlot.MainHand && i.Mastery == action.Weapon);
             else
-                Assert.True(data.ItemsGranting(action.Id).Any() || data.Items.Values.Any(i => i.BasicAttack == action.Id), $"{action.Id}: no item grants it");
+                Assert.True(data.ItemsGranting(action.Id).Any() || data.Items.Values.Any(i => i.BasicAttack == action.Id) || enemyActions.Contains(action.Id),
+                    $"{action.Id}: no one uses it");
         }
 
         // 모든 적 팀이 실제 전투에 들어갈 수 있어야 한다.

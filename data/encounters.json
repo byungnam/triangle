@@ -354,16 +354,16 @@
   {
     "id": "forest_bandits",
     "name": "숲 도적",
-    "description": "초보. 도적 둘. 수치는 임시.",
+    "description": "초보. 도적 둘이 앞에서 베고, 척후가 뒤에서 후열에 단검을 던진다. 수치는 임시.",
     "units": [
       {
         "id": "bandit_1",
         "name": "도적",
         "stats": {
-          "str": 28,
+          "str": 19,
           "dex": 9,
-          "vital": 28,
-          "intel": 22,
+          "vital": 19,
+          "intel": 16,
           "speed": 10
         },
         "row": "Front",
@@ -393,10 +393,10 @@
         "id": "bandit_2",
         "name": "도적",
         "stats": {
-          "str": 28,
+          "str": 19,
           "dex": 9,
-          "vital": 28,
-          "intel": 22,
+          "vital": 19,
+          "intel": 16,
           "speed": 10
         },
         "row": "Front",
@@ -421,22 +421,55 @@
             "actionId": "basic_attack"
           }
         ]
+      },
+      {
+        "id": "bandit_scout",
+        "name": "도적 척후",
+        "stats": {
+          "str": 15,
+          "dex": 11,
+          "vital": 13,
+          "intel": 13,
+          "speed": 12
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "leather_sling",
+          "Body": "leather_armor"
+        },
+        "actions": [
+          "throwing_knife"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 2,
+            "actionId": "throwing_knife"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
       }
     ]
   },
   {
     "id": "poachers",
     "name": "밀렵꾼",
-    "description": "초보. 도적 하나와 궁수 하나. 수치는 임시.",
+    "description": "초보. 밀렵꾼과 빠른 사냥개가 앞에, 궁수가 뒤에 선다. 수치는 임시.",
     "units": [
       {
         "id": "poacher_1",
         "name": "밀렵꾼",
         "stats": {
-          "str": 35,
+          "str": 27,
           "dex": 9,
-          "vital": 42,
-          "intel": 28,
+          "vital": 31,
+          "intel": 23,
           "speed": 10
         },
         "row": "Front",
@@ -463,13 +496,36 @@
         ]
       },
       {
+        "id": "poacher_hound",
+        "name": "사냥개",
+        "stats": {
+          "str": 17,
+          "dex": 10,
+          "vital": 16,
+          "intel": 6,
+          "speed": 13
+        },
+        "row": "Front",
+        "actions": [
+          "wolf_bite"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "wolf_bite"
+          }
+        ]
+      },
+      {
         "id": "poacher_archer",
         "name": "밀렵 궁수",
         "stats": {
-          "str": 28,
+          "str": 21,
           "dex": 10,
-          "vital": 35,
-          "intel": 42,
+          "vital": 26,
+          "intel": 33,
           "speed": 10
         },
         "row": "Back",
@@ -507,16 +563,16 @@
   {
     "id": "deserters",
     "name": "탈영병",
-    "description": "보통. 무장한 탈영병. 수치는 임시.",
+    "description": "보통. 창을 든 탈영병 둘과 뒤의 석궁수. 수치는 임시.",
     "units": [
       {
         "id": "deserter_1",
         "name": "탈영병",
         "stats": {
-          "str": 33,
+          "str": 21,
           "dex": 9,
-          "vital": 36,
-          "intel": 30,
+          "vital": 22,
+          "intel": 19,
           "speed": 10
         },
         "row": "Front",
@@ -550,10 +606,10 @@
         "id": "deserter_2",
         "name": "탈영병",
         "stats": {
-          "str": 33,
+          "str": 21,
           "dex": 9,
-          "vital": 36,
-          "intel": 30,
+          "vital": 22,
+          "intel": 19,
           "speed": 10
         },
         "row": "Front",
@@ -581,22 +637,61 @@
             "actionId": "basic_attack"
           }
         ]
+      },
+      {
+        "id": "deserter_crossbow",
+        "name": "탈영 석궁수",
+        "stats": {
+          "str": 16,
+          "dex": 11,
+          "vital": 15,
+          "intel": 18,
+          "speed": 11
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "old_crossbow",
+          "Body": "leather_armor"
+        },
+        "actions": [
+          "bolt_shot"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 15,
+            "actionId": "basic_attack"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 2,
+            "actionId": "bolt_shot"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
       }
     ]
   },
   {
     "id": "fort_archers",
     "name": "요새 궁수대",
-    "description": "보통. 방패병 하나와 석궁수 하나. 수치는 임시.",
+    "description": "보통. 방패병 하나가 막고 석궁수 둘이 뒤에서 쏜다. 수치는 임시.",
     "units": [
       {
         "id": "fort_guard",
         "name": "방패병",
         "stats": {
-          "str": 31,
+          "str": 20,
           "dex": 9,
-          "vital": 37,
-          "intel": 28,
+          "vital": 21,
+          "intel": 18,
           "speed": 10
         },
         "row": "Front",
@@ -631,10 +726,10 @@
         "id": "fort_archer_1",
         "name": "요새 석궁수",
         "stats": {
-          "str": 23,
+          "str": 13,
           "dex": 11,
-          "vital": 26,
-          "intel": 40,
+          "vital": 12,
+          "intel": 22,
           "speed": 11
         },
         "row": "Back",
@@ -669,22 +764,65 @@
             "actionId": "bolt_shot"
           }
         ]
+      },
+      {
+        "id": "fort_archer_2",
+        "name": "요새 석궁수",
+        "stats": {
+          "str": 13,
+          "dex": 11,
+          "vital": 12,
+          "intel": 22,
+          "speed": 11
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "old_crossbow",
+          "Body": "leather_armor"
+        },
+        "skills": {
+          "crossbow_mastery": 2
+        },
+        "actions": [
+          "barbed_bolt",
+          "bolt_shot"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 15,
+            "actionId": "basic_attack"
+          },
+          {
+            "priority": 2,
+            "condition": "OnTurn",
+            "value": 2,
+            "actionId": "barbed_bolt"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "bolt_shot"
+          }
+        ]
       }
     ]
   },
   {
     "id": "bandit_chief",
     "name": "도적 두목",
-    "description": "보통. 두목과 부하 둘. 수치는 임시.",
+    "description": "보통. 두목과 부하 둘(앞의 도적, 뒤의 척후). 수치는 임시.",
     "units": [
       {
         "id": "chief",
         "name": "도적 두목",
         "stats": {
-          "str": 29,
+          "str": 22,
           "dex": 11,
-          "vital": 34,
-          "intel": 34,
+          "vital": 25,
+          "intel": 25,
           "speed": 11
         },
         "row": "Front",
@@ -717,10 +855,10 @@
         "id": "chief_bandit_1",
         "name": "도적",
         "stats": {
-          "str": 24,
+          "str": 17,
           "dex": 9,
-          "vital": 24,
-          "intel": 20,
+          "vital": 17,
+          "intel": 14,
           "speed": 10
         },
         "row": "Front",
@@ -737,6 +875,39 @@
             "condition": "OnTurn",
             "value": 1,
             "actionId": "bleeding_cut"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "chief_scout",
+        "name": "도적 척후",
+        "stats": {
+          "str": 13,
+          "dex": 11,
+          "vital": 10,
+          "intel": 12,
+          "speed": 12
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "leather_sling",
+          "Body": "leather_armor"
+        },
+        "actions": [
+          "throwing_knife"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 2,
+            "actionId": "throwing_knife"
           },
           {
             "priority": 2,
@@ -888,16 +1059,16 @@
   {
     "id": "wraith_riders",
     "name": "망령 기수",
-    "description": "어려움. 빠른 망령 기수 둘. 수치는 임시.",
+    "description": "어려움. 빠른 망령 기수 둘이 앞에서 찌르고, 뒤의 깃발잡이가 함성으로 위력을 올린다. 수치는 임시.",
     "units": [
       {
         "id": "wraith_rider_1",
         "name": "망령 기수",
         "stats": {
-          "str": 41,
+          "str": 31,
           "dex": 9,
-          "vital": 33,
-          "intel": 37,
+          "vital": 25,
+          "intel": 28,
           "speed": 13
         },
         "row": "Front",
@@ -930,10 +1101,10 @@
         "id": "wraith_rider_2",
         "name": "망령 기수",
         "stats": {
-          "str": 41,
+          "str": 31,
           "dex": 9,
-          "vital": 33,
-          "intel": 37,
+          "vital": 25,
+          "intel": 28,
           "speed": 13
         },
         "row": "Front",
@@ -956,6 +1127,45 @@
           },
           {
             "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "wraith_banner",
+        "name": "망령 깃발잡이",
+        "stats": {
+          "str": 22,
+          "dex": 9,
+          "vital": 18,
+          "intel": 26,
+          "speed": 12
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "old_spear",
+          "Body": "leather_armor"
+        },
+        "actions": [
+          "war_cry"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "war_cry"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "war_cry"
+          },
+          {
+            "priority": 3,
             "condition": "Always",
             "value": 0,
             "actionId": "basic_attack"

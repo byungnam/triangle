@@ -123,12 +123,15 @@ internal abstract class RunScene : IScene
         }
 
         DrawBack(batch);
+        // 알림이 있으면 도움말 대신 보여 준다 (둘이 길면 겹친다). 알림은 다음 행동 때 사라진다.
         var footer = Bounds.Bottom - FooterHeight + 10;
-        Ui.Text(batch, Ui.Font(16), Help, new Vector2(Bounds.Left + Margin, footer), Theme.TextDim);
         if (Session.Notice is { } notice)
         {
-            var font = Ui.Font(16);
-            Ui.Text(batch, font, notice.Text, new Vector2(Bounds.Right - Margin - font.MeasureString(notice.Text).X, footer), notice.Color);
+            Ui.Text(batch, Ui.Font(16), notice.Text, new Vector2(Bounds.Left + Margin, footer), notice.Color);
+        }
+        else
+        {
+            Ui.Text(batch, Ui.Font(16), Help, new Vector2(Bounds.Left + Margin, footer), Theme.TextDim);
         }
 
         batch.End();

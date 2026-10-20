@@ -30,7 +30,7 @@ public sealed record RunDefinition
 
     public RunRestRules Rest { get; init; } = new();
 
-    /// <summary>이벤트 지점에서 뽑는 이벤트 (같은 가중치).</summary>
+    /// <summary>이벤트 지점에서 가중치(<see cref="RunEvent.Weight"/>)로 뽑는 이벤트.</summary>
     public IReadOnlyList<RunEvent> Events { get; init; } = [];
 
     public RunRenownRules Renown { get; init; } = new();
@@ -185,6 +185,9 @@ public sealed record RunEvent
     public required string Name { get; init; }
 
     public string? Text { get; init; }
+
+    /// <summary>이벤트 지점에서 뽑히는 가중치 (기본 10). 동료 합류처럼 드문 이벤트는 작게 둔다.</summary>
+    public int Weight { get; init; } = 10;
 
     public required IReadOnlyList<RunEventOption> Options { get; init; }
 }

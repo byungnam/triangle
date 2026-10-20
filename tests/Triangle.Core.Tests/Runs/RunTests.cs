@@ -97,10 +97,10 @@ public class RunTests
     [Fact]
     public void Maps_are_deterministic_connected_and_keep_the_floor_rules()
     {
-        // 게임의 지도: 한 막 15층, 폭 6칸, 경로 6개, 첫 층 3갈래.
+        // 게임의 지도: 한 막 20층, 폭 6칸, 경로 6개, 첫 층 3갈래.
         var rules = Drafting.Run!.Map;
         var floors = Drafting.Run.Acts[0].Floors;
-        Assert.Equal((15, 6, 6, 3, 5), (floors, rules.Width, rules.Paths, rules.Starts, rules.SpecialFrom));
+        Assert.Equal((20, 6, 6, 3, 5), (floors, rules.Width, rules.Paths, rules.Starts, rules.SpecialFrom));
         var kinds = new HashSet<RunNodeKind>();
         for (var seed = 0; seed < 200; seed++)
         {
@@ -469,7 +469,10 @@ public class RunTests
     [Fact]
     public void Act_strength_makes_enemies_tougher_by_node_kind()
     {
-        var data = With(r => r with { Acts = [r.Acts[0] with { FightStrength = new RunStrength { Hp = 200, Power = 150 } }, .. r.Acts.Skip(1)] });
+        var data = With(r => r with
+        {
+            Acts = [r.Acts[0] with { FightStrength = new RunStrength { Hp = 200, Power = 150 }, EliteStrength = new RunStrength() }, .. r.Acts.Skip(1)],
+        });
         var id = data.Zones[data.Run!.Acts[0].ZoneId].Encounters[0].EncounterId;
         var plain = data.CreateEncounterTeam(id);
         Assert.Equal(plain.Select(e => e.ItemBonuses.Count), Run.EnemyTeam(data, 0, RunNodeKind.Elite, id).Select(e => e.ItemBonuses.Count));
@@ -493,7 +496,8 @@ public class RunTests
     [Fact]
     public void The_shop_sells_items_of_the_act_tier_class_cards_and_a_recruit()
     {
-        var data = SecondFloor("shop", r => r with { StartGold = 1000 });
+        // 게임의 상점은 합류를 팔지 않지만(이벤트에서만, 2026-10-20) 규칙은 남아 있다.
+        var data = SecondFloor("shop", r => r with { StartGold = 1000, Shop = r.Shop with { Recruits = 1 } });
         var run = AtSecondFloor(data, ["knight", "priest"]);
         Assert.Equal(RunPhase.Shop, run.Phase);
         var shop = data.Run!.Shop;
@@ -538,9 +542,34 @@ public class RunTests
     }
 
     [Fact]
+    public void A_run_is_five_long_acts_and_recruits_come_only_from_a_rare_event()
+    {
+        // 2026-10-20 사용자 결정: 막 5개 × 20층, 동료 합류는 이벤트에서만 드물게.
+        var rules = Shipped.Run!;
+        Assert.Equal(5, rules.Acts.Count);
+        Assert.All(rules.Acts, a => Assert.Equal(20, a.Floors));
+        Assert.Equal(0, rules.Shop.Recruits);
+        var joins = rules.Events.Where(e => e.Options.Any(o => o.Join is not null)).ToList();
+        Assert.NotEmpty(joins);
+        Assert.All(joins, e => Assert.True(e.Weight < rules.Events.Except(joins).Min(x => x.Weight), $"{e.Id} should be rarer than other events"));
+    }
+
+    [Fact]
+    public void Events_are_drawn_by_weight()
+    {
+        RunEvent Event(string id, int weight) => new() { Id = id, Name = id, Weight = weight, Options = [new RunEventOption { Text = "지나간다" }] };
+        var data = SecondFloor("event", r => r with { Events = [Event("common", 99), Event("rare", 1)] });
+        var seen = Enumerable.Range(0, 40).Select(seed => AtSecondFloor(data, from: seed * 3).Event!.Id).ToList();
+        Assert.True(seen.Count(id => id == "rare") <= 3, string.Join(",", seen));
+
+        var errors = Assert.Throws<GameDataException>(() => With(r => r with { Events = [Event("never", 0)] })).Errors;
+        Assert.Contains(errors, e => e.Contains("event 'never': weight must be at least 1"));
+    }
+
+    [Fact]
     public void The_shop_needs_gold_and_room_in_the_party()
     {
-        var data = SecondFloor("shop", r => r with { Shop = r.Shop with { RecruitPrice = 0 } });
+        var data = SecondFloor("shop", r => r with { Shop = r.Shop with { Recruits = 1, RecruitPrice = 0 } });
         var run = AtSecondFloor(data, ["knight", "knight", "knight", "knight"]);
         var item = run.Stock.ToList().FindIndex(s => s.Kind == RunStockKind.Item);
         var recruit = run.Stock.ToList().FindIndex(s => s.Kind == RunStockKind.Recruit);

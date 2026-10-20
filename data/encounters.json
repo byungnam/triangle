@@ -1494,5 +1494,929 @@
         ]
       }
     ]
+  },
+  {
+    "id": "sanctum_hunters",
+    "name": "그림자 사냥단",
+    "description": "4·5막 보통 (전술 측정의 시제품 '그림자 사냥단'을 판용으로 옮김). 엄호를 무시하는 투창과 얼음 창으로 후열만 노린다. 임시 수치.",
+    "units": [
+      {
+        "id": "sanctum_hunters_spear_1",
+        "name": "그림자 사냥꾼",
+        "stats": {
+          "str": 18,
+          "dex": 13,
+          "vital": 33,
+          "intel": 12,
+          "speed": 15
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "steel_spear",
+          "Body": "leather_armor"
+        },
+        "skills": {
+          "spearmanship": 1
+        },
+        "actions": [
+          "javelin"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 5,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "javelin"
+          }
+        ]
+      },
+      {
+        "id": "sanctum_hunters_spear_2",
+        "name": "그림자 사냥꾼",
+        "stats": {
+          "str": 18,
+          "dex": 13,
+          "vital": 33,
+          "intel": 12,
+          "speed": 15
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "steel_spear",
+          "Body": "leather_armor"
+        },
+        "skills": {
+          "spearmanship": 1
+        },
+        "actions": [
+          "javelin"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 5,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "javelin"
+          }
+        ]
+      },
+      {
+        "id": "sanctum_hunters_frost",
+        "name": "서리 추적자",
+        "stats": {
+          "str": 5,
+          "dex": 10,
+          "vital": 22,
+          "intel": 28,
+          "speed": 13
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "mage_frost_wand",
+          "Body": "cloth_robe"
+        },
+        "skills": {
+          "cryomancy": 2
+        },
+        "actions": [
+          "ice_lance"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "ice_lance"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sanctum_raiders",
+    "name": "갈고리 약탈단",
+    "description": "4·5막 보통 (시제품 '갈고리 약탈단'을 옮김). 후열을 전열로 끌어내고 전열을 통째로 휩쓴다. 임시 수치.",
+    "units": [
+      {
+        "id": "sanctum_raiders_hook_1",
+        "name": "갈고리꾼",
+        "stats": {
+          "str": 16,
+          "dex": 10,
+          "vital": 12,
+          "intel": 10,
+          "speed": 13
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_halberd",
+          "Body": "leather_armor"
+        },
+        "skills": {
+          "spearmanship": 2
+        },
+        "actions": [
+          "hook_pull",
+          "spear_sweep"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EnemyBackAtLeast",
+            "value": 1,
+            "actionId": "hook_pull",
+            "and": [
+              {
+                "condition": "EveryNthTurn",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "priority": 2,
+            "condition": "SelfMpAtLeast",
+            "value": 20,
+            "actionId": "spear_sweep"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "sanctum_raiders_hook_2",
+        "name": "갈고리꾼",
+        "stats": {
+          "str": 16,
+          "dex": 10,
+          "vital": 12,
+          "intel": 10,
+          "speed": 13
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_halberd",
+          "Body": "leather_armor"
+        },
+        "skills": {
+          "spearmanship": 2
+        },
+        "actions": [
+          "hook_pull",
+          "spear_sweep"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EnemyBackAtLeast",
+            "value": 1,
+            "actionId": "hook_pull",
+            "and": [
+              {
+                "condition": "EveryNthTurn",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "priority": 2,
+            "condition": "SelfMpAtLeast",
+            "value": 20,
+            "actionId": "spear_sweep"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "sanctum_raiders_reaver",
+        "name": "약탈 도끼잡이",
+        "stats": {
+          "str": 16,
+          "dex": 10,
+          "vital": 13,
+          "intel": 10,
+          "speed": 12
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_greataxe",
+          "Body": "leather_armor"
+        },
+        "skills": {
+          "axemanship": 2
+        },
+        "actions": [
+          "berserk",
+          "whirlwind"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "berserk"
+          },
+          {
+            "priority": 2,
+            "condition": "SelfMpAtLeast",
+            "value": 25,
+            "actionId": "whirlwind"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sanctum_choir",
+    "name": "정결한 성가대",
+    "description": "4·5막 정예 (시제품 '정결한 성가대'를 옮김). 모두 디버프에 걸리지 않고 뒤의 사제가 치유한다. 직접 피해로 사제부터 잡아야 한다. 임시 수치.",
+    "units": [
+      {
+        "id": "sanctum_choir_knight_1",
+        "name": "성가대 기사",
+        "stats": {
+          "str": 18,
+          "dex": 10,
+          "vital": 48,
+          "intel": 20,
+          "speed": 11
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_mace",
+          "OffHand": "wooden_shield",
+          "Body": "plate_armor"
+        },
+        "skills": {
+          "defense": 1
+        },
+        "actions": [
+          "shield_wall"
+        ],
+        "effects": [
+          "inviolate"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "shield_wall"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "sanctum_choir_knight_2",
+        "name": "성가대 기사",
+        "stats": {
+          "str": 18,
+          "dex": 10,
+          "vital": 48,
+          "intel": 20,
+          "speed": 11
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_mace",
+          "OffHand": "wooden_shield",
+          "Body": "plate_armor"
+        },
+        "skills": {
+          "defense": 1
+        },
+        "actions": [
+          "shield_wall"
+        ],
+        "effects": [
+          "inviolate"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "shield_wall"
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "sanctum_choir_cantor",
+        "name": "성가 사제",
+        "stats": {
+          "str": 9,
+          "dex": 10,
+          "vital": 19,
+          "intel": 30,
+          "speed": 13
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "silver_relic",
+          "Body": "cloth_robe"
+        },
+        "skills": {
+          "healing": 2
+        },
+        "actions": [
+          "greater_heal",
+          "heal"
+        ],
+        "effects": [
+          "inviolate"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "AnyAllyHpAtMost",
+            "value": 70,
+            "actionId": "greater_heal"
+          },
+          {
+            "priority": 2,
+            "condition": "AnyAllyHpAtMost",
+            "value": 85,
+            "actionId": "heal"
+          },
+          {
+            "priority": 3,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 4,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sanctum_bulwark",
+    "name": "맹세의 방벽",
+    "description": "4막 보스, 5막 정예 (시제품 '맹세의 방벽'을 옮김). 기사가 도발과 방패 벽으로 막고 뒤의 화염술사가 광역으로 태운다. 광역으로 뒤를 쳐야 한다. 임시 수치.",
+    "units": [
+      {
+        "id": "sanctum_bulwark_knight",
+        "name": "방벽 기사",
+        "stats": {
+          "str": 11,
+          "dex": 10,
+          "vital": 57,
+          "intel": 11,
+          "speed": 10
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_spear",
+          "OffHand": "iron_shield",
+          "Head": "steel_plate_helm",
+          "Body": "steel_plate_armor",
+          "Feet": "steel_plate_boots"
+        },
+        "skills": {
+          "defense": 3,
+          "endurance": 3,
+          "shield_mastery": 1
+        },
+        "actions": [
+          "provoke",
+          "shield_wall",
+          "first_aid"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfLacksActionEffect",
+            "value": 0,
+            "actionId": "provoke"
+          },
+          {
+            "priority": 2,
+            "condition": "SelfLacksActionEffect",
+            "value": 0,
+            "actionId": "shield_wall"
+          },
+          {
+            "priority": 3,
+            "condition": "SelfHpAtMost",
+            "value": 50,
+            "actionId": "first_aid"
+          },
+          {
+            "priority": 4,
+            "condition": "SelfMpAtMost",
+            "value": 15,
+            "actionId": "focus"
+          },
+          {
+            "priority": 5,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "sanctum_bulwark_pyromancer",
+        "name": "방벽 화염술사",
+        "stats": {
+          "str": 5,
+          "dex": 10,
+          "vital": 15,
+          "intel": 26,
+          "speed": 14
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "apprentice_staff",
+          "Body": "cloth_robe"
+        },
+        "skills": {
+          "pyromancy": 2
+        },
+        "actions": [
+          "ash_storm",
+          "fireball"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "ash_storm"
+          },
+          {
+            "priority": 3,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "ash_storm"
+          },
+          {
+            "priority": 4,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "fireball"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "heart_vanguard",
+    "name": "망치 돌격대",
+    "description": "5막 보통 (시제품 '망치 돌격대'를 옮김). 우리 전열을 후열로 밀어내고, 전열이 비면 분쇄와 엄호 없는 중볼트를 몰아친다. 임시 수치.",
+    "units": [
+      {
+        "id": "heart_vanguard_1",
+        "name": "망치병",
+        "stats": {
+          "str": 19,
+          "dex": 10,
+          "vital": 24,
+          "intel": 11,
+          "speed": 12
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_warhammer",
+          "Body": "plate_armor"
+        },
+        "skills": {
+          "mace_mastery": 2
+        },
+        "actions": [
+          "knockback",
+          "crush"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EnemyFrontAtLeast",
+            "value": 1,
+            "actionId": "knockback",
+            "and": [
+              {
+                "condition": "OnTurn",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "priority": 2,
+            "condition": "EnemyFrontAtLeast",
+            "value": 1,
+            "actionId": "knockback",
+            "and": [
+              {
+                "condition": "EveryNthTurn",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "priority": 3,
+            "condition": "EnemyFrontAtMost",
+            "value": 0,
+            "actionId": "crush",
+            "and": [
+              {
+                "condition": "SelfMpAtLeast",
+                "value": 30
+              }
+            ]
+          },
+          {
+            "priority": 4,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "focus"
+          }
+        ]
+      },
+      {
+        "id": "heart_vanguard_2",
+        "name": "망치병",
+        "stats": {
+          "str": 19,
+          "dex": 10,
+          "vital": 24,
+          "intel": 11,
+          "speed": 12
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "old_warhammer",
+          "Body": "plate_armor"
+        },
+        "skills": {
+          "mace_mastery": 2
+        },
+        "actions": [
+          "crush"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EnemyFrontAtMost",
+            "value": 0,
+            "actionId": "crush",
+            "and": [
+              {
+                "condition": "SelfMpAtLeast",
+                "value": 30
+              }
+            ]
+          },
+          {
+            "priority": 2,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "focus"
+          }
+        ]
+      },
+      {
+        "id": "heart_vanguard_bolt_1",
+        "name": "돌격대 쇠뇌수",
+        "stats": {
+          "str": 19,
+          "dex": 10,
+          "vital": 16,
+          "intel": 11,
+          "speed": 13
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "wooden_arbalest",
+          "Body": "leather_armor"
+        },
+        "skills": {},
+        "actions": [
+          "heavy_bolt",
+          "emplace"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EnemyFrontAtMost",
+            "value": 0,
+            "actionId": "heavy_bolt",
+            "and": [
+              {
+                "condition": "SelfMpAtLeast",
+                "value": 25
+              }
+            ]
+          },
+          {
+            "priority": 2,
+            "condition": "SelfLacksActionEffect",
+            "value": 0,
+            "actionId": "emplace"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "focus"
+          }
+        ]
+      },
+      {
+        "id": "heart_vanguard_bolt_2",
+        "name": "돌격대 쇠뇌수",
+        "stats": {
+          "str": 19,
+          "dex": 10,
+          "vital": 16,
+          "intel": 11,
+          "speed": 13
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "wooden_arbalest",
+          "Body": "leather_armor"
+        },
+        "skills": {},
+        "actions": [
+          "heavy_bolt",
+          "emplace"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "EnemyFrontAtMost",
+            "value": 0,
+            "actionId": "heavy_bolt",
+            "and": [
+              {
+                "condition": "SelfMpAtLeast",
+                "value": 25
+              }
+            ]
+          },
+          {
+            "priority": 2,
+            "condition": "SelfLacksActionEffect",
+            "value": 0,
+            "actionId": "emplace"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "focus"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "boss_triangle_heart",
+    "name": "삼각의 심장",
+    "description": "5막 최종 보스 (2026-10-20). 꼭짓점 셋(쇠·불·마력)이 가운데의 심장을 지킨다. 심장은 디버프에 걸리지 않고, 다친 꼭짓점을 고치며 번개를 튀긴다. 심장을 먼저 잡지 않으면 싸움이 길어진다. 임시 수치.",
+    "units": [
+      {
+        "id": "heart_vertex_iron",
+        "name": "쇠의 꼭짓점",
+        "stats": {
+          "str": 17,
+          "dex": 12,
+          "vital": 34,
+          "intel": 17,
+          "speed": 11
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "steel_warhammer",
+          "Head": "steel_plate_helm",
+          "Body": "steel_plate_armor",
+          "Feet": "steel_plate_boots"
+        },
+        "skills": {
+          "mace_mastery": 2,
+          "defense": 2
+        },
+        "actions": [
+          "crush",
+          "provoke"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "provoke"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "crush"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "heart_vertex_fire",
+        "name": "불의 꼭짓점",
+        "stats": {
+          "str": 17,
+          "dex": 13,
+          "vital": 28,
+          "intel": 15,
+          "speed": 13
+        },
+        "row": "Front",
+        "equipment": {
+          "MainHand": "steel_greataxe",
+          "Body": "tanned_leather_armor"
+        },
+        "skills": {
+          "axemanship": 2,
+          "mobility": 1
+        },
+        "actions": [
+          "berserk",
+          "reckless_blow"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "OnTurn",
+            "value": 1,
+            "actionId": "berserk"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 2,
+            "actionId": "reckless_blow"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "basic_attack"
+          }
+        ]
+      },
+      {
+        "id": "heart_vertex_mana",
+        "name": "마력의 꼭짓점",
+        "stats": {
+          "str": 8,
+          "dex": 11,
+          "vital": 25,
+          "intel": 28,
+          "speed": 12
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "mage_frost_staff",
+          "Body": "silk_robe"
+        },
+        "skills": {
+          "cryomancy": 2,
+          "meditation": 1
+        },
+        "actions": [
+          "blizzard",
+          "ice_lance"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 2,
+            "condition": "EveryNthTurn",
+            "value": 3,
+            "actionId": "blizzard"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "ice_lance"
+          }
+        ]
+      },
+      {
+        "id": "heart_core",
+        "name": "삼각의 심장",
+        "stats": {
+          "str": 7,
+          "dex": 10,
+          "vital": 31,
+          "intel": 25,
+          "speed": 10
+        },
+        "row": "Back",
+        "equipment": {
+          "MainHand": "silver_relic",
+          "Body": "silk_robe"
+        },
+        "skills": {
+          "healing": 2,
+          "electromancy": 2,
+          "meditation": 1
+        },
+        "actions": [
+          "greater_heal",
+          "chain_lightning"
+        ],
+        "effects": [
+          "steadfast"
+        ],
+        "tactics": [
+          {
+            "priority": 1,
+            "condition": "AnyAllyHpAtMost",
+            "value": 50,
+            "actionId": "greater_heal",
+            "and": [
+              {
+                "condition": "SelfMpAmountAtLeast",
+                "value": 35
+              }
+            ]
+          },
+          {
+            "priority": 2,
+            "condition": "SelfMpAtMost",
+            "value": 20,
+            "actionId": "focus"
+          },
+          {
+            "priority": 3,
+            "condition": "Always",
+            "value": 0,
+            "actionId": "chain_lightning"
+          }
+        ]
+      }
+    ]
   }
 ]

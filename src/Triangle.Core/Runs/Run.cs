@@ -252,7 +252,8 @@ public sealed partial class Run
                     return null;
                 }
 
-                Event = events[random.Next(events.Count)];
+                var roll = random.Next(events.Sum(e => e.Weight));
+                Event = events.First(e => (roll -= e.Weight) < 0);
                 Phase = RunPhase.Event;
                 return null;
             default:

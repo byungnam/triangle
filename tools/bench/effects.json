@@ -7,12 +7,5 @@
     "immuneDamageTypes": [
       "Physical"
     ]
-  },
-  {
-    "id": "inviolate",
-    "name": "불가침",
-    "description": "디버프에 걸리지 않는다. 시제품 적의 타고난 특성 (2026-10-17). 임시 수치",
-    "kind": "Buff",
-    "immuneToDebuffs": true
   }
 ]

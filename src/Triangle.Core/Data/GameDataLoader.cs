@@ -414,6 +414,11 @@ public static class GameDataLoader
                 errors.Add($"{at}: needs at least one option");
             }
 
+            if (e.Weight < 1)
+            {
+                errors.Add($"{at}: weight must be at least 1, got {e.Weight}");
+            }
+
             foreach (var option in e.Options)
             {
                 DataValidation.RequireText(option.Text, $"{at}: option text", errors);

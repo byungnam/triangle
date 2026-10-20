@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Triangle.Core.Actions;
 using Triangle.Core.Balance;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
@@ -496,8 +497,8 @@ public class RunTests
     [Fact]
     public void The_shop_sells_items_of_the_act_tier_class_cards_and_a_recruit()
     {
-        // 게임의 상점은 합류를 팔지 않지만(이벤트에서만, 2026-10-20) 규칙은 남아 있다.
-        var data = SecondFloor("shop", r => r with { StartGold = 1000, Shop = r.Shop with { Recruits = 1 } });
+        // 게임의 상점은 합류를 팔지 않지만(이벤트에서만, 2026-10-20) 규칙은 남아 있다. 강화와 줄 상한은 아래에서 따로 본다.
+        var data = SecondFloor("shop", r => r with { StartGold = 1000, Shop = r.Shop with { Recruits = 1, Upgrades = 0, Lines = 0 } });
         var run = AtSecondFloor(data, ["knight", "priest"]);
         Assert.Equal(RunPhase.Shop, run.Phase);
         var shop = data.Run!.Shop;
@@ -581,6 +582,111 @@ public class RunTests
         run = AtSecondFloor(data, ["knight", "knight", "knight", "knight"]);
         run.Members.Add(new RunMember("m5", "knight", 2));
         Assert.Equal("파티는 5명까지다", run.WhyCannotBuy(data, recruit));
+    }
+
+    [Fact]
+    public void Upgrades_raise_numbers_or_change_how_a_skill_works()
+    {
+        var bolt = new ActionDefinition { Id = "bolt", Name = "볼트", Power = 100, MpCost = 20, Rule = TargetRule.BackFirst, Applies = [new("slowed", 2)] };
+        ActionDefinition Apply(params RunUpgradeKind[] kinds) => RunUpgrades.Apply(bolt, kinds);
+        Assert.Equal(130, Apply(RunUpgradeKind.Power).Power);
+        Assert.Equal(10, Apply(RunUpgradeKind.Thrift).MpCost);
+        Assert.Equal(800, Apply(RunUpgradeKind.Swift).Delay);
+        Assert.True(Apply(RunUpgradeKind.Pierce).IgnoresCover);
+        Assert.Equal((1, 70), (Apply(RunUpgradeKind.Chain).ExtraTargets, Apply(RunUpgradeKind.Chain).Power));
+        Assert.Equal(3, Apply(RunUpgradeKind.Lasting).Applies[0].Duration);
+
+        // 강화가 둘이면 둘 다 걸리고, ID는 산 순서와 상관없이 같다. 이름에는 강화 수만큼 +가 붙는다.
+        var both = Apply(RunUpgradeKind.Swift, RunUpgradeKind.Power);
+        Assert.Equal(("bolt+power+swift", "볼트++", 130, 800), (both.Id, both.Name, both.Power, both.Delay));
+        Assert.Equal(2, bolt.Applies[0].Duration);
+        var resolved = RunUpgrades.Resolve(Shipped, "fireball+power");
+        Assert.Equal(("화염구+", Shipped.Actions["fireball"].Power * 13 / 10), (resolved?.Name, resolved?.Power));
+        Assert.Null(RunUpgrades.Resolve(Shipped, "fireball"));
+        Assert.Null(RunUpgrades.Resolve(Shipped, "fireball+nothing"));
+
+        // 뜻이 없는 강화는 붙지 않는다: 위력이 없는 행동에 위력, MP를 쓰지 않는 행동에 절약, 앞부터 치는 공격에 관통, 효과가 없는 행동에 지속.
+        var wall = Shipped.Actions["shield_wall"];
+        var arrow = Shipped.Actions["fire_arrow"];
+        Assert.False(RunUpgrades.Fits(wall, RunUpgradeKind.Power));
+        Assert.False(RunUpgrades.Fits(wall, RunUpgradeKind.Chain));
+        Assert.True(RunUpgrades.Fits(wall, RunUpgradeKind.Lasting));
+        Assert.False(RunUpgrades.Fits(arrow, RunUpgradeKind.Pierce));
+        Assert.False(RunUpgrades.Fits(arrow, RunUpgradeKind.Lasting));
+        Assert.False(RunUpgrades.Fits(Shipped.Actions["heal"], RunUpgradeKind.Chain));
+        Assert.False(RunUpgrades.Fits(Shipped.Actions["charge"], RunUpgradeKind.Thrift));
+    }
+
+    [Fact]
+    public void The_shop_sells_skill_upgrades_for_every_copy_and_pricey_line_caps()
+    {
+        var data = SecondFloor("shop", r => r with { StartGold = 1000, Shop = r.Shop with { Upgrades = 2, UpgradePrice = 80, UpgradeStep = 40, Lines = 1, LinePrice = 150, LineStep = 50 } });
+        var run = AtSecondFloor(data, ["knight", "elementalist"]);
+
+        // 강화는 파티가 사본을 가진 클래스 카드에서 스킬이 겹치지 않게, 그 스킬에 맞는 강화로 나온다.
+        var upgrades = run.Stock.Where(s => s.Kind == RunStockKind.Upgrade).ToList();
+        Assert.Equal(["fireball", "shield_wall"], upgrades.Select(s => s.Id).Order());
+        Assert.All(upgrades, s => Assert.True(RunUpgrades.Fits(data.Actions[s.Id], s.Upgrade!.Value)));
+        Assert.All(upgrades, s => Assert.Equal(80, s.Price));
+
+        var fireball = upgrades.Single(s => s.Id == "fireball");
+        var kind = fireball.Upgrade!.Value;
+        run.Buy(data, run.Stock.ToList().IndexOf(fireball));
+        Assert.Equal([kind], run.Upgrades["fireball"]);
+        Assert.Equal("화염구+", run.Upgraded(data, "fireball").Name);
+
+        // 전투에서 그 줄은 강화된 행동(다른 ID)으로 싸우고, 같은 행동을 쓰는 적은 그대로다.
+        var mage = run.Members.Single(m => m.ClassId == "elementalist");
+        var upgradedId = RunUpgrades.Id("fireball", [kind]);
+        Assert.Equal(upgradedId, run.Setup(data, mage).Tactics[0].ActionId);
+        Assert.Contains(upgradedId, run.Setup(data, mage).GrantedActions);
+        Assert.Equal(run.Upgraded(data, "fireball").Power, run.BattleCatalog(data).Actions[upgradedId].Power);
+        Assert.Equal(data.Actions["fireball"].Power, run.BattleCatalog(data).Actions["fireball"].Power);
+        Assert.False(Run.Catalog(data).Actions.ContainsKey(upgradedId));
+
+        // 줄 상한은 받을 멤버를 골라 산다.
+        var line = run.Stock.ToList().FindIndex(s => s.Kind == RunStockKind.Line);
+        Assert.Equal(150, run.Stock[line].Price);
+        Assert.Equal("받을 멤버를 골라야 한다", run.WhyCannotBuy(data, line));
+        run.Buy(data, line, mage);
+        Assert.Equal((3, 1), (mage.Earned, run.LinesBought));
+
+        // 세이브에 강화와 산 줄 상한이 남는다.
+        var copy = Run.Deserialize(run.Serialize(), data);
+        Assert.Equal(run.Serialize(), copy.Serialize());
+        Assert.Equal([kind], copy.Upgrades["fireball"]);
+        Assert.Equal(1, copy.LinesBought);
+
+        // 다음 상점: 줄 상한은 산 수만큼, 강화는 그 스킬에 건 강화 수만큼 비싸다. 강화가 다 찬 스킬은 나오지 않는다.
+        var before = WonFirstFight(data, ["knight", "elementalist"]);
+        before.Skip();
+        var file = before.ToSave() with
+        {
+            LinesBought = 2,
+            Upgrades = new Dictionary<string, IReadOnlyList<RunUpgradeKind>> { ["fireball"] = [RunUpgradeKind.Swift], ["shield_wall"] = [RunUpgradeKind.Swift, RunUpgradeKind.Lasting] },
+        };
+        var later = Run.Restore(file, data);
+        later.Enter(data, later.Choices[0].Id);
+        Assert.Equal(250, later.Stock.Single(s => s.Kind == RunStockKind.Line).Price);
+        var again = Assert.Single(later.Stock, s => s.Kind == RunStockKind.Upgrade);
+        Assert.Equal(("fireball", 120), (again.Id, again.Price));
+        Assert.NotEqual(RunUpgradeKind.Swift, again.Upgrade);
+    }
+
+    [Fact]
+    public void A_line_cap_needs_a_member_with_room_and_shop_numbers_are_checked()
+    {
+        var data = SecondFloor("shop", r => r with { StartGold = 1000, Shop = r.Shop with { Lines = 1 } });
+        var run = AtSecondFloor(data, ["knight", "priest"]);
+        var line = run.Stock.ToList().FindIndex(s => s.Kind == RunStockKind.Line);
+        var full = run.Members[0];
+        full.Earned = data.Run!.MaxLines;
+        Assert.Equal("줄 상한이 이미 최대다", run.WhyCannotBuy(data, line, full));
+        Assert.Null(run.WhyCannotBuy(data, line, run.Members[1]));
+
+        var errors = Assert.Throws<GameDataException>(() => With(r => r with { Shop = r.Shop with { Lines = 2, UpgradePrice = -1 } })).Errors;
+        Assert.Contains(errors, e => e.Contains("shop lines must be 0 or 1"));
+        Assert.Contains(errors, e => e.Contains("shop counts and prices must not be negative"));
     }
 
     [Fact]

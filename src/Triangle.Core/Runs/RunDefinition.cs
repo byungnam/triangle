@@ -165,6 +165,22 @@ public sealed record RunShopRules
 
     /// <summary>봉인 하나를 푸는 값.</summary>
     public int UnsealPrice { get; init; } = 60;
+
+    /// <summary>파는 스킬 강화 수 (파티가 사본을 가진 클래스 카드에서, 스킬이 겹치지 않게).</summary>
+    public int Upgrades { get; init; }
+
+    /// <summary>강화 값: 기본 값에 그 스킬에 이미 건 강화 하나마다 <see cref="UpgradeStep"/>을 더한다.</summary>
+    public int UpgradePrice { get; init; } = 80;
+
+    public int UpgradeStep { get; init; } = 40;
+
+    /// <summary>파는 줄 상한 +1 수 (0이나 1). 늘릴 멤버가 없으면 나오지 않는다.</summary>
+    public int Lines { get; init; }
+
+    /// <summary>줄 상한 값: 기본 값에 이 판에서 상점에서 산 줄 상한 하나마다 <see cref="LineStep"/>을 더한다.</summary>
+    public int LinePrice { get; init; } = 150;
+
+    public int LineStep { get; init; } = 50;
 }
 
 /// <summary>휴식: 봉인 풀기(모든 멤버) 또는 단련(패시브 후보 중 하나).</summary>

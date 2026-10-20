@@ -1,4 +1,6 @@
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
+using Triangle.Core.Actions;
 using Triangle.Core.Balance;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
@@ -51,12 +53,22 @@ public enum RunStockKind
     Item,
     Skill,
     Recruit,
+
+    /// <summary>액티브 스킬 강화 (<see cref="RunStock.Upgrade"/>). 파티의 그 스킬 사본 모두에 걸린다.</summary>
+    Upgrade,
+
+    /// <summary>줄 상한 +1 (살 때 받을 멤버를 고른다). 살 때마다 값이 오른다.</summary>
+    Line,
 }
 
-/// <summary>상점의 물건 하나. <paramref name="Id"/>는 아이템 ID, 행동 ID, 클래스 ID 중 하나다.</summary>
+/// <summary>상점의 물건 하나. <paramref name="Id"/>는 아이템 ID, 행동 ID(스킬 사본과 강화), 클래스 ID 중 하나이고 줄 상한은 비어 있다.</summary>
 public sealed record RunStock(RunStockKind Kind, string Id, int Price)
 {
     public bool Sold { get; init; }
+
+    /// <summary>강화의 종류 (<see cref="RunStockKind.Upgrade"/>일 때).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RunUpgradeKind? Upgrade { get; init; }
 }
 
 /// <summary>판의 전투 기록 한 줄 (판이 끝나면 명성과 탐사 기록에 쓴다).</summary>
@@ -98,8 +110,10 @@ public sealed partial class Run
 
     private readonly List<RunStock> _stock = [];
     private readonly List<int> _path = [];
+    private readonly Dictionary<string, IReadOnlyList<RunUpgradeKind>> _upgrades = [];
     private readonly List<RunBattleRecord> _history = [];
     private bool _bossCleared;
+    private CombatCatalog? _catalog;
 
     private Run(int seed, IReadOnlyList<RunMap> maps, IReadOnlyList<string> bosses, int gold, IReadOnlySet<string> locked)
     {
@@ -144,6 +158,12 @@ public sealed partial class Run
 
     /// <summary>파티가 가진 스킬 사본 (행동 ID → 장 수). 전술에 놓은 줄 수가 이를 넘을 수 없다.</summary>
     public Dictionary<string, int> Copies { get; } = [];
+
+    /// <summary>스킬 강화 (행동 ID → 산 강화, 산 순서). 파티가 가진 그 스킬의 사본 모두에 걸린다.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<RunUpgradeKind>> Upgrades => _upgrades;
+
+    /// <summary>상점에서 산 줄 상한 수. 줄 상한 값이 이만큼 오른다.</summary>
+    public int LinesBought { get; private set; }
 
     /// <summary>끼지 않은 아이템 ID.</summary>
     public List<string> Bag { get; } = [];
@@ -274,7 +294,7 @@ public sealed partial class Run
         Fights++;
         var at = Act;
         var allies = Living.Select(m => Setup(data, m)).ToList();
-        var result = CombatSimulator.Run(allies, EnemyTeam(data, Act, kind, encounter), Catalog(data), Seeds.Derive(Seed, Fights));
+        var result = CombatSimulator.Run(allies, EnemyTeam(data, Act, kind, encounter), BattleCatalog(data), Seeds.Derive(Seed, Fights));
         _history.Add(new RunBattleRecord(at, encounter, kind, result.Outcome));
         if (result.Outcome != CombatOutcome.Victory)
         {
@@ -435,7 +455,8 @@ public sealed partial class Run
         Phase = Offer.Count > 0 ? RunPhase.Reward : RunPhase.Map;
     }
 
-    public string? WhyCannotBuy(GameData data, int stock)
+    /// <param name="member">줄 상한을 받을 멤버 (<see cref="RunStockKind.Line"/>일 때).</param>
+    public string? WhyCannotBuy(GameData data, int stock, RunMember? member = null)
     {
         if (Phase != RunPhase.Shop || stock < 0 || stock >= _stock.Count)
         {
@@ -453,13 +474,21 @@ public sealed partial class Run
             return $"골드가 모자란다 ({s.Price}G)";
         }
 
-        return s.Kind == RunStockKind.Recruit && Living.Count() >= MaxMembers ? $"파티는 {MaxMembers}명까지다" : null;
+        return s.Kind switch
+        {
+            RunStockKind.Recruit when Living.Count() >= MaxMembers => $"파티는 {MaxMembers}명까지다",
+            RunStockKind.Upgrade when Upgrades.GetValueOrDefault(s.Id, []) is { } had && (had.Count >= RunUpgrades.MaxPerSkill || had.Contains(s.Upgrade!.Value))
+                => "더 강화할 수 없다",
+            RunStockKind.Line when member is null || member.Dead || !Members.Contains(member) => "받을 멤버를 골라야 한다",
+            RunStockKind.Line when member.Earned >= Rules(data).MaxLines => "줄 상한이 이미 최대다",
+            _ => null,
+        };
     }
 
-    /// <summary>상점에서 산다: 아이템은 가방으로, 스킬은 파티 사본으로, 합류는 새 멤버로.</summary>
-    public void Buy(GameData data, int stock)
+    /// <summary>상점에서 산다: 아이템은 가방으로, 스킬은 파티 사본으로, 합류는 새 멤버로, 강화는 그 스킬에, 줄 상한은 <paramref name="member"/>에게.</summary>
+    public void Buy(GameData data, int stock, RunMember? member = null)
     {
-        if (WhyCannotBuy(data, stock) is { } reason)
+        if (WhyCannotBuy(data, stock, member) is { } reason)
         {
             throw new InvalidOperationException(reason);
         }
@@ -474,6 +503,14 @@ public sealed partial class Run
                 break;
             case RunStockKind.Skill:
                 Copies[s.Id] = Copies.GetValueOrDefault(s.Id) + 1;
+                break;
+            case RunStockKind.Upgrade:
+                _upgrades[s.Id] = [.. Upgrades.GetValueOrDefault(s.Id, []), s.Upgrade!.Value];
+                _catalog = null;
+                break;
+            case RunStockKind.Line:
+                member!.Earned++;
+                LinesBought++;
                 break;
             default:
                 Join(data, s.Id);
@@ -754,15 +791,46 @@ public sealed partial class Run
         var basic = BasicAttack(data, member);
         List<Tactic> tactics =
         [
-            .. lines.Select((t, i) => t with { Priority = i + 1, ActionId = t.ActionId == DraftTactics.Fallback ? basic : t.ActionId }),
+            .. lines.Select((t, i) => t with { Priority = i + 1, ActionId = t.ActionId == DraftTactics.Fallback ? basic : UpgradedId(t.ActionId) }),
             Tactic.Create(lines.Count + 1, [new(Condition.Always, 0)], basic),
         ];
         var setup = new CombatantSetup(member.Id, Name(data, member), c.Stats, member.Row, null, null, member.Passives.ToDictionary(), tactics);
+        var catalog = BattleCatalog(data);
         return new Loadout(worn).Apply(setup, data.Actions.Values, _ => 0) with
         {
-            GrantedActions = tactics.Select(t => t.ActionId).Where(id => !data.Actions[id].Universal).ToHashSet(),
+            GrantedActions = tactics.Select(t => t.ActionId).Where(id => !catalog.Actions[id].Universal).ToHashSet(),
         };
     }
+
+    /// <summary>이 판의 행동 하나: 강화를 샀으면 강화가 걸린 것(ID와 이름이 바뀐다), 아니면 게임 데이터의 것.</summary>
+    public ActionDefinition Upgraded(GameData data, string actionId) =>
+        Upgrades.TryGetValue(actionId, out var kinds) ? RunUpgrades.Apply(data.Actions[actionId], kinds) : data.Actions[actionId];
+
+    /// <summary>이 판의 전투에 쓰는 행동 묶음: <see cref="Catalog"/>에 강화된 스킬(다른 ID)을 더한 것. 적의 같은 스킬은 그대로다.</summary>
+    public CombatCatalog BattleCatalog(GameData data)
+    {
+        if (_upgrades.Count == 0)
+        {
+            return Catalog(data);
+        }
+
+        if (_catalog is null)
+        {
+            var common = Catalog(data);
+            var actions = common.Actions.ToDictionary();
+            foreach (var (id, kinds) in _upgrades)
+            {
+                var upgraded = RunUpgrades.Apply(common.Actions[id], kinds);
+                actions[upgraded.Id] = upgraded;
+            }
+
+            _catalog = common with { Actions = actions };
+        }
+
+        return _catalog;
+    }
+
+    private string UpgradedId(string actionId) => Upgrades.TryGetValue(actionId, out var kinds) ? RunUpgrades.Id(actionId, kinds) : actionId;
 
     /// <summary>멤버의 기본 공격: 든 무기가 바꾸면 그 행동(<see cref="ItemDefinition.BasicAttack"/>), 아니면 공용 기본 공격.</summary>
     public static string BasicAttack(GameData data, RunMember member) =>
@@ -833,7 +901,9 @@ public sealed partial class Run
 
     /// <summary>
     /// 상점의 물건: 판에서 파는 아이템(<see cref="ItemDefinition.Shop"/>) 중 이 막 티어 이하의 무기(살아 있는 멤버 클래스가 쓰는 것)·방어구·
-    /// 장신구에서 아이템을, 살아 있는 멤버 클래스의 카드에서 스킬을, 모든 클래스에서 합류를 뽑는다.
+    /// 장신구에서 아이템을, 살아 있는 멤버 클래스의 카드에서 스킬을, 모든 클래스에서 합류를 뽑는다. 강화는 파티가 사본을 가진 그 클래스
+    /// 카드마다 아직 걸지 않은 맞는 강화 하나를 뽑아 스킬이 겹치지 않게 고르고(값은 그 스킬에 건 강화 수만큼 오른다), 줄 상한은 늘릴
+    /// 멤버가 있으면 하나를 판다(값은 상점에서 산 줄 상한 수만큼 오른다).
     /// </summary>
     private void OpenShop(GameData data, Random random)
     {
@@ -855,6 +925,25 @@ public sealed partial class Run
             .Select(id => new RunStock(RunStockKind.Skill, id, rules.Shop.SkillPrice)));
         _stock.AddRange(Pick(data.Classes.Keys.Where(Open).ToList(), rules.Shop.Recruits, random)
             .Select(id => new RunStock(RunStockKind.Recruit, id, rules.Shop.RecruitPrice)));
+        var upgradable = classes.SelectMany(c => c.Skills).Distinct()
+            .Where(id => Copies.GetValueOrDefault(id) > 0 && Upgrades.GetValueOrDefault(id, []).Count < RunUpgrades.MaxPerSkill)
+            .ToList();
+        foreach (var id in Pick(upgradable, rules.Shop.Upgrades, random))
+        {
+            var had = Upgrades.GetValueOrDefault(id, []);
+            var kinds = Enum.GetValues<RunUpgradeKind>().Where(k => !had.Contains(k) && RunUpgrades.Fits(data.Actions[id], k)).ToList();
+            if (kinds.Count > 0)
+            {
+                var price = rules.Shop.UpgradePrice + rules.Shop.UpgradeStep * had.Count;
+                _stock.Add(new RunStock(RunStockKind.Upgrade, id, price) { Upgrade = kinds[random.Next(kinds.Count)] });
+            }
+        }
+
+        if (rules.Shop.Lines > 0 && Living.Any(m => m.Earned < rules.MaxLines))
+        {
+            _stock.Add(new RunStock(RunStockKind.Line, "", rules.Shop.LinePrice + rules.Shop.LineStep * LinesBought));
+        }
+
         Phase = RunPhase.Shop;
     }
 

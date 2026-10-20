@@ -44,16 +44,16 @@
       ],
       "shopTier": 2,
       "fightStrength": {
-        "hp": 90,
-        "power": 90
+        "hp": 92,
+        "power": 92
       },
       "eliteStrength": {
-        "hp": 90,
-        "power": 90
+        "hp": 92,
+        "power": 92
       },
       "bossStrength": {
-        "hp": 90,
-        "power": 90
+        "hp": 92,
+        "power": 92
       }
     },
     {
@@ -69,16 +69,16 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 85,
-        "power": 85
+        "hp": 89,
+        "power": 89
       },
       "eliteStrength": {
-        "hp": 85,
-        "power": 85
+        "hp": 89,
+        "power": 89
       },
       "bossStrength": {
-        "hp": 85,
-        "power": 85
+        "hp": 89,
+        "power": 89
       }
     },
     {
@@ -95,16 +95,16 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 110,
-        "power": 110
+        "hp": 116,
+        "power": 116
       },
       "eliteStrength": {
-        "hp": 112,
-        "power": 112
+        "hp": 118,
+        "power": 118
       },
       "bossStrength": {
-        "hp": 110,
-        "power": 110
+        "hp": 116,
+        "power": 116
       }
     },
     {
@@ -117,16 +117,16 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 117,
-        "power": 117
+        "hp": 123,
+        "power": 123
       },
       "eliteStrength": {
-        "hp": 120,
-        "power": 120
+        "hp": 126,
+        "power": 126
       },
       "bossStrength": {
-        "hp": 90,
-        "power": 90
+        "hp": 96,
+        "power": 96
       }
     }
   ],
@@ -159,7 +159,13 @@
     "skillPrice": 50,
     "recruits": 0,
     "recruitPrice": 200,
-    "unsealPrice": 60
+    "unsealPrice": 60,
+    "upgrades": 2,
+    "upgradePrice": 120,
+    "upgradeStep": 60,
+    "lines": 1,
+    "linePrice": 150,
+    "lineStep": 50
   },
   "rest": {
     "unseal": 1,

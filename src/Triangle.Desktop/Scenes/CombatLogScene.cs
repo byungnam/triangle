@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
 using Triangle.Core.Effects;
+using Triangle.Core.Runs;
 using Triangle.Core.Units;
 using Triangle.Desktop.Rendering;
 
@@ -106,7 +107,14 @@ internal sealed class CombatLogScene : IScene
         AssignDisplayNames(_result.Combatants);
 
         var names = _units.ToDictionary(u => u.Key, u => u.Value.Name);
-        _formatter = new CombatLogFormatter(names, _data.Actions.ToDictionary(a => a.Key, a => a.Value.Name), _data.Effects);
+        // 판에서 강화한 스킬은 다른 ID로 싸운다 (fireball+power). 이름은 강화를 걸어 찾는다(화염구+).
+        var actionNames = _data.Actions.ToDictionary(a => a.Key, a => a.Value.Name);
+        foreach (var id in _result.Events.OfType<ActionUsed>().Select(a => a.ActionId).Distinct().Where(id => !actionNames.ContainsKey(id)))
+        {
+            actionNames[id] = RunUpgrades.Resolve(_data, id)?.Name ?? id;
+        }
+
+        _formatter = new CombatLogFormatter(names, actionNames, _data.Effects);
         _summary = new CombatSummaryView(_ui, _data, _result, names, EncounterName);
 
         _log.Add(new LogEntry(new LogLine($"{Korean.WaGwa(EncounterName)}의 전투 시작!", Theme.Text), null, true));

@@ -42,6 +42,8 @@ public enum RunSpend
     Recruit,
     Unseal,
     Event,
+    Upgrade,
+    Line,
 }
 
 /// <summary>전투 하나의 기록.</summary>
@@ -359,7 +361,7 @@ public sealed class RunSimulation
                 var allies = copy.Living.Select(m => copy.Setup(_data, m)).ToList();
                 var score = Enumerable.Range(0, BossSeeds).Average(s =>
                 {
-                    var result = CombatSimulator.Run(allies, boss, Run.Catalog(_data), Seeds.Derive(BossSalt, s));
+                    var result = CombatSimulator.Run(allies, boss, copy.BattleCatalog(_data), Seeds.Derive(BossSalt, s));
                     return result.Outcome == CombatOutcome.Victory ? 1 + 0.5 * HpFraction(result, CombatSide.Ally) : 0.5 * (1 - HpFraction(result, CombatSide.Enemy));
                 });
                 if (score > best.Score + 1e-9)
@@ -419,6 +421,26 @@ public sealed class RunSimulation
         EquipmentSlot.Body => run.Living,
         _ => [],
     };
+
+    /// <summary>물건을 받을 멤버: 무기·방어구는 낄 수 있는 멤버, 줄 상한은 늘릴 수 있는 멤버. 받을 멤버가 없는 물건은 비어 있다.</summary>
+    private IEnumerable<RunMember> Recipients(Run run, RunStock stock) => stock.Kind switch
+    {
+        RunStockKind.Item => Wearers(run, _data.Items[stock.Id]),
+        RunStockKind.Line => run.Living.Where(m => m.Earned < _rules.MaxLines),
+        _ => [],
+    };
+
+    /// <summary>산다. 무기·방어구는 받을 멤버가 바로 끼고, 줄 상한은 받을 멤버에게 간다.</summary>
+    private void Buy(Run run, int stock, string? memberId)
+    {
+        var member = memberId is null ? null : run.Members.Single(m => m.Id == memberId);
+        var kind = run.Stock[stock].Kind;
+        run.Buy(_data, stock, kind == RunStockKind.Line ? member : null);
+        if (kind == RunStockKind.Item && memberId is not null)
+        {
+            Wear(run, memberId);
+        }
+    }
 
     /// <summary>방금 산 무기·방어구(가방 맨 끝)를 그 멤버가 낀다.</summary>
     private void Wear(Run run, string memberId)
@@ -519,7 +541,7 @@ public sealed class RunSimulation
         {
             for (var s = 0; s < _options.LookaheadSeeds; s++)
             {
-                var result = CombatSimulator.Run(allies, _teams[(run.Act, kind, encounter)], Run.Catalog(_data), Seeds.Derive(LookaheadSalt, s));
+                var result = CombatSimulator.Run(allies, _teams[(run.Act, kind, encounter)], run.BattleCatalog(_data), Seeds.Derive(LookaheadSalt, s));
                 score += result.Outcome == CombatOutcome.Victory
                     ? 1 + 0.5 * HpFraction(result, CombatSide.Ally)
                     : 0.5 * (1 - HpFraction(result, CombatSide.Enemy));
@@ -530,25 +552,27 @@ public sealed class RunSimulation
     }
 
     /// <summary>
-    /// 상점. 아무렇게나 봇은 물건마다 반반의 확률로 사고 봉인도 반반으로 푼다. 똑똑한 봇은 살 수 있는 것(물건, 가장 많이 봉인된 멤버의 봉인
-    /// 풀기)마다 사 본 판으로 그 막의 적을 미리 싸워 보고, 골드 1당 나아지는 정도가 가장 큰 것부터 산다. 나아지는 것이
+    /// 상점. 아무렇게나 봇은 물건마다 반반의 확률로 사고 봉인도 반반으로 푼다. 똑똑한 봇은 살 수 있는 것(물건, 강화, 받을 멤버마다의 줄 상한,
+    /// 가장 많이 봉인된 멤버의 봉인 풀기)마다 사 본 판으로 그 막의 적을 미리 싸워 보고, 골드 1당 나아지는 정도가 가장 큰 것부터 산다. 나아지는 것이
     /// <see cref="MinShopGain"/>보다 작으면 그만 산다(골드를 다음 상점에 남기는 셈이다).
     /// </summary>
     private void Shop(Run run, Random random, Tally tally)
     {
         var (goldIn, offered, sealedLines) = (run.Gold, run.Stock.ToList(), run.Living.Sum(m => m.Sealed));
         var (bought, unseals, values) = (new List<RunStock>(), 0, new List<RunSimValue>());
-        void Buy(int i, string? wearer = null)
+        void Purchase(int i, string? member = null)
         {
             var stock = run.Stock[i];
-            run.Buy(_data, i);
-            if (wearer is not null)
-            {
-                Wear(run, wearer);
-            }
-
+            Buy(run, i, member);
             bought.Add(stock);
-            tally.Spend(stock.Kind switch { RunStockKind.Item => RunSpend.Item, RunStockKind.Skill => RunSpend.Skill, _ => RunSpend.Recruit }, stock.Price);
+            tally.Spend(stock.Kind switch
+            {
+                RunStockKind.Item => RunSpend.Item,
+                RunStockKind.Skill => RunSpend.Skill,
+                RunStockKind.Upgrade => RunSpend.Upgrade,
+                RunStockKind.Line => RunSpend.Line,
+                _ => RunSpend.Recruit,
+            }, stock.Price);
         }
 
         void Unseal(RunMember member)
@@ -562,11 +586,12 @@ public sealed class RunSimulation
         {
             foreach (var i in Enumerable.Range(0, run.Stock.Count).OrderBy(_ => random.Next()).ToList())
             {
-                if (random.Next(2) == 0 && run.WhyCannotBuy(_data, i) is null)
+                // 무기·방어구와 줄 상한은 받을 수 있는 멤버 아무에게나 준다.
+                var recipients = Recipients(run, run.Stock[i]).ToList();
+                var member = recipients.Count > 0 ? recipients[random.Next(recipients.Count)] : null;
+                if (random.Next(2) == 0 && run.WhyCannotBuy(_data, i, member) is null)
                 {
-                    // 무기·방어구는 낄 수 있는 멤버 아무에게나 낀다.
-                    var wearers = run.Stock[i].Kind == RunStockKind.Item ? Wearers(run, _data.Items[run.Stock[i].Id]).ToList() : [];
-                    Buy(i, wearers.Count > 0 ? wearers[random.Next(wearers.Count)].Id : null);
+                    Purchase(i, member?.Id);
                 }
             }
 
@@ -585,13 +610,14 @@ public sealed class RunSimulation
             while (true)
             {
                 var baseline = Lookahead(Run.Restore(run.ToSave(), _data));
-                // 무기·방어구는 낄 멤버마다 따로 재 본다.
+                // 무기·방어구와 줄 상한은 받을 멤버마다 따로 재 본다.
                 var options = Enumerable.Range(0, run.Stock.Count)
-                    .Where(i => run.WhyCannotBuy(_data, i) is null)
                     .SelectMany(i =>
                     {
-                        var wearers = run.Stock[i].Kind == RunStockKind.Item ? Wearers(run, _data.Items[run.Stock[i].Id]).Select(m => (string?)m.Id).ToList() : [];
-                        return (wearers.Count > 0 ? wearers : [null]).Select(m => (Stock: (int?)i, Member: m, Price: run.Stock[i].Price));
+                        var recipients = Recipients(run, run.Stock[i]).Select(m => (RunMember?)m).ToList();
+                        return (recipients.Count > 0 ? recipients : [null])
+                            .Where(m => run.WhyCannotBuy(_data, i, m) is null)
+                            .Select(m => (Stock: (int?)i, Member: m?.Id, Price: run.Stock[i].Price));
                     })
                     .ToList();
                 if (run.Living.Where(m => m.Sealed > 0).MaxBy(m => m.Sealed) is { } most && run.WhyCannotUnseal(_data, most) is null)
@@ -605,11 +631,7 @@ public sealed class RunSimulation
                         var copy = Run.Restore(run.ToSave(), _data);
                         if (o.Stock is { } i)
                         {
-                            copy.Buy(_data, i);
-                            if (o.Member is { } wearer)
-                            {
-                                Wear(copy, wearer);
-                            }
+                            Buy(copy, i, o.Member);
                         }
                         else
                         {
@@ -637,7 +659,7 @@ public sealed class RunSimulation
 
                 if (best.Option.Stock is { } stock)
                 {
-                    Buy(stock, best.Option.Member);
+                    Purchase(stock, best.Option.Member);
                 }
                 else
                 {

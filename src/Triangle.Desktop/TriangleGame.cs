@@ -394,6 +394,12 @@ public class TriangleGame : Game
                 run.Copies["heavy_strike"] = run.Copies.GetValueOrDefault("heavy_strike") + 1;
                 run.SetTactics(data, knight, [.. knight.Tactics, Tactic.Create(9, [new(Condition.SelfHpAtLeast, 50)], "heavy_strike"),
                     Tactic.Create(9, [new(Condition.Always, 0)], "focus")]);
+                // 상점에서 강화를 산 것처럼 강타에 강화 둘을 걸어 강화된 이름과 수치가 보이게 한다.
+                run = Triangle.Core.Runs.Run.Restore(run.ToSave() with
+                {
+                    Upgrades = new Dictionary<string, IReadOnlyList<RunUpgradeKind>> { ["heavy_strike"] = [RunUpgradeKind.Power, RunUpgradeKind.Chain] },
+                }, data);
+                Runs.Resume(run);
                 var editor = new RunEditorScene(_ui, Runs, Bounds, back: () => ShowRun());
                 editor.Show(view);
                 return editor;

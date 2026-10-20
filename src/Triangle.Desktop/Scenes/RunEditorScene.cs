@@ -141,7 +141,7 @@ internal sealed class RunEditorScene : RunScene
         {
             var placed = Placed(id);
             var color = placed < count ? Theme.Cover : Theme.TextDim;
-            list.Widgets.Add(W.Label($"{Data.Actions[id].Name}  {placed}/{count}", 14, color));
+            list.Widgets.Add(W.Label($"{Run.Upgraded(Data, id).Name}  {placed}/{count}", 14, color));
         }
 
         return new ScrollPane { Content = list, ShowHorizontalScrollBar = false };
@@ -180,7 +180,7 @@ internal sealed class RunEditorScene : RunScene
         }
 
         names.Widgets.Add(title);
-        var preview = UnitPreview.For(Setup, Run.Catalog(Data), CombatRules.Default);
+        var preview = UnitPreview.For(Setup, Run.BattleCatalog(Data), CombatRules.Default);
         var passives = member.Passives.Count == 0 ? "패시브 없음" : string.Join(", ", member.Passives.Select(p => $"{Data.Skills[p.Key].Name} Lv{p.Value}"));
         names.Widgets.Add(W.Label($"HP {preview.MaxHp} · MP {preview.MaxMp} · {passives}", 14, Theme.TextDim, width: 420, wrap: true));
         var (lines, linesColor) = RunText.Lines(member);
@@ -274,7 +274,7 @@ internal sealed class RunEditorScene : RunScene
         var member = Member;
         var tactic = member.Tactics[index];
         var on = index < member.Lines;
-        var action = Data.Actions[tactic.ActionId];
+        var action = Run.Upgraded(Data, tactic.ActionId);
 
         var first = new HorizontalStackPanel { Spacing = 8 };
         first.Widgets.Add(Badge($"{index + 1}", on ? Theme.Gold : Theme.TextDim));
@@ -329,7 +329,7 @@ internal sealed class RunEditorScene : RunScene
             bottom.Widgets.Add(W.Chip("꺼짐", Theme.Accent, 12));
         }
 
-        var preview = ActionPreview.For(Setup, action, Run.Catalog(Data));
+        var preview = ActionPreview.For(Setup, action, Run.BattleCatalog(Data));
         var effect = action.Applies.FirstOrDefault() is { } applied ? Data.Effects[applied.EffectId].Name : null;
         var summary = on
             ? $"{TacticText.Sentence(tactic, effect)} → {ActionText.Summary(action, Data, preview)}" + (ActionText.Cost(action, preview) is { Length: > 0 } cost ? $" · {cost}" : "")
@@ -520,7 +520,7 @@ internal sealed class RunEditorScene : RunScene
         var (icon, color) = GameIcons.Action(action, Data);
         var content = new HorizontalStackPanel { Spacing = 10 };
         content.Widgets.Add(W.IconTile(usable ? icon : "lock", 38, usable ? color : Theme.TextDim, padding: 5));
-        content.Widgets.Add(W.Label(action.Name, 17, usable ? Theme.Text : Theme.TextDim, bold: true, width: 170));
+        content.Widgets.Add(W.Label(Run.Upgraded(Data, action.Id).Name, 17, usable ? Theme.Text : Theme.TextDim, bold: true, width: 170));
         var copies = action.Universal ? "공용" : $"사본 {Placed(action.Id)}/{Run.Copies.GetValueOrDefault(action.Id)} 놓음";
         content.Widgets.Add(W.Label(copies, 13, usable ? Theme.Cover : Theme.TextDim));
 
@@ -560,7 +560,13 @@ internal sealed class RunEditorScene : RunScene
             detail.Widgets.Add(W.Label("고를 수 없음: 남은 사본이 없다. 다른 줄(다른 멤버 포함)에서 빼거나 보상·상점에서 사본을 더 얻는다.", 15, Theme.Enemy, width: width, wrap: true));
         }
 
-        AddLines(detail, RunText.Action(action, Data, ActionPreview.For(Setup, action, Run.Catalog(Data))), width);
+        // 강화를 샀으면 강화가 걸린 행동을 보여 준다 (사본 수는 원래 ID로 센다).
+        var shown = Run.Upgraded(Data, action.Id);
+        AddLines(detail, RunText.Action(shown, Data, ActionPreview.For(Setup, shown, Run.BattleCatalog(Data))), width);
+        if (Run.Upgrades.GetValueOrDefault(action.Id) is { Count: > 0 } kinds)
+        {
+            AddLines(detail, [new TextLine("강화: " + string.Join(", ", kinds.Select(k => $"{RunUpgrades.Name(k)} ({RunUpgrades.Describe(action, k)})")), Theme.Gold, 14)], width);
+        }
     }
 
     // ── 장비 ──────────────────────────────────────────────

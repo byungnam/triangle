@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
+using Triangle.Core.Runs;
 using Triangle.Core.Units;
 
 namespace Triangle.Desktop.Rendering;
@@ -170,7 +171,7 @@ internal sealed class CombatSummaryView
             Text(Stats(unit), Theme.Text);
             foreach (var usage in unit.Tactics)
             {
-                var action = _data.Actions.GetValueOrDefault(usage.Tactic.ActionId);
+                var action = _data.Actions.GetValueOrDefault(usage.Tactic.ActionId) ?? RunUpgrades.Resolve(_data, usage.Tactic.ActionId);
                 var effect = action?.Applies.FirstOrDefault() is { } applied ? _data.Effects.GetValueOrDefault(applied.EffectId)?.Name : null;
                 var label = $"{TacticText.Sentence(usage.Tactic, effect)} → {action?.Name ?? usage.Tactic.ActionId}";
                 lines.Add(new TacticLine(usage.Tactic.Priority, TextLayout.Truncate(font, label, labelWidth), usage.Used, usage.BlockedTotal));

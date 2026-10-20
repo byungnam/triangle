@@ -201,9 +201,11 @@ internal static class RunReport
                 _ => "장신구",
             },
             RunStockKind.Skill => "스킬",
+            RunStockKind.Upgrade => "강화",
+            RunStockKind.Line => "줄 상한",
             _ => "합류",
         };
-        string[] kinds = ["무기", "방어구", "장신구", "스킬", "합류"];
+        string[] kinds = ["무기", "방어구", "장신구", "스킬", "강화", "줄 상한", "합류"];
         Console.WriteLine();
         Console.WriteLine($"  상점 (판당 {(double)visits.Count / results.Count:F2}번). 종류 칸은 나온 것 중 산 비율과 값의 평균:");
         Console.WriteLine("    " + Bench.Pad("막", 5) + Bench.Pad("방문/판", 9, true) + Bench.Pad("들를 때", 9, true) + Bench.Pad("쓴 골드", 9, true)
@@ -262,6 +264,20 @@ internal static class RunReport
                 Console.WriteLine("    " + Bench.Pad($"{data.Items[id].Name} ({KindOf(new RunStock(RunStockKind.Item, id, 0))} T{data.Items[id].Tier} {data.Items[id].Price}G)", 36)
                     + Bench.Pad($"{count}", 6, true) + Bench.Pad($"{gain:F3}", 9, true) + Bench.Pad($"{100 * rate:F0}%", 7, true));
             }
+
+            // 강화 종류마다: 나온 횟수, 값어치 평균, 산 비율, 값의 평균.
+            var upgrades = values.Where(x => x.Value.Stock is { Kind: RunStockKind.Upgrade }).GroupBy(x => x.Value.Stock!.Upgrade!.Value).OrderBy(g => g.Key).ToList();
+            if (upgrades.Count > 0)
+            {
+                Console.WriteLine("  강화별 값어치 (나온 수 · 값어치 평균 · 산 비율 · 값 평균):");
+                foreach (var g in upgrades)
+                {
+                    var offered = visits.Sum(v => v.Offered.Count(o => o.Upgrade == g.Key));
+                    var bought = visits.Sum(v => v.Bought.Count(b => b.Upgrade == g.Key));
+                    Console.WriteLine("    " + Bench.Pad(RunUpgrades.Name(g.Key), 10) + Bench.Pad($"{g.Count()}", 6, true) + Bench.Pad($"{g.Average(x => x.Value.Gain):F3}", 9, true)
+                        + Bench.Pad($"{100.0 * bought / Math.Max(1, offered):F0}%", 7, true) + Bench.Pad($"{g.Average(x => x.Value.Price):F0}G", 7, true));
+                }
+            }
         }
     }
 
@@ -273,6 +289,8 @@ internal static class RunReport
         RunSpend.Skill => "스킬",
         RunSpend.Recruit => "합류",
         RunSpend.Unseal => "봉인 풀기",
+        RunSpend.Upgrade => "강화",
+        RunSpend.Line => "줄 상한",
         _ => "이벤트",
     };
 

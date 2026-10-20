@@ -7,7 +7,8 @@ using Triangle.Desktop.Rendering;
 namespace Triangle.Desktop.Scenes;
 
 /// <summary>
-/// 판 안의 상점: 왼쪽은 아이템과 스킬 사본, 오른쪽은 봉인 풀기(상점이 합류를 팔면 동료 합류도). 산 아이템은 가방으로 가고 편성에서 낀다.
+/// 판 안의 상점: 왼쪽은 아이템과 스킬 사본, 오른쪽은 스킬 강화, 줄 상한 +1, 봉인 풀기(상점이 합류를 팔면 동료 합류도).
+/// 산 아이템은 가방으로 가고 편성에서 낀다. 강화는 파티가 가진 그 스킬의 사본 모두에 바로 걸린다.
 /// </summary>
 internal sealed class RunShopScene : RunScene
 {
@@ -56,6 +57,20 @@ internal sealed class RunShopScene : RunScene
             services.Widgets.Add(new Panel { Height = 4 });
         }
 
+        if (Run.Stock.Any(s => s.Kind == RunStockKind.Upgrade))
+        {
+            services.Widgets.Add(W.Header("card", "스킬 강화", $"가진 사본 모두에 · 스킬마다 {RunUpgrades.MaxPerSkill}개까지"));
+            AddStock(services, RunStockKind.Upgrade, serviceWidth);
+            services.Widgets.Add(new Panel { Height = 4 });
+        }
+
+        var line = Enumerable.Range(0, Run.Stock.Count).FirstOrDefault(i => Run.Stock[i].Kind == RunStockKind.Line, -1);
+        if (line >= 0)
+        {
+            AddLine(services, line, serviceWidth);
+            services.Widgets.Add(new Panel { Height = 4 });
+        }
+
         var price = Data.Run!.Shop.UnsealPrice;
         services.Widgets.Add(W.Header("lock", "봉인 풀기", $"하나에 {price} 골드"));
         var sealedMembers = Run.Living.Where(m => m.Sealed > 0).ToList();
@@ -72,7 +87,8 @@ internal sealed class RunShopScene : RunScene
             services.Widgets.Add(row);
         }
 
-        root.Widgets.Add(Place(services, ServiceArea.X + 16, ServiceArea.Y + 12, serviceWidth));
+        // 강화, 줄 상한(멤버마다), 봉인 풀기가 모두 많으면 넘치므로 나가기 단추 위까지 굴린다.
+        root.Widgets.Add(Place(new ScrollPane { Content = services, ShowHorizontalScrollBar = false }, ServiceArea.X + 16, ServiceArea.Y + 12, ServiceArea.Width - 24, ServiceArea.Height - 24 - 56));
         root.Widgets.Add(Place(Button("나가기", () => Act(Run.LeaveShop), accent: true, width: 160), ServiceArea.Right - 16 - 160, ServiceArea.Bottom - 16 - 40));
         return root;
     }
@@ -96,6 +112,7 @@ internal sealed class RunShopScene : RunScene
             RunStockKind.Item => Describe(GameIcons.Item(Data.Items[stock.Id]), Brief(RunText.Item(Data.Items[stock.Id], Data))),
             RunStockKind.Skill => Describe(GameIcons.Action(Data.Actions[stock.Id], Data),
                 [.. RunText.Action(Data.Actions[stock.Id], Data).Take(2), new TextLine(ActionText.Summary(Data.Actions[stock.Id], Data), Theme.Text, 14)]),
+            RunStockKind.Upgrade => Describe(GameIcons.Action(Data.Actions[stock.Id], Data), RunText.Upgrade(Run, Data, stock)),
             _ => Describe(RunText.Portrait(Data.Classes[stock.Id], Data),
                 [new TextLine(Data.Classes[stock.Id].Name, Theme.Ally, 18, Bold: true), new TextLine($"시작 카드 {Data.Actions[Data.Classes[stock.Id].StartingSkill].Name}, 기본 장비 (줄은 편성에서 고른다)", Theme.Text, 14)]),
         };
@@ -115,6 +132,26 @@ internal sealed class RunShopScene : RunScene
         buy.VerticalAlignment = VerticalAlignment.Center;
         row.Widgets.Add(buy);
         return row;
+    }
+
+    /// <summary>줄 상한 +1: 받을 멤버마다 사기 단추. 상점에서 살 때마다 값이 오른다.</summary>
+    private void AddLine(VerticalStackPanel list, int index, int width)
+    {
+        var stock = Run.Stock[index];
+        list.Widgets.Add(W.Header("card", "줄 상한 +1", stock.Sold ? "이 상점에서는 샀습니다" : $"{stock.Price} 골드 · 살 때마다 {Data.Run!.Shop.LineStep} 오름"));
+        if (stock.Sold)
+        {
+            return;
+        }
+
+        foreach (var member in Run.Living)
+        {
+            var row = new HorizontalStackPanel { Spacing = 10 };
+            row.Widgets.Add(W.Label($"{Run.Name(Data, member)} · {RunText.Lines(member).Text}", 16, Theme.Text, width: width - 150));
+            var why = Run.WhyCannotBuy(Data, index, member);
+            row.Widgets.Add(Button("줄 +1", () => Act(() => Run.Buy(Data, index, member)), why, accent: why is null, width: 140, size: 15));
+            list.Widgets.Add(row);
+        }
     }
 
     /// <summary>아이템 줄을 줄인다: 이름, 종류, 나머지(보너스, 효과, 바뀌는 기본 공격)를 한 줄로. 가격은 버튼에 있으니 뺀다.</summary>

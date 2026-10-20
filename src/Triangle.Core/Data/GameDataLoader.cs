@@ -384,9 +384,15 @@ public static class GameDataLoader
         }
 
         var shop = run.Shop;
-        if (new[] { shop.Items, shop.Skills, shop.SkillPrice, shop.Recruits, shop.RecruitPrice, shop.UnsealPrice }.Any(v => v < 0))
+        if (new[] { shop.Items, shop.Skills, shop.SkillPrice, shop.Recruits, shop.RecruitPrice, shop.UnsealPrice, shop.Upgrades, shop.UpgradePrice, shop.UpgradeStep, shop.LinePrice, shop.LineStep }
+            .Any(v => v < 0))
         {
             errors.Add($"{RunFile}: shop counts and prices must not be negative");
+        }
+
+        if (shop.Lines is < 0 or > 1)
+        {
+            errors.Add($"{RunFile}: shop lines must be 0 or 1");
         }
 
         if (new[] { run.Renown.Fight, run.Renown.Elite, run.Renown.Boss, run.Renown.Victory }.Any(v => v < 0))

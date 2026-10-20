@@ -1761,7 +1761,7 @@
   {
     "id": "sanctum_choir",
     "name": "정결한 성가대",
-    "description": "4·5막 정예 (시제품 '정결한 성가대'를 옮김). 모두 디버프에 걸리지 않고 뒤의 사제가 치유한다. 직접 피해로 사제부터 잡아야 한다. 임시 수치.",
+    "description": "4·5막 정예 (시제품 '정결한 성가대'를 옮김, 2026-10-20 고침). 모두 디버프에 걸리지 않고 뒤의 사제가 치유한다. 사제는 MP를 다시 채우지 못해서, 치유할 일이 없거나 MP가 마르면 심판의 성가(두 차례 영창, 적 모두에게 마법 피해)를 부른다. 오래 끌수록 위험하니 직접 피해로 사제부터 잡아야 한다. 임시 수치.",
     "units": [
       {
         "id": "sanctum_choir_knight_1",
@@ -1769,7 +1769,7 @@
         "stats": {
           "str": 18,
           "dex": 10,
-          "vital": 48,
+          "vital": 32,
           "intel": 20,
           "speed": 11
         },
@@ -1809,7 +1809,7 @@
         "stats": {
           "str": 18,
           "dex": 10,
-          "vital": 48,
+          "vital": 32,
           "intel": 20,
           "speed": 11
         },
@@ -1863,7 +1863,8 @@
         },
         "actions": [
           "greater_heal",
-          "heal"
+          "heal",
+          "judgment_hymn"
         ],
         "effects": [
           "inviolate"
@@ -1873,25 +1874,31 @@
             "priority": 1,
             "condition": "AnyAllyHpAtMost",
             "value": 70,
-            "actionId": "greater_heal"
+            "actionId": "greater_heal",
+            "and": [
+              {
+                "condition": "SelfMpAmountAtLeast",
+                "value": 35
+              }
+            ]
           },
           {
             "priority": 2,
             "condition": "AnyAllyHpAtMost",
             "value": 85,
-            "actionId": "heal"
+            "actionId": "heal",
+            "and": [
+              {
+                "condition": "SelfMpAmountAtLeast",
+                "value": 20
+              }
+            ]
           },
           {
             "priority": 3,
-            "condition": "SelfMpAtMost",
-            "value": 20,
-            "actionId": "focus"
-          },
-          {
-            "priority": 4,
             "condition": "Always",
             "value": 0,
-            "actionId": "basic_attack"
+            "actionId": "judgment_hymn"
           }
         ]
       }

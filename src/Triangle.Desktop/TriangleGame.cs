@@ -6,6 +6,7 @@ using Myra.Graphics2D.UI.Styles;
 using Triangle.Core.Data;
 using Triangle.Core.Runs;
 using Triangle.Core.Tactics;
+using Triangle.Desktop.Audio;
 using Triangle.Desktop.Rendering;
 using Triangle.Desktop.Scenes;
 
@@ -26,6 +27,7 @@ public sealed record LaunchOptions(
 /// 화면 흐름 (로그라이트 재편, 2026-10-19): 파티 고르기 ↔ 해금·기록, 파티 고르기 → 지도 ↔ (편성, 전투 기록 → 보상, 상점, 휴식, 이벤트)
 /// → 결과 → 파티 고르기. 판은 바뀔 때마다 자동 저장하고(<see cref="RunSession"/>), 껐다 켜면 그 단계에서 이어 간다.
 /// 옛 마을·원정·회사는 2026-10-19에 지웠다.
+/// 배경음악은 화면에 따라 바뀌고 (파티 고르기·판 진행·전투), 어느 화면에서나 F8 음소거, F9·F10 음량 조절이다.
 /// </summary>
 public class TriangleGame : Game
 {
@@ -44,6 +46,11 @@ public class TriangleGame : Game
     private IScene _scene = null!;
     private RunSession? _runs;
     private int _framesDrawn;
+    private MusicPlayer? _music;
+    private string _settingsPath = null!;
+
+    /// <summary>음량을 바꾼 뒤 화면에 음량을 보여줄 남은 시간 (초).</summary>
+    private float _volumeShown;
 
     public TriangleGame(LaunchOptions options)
     {
@@ -109,7 +116,79 @@ public class TriangleGame : Game
         _ui = new Ui(GraphicsDevice, _screen, Path.Combine(AppContext.BaseDirectory, "Fonts"), fontResolution);
         SetUpMyra();
         _scene = CreateFirstScene();
+        // 스크린샷 확인 실행에서는 음악을 틀지 않는다.
+        _settingsPath = _options.SaveDirectory is { } directory ? Path.Combine(directory, "settings.json") : Settings.PathNextTo(RunStore.DefaultPath);
+        if (_options.ScreenshotPath is null)
+        {
+            var settings = Settings.Load(_settingsPath);
+            _music = new MusicPlayer(Path.Combine(AppContext.BaseDirectory, "Music"), settings.MusicVolume, settings.MusicMuted);
+        }
     }
+
+    /// <summary>화면에 맞는 곡: 전투 기록은 전투, 판이 진행 중이면 원정, 그 밖에는 (파티 고르기·해금·결과) 대기실 곡. 오류 화면은 조용히.</summary>
+    private string? TrackFor(IScene scene) => scene switch
+    {
+        ErrorScene => null,
+        CombatLogScene => Tracks.Battle,
+        _ when _runs?.Run is { Finished: false } => Tracks.Expedition,
+        _ => Tracks.Lobby,
+    };
+
+    /// <summary>F8 음소거, F9 음량 줄이기, F10 음량 키우기. 바꾸면 잠시 음량을 보여주고 설정에 저장한다.</summary>
+    private void UpdateMusic(GameTime gameTime)
+    {
+        if (_music is null)
+        {
+            return;
+        }
+
+        var changed = true;
+        if (_input.Pressed(Keys.F8))
+        {
+            _music.ToggleMute();
+        }
+        else if (_input.Pressed(Keys.F9))
+        {
+            _music.ChangeVolume(-0.1f);
+        }
+        else if (_input.Pressed(Keys.F10))
+        {
+            _music.ChangeVolume(0.1f);
+        }
+        else
+        {
+            changed = false;
+        }
+
+        if (changed)
+        {
+            _volumeShown = 1.5f;
+            new Settings(_music.Volume, _music.Muted).Save(_settingsPath);
+        }
+
+        _volumeShown = Math.Max(0f, _volumeShown - (float)gameTime.ElapsedGameTime.TotalSeconds);
+        _music.Play(TrackFor(_scene));
+        _music.Update(gameTime);
+    }
+
+    /// <summary>음량을 바꾼 직후 오른쪽 아래에 잠시 보여준다.</summary>
+    private void DrawVolume()
+    {
+        if (_music is null || _volumeShown <= 0f)
+        {
+            return;
+        }
+
+        var text = _music.Muted ? "음악 꺼짐 (F8)" : $"음악 {_music.Volume * 100:0}%";
+        var font = _ui.BoldFont(20);
+        var size = font.MeasureString(text);
+        var position = new Vector2(Bounds.Right - 24 - size.X, Bounds.Bottom - 80);
+        _spriteBatch.Begin(transformMatrix: _screen.Transform);
+        _ui.Fill(_spriteBatch, new Rectangle((int)position.X - 12, (int)position.Y - 6, (int)size.X + 24, (int)size.Y + 12), Theme.Panel * 0.9f);
+        _ui.Text(_spriteBatch, font, text, position, Theme.Text);
+        _spriteBatch.End();
+    }
+
 
     /// <summary>Myra 기본 스타일의 글꼴을 한글 글꼴로 바꾼다 (직접 지정하지 않은 글자에도 한글이 나오도록).</summary>
     private void SetUpMyra()
@@ -344,6 +423,7 @@ public class TriangleGame : Game
 
         _screen.Resize(GraphicsDevice.PresentationParameters.BackBufferWidth, GraphicsDevice.PresentationParameters.BackBufferHeight);
         _scene.Update(gameTime, _input);
+        UpdateMusic(gameTime);
         base.Update(gameTime);
     }
 
@@ -351,6 +431,7 @@ public class TriangleGame : Game
     {
         GraphicsDevice.Clear(Theme.Background);
         _scene.Draw(_spriteBatch);
+        DrawVolume();
 
         // 글자는 처음 그릴 때 글꼴 텍스처에 새겨지므로 첫 프레임에는 빠질 수 있다. 몇 프레임 뒤에 찍는다.
         if (_options.ScreenshotPath is { } path && ++_framesDrawn == 3)
@@ -378,6 +459,7 @@ public class TriangleGame : Game
 
     protected override void UnloadContent()
     {
+        _music?.Dispose();
         _ui.Dispose();
         _spriteBatch.Dispose();
         base.UnloadContent();

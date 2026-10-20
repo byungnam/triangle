@@ -34,5 +34,6 @@
     <None Include="..\..\data\**\*.json" Link="data\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Fonts\**" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Icons\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Music\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

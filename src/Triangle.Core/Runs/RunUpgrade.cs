@@ -1,3 +1,6 @@
+using System.Collections;
+using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using Triangle.Core.Actions;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
@@ -5,7 +8,7 @@ using Triangle.Core.Data;
 namespace Triangle.Core.Runs;
 
 /// <summary>
-/// 액티브 스킬 강화 한 가지 (2026-10-20). 상점에서 골드로 사고, 파티가 가진 그 스킬의 사본 모두에 걸린다. 스킬마다 다른 강화를
+/// 액티브 스킬 강화 한 가지 (2026-10-20). 상점에서 골드로 사고, 그 스킬의 사본 한 장에 걸린다. 사본마다 다른 강화를
 /// <see cref="RunUpgrades.MaxPerSkill"/>개까지 쌓는다. 수치만 올리는 것(위력·절약·신속)과 행동 방식을 바꾸는 것(관통·연쇄·지속)이 있다.
 /// 연쇄는 추가 대상에게도 위력이 그대로 들어가 적이 둘 이상이면 피해가 두 배가 되므로 위력을 깎는다.
 /// JSON에는 이름으로 저장되므로 새 강화는 끝에 덧붙인다.
@@ -32,8 +35,8 @@ public enum RunUpgradeKind
 }
 
 /// <summary>
-/// 강화의 규칙. 전투에서 강화된 스킬은 다른 ID의 행동(<c>fireball+power+pierce</c>)이 되어, 같은 스킬을 쓰는 적에게는 걸리지 않는다.
-/// 이름은 강화 수만큼 "+"를 붙인다(화염구++).
+/// 강화의 규칙. 강화된 사본은 다른 ID의 카드(<c>fireball+power+pierce</c>)가 되어 파티 사본에 따로 세고, 전술 줄에도 그 ID로 놓는다.
+/// 전투에서도 그 ID의 행동이라 같은 스킬을 쓰는 적에게는 걸리지 않는다. 이름은 강화 수만큼 "+"를 붙인다(화염구++).
 /// </summary>
 public static class RunUpgrades
 {
@@ -96,13 +99,31 @@ public static class RunUpgrades
     public static string Id(string actionId, IEnumerable<RunUpgradeKind> kinds) =>
         string.Join(Separator, kinds.Distinct().Order().Select(k => k.ToString().ToLowerInvariant()).Prepend(actionId));
 
+    /// <summary>강화 전의 행동 ID (<c>fireball+power</c> → <c>fireball</c>). 강화가 없으면 그대로다.</summary>
+    public static string BaseId(string id) => id.Split(Separator)[0];
+
+    /// <summary>ID에 붙은 강화 (없으면 비어 있다). 모르는 이름은 뺀다.</summary>
+    public static IReadOnlyList<RunUpgradeKind> Kinds(string id) =>
+        id.Split(Separator).Skip(1).Select(p => Enum.TryParse<RunUpgradeKind>(p, ignoreCase: true, out var k) ? k : (RunUpgradeKind?)null).OfType<RunUpgradeKind>().ToList();
+
+    /// <summary>사본 ID에 강화 하나를 더한 ID.</summary>
+    public static string With(string id, RunUpgradeKind kind) => Id(BaseId(id), [.. Kinds(id), kind]);
+
+    /// <summary>판의 행동 하나: 게임 데이터의 행동이거나 강화된 사본(<see cref="Resolve(GameData, string)"/>).</summary>
+    public static ActionDefinition Action(GameData data, string id) =>
+        data.Actions.TryGetValue(id, out var action) ? action : Resolve(data, id) ?? throw new KeyNotFoundException($"unknown action '{id}'");
+
     /// <summary>
-    /// 강화된 행동의 ID를 게임 데이터의 행동으로 되돌려 강화를 건다 (전투 기록의 이름을 찾을 때). 강화 ID가 아니거나 모르는 행동이면 null.
+    /// 강화된 사본의 ID를 게임 데이터의 행동으로 되돌려 강화를 건다. 강화 ID가 아니거나, 모르는 행동이나 강화이거나, 강화가 너무 많거나,
+    /// 늘 쓰는 순서(<see cref="Id"/>)가 아니면 null.
     /// </summary>
-    public static ActionDefinition? Resolve(GameData data, string id)
+    public static ActionDefinition? Resolve(GameData data, string id) => Resolve(data.Actions, id);
+
+    /// <inheritdoc cref="Resolve(GameData, string)"/>
+    public static ActionDefinition? Resolve(IReadOnlyDictionary<string, ActionDefinition> actions, string id)
     {
         var parts = id.Split(Separator);
-        if (parts.Length < 2 || !data.Actions.TryGetValue(parts[0], out var action))
+        if (parts.Length < 2 || parts.Length > MaxPerSkill + 1 || !actions.TryGetValue(parts[0], out var action))
         {
             return null;
         }
@@ -118,7 +139,8 @@ public static class RunUpgrades
             kinds.Add(kind);
         }
 
-        return Apply(action, kinds);
+        var upgraded = Apply(action, kinds);
+        return upgraded.Id == id ? upgraded : null;
     }
 
     public static string Name(RunUpgradeKind kind) => kind switch
@@ -150,4 +172,38 @@ public static class RunUpgrades
 
     private static bool SingleEnemyStrike(ActionDefinition action) =>
         action is { Effect: ActionEffect.Damage, Side: TargetSide.Enemy, Scope: TargetScope.Single };
+}
+
+/// <summary>
+/// 판의 전투가 쓰는 행동 묶음: 게임 데이터의 행동에 더해 강화된 사본(<c>fireball+power</c>)을 찾으면 그때 만들어 둔다.
+/// 훑어보기(키, 값, 수)는 게임 데이터의 행동만 보여 준다.
+/// </summary>
+internal sealed class UpgradedActions(IReadOnlyDictionary<string, ActionDefinition> common) : IReadOnlyDictionary<string, ActionDefinition>
+{
+    private readonly ConcurrentDictionary<string, ActionDefinition?> _upgraded = new();
+
+    public ActionDefinition this[string key] => TryGetValue(key, out var action) ? action : throw new KeyNotFoundException($"unknown action '{key}'");
+
+    public IEnumerable<string> Keys => common.Keys;
+
+    public IEnumerable<ActionDefinition> Values => common.Values;
+
+    public int Count => common.Count;
+
+    public bool ContainsKey(string key) => TryGetValue(key, out _);
+
+    public bool TryGetValue(string key, [MaybeNullWhen(false)] out ActionDefinition value)
+    {
+        if (common.TryGetValue(key, out value))
+        {
+            return true;
+        }
+
+        value = _upgraded.GetOrAdd(key, id => RunUpgrades.Resolve(common, id));
+        return value is not null;
+    }
+
+    public IEnumerator<KeyValuePair<string, ActionDefinition>> GetEnumerator() => common.GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }

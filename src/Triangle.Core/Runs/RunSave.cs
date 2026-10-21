@@ -28,10 +28,8 @@ public sealed record RunSaveFile
 
     public required IReadOnlyList<SavedRunMember> Members { get; init; }
 
+    /// <summary>스킬 사본 (행동 ID → 장 수). 강화된 사본은 강화 ID(<c>fireball+power</c>)로 따로 담는다.</summary>
     public IReadOnlyDictionary<string, int> Copies { get; init; } = new Dictionary<string, int>();
-
-    /// <summary>스킬 강화 (행동 ID → 산 강화). 강화가 생기기 전의 세이브에는 없다.</summary>
-    public IReadOnlyDictionary<string, IReadOnlyList<RunUpgradeKind>> Upgrades { get; init; } = new Dictionary<string, IReadOnlyList<RunUpgradeKind>>();
 
     /// <summary>상점에서 산 줄 상한 수.</summary>
     public int LinesBought { get; init; }
@@ -129,7 +127,6 @@ public sealed partial class Run
             Trinkets = m.Trinkets.ToList(),
         }).ToList(),
         Copies = new SortedDictionary<string, int>(Copies, StringComparer.Ordinal),
-        Upgrades = new SortedDictionary<string, IReadOnlyList<RunUpgradeKind>>(_upgrades.ToDictionary(p => p.Key, p => (IReadOnlyList<RunUpgradeKind>)p.Value.ToList()), StringComparer.Ordinal),
         LinesBought = LinesBought,
         Bag = Bag.ToList(),
         Gold = Gold,
@@ -193,8 +190,8 @@ public sealed partial class Run
 
         errors.AddRange(file.Bosses.Concat(file.History.Select(h => h.EncounterId)).Distinct().Where(id => !data.Encounters.ContainsKey(id))
             .Select(id => $"run save: unknown encounter '{id}'"));
-        errors.AddRange(file.Copies.Keys.Where(id => !data.Actions.ContainsKey(id)).Select(id => $"run save: unknown action '{id}' in copies"));
-        errors.AddRange(file.Upgrades.Keys.Where(id => !data.Actions.ContainsKey(id)).Select(id => $"run save: unknown action '{id}' in upgrades"));
+        var actions = Catalog(data).Actions;
+        errors.AddRange(file.Copies.Keys.Where(id => !actions.ContainsKey(id)).Select(id => $"run save: unknown action '{id}' in copies"));
         errors.AddRange(file.Bag.Where(id => !data.Items.ContainsKey(id)).Select(id => $"run save: unknown item '{id}' in bag"));
         foreach (var m in file.Members)
         {
@@ -209,7 +206,7 @@ public sealed partial class Run
             errors.AddRange(m.Passives.Keys.Where(id => !data.Skills.ContainsKey(id)).Select(id => $"{at}: unknown passive '{id}'"));
             foreach (var tactic in m.Tactics)
             {
-                DataValidation.ValidateTactic(tactic, at, data.Actions, errors);
+                DataValidation.ValidateTactic(tactic, at, actions, errors);
             }
         }
 
@@ -233,7 +230,7 @@ public sealed partial class Run
             {
                 RunStockKind.Item => data.Items.ContainsKey(stock.Id),
                 RunStockKind.Skill => data.Actions.ContainsKey(stock.Id),
-                RunStockKind.Upgrade => data.Actions.ContainsKey(stock.Id) && stock.Upgrade is not null,
+                RunStockKind.Upgrade => actions.ContainsKey(stock.Id) && stock.Upgrade is not null,
                 RunStockKind.Line => true,
                 _ => data.Classes.ContainsKey(stock.Id),
             };
@@ -278,11 +275,6 @@ public sealed partial class Run
         foreach (var (id, count) in file.Copies)
         {
             run.Copies[id] = count;
-        }
-
-        foreach (var (id, kinds) in file.Upgrades)
-        {
-            run._upgrades[id] = kinds.ToList();
         }
 
         run.Members.AddRange(file.Members.Select(m => new RunMember(m.Id, m.ClassId, m.Earned)

@@ -8,7 +8,7 @@ namespace Triangle.Desktop.Scenes;
 
 /// <summary>
 /// 판 안의 상점: 왼쪽은 아이템과 스킬 사본, 오른쪽은 스킬 강화, 줄 상한 +1, 봉인 풀기(상점이 합류를 팔면 동료 합류도).
-/// 산 아이템은 가방으로 가고 편성에서 낀다. 강화는 파티가 가진 그 스킬의 사본 모두에 바로 걸린다.
+/// 산 아이템은 가방으로 가고 편성에서 낀다. 강화는 그 스킬의 사본 한 장에 걸린다(줄에 놓인 사본이면 그 줄이 바로 강화된 사본을 쓴다).
 /// </summary>
 internal sealed class RunShopScene : RunScene
 {
@@ -59,7 +59,7 @@ internal sealed class RunShopScene : RunScene
 
         if (Run.Stock.Any(s => s.Kind == RunStockKind.Upgrade))
         {
-            services.Widgets.Add(W.Header("card", "스킬 강화", $"가진 사본 모두에 · 스킬마다 {RunUpgrades.MaxPerSkill}개까지"));
+            services.Widgets.Add(W.Header("card", "스킬 강화", $"사본 한 장에 · 사본마다 {RunUpgrades.MaxPerSkill}개까지"));
             AddStock(services, RunStockKind.Upgrade, serviceWidth);
             services.Widgets.Add(new Panel { Height = 4 });
         }
@@ -112,7 +112,7 @@ internal sealed class RunShopScene : RunScene
             RunStockKind.Item => Describe(GameIcons.Item(Data.Items[stock.Id]), Brief(RunText.Item(Data.Items[stock.Id], Data))),
             RunStockKind.Skill => Describe(GameIcons.Action(Data.Actions[stock.Id], Data),
                 [.. RunText.Action(Data.Actions[stock.Id], Data).Take(2), new TextLine(ActionText.Summary(Data.Actions[stock.Id], Data), Theme.Text, 14)]),
-            RunStockKind.Upgrade => Describe(GameIcons.Action(Data.Actions[stock.Id], Data), RunText.Upgrade(Run, Data, stock)),
+            RunStockKind.Upgrade => Describe(GameIcons.Action(RunUpgrades.Action(Data, stock.Id), Data), RunText.Upgrade(Run, Data, stock)),
             _ => Describe(RunText.Portrait(Data.Classes[stock.Id], Data),
                 [new TextLine(Data.Classes[stock.Id].Name, Theme.Ally, 18, Bold: true), new TextLine($"시작 카드 {Data.Actions[Data.Classes[stock.Id].StartingSkill].Name}, 기본 장비 (줄은 편성에서 고른다)", Theme.Text, 14)]),
         };

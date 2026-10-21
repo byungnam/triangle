@@ -604,6 +604,10 @@ public class RunTests
         Assert.Equal(("화염구+", Shipped.Actions["fireball"].Power * 13 / 10), (resolved?.Name, resolved?.Power));
         Assert.Null(RunUpgrades.Resolve(Shipped, "fireball"));
         Assert.Null(RunUpgrades.Resolve(Shipped, "fireball+nothing"));
+        Assert.Null(RunUpgrades.Resolve(Shipped, "fireball+swift+power"));
+        Assert.Equal("fireball", RunUpgrades.BaseId("fireball+power+swift"));
+        Assert.Equal([RunUpgradeKind.Power, RunUpgradeKind.Swift], RunUpgrades.Kinds("fireball+power+swift"));
+        Assert.Equal("fireball+power+swift", RunUpgrades.With("fireball+swift", RunUpgradeKind.Power));
 
         // 뜻이 없는 강화는 붙지 않는다: 위력이 없는 행동에 위력, MP를 쓰지 않는 행동에 절약, 앞부터 치는 공격에 관통, 효과가 없는 행동에 지속.
         var wall = Shipped.Actions["shield_wall"];
@@ -618,31 +622,39 @@ public class RunTests
     }
 
     [Fact]
-    public void The_shop_sells_skill_upgrades_for_every_copy_and_pricey_line_caps()
+    public void The_shop_sells_upgrades_for_one_copy_and_pricey_line_caps()
     {
         var data = SecondFloor("shop", r => r with { StartGold = 1000, Shop = r.Shop with { Upgrades = 2, UpgradePrice = 80, UpgradeStep = 40, Lines = 1, LinePrice = 150, LineStep = 50 } });
         var run = AtSecondFloor(data, ["knight", "elementalist"]);
 
-        // 강화는 파티가 사본을 가진 클래스 카드에서 스킬이 겹치지 않게, 그 스킬에 맞는 강화로 나온다.
+        // 강화는 파티가 가진 그 클래스 사본에서 겹치지 않게, 그 스킬에 맞는 강화로 나온다.
         var upgrades = run.Stock.Where(s => s.Kind == RunStockKind.Upgrade).ToList();
         Assert.Equal(["fireball", "shield_wall"], upgrades.Select(s => s.Id).Order());
         Assert.All(upgrades, s => Assert.True(RunUpgrades.Fits(data.Actions[s.Id], s.Upgrade!.Value)));
         Assert.All(upgrades, s => Assert.Equal(80, s.Price));
 
+        // 화염구 사본이 둘이면 강화는 줄에 놓인 한 장에만 걸리고, 그 줄이 강화된 사본을 쓴다. 놀고 있는 한 장은 그대로다.
+        run.Copies["fireball"] = 2;
         var fireball = upgrades.Single(s => s.Id == "fireball");
         var kind = fireball.Upgrade!.Value;
-        run.Buy(data, run.Stock.ToList().IndexOf(fireball));
-        Assert.Equal([kind], run.Upgrades["fireball"]);
-        Assert.Equal("화염구+", run.Upgraded(data, "fireball").Name);
-
-        // 전투에서 그 줄은 강화된 행동(다른 ID)으로 싸우고, 같은 행동을 쓰는 적은 그대로다.
+        var upgraded = RunUpgrades.Id("fireball", [kind]);
         var mage = run.Members.Single(m => m.ClassId == "elementalist");
-        var upgradedId = RunUpgrades.Id("fireball", [kind]);
-        Assert.Equal(upgradedId, run.Setup(data, mage).Tactics[0].ActionId);
-        Assert.Contains(upgradedId, run.Setup(data, mage).GrantedActions);
-        Assert.Equal(run.Upgraded(data, "fireball").Power, run.BattleCatalog(data).Actions[upgradedId].Power);
-        Assert.Equal(data.Actions["fireball"].Power, run.BattleCatalog(data).Actions["fireball"].Power);
-        Assert.False(Run.Catalog(data).Actions.ContainsKey(upgradedId));
+        Assert.Equal(mage, run.UpgradeHolder("fireball"));
+        run.Buy(data, run.Stock.ToList().IndexOf(fireball));
+        Assert.Equal((1, 1), (run.Copies["fireball"], run.Copies[upgraded]));
+        Assert.Equal(upgraded, mage.Tactics[0].ActionId);
+        Assert.Equal("화염구+", RunUpgrades.Action(data, upgraded).Name);
+
+        // 전투에서 그 줄은 강화된 행동으로 싸우고, 같은 행동을 쓰는 적은 그대로다.
+        Assert.Equal(upgraded, run.Setup(data, mage).Tactics[0].ActionId);
+        Assert.Contains(upgraded, run.Setup(data, mage).GrantedActions!);
+        Assert.Equal(RunUpgrades.Action(data, upgraded).Power, Run.Catalog(data).Actions[upgraded].Power);
+        Assert.Equal(data.Actions["fireball"].Power, Run.Catalog(data).Actions["fireball"].Power);
+
+        // 강화된 사본과 원래 사본은 따로 센다: 남은 원래 사본 한 장은 다른 줄에 놓을 수 있지만, 강화된 사본을 두 줄에 놓을 수는 없다.
+        Assert.Null(run.WhyCannotSetTactics(data, mage, [Line(upgraded), Line("fireball", Condition.SelfHpAtMost, 50)]));
+        Assert.StartsWith("사본이 모자란다", run.WhyCannotSetTactics(data, mage, [Line(upgraded), Line(upgraded, Condition.SelfHpAtMost, 50)]));
+        Assert.StartsWith("기사의 카드가 아니다", run.WhyCannotSetTactics(data, run.Members[0], [Line(upgraded)]));
 
         // 줄 상한은 받을 멤버를 골라 산다.
         var line = run.Stock.ToList().FindIndex(s => s.Kind == RunStockKind.Line);
@@ -651,26 +663,29 @@ public class RunTests
         run.Buy(data, line, mage);
         Assert.Equal((3, 1), (mage.Earned, run.LinesBought));
 
-        // 세이브에 강화와 산 줄 상한이 남는다.
+        // 세이브에 강화된 사본과 산 줄 상한 수가 남는다.
         var copy = Run.Deserialize(run.Serialize(), data);
         Assert.Equal(run.Serialize(), copy.Serialize());
-        Assert.Equal([kind], copy.Upgrades["fireball"]);
+        Assert.Equal(1, copy.Copies[upgraded]);
         Assert.Equal(1, copy.LinesBought);
 
-        // 다음 상점: 줄 상한은 산 수만큼, 강화는 그 스킬에 건 강화 수만큼 비싸다. 강화가 다 찬 스킬은 나오지 않는다.
+        // 다음 상점: 줄 상한은 산 수만큼, 강화는 그 사본에 건 강화 수만큼 비싸다. 강화가 다 찬 사본은 나오지 않는다.
         var before = WonFirstFight(data, ["knight", "elementalist"]);
         before.Skip();
-        var file = before.ToSave() with
-        {
-            LinesBought = 2,
-            Upgrades = new Dictionary<string, IReadOnlyList<RunUpgradeKind>> { ["fireball"] = [RunUpgradeKind.Swift], ["shield_wall"] = [RunUpgradeKind.Swift, RunUpgradeKind.Lasting] },
-        };
+        var swift = RunUpgrades.Id("fireball", [RunUpgradeKind.Swift]);
+        var wall = RunUpgrades.Id("shield_wall", [RunUpgradeKind.Swift, RunUpgradeKind.Lasting]);
+        var file = before.ToSave() with { LinesBought = 2, Copies = new Dictionary<string, int> { [swift] = 1, [wall] = 1 } };
         var later = Run.Restore(file, data);
         later.Enter(data, later.Choices[0].Id);
         Assert.Equal(250, later.Stock.Single(s => s.Kind == RunStockKind.Line).Price);
         var again = Assert.Single(later.Stock, s => s.Kind == RunStockKind.Upgrade);
-        Assert.Equal(("fireball", 120), (again.Id, again.Price));
+        Assert.Equal((swift, 120), (again.Id, again.Price));
         Assert.NotEqual(RunUpgradeKind.Swift, again.Upgrade);
+
+        // 모르는 강화나 순서가 다른 강화 ID의 사본은 세이브에서 거부한다.
+        var errors = Assert.Throws<SaveGameException>(() => Run.Restore(file with { Copies = new Dictionary<string, int> { ["fireball+swift+power"] = 1, ["fireball+fly"] = 1 } }, data)).Errors;
+        Assert.Contains(errors, e => e.Contains("unknown action 'fireball+swift+power' in copies"));
+        Assert.Contains(errors, e => e.Contains("unknown action 'fireball+fly' in copies"));
     }
 
     [Fact]

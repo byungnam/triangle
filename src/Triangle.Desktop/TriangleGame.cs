@@ -391,15 +391,11 @@ public class TriangleGame : Game
                 run.Bag.AddRange(["frost_ring", "banner_of_defiance", "leather_armor"]);
                 // 줄 상한(2)보다 한 줄 더 적어 꺼진 줄도 보이게 한다.
                 var knight = run.Members[0];
-                run.Copies["heavy_strike"] = run.Copies.GetValueOrDefault("heavy_strike") + 1;
-                run.SetTactics(data, knight, [.. knight.Tactics, Tactic.Create(9, [new(Condition.SelfHpAtLeast, 50)], "heavy_strike"),
+                // 강타 사본은 상점에서 강화 둘(위력·연쇄)을 건 것으로 두어 강화된 이름과 수치가 보이게 한다.
+                var strike = RunUpgrades.Id("heavy_strike", [RunUpgradeKind.Power, RunUpgradeKind.Chain]);
+                run.Copies[strike] = 1;
+                run.SetTactics(data, knight, [.. knight.Tactics, Tactic.Create(9, [new(Condition.SelfHpAtLeast, 50)], strike),
                     Tactic.Create(9, [new(Condition.Always, 0)], "focus")]);
-                // 상점에서 강화를 산 것처럼 강타에 강화 둘을 걸어 강화된 이름과 수치가 보이게 한다.
-                run = Triangle.Core.Runs.Run.Restore(run.ToSave() with
-                {
-                    Upgrades = new Dictionary<string, IReadOnlyList<RunUpgradeKind>> { ["heavy_strike"] = [RunUpgradeKind.Power, RunUpgradeKind.Chain] },
-                }, data);
-                Runs.Resume(run);
                 var editor = new RunEditorScene(_ui, Runs, Bounds, back: () => ShowRun());
                 editor.Show(view);
                 return editor;

@@ -185,19 +185,19 @@ internal static class RunText
         ],
     };
 
-    /// <summary>상점의 스킬 강화: 이름이 바뀌는 것(화염구 → 화염구+), 바뀌는 수치나 방식, 이미 건 강화와 걸리는 사본 수.</summary>
+    /// <summary>상점의 스킬 강화: 이름이 어떻게 바뀌는지(화염구 → 화염구+), 바뀌는 수치나 방식, 어느 사본에 걸리는지.</summary>
     public static IReadOnlyList<TextLine> Upgrade(Run run, GameData data, RunStock stock)
     {
-        var before = run.Upgraded(data, stock.Id);
+        var before = RunUpgrades.Action(data, stock.Id);
         var kind = stock.Upgrade!.Value;
-        var had = run.Upgrades.GetValueOrDefault(stock.Id, []);
-        var after = RunUpgrades.Apply(data.Actions[stock.Id], [.. had, kind]);
-        var owned = had.Count == 0 ? "" : $" · 이미 건 강화: {string.Join(", ", had.Select(RunUpgrades.Name))}";
+        var after = RunUpgrades.Action(data, RunUpgrades.With(stock.Id, kind));
+        var holder = run.UpgradeHolder(stock.Id);
+        var which = holder is null ? "놀고 있는 사본" : $"{run.Name(data, holder)}의 줄에 놓인 사본";
         return
         [
             new($"{before.Name} → {after.Name}", Theme.Text, 18, Bold: true),
             new($"{RunUpgrades.Name(kind)}: {RunUpgrades.Describe(before, kind)}", Theme.Gold, 15),
-            new($"파티가 가진 사본 {run.Copies.GetValueOrDefault(stock.Id)}장 모두에 걸린다{owned}", Theme.Cover, 14),
+            new($"{which} 한 장에만 걸린다 (이 사본 {run.Copies.GetValueOrDefault(stock.Id)}장 중)", Theme.Cover, 14),
         ];
     }
 

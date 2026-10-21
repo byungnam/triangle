@@ -268,7 +268,7 @@ public sealed class RunSimulation
             living.Count,
             run.Members.Count - tally.StartMembers,
             run.Copies.Values.Sum(),
-            living.Sum(m => m.ActiveTactics.Count(t => !_data.Actions[t.ActionId].Universal)),
+            living.Sum(m => m.ActiveTactics.Count(t => !RunUpgrades.Action(_data, t.ActionId).Universal)),
             living.Sum(m => m.Earned),
             living.Count(m => m.Earned >= _rules.MaxLines),
             tally.Shops);
@@ -288,7 +288,7 @@ public sealed class RunSimulation
         var skills = living.ToDictionary(m => m, _ => new List<string>());
         foreach (var (id, count) in run.Copies.OrderBy(p => p.Key, StringComparer.Ordinal))
         {
-            var holders = living.Where(m => _owners.GetValueOrDefault(id) == m.ClassId).ToList();
+            var holders = living.Where(m => _owners.GetValueOrDefault(RunUpgrades.BaseId(id)) == m.ClassId).ToList();
             for (var k = 0; k < count && holders.Count > 0; k++)
             {
                 skills[holders.MinBy(m => skills[m].Count - m.Lines)!].Add(id);
@@ -304,7 +304,7 @@ public sealed class RunSimulation
     /// <summary>방식대로 줄을 빼거나 위로 올린다 (나머지 순서는 그대로).</summary>
     private IEnumerable<Tactic> Apply(RunTacticPlan plan, IEnumerable<Tactic> lines)
     {
-        ActionDefinition A(Tactic t) => _data.Actions[t.ActionId];
+        ActionDefinition A(Tactic t) => RunUpgrades.Action(_data, t.ActionId);
         bool Applies(Tactic t, Func<Effects.EffectDefinition, bool> match) => A(t).Applies.Any(x => match(_data.Effects[x.EffectId]));
         bool Debuffs(Tactic t) => Applies(t, e => e.Kind == Effects.EffectKind.Debuff);
         IEnumerable<Tactic> First(Func<Tactic, bool> first) => lines.OrderBy(t => first(t) ? 0 : 1);
@@ -361,7 +361,7 @@ public sealed class RunSimulation
                 var allies = copy.Living.Select(m => copy.Setup(_data, m)).ToList();
                 var score = Enumerable.Range(0, BossSeeds).Average(s =>
                 {
-                    var result = CombatSimulator.Run(allies, boss, copy.BattleCatalog(_data), Seeds.Derive(BossSalt, s));
+                    var result = CombatSimulator.Run(allies, boss, Run.Catalog(_data), Seeds.Derive(BossSalt, s));
                     return result.Outcome == CombatOutcome.Victory ? 1 + 0.5 * HpFraction(result, CombatSide.Ally) : 0.5 * (1 - HpFraction(result, CombatSide.Enemy));
                 });
                 if (score > best.Score + 1e-9)
@@ -541,7 +541,7 @@ public sealed class RunSimulation
         {
             for (var s = 0; s < _options.LookaheadSeeds; s++)
             {
-                var result = CombatSimulator.Run(allies, _teams[(run.Act, kind, encounter)], run.BattleCatalog(_data), Seeds.Derive(LookaheadSalt, s));
+                var result = CombatSimulator.Run(allies, _teams[(run.Act, kind, encounter)], Run.Catalog(_data), Seeds.Derive(LookaheadSalt, s));
                 score += result.Outcome == CombatOutcome.Victory
                     ? 1 + 0.5 * HpFraction(result, CombatSide.Ally)
                     : 0.5 * (1 - HpFraction(result, CombatSide.Enemy));

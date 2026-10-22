@@ -71,7 +71,7 @@ internal sealed class RunShopScene : RunScene
             services.Widgets.Add(new Panel { Height = 4 });
         }
 
-        var price = Data.Run!.Shop.UnsealPrice;
+        var price = Run.UnsealPrice(Data);
         services.Widgets.Add(W.Header("lock", "봉인 풀기", $"하나에 {price} 골드"));
         var sealedMembers = Run.Living.Where(m => m.Sealed > 0).ToList();
         if (sealedMembers.Count == 0)

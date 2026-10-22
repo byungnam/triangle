@@ -1067,6 +1067,73 @@ public class RunTests
     }
 
     [Fact]
+    public void Opened_unlocks_add_their_boons_to_the_run()
+    {
+        // 2026-10-22: 첫 판은 아주 어렵고, 해금이 판 안의 힘을 준다(시작 골드, 시작 줄 상한, 휴식, 상점 할인, 최대 HP와 위력).
+        var opened = new HashSet<string> { "war_chest", "war_chest_2", "drill", "hone", "veterans", "field_medic", "regular" };
+        var unlocks = RunUnlocks.For(Drafting, opened);
+        Assert.Equal(100, unlocks.StartGold);
+        var u = Drafting.Unlocks;
+        var expected = new RunBoons
+        {
+            StartLines = u["veterans"].Boons.StartLines,
+            RestUnseal = u["field_medic"].Boons.RestUnseal,
+            ShopDiscountPercent = u["regular"].Boons.ShopDiscountPercent,
+            HpPercent = u["drill"].Boons.HpPercent,
+            PowerPercent = u["hone"].Boons.PowerPercent,
+        };
+        Assert.Equal(expected, unlocks.Boons);
+        Assert.True(Fresh.Boons.IsEmpty);
+
+        var data = SecondFloor("shop", r => r with { StartGold = 1000, Shop = r.Shop with { Lines = 1 } });
+        var plain = AtSecondFloor(data, Party);
+        var boosted = AtSecondFloor(data, Party, unlocks: unlocks);
+        Assert.Equal(expected, boosted.Boons);
+
+        // 시작 줄 상한, 상점 값, 봉인 풀기 값.
+        Assert.All(boosted.Members, m => Assert.Equal(data.Run!.StartLines + expected.StartLines, m.Earned));
+        Assert.Equal(plain.Stock.Select(s => s.Price * (100 - expected.ShopDiscountPercent) / 100), boosted.Stock.Select(s => s.Price));
+        Assert.Equal(data.Run!.Shop.UnsealPrice * (100 - expected.ShopDiscountPercent) / 100, boosted.UnsealPrice(data));
+
+        // 전투 입력: 최대 HP와 위력 보너스.
+        var setup = boosted.Setup(data, boosted.Members[0]);
+        Assert.Contains(new ItemBonus(BonusKind.MaxHpPercent, expected.HpPercent), setup.ItemBonuses);
+        Assert.Contains(new ItemBonus(BonusKind.PowerPercent, expected.PowerPercent), setup.ItemBonuses);
+        Assert.Equal(plain.Setup(data, plain.Members[0]).ItemBonuses.Count + 2, setup.ItemBonuses.Count);
+
+        // 휴식은 봉인을 더 푼다. 세이브에도 남는다.
+        Assert.Equal(data.Run.Rest.Unseal + expected.RestUnseal, boosted.RestUnseals(data));
+        Assert.Equal(expected, Run.Deserialize(boosted.Serialize(), data).Boons);
+    }
+
+    [Fact]
+    public void Tiered_unlocks_open_in_order_and_are_checked()
+    {
+        var profile = Profile.Deserialize(JsonSerializer.Serialize(new ProfileFile { Version = Profile.SaveVersion, Renown = 1000 }, GameDataJson.Options), Drafting);
+        Assert.Equal($"먼저 열어야 한다: {Drafting.Unlocks["war_chest"].Name}", profile.WhyCannotUnlock(Drafting, "war_chest_2"));
+        profile.Unlock(Drafting, "war_chest");
+        profile.Unlock(Drafting, "war_chest_2");
+        Assert.Equal(100, profile.UnlocksForRun(Drafting).StartGold);
+
+        UnlockDefinition Unlock(string id, string? requires = null, RunBoons? boons = null) => new() { Id = id, Name = id, Cost = 1, Requires = requires, Boons = boons ?? new() { HpPercent = 1 } };
+        var errors = Assert.Throws<GameDataException>(() => WithUnlocks([Unlock("a", "b"), Unlock("b", "a"), Unlock("c", "nope"), Unlock("d", boons: new()), Unlock("e", boons: new() { ShopDiscountPercent = 80 })])).Errors;
+        Assert.Contains(errors, e => e.Contains("'a': requires go round in a circle"));
+        Assert.Contains(errors, e => e.Contains("'c': requires unknown unlock 'nope'"));
+        Assert.Contains(errors, e => e.Contains("'d': opens nothing"));
+        Assert.Contains(errors, e => e.Contains("'e': boons must not be negative and the shop discount is at most 50%"));
+    }
+
+    /// <summary>해금만 바꾼 게임 데이터 (로더 검증을 거친다).</summary>
+    private static GameData WithUnlocks(IReadOnlyList<UnlockDefinition> unlocks)
+    {
+        string Read(string file) => File.ReadAllText(Path.Combine(DataDirectory, file));
+        return GameDataLoader.Parse(
+            Read(GameDataLoader.MasteriesFile), Read(GameDataLoader.SkillsFile), Read(GameDataLoader.ActionsFile), Read(GameDataLoader.EncountersFile),
+            Read(GameDataLoader.EffectsFile), Read(GameDataLoader.ItemsFile), Read(GameDataLoader.ZonesFile), Read(GameDataLoader.ClassesFile), Read(GameDataLoader.RunFile),
+            JsonSerializer.Serialize(unlocks, GameDataJson.Options));
+    }
+
+    [Fact]
     public void Locked_cards_items_and_classes_never_show_up_in_a_run()
     {
         bool Locked(string? id) => id is not null && Fresh.Locked.Contains(id);

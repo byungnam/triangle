@@ -146,6 +146,12 @@ internal sealed class RunUnlockScene : RunScene
             parts.Add($"시작 골드 +{unlock.StartGold}");
         }
 
+        parts.AddRange(unlock.Boons.Parts());
+        if (unlock.Requires is { } required && !Profile.Unlocked.Contains(required))
+        {
+            parts.Add($"먼저 열기: {Data.Unlocks[required].Name}");
+        }
+
         return string.Join(" · ", parts);
     }
 }

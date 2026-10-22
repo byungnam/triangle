@@ -89,6 +89,11 @@ public sealed class Profile
             return "이미 열었다";
         }
 
+        if (unlock.Requires is { } required && !_unlocked.Contains(required))
+        {
+            return $"먼저 열어야 한다: {data.Unlocks[required].Name}";
+        }
+
         return Renown < unlock.Cost ? $"명성이 모자란다 ({unlock.Cost})" : null;
     }
 

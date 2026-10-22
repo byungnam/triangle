@@ -254,9 +254,20 @@ public static class GameDataLoader
             DataValidation.RequireText(u.Name, $"{at}: name", errors);
             DataValidation.RequireNonNegative(u.Cost, $"{at}: cost", errors);
             DataValidation.RequireNonNegative(u.StartGold, $"{at}: startGold", errors);
-            if (!u.Locks.Any() && u.StartGold == 0)
+            var b = u.Boons;
+            if (new[] { b.StartLines, b.RestUnseal, b.ShopDiscountPercent, b.HpPercent, b.PowerPercent }.Any(v => v < 0) || b.ShopDiscountPercent > 50)
+            {
+                errors.Add($"{at}: boons must not be negative and the shop discount is at most 50%");
+            }
+
+            if (!u.Locks.Any() && u.StartGold == 0 && b.IsEmpty)
             {
                 errors.Add($"{at}: opens nothing");
+            }
+
+            if (u.Requires is { } required && (required == u.Id || unlocks.All(o => o.Id != required)))
+            {
+                errors.Add($"{at}: requires unknown unlock '{required}'");
             }
 
             errors.AddRange(u.Classes.Where(id => !classes.ContainsKey(id)).Select(id => $"{at}: unknown class '{id}'"));
@@ -292,6 +303,21 @@ public static class GameDataLoader
         foreach (var twice in unlocks.SelectMany(u => u.Locks.Distinct().Select(id => (id, u.Id))).GroupBy(x => x.id).Where(g => g.Count() > 1))
         {
             errors.Add($"{UnlocksFile}: '{twice.Key}' is locked by more than one unlock ({string.Join(", ", twice.Select(x => x.Item2))})");
+        }
+
+        // 단계가 고리를 이루면 아무것도 열 수 없다.
+        var byId = unlocks.GroupBy(u => u.Id).ToDictionary(g => g.Key, g => g.First());
+        foreach (var u in unlocks)
+        {
+            var seen = new HashSet<string> { u.Id };
+            for (var at = u.Requires; at is not null && byId.TryGetValue(at, out var next); at = next.Requires)
+            {
+                if (!seen.Add(at))
+                {
+                    errors.Add($"{UnlocksFile} '{u.Id}': requires go round in a circle");
+                    break;
+                }
+            }
         }
 
         var lockedClasses = unlocks.SelectMany(u => u.Classes).ToHashSet();

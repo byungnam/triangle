@@ -577,9 +577,9 @@ public sealed class RunSimulation
 
         void Unseal(RunMember member)
         {
+            tally.Spend(RunSpend.Unseal, run.UnsealPrice(_data));
             run.Unseal(_data, member);
             unseals++;
-            tally.Spend(RunSpend.Unseal, _rules.Shop.UnsealPrice);
         }
 
         if (_options.Bot == RunBot.Random)
@@ -622,7 +622,7 @@ public sealed class RunSimulation
                     .ToList();
                 if (run.Living.Where(m => m.Sealed > 0).MaxBy(m => m.Sealed) is { } most && run.WhyCannotUnseal(_data, most) is null)
                 {
-                    options.Add((null, most.Id, _rules.Shop.UnsealPrice));
+                    options.Add((null, most.Id, run.UnsealPrice(_data)));
                 }
 
                 var gains = options

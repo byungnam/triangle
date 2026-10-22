@@ -36,7 +36,7 @@ internal static class RunReport
         RunUnlocks? unlocks = options.Get("unlocks") switch
         {
             null or "none" => RunUnlocks.For(data, new HashSet<string>()),
-            "all" => RunUnlocks.All,
+            "all" => RunUnlocks.For(data, data.Unlocks.Keys.ToHashSet()),
             _ => null,
         };
         var party = options.Get("party")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
@@ -54,12 +54,13 @@ internal static class RunReport
         }
 
         var acts = rules.Acts.Select(a => $"{data.Zones[a.ZoneId].Name} {a.Floors}층");
-        Console.WriteLine($"파티: {string.Join(", ", party.Select(id => data.Classes[id].Name))} · 해금: {(unlocks == RunUnlocks.All ? "모두 열림" : "없음 (처음 판)")} · 판 {runs}개");
-        Console.WriteLine($"막: {string.Join(" → ", acts)} · 줄 상한 시작 {rules.StartLines}, 최대 {rules.MaxLines} · 시작 골드 {rules.StartGold + unlocks.StartGold}");
+        Console.WriteLine($"파티: {string.Join(", ", party.Select(id => data.Classes[id].Name))} · 해금: {(options.Get("unlocks") == "all" ? "모두 열림" : "없음 (처음 판)")} · 판 {runs}개");
+        Console.WriteLine($"막: {string.Join(" → ", acts)} · 줄 상한 시작 {rules.StartLines}, 최대 {rules.MaxLines} · 시작 골드 {rules.StartGold + unlocks.StartGold}"
+            + (unlocks.Boons.IsEmpty ? "" : $" · 해금의 힘: {string.Join(", ", unlocks.Boons.Parts())}"));
         Console.WriteLine();
         Console.WriteLine(Bench.Pad("봇", 8) + Bench.Pad("클리어", 8, true) + "  " + Bench.Pad("탈락 (막별)", 26) + Bench.Pad("전투/판", 9, true)
             + Bench.Pad("쓰러짐/판", 11, true) + Bench.Pad("사망/판", 9, true) + Bench.Pad("카드/판", 9, true) + Bench.Pad("번 골드", 9, true)
-            + Bench.Pad("쓴 골드", 9, true) + Bench.Pad("합류/판", 9, true));
+            + Bench.Pad("쓴 골드", 9, true) + Bench.Pad("합류/판", 9, true) + Bench.Pad("명성/판", 9, true));
 
         var watch = Stopwatch.StartNew();
         var details = new List<(RunBot Bot, IReadOnlyList<RunSimResult> Results)>();
@@ -78,7 +79,8 @@ internal static class RunReport
                 + Bench.Pad($"{results.Average(r => r.Picks.Count):F1}", 9, true)
                 + Bench.Pad($"{results.Average(r => r.GoldEarned):F0}", 9, true)
                 + Bench.Pad($"{results.Average(r => r.Spent.Values.Sum()):F0}", 9, true)
-                + Bench.Pad($"{results.Average(r => r.Joined):F2}", 9, true));
+                + Bench.Pad($"{results.Average(r => r.Joined):F2}", 9, true)
+                + Bench.Pad($"{results.Average(r => Renown(rules, r)):F0}", 9, true));
         }
 
         Console.WriteLine($"({watch.Elapsed.TotalSeconds:F0}초) 쓰러짐 = 이긴 전투에서 쓰러진 횟수(봉인이 된다). 카드 = 고른 보상 카드(전투, 단련, 이벤트).");
@@ -282,6 +284,15 @@ internal static class RunReport
     }
 
     private static string Name(RunBot bot) => bot == RunBot.Random ? "아무렇게나" : "똑똑함";
+
+    /// <summary>판이 끝날 때 받는 명성 (<see cref="Profile.RenownFor"/>와 같은 규칙): 이긴 전투마다, 판을 이기면 더.</summary>
+    private static int Renown(RunDefinition rules, RunSimResult r) =>
+        r.Fights.Where(f => f.Outcome == CombatOutcome.Victory).Sum(f => f.Kind switch
+        {
+            RunNodeKind.Boss => rules.Renown.Boss,
+            RunNodeKind.Elite => rules.Renown.Elite,
+            _ => rules.Renown.Fight,
+        }) + (r.Cleared ? rules.Renown.Victory : 0);
 
     private static string Spend(RunSpend spend) => spend switch
     {

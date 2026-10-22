@@ -29,7 +29,8 @@ internal sealed class RunRestScene : RunScene
 
         var unseal = Box(ChoiceWidth, ChoiceHeight, spacing: 10);
         unseal.Widgets.Add(W.Header("node.rest", "봉인 풀기", size: 22));
-        unseal.Widgets.Add(W.Label($"모든 멤버의 봉인을 {rules.Unseal}개씩 풉니다.", 17, Theme.Text, width: ChoiceWidth - 24, wrap: true));
+        var unseals = Run.RestUnseals(Data);
+        unseal.Widgets.Add(W.Label($"모든 멤버의 봉인을 {unseals}개씩 풉니다.", 17, Theme.Text, width: ChoiceWidth - 24, wrap: true));
         if (!Run.Living.Any(m => m.Sealed > 0))
         {
             unseal.Widgets.Add(W.Label("지금 봉인된 멤버가 없습니다.", 15, Theme.Cover));
@@ -38,7 +39,7 @@ internal sealed class RunRestScene : RunScene
         foreach (var member in Run.Living)
         {
             var (text, color) = RunText.Lines(member);
-            var after = member.Sealed > 0 ? $" → 봉인 {Math.Max(0, member.Sealed - rules.Unseal)}" : "";
+            var after = member.Sealed > 0 ? $" → 봉인 {Math.Max(0, member.Sealed - unseals)}" : "";
             unseal.Widgets.Add(W.Label($"{Run.Name(Data, member)}: {text}{after}", 15, member.Sealed > 0 ? color : Theme.TextDim));
         }
 

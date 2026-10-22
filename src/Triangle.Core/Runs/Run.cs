@@ -74,16 +74,23 @@ public sealed record RunStock(RunStockKind Kind, string Id, int Price)
 /// <summary>판의 전투 기록 한 줄 (판이 끝나면 명성과 탐사 기록에 쓴다).</summary>
 public sealed record RunBattleRecord(int Act, string EncounterId, RunNodeKind Kind, CombatOutcome Outcome);
 
-/// <summary>판을 시작할 때 해금이 정하는 것: 이 판에 나오지 않는 클래스·카드·아이템과 더 받는 시작 골드.</summary>
+/// <summary>판을 시작할 때 해금이 정하는 것: 이 판에 나오지 않는 클래스·카드·아이템, 더 받는 시작 골드, 판 안의 힘(<see cref="RunBoons"/>).</summary>
 public sealed record RunUnlocks(IReadOnlySet<string> Locked, int StartGold)
 {
-    /// <summary>모두 열린 판 (시험·설계 도구용).</summary>
+    /// <summary>아무것도 잠기지 않고 해금의 힘도 없는 판 (시험·설계 도구용).</summary>
     public static RunUnlocks All { get; } = new(new HashSet<string>(), 0);
 
-    /// <summary>연 해금 ID로 정한다: 열지 않은 해금이 적은 것은 잠기고, 연 해금의 시작 골드를 더한다.</summary>
-    public static RunUnlocks For(GameData data, IReadOnlySet<string> unlocked) => new(
-        data.Unlocks.Values.Where(u => !unlocked.Contains(u.Id)).SelectMany(u => u.Locks).ToHashSet(),
-        data.Unlocks.Values.Where(u => unlocked.Contains(u.Id)).Sum(u => u.StartGold));
+    public RunBoons Boons { get; init; } = new();
+
+    /// <summary>연 해금 ID로 정한다: 열지 않은 해금이 적은 것은 잠기고, 연 해금의 시작 골드와 힘을 더한다.</summary>
+    public static RunUnlocks For(GameData data, IReadOnlySet<string> unlocked)
+    {
+        var opened = data.Unlocks.Values.Where(u => unlocked.Contains(u.Id)).ToList();
+        return new(data.Unlocks.Values.Where(u => !unlocked.Contains(u.Id)).SelectMany(u => u.Locks).ToHashSet(), opened.Sum(u => u.StartGold))
+        {
+            Boons = opened.Aggregate(new RunBoons(), (sum, u) => sum + u.Boons),
+        };
+    }
 }
 
 /// <summary>전투 하나의 결과. 봉인되거나 죽은 멤버 ID와 받은 골드를 함께 준다.</summary>
@@ -113,17 +120,21 @@ public sealed partial class Run
     private readonly List<RunBattleRecord> _history = [];
     private bool _bossCleared;
 
-    private Run(int seed, IReadOnlyList<RunMap> maps, IReadOnlyList<string> bosses, int gold, IReadOnlySet<string> locked)
+    private Run(int seed, IReadOnlyList<RunMap> maps, IReadOnlyList<string> bosses, int gold, IReadOnlySet<string> locked, RunBoons boons)
     {
         Seed = seed;
         Maps = maps;
         Bosses = bosses;
         Gold = gold;
         Locked = locked;
+        Boons = boons;
     }
 
     /// <summary>이 판에 나오지 않는 클래스·카드·아이템 (아직 열지 않은 해금, 판을 시작할 때 정한다).</summary>
     public IReadOnlySet<string> Locked { get; }
+
+    /// <summary>연 해금이 이 판에 주는 힘 (판을 시작할 때 정한다).</summary>
+    public RunBoons Boons { get; }
 
     /// <summary>치른 전투 (치른 순서).</summary>
     public IReadOnlyList<RunBattleRecord> History => _history;
@@ -224,7 +235,7 @@ public sealed partial class Run
         var maps = rules.Acts.Select((a, i) => RunMap.Generate(rules.Map, a.Floors, a.Elites.Count > 0, Seeds.Derive(seed, 100 + i))).ToList();
         var random = new Random(Seeds.Derive(seed, 200));
         var bosses = rules.Acts.Select(a => a.Bosses.Count > 0 ? a.Bosses[random.Next(a.Bosses.Count)] : data.Zones[a.ZoneId].Boss!.EncounterId).ToList();
-        var run = new Run(seed, maps, bosses, rules.StartGold + unlocks.StartGold, unlocks.Locked);
+        var run = new Run(seed, maps, bosses, rules.StartGold + unlocks.StartGold, unlocks.Locked, unlocks.Boons);
         for (var i = 0; i < classIds.Count; i++)
         {
             run.Join(data, classIds[i], rows is not null && i < rows.Count ? rows[i] : null);
@@ -427,13 +438,16 @@ public sealed partial class Run
         }
     }
 
+    /// <summary>휴식에서 봉인 풀기를 고르면 멤버마다 푸는 봉인 수 (해금이 늘린다).</summary>
+    public int RestUnseals(GameData data) => Rules(data).Rest.Unseal + Boons.RestUnseal;
+
     /// <summary>휴식: 모든 멤버의 봉인을 정한 수만큼 푼다.</summary>
     public void RestUnseal(GameData data)
     {
         RequirePhase(RunPhase.Rest);
         foreach (var member in Living)
         {
-            member.Sealed = Math.Max(0, member.Sealed - Rules(data).Rest.Unseal);
+            member.Sealed = Math.Max(0, member.Sealed - RestUnseals(data));
         }
 
         Phase = RunPhase.Map;
@@ -550,8 +564,11 @@ public sealed partial class Run
             return "풀 봉인이 없다";
         }
 
-        return Gold < Rules(data).Shop.UnsealPrice ? $"골드가 모자란다 ({Rules(data).Shop.UnsealPrice}G)" : null;
+        return Gold < UnsealPrice(data) ? $"골드가 모자란다 ({UnsealPrice(data)}G)" : null;
     }
+
+    /// <summary>상점에서 봉인 하나를 푸는 값 (해금의 할인을 뺀다).</summary>
+    public int UnsealPrice(GameData data) => Discounted(Rules(data).Shop.UnsealPrice);
 
     /// <summary>상점에서 골드를 내고 멤버 한 명의 봉인 하나를 푼다.</summary>
     public void Unseal(GameData data, RunMember member)
@@ -561,7 +578,7 @@ public sealed partial class Run
             throw new InvalidOperationException(reason);
         }
 
-        Gold -= Rules(data).Shop.UnsealPrice;
+        Gold -= UnsealPrice(data);
         member.Sealed--;
     }
 
@@ -818,10 +835,14 @@ public sealed partial class Run
         ];
         var setup = new CombatantSetup(member.Id, Name(data, member), c.Stats, member.Row, null, null, member.Passives.ToDictionary(), tactics);
         var catalog = Catalog(data);
-        return new Loadout(worn).Apply(setup, data.Actions.Values, _ => 0) with
+        var loaded = new Loadout(worn).Apply(setup, data.Actions.Values, _ => 0) with
         {
             GrantedActions = tactics.Select(t => t.ActionId).Where(id => !catalog.Actions[id].Universal).ToHashSet(),
         };
+
+        // 해금의 힘: 파티 모두의 최대 HP와 위력.
+        ItemBonus[] boons = [new(BonusKind.MaxHpPercent, Boons.HpPercent), new(BonusKind.PowerPercent, Boons.PowerPercent)];
+        return boons.Any(b => b.Percent != 0) ? loaded with { ItemBonuses = [.. loaded.ItemBonuses, .. boons.Where(b => b.Percent != 0)] } : loaded;
     }
 
 
@@ -858,12 +879,17 @@ public sealed partial class Run
 
     private static RunDefinition Rules(GameData data) => data.Run ?? throw new InvalidOperationException("run.json이 없다");
 
-    /// <summary>새 멤버: 클래스의 기본 장비, 시작 스킬 사본 1장(파티 사본에 더한다), 그 사본으로 짠 한 줄.</summary>
+    /// <summary>새 멤버: 클래스의 기본 장비, 시작 스킬 사본 1장(파티 사본에 더한다), 그 사본으로 짠 한 줄. 시작 줄 상한은 해금이 늘린다.</summary>
     private void Join(GameData data, string classId, Row? row = null)
     {
         var c = data.Classes[classId];
         var rules = Rules(data);
-        var member = new RunMember($"m{Members.Count + 1}", classId, rules.StartLines) { Row = row ?? c.Row, Weapon = c.Weapon, Armor = c.Armor };
+        var member = new RunMember($"m{Members.Count + 1}", classId, Math.Min(rules.MaxLines, rules.StartLines + Boons.StartLines))
+        {
+            Row = row ?? c.Row,
+            Weapon = c.Weapon,
+            Armor = c.Armor,
+        };
         Copies[c.StartingSkill] = Copies.GetValueOrDefault(c.StartingSkill) + 1;
         if (rules.StartLines > 0)
         {
@@ -895,7 +921,7 @@ public sealed partial class Run
 
     /// <summary>
     /// 상점의 물건: 판에서 파는 아이템(<see cref="ItemDefinition.Shop"/>) 중 이 막 티어 이하의 무기(살아 있는 멤버 클래스가 쓰는 것)·방어구·
-    /// 장신구에서 아이템을, 살아 있는 멤버 클래스의 카드에서 스킬을, 모든 클래스에서 합류를 뽑는다. 강화는 파티가 가진 그 클래스 사본(강화된
+    /// 장신구에서 아이템을, 살아 있는 멤버 클래스의 카드에서 스킬을, 모든 클래스에서 합류를 뽑는다. 값은 모두 해금의 할인을 뺀다. 강화는 파티가 가진 그 클래스 사본(강화된
     /// 사본 포함, 강화가 다 차지 않은 것) 중 겹치지 않게 뽑고 아직 걸지 않은 맞는 강화 하나를 붙인다(값은 그 사본에 건 강화 수만큼 오른다).
     /// 줄 상한은 늘릴 멤버가 있으면 하나를 판다(값은 상점에서 산 줄 상한 수만큼 오른다).
     /// </summary>
@@ -914,11 +940,11 @@ public sealed partial class Run
             })
             .ToList();
         _stock.Clear();
-        _stock.AddRange(Pick(items, rules.Shop.Items, random).Select(i => new RunStock(RunStockKind.Item, i.Id, i.Price)));
+        _stock.AddRange(Pick(items, rules.Shop.Items, random).Select(i => new RunStock(RunStockKind.Item, i.Id, Discounted(i.Price))));
         _stock.AddRange(Pick(classes.SelectMany(c => c.Skills).Where(Open).Distinct().ToList(), rules.Shop.Skills, random)
-            .Select(id => new RunStock(RunStockKind.Skill, id, rules.Shop.SkillPrice)));
+            .Select(id => new RunStock(RunStockKind.Skill, id, Discounted(rules.Shop.SkillPrice))));
         _stock.AddRange(Pick(data.Classes.Keys.Where(Open).ToList(), rules.Shop.Recruits, random)
-            .Select(id => new RunStock(RunStockKind.Recruit, id, rules.Shop.RecruitPrice)));
+            .Select(id => new RunStock(RunStockKind.Recruit, id, Discounted(rules.Shop.RecruitPrice))));
         var skills = classes.SelectMany(c => c.Skills).ToHashSet();
         var upgradable = Copies.Where(p => p.Value > 0 && skills.Contains(RunUpgrades.BaseId(p.Key)) && RunUpgrades.Kinds(p.Key).Count < RunUpgrades.MaxPerSkill)
             .Select(p => p.Key)
@@ -930,14 +956,14 @@ public sealed partial class Run
             var kinds = Enum.GetValues<RunUpgradeKind>().Where(k => !had.Contains(k) && RunUpgrades.Fits(data.Actions[RunUpgrades.BaseId(id)], k)).ToList();
             if (kinds.Count > 0)
             {
-                var price = rules.Shop.UpgradePrice + rules.Shop.UpgradeStep * had.Count;
+                var price = Discounted(rules.Shop.UpgradePrice + rules.Shop.UpgradeStep * had.Count);
                 _stock.Add(new RunStock(RunStockKind.Upgrade, id, price) { Upgrade = kinds[random.Next(kinds.Count)] });
             }
         }
 
         if (rules.Shop.Lines > 0 && Living.Any(m => m.Earned < rules.MaxLines))
         {
-            _stock.Add(new RunStock(RunStockKind.Line, "", rules.Shop.LinePrice + rules.Shop.LineStep * LinesBought));
+            _stock.Add(new RunStock(RunStockKind.Line, "", Discounted(rules.Shop.LinePrice + rules.Shop.LineStep * LinesBought)));
         }
 
         Phase = RunPhase.Shop;
@@ -981,6 +1007,9 @@ public sealed partial class Run
 
         return cards;
     }
+
+    /// <summary>해금의 상점 할인을 뺀 값.</summary>
+    private int Discounted(int price) => price * (100 - Boons.ShopDiscountPercent) / 100;
 
     /// <summary>후보에서 겹치지 않게 <paramref name="count"/>개를 뽑는다 (후보가 모자라면 있는 만큼).</summary>
     private static List<T> Pick<T>(IReadOnlyList<T> candidates, int count, Random random)

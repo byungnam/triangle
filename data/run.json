@@ -44,16 +44,16 @@
       ],
       "shopTier": 2,
       "fightStrength": {
-        "hp": 92,
-        "power": 92
+        "hp": 97,
+        "power": 97
       },
       "eliteStrength": {
-        "hp": 92,
-        "power": 92
+        "hp": 97,
+        "power": 97
       },
       "bossStrength": {
-        "hp": 92,
-        "power": 92
+        "hp": 97,
+        "power": 97
       }
     },
     {
@@ -69,16 +69,16 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 89,
-        "power": 89
+        "hp": 100,
+        "power": 100
       },
       "eliteStrength": {
-        "hp": 89,
-        "power": 89
+        "hp": 100,
+        "power": 100
       },
       "bossStrength": {
-        "hp": 89,
-        "power": 89
+        "hp": 100,
+        "power": 100
       }
     },
     {
@@ -95,16 +95,16 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 116,
-        "power": 116
+        "hp": 135,
+        "power": 135
       },
       "eliteStrength": {
-        "hp": 118,
-        "power": 118
+        "hp": 138,
+        "power": 138
       },
       "bossStrength": {
-        "hp": 116,
-        "power": 116
+        "hp": 135,
+        "power": 135
       }
     },
     {
@@ -117,16 +117,16 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 123,
-        "power": 123
+        "hp": 148,
+        "power": 148
       },
       "eliteStrength": {
-        "hp": 126,
-        "power": 126
+        "hp": 150,
+        "power": 150
       },
       "bossStrength": {
-        "hp": 96,
-        "power": 96
+        "hp": 118,
+        "power": 118
       }
     }
   ],

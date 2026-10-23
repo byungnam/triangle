@@ -35,8 +35,8 @@ public sealed record RunDefinition
 
     public RunRenownRules Renown { get; init; } = new();
 
-    /// <summary>승천 단계 (1단계부터 차례로). 승천 N으로 시작한 판에는 앞의 N개가 모두 걸린다.</summary>
-    public IReadOnlyList<RunAscension> Ascensions { get; init; } = [];
+    /// <summary>원정 지도: 수식어와 보상 (2026-10-23, 승천을 바꿈).</summary>
+    public RunChartRules Charts { get; init; } = new();
 }
 
 /// <summary>판이 끝나면 받는 명성 (해금에 쓴다): 이긴 전투마다, 그리고 판을 이기면 더.</summary>

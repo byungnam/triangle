@@ -66,6 +66,7 @@ internal sealed class RunUnlockScene : RunScene
         list.Widgets.Add(W.Header("tactics", "기록"));
         list.Widgets.Add(W.Label($"원정 {Profile.Runs}번 · 성공 {Profile.Victories}번", 18, Theme.Text, bold: true));
         list.Widgets.Add(W.Label(Profile.BestActs == 0 ? "아직 통과한 막이 없습니다" : $"가장 멀리: {Profile.BestActs}/{Data.Run.Acts.Count}막 통과", 16, Theme.Text));
+        list.Widgets.Add(W.Label(Profile.MapTier == 0 ? "원정 지도: 아직 기본 지도뿐입니다" : $"지도 등급 {Profile.MapTier} · 가장 높은 위험도로 이긴 판: {Profile.BestRisk}", 16, Theme.Text));
         list.Widgets.Add(W.Label($"받은 명성 모두 {Profile.TotalRenown}", 16, Theme.Text));
         list.Widgets.Add(new Panel { Height = 6 });
         list.Widgets.Add(W.Header("node.fight", "만난 적", $"{Profile.Encounters.Count}종"));

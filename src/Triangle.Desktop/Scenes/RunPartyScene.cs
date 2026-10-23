@@ -11,7 +11,7 @@ namespace Triangle.Desktop.Scenes;
 /// <summary>
 /// 새 원정: 클래스로 파티를 고른다 (같은 클래스 여럿 가능). 위는 클래스 카드, 아래는 고른 자리와 출발·해금 버튼.
 /// 자리마다 전위·후위를 고른다(클래스와 상관없이, 처음 값은 클래스가 정한다). 아직 열지 않은 클래스는 흐리게 보이고 넣을 수 없다.
-/// 판을 이긴 적이 있으면 자리 아래에서 승천 단계를 고른다(처음 값은 열린 가장 높은 단계).
+/// 판을 이긴 적이 있으면 출발할 때 원정 지도를 고른다(기본 지도와 지도 등급에서 굴린 지도들, 수식어와 보상을 보여 주는 창).
 /// </summary>
 internal sealed class RunPartyScene : RunScene
 {
@@ -19,21 +19,22 @@ internal sealed class RunPartyScene : RunScene
     private const int Gap = 16;
 
     private readonly List<(string ClassId, Row Row)> _picked;
-    private readonly Action<IReadOnlyList<string>, IReadOnlyList<Row>, int> _start;
+    private readonly Action<IReadOnlyList<string>, IReadOnlyList<Row>, RunChart> _start;
     private readonly Action _openUnlocks;
     private readonly RunUnlocks _unlocks;
-    private int _ascension;
+
+    /// <summary>원정 지도를 고르는 창이 떠 있다.</summary>
+    private bool _choosingChart;
 
     /// <summary>클래스마다 시작 상태의 전투 입력 (HP·MP 표시용).</summary>
     private readonly Dictionary<string, UnitPreview> _previews;
 
-    /// <param name="start">고른 클래스, 자리마다의 줄, 승천 단계로 판을 시작한다.</param>
+    /// <param name="start">고른 클래스, 자리마다의 줄, 원정 지도로 판을 시작한다.</param>
     /// <param name="openUnlocks">해금·기록 화면을 연다.</param>
-    public RunPartyScene(Ui ui, RunSession session, Rectangle bounds, Action<IReadOnlyList<string>, IReadOnlyList<Row>, int> start, Action openUnlocks)
+    public RunPartyScene(Ui ui, RunSession session, Rectangle bounds, Action<IReadOnlyList<string>, IReadOnlyList<Row>, RunChart> start, Action openUnlocks)
         : base(ui, session, bounds, () => { })
     {
         _start = start;
-        _ascension = session.Profile.Ascension;
         _openUnlocks = openUnlocks;
         _unlocks = session.Profile.UnlocksForRun(session.Data);
         _picked = session.Data.Classes.Values.Where(c => !_unlocks.Locked.Contains(c.Id)).Take(session.Data.Run!.PartySize).Select(c => (c.Id, c.Row)).ToList();
@@ -80,9 +81,12 @@ internal sealed class RunPartyScene : RunScene
         root.Widgets.Add(Place(party, Body.Left + 16, top + 16));
 
         var classIds = _picked.Select(p => p.ClassId).ToList();
-        root.Widgets.Add(Place(AscensionPicker(), Body.Left + 16, Body.Bottom - 12 - 44));
-        var start = Button("출발  ▶", () => _start(classIds, _picked.Select(p => p.Row).ToList(), _ascension), Run.WhyCannotStart(Data, classIds, _unlocks, _ascension),
-            accent: true, width: 220, size: 22);
+        var tier = Session.Profile.MapTier;
+        root.Widgets.Add(Place(W.Label(tier == 0
+            ? "원정을 처음 성공하면 원정 지도가 열립니다. 적을 강하게 하거나 파티를 약하게 하는 수식어가 붙는 대신 보상과 명성이 는다."
+            : $"지도 등급 {tier}: 출발하면 기본 지도와 수식어가 {tier}개까지 붙은 지도 {Session.Charts.Count - 1}장 중 하나를 고릅니다.", 15, Theme.TextDim,
+            width: Body.Width - 32 - 220 - 16, wrap: true), Body.Left + 16, Body.Bottom - 12 - 44));
+        var start = Button("출발  ▶", () => Depart(classIds), Run.WhyCannotStart(Data, classIds, _unlocks), accent: true, width: 220, size: 22);
         start.Height = 64;
         root.Widgets.Add(Place(start, Body.Right - 16 - 220, Body.Bottom - 16 - 64));
         var unlocks = Button($"해금 · 기록 (명성 {Session.Profile.Renown})", _openUnlocks, width: 220);
@@ -93,37 +97,93 @@ internal sealed class RunPartyScene : RunScene
         {
             root.Widgets.Add(Place(W.Label(string.Join("\n", boons), 15, Theme.Cover, width: 220, wrap: true), Body.Right - 16 - 220, top + 62));
         }
+
+        if (_choosingChart)
+        {
+            root.Widgets.Add(ChartPicker());
+        }
+
         return root;
     }
 
-    /// <summary>승천 고르기: ◀ 단계 ▶와 그 단계의 이름, 쌓인 어려움. 판을 이긴 적이 없으면 안내만 보인다.</summary>
-    private Widget AscensionPicker()
+    /// <summary>출발: 고를 원정 지도가 기본 지도뿐이면 바로, 아니면 지도를 고르는 창을 띄운다.</summary>
+    private void Depart(IReadOnlyList<string> classIds)
     {
-        var open = Session.Profile.Ascension;
-        if (open == 0)
+        if (Session.Charts.Count <= 1)
         {
-            return W.Label("원정을 처음 성공하면 승천이 열립니다. 단계마다 적이 강해지거나 살림이 빠듯해집니다.", 15, Theme.TextDim);
+            _start(classIds, _picked.Select(p => p.Row).ToList(), RunChart.Base);
+            return;
         }
 
-        var row = new HorizontalStackPanel { Spacing = 10 };
-        var down = Button("◀", () => { _ascension--; Refresh(); }, _ascension > 0 ? null : "가장 낮은 단계다", width: 48);
-        var up = Button("▶", () => { _ascension++; Refresh(); }, _ascension < open ? null : "아직 열지 않은 단계다", width: 48);
-        row.Widgets.Add(down);
-        row.Widgets.Add(W.Label(_ascension == 0 ? "승천 없음" : $"승천 {_ascension}", 20, _ascension == 0 ? Theme.Text : Theme.Gold, bold: true, width: 100));
-        row.Widgets.Add(up);
-        var text = new VerticalStackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
-        if (_ascension == 0)
+        _choosingChart = true;
+        Refresh();
+    }
+
+    protected override void OnEscape()
+    {
+        _choosingChart = false;
+        Refresh();
+    }
+
+    /// <summary>원정 지도를 고르는 창: 지도마다 이름, 위험도, 수식어(이름과 거는 것), 보상, 출발 단추.</summary>
+    private Widget ChartPicker()
+    {
+        var charts = Session.Charts;
+        const int Gap = 12;
+        var width = (Body.Width - 48 - Gap * (charts.Count - 1)) / charts.Count;
+        var window = Box(Body.Width - 24, spacing: 10, border: Theme.Gold);
+        window.Widgets.Add(W.Label("원정 지도 고르기", 24, Theme.Gold, bold: true));
+        window.Widgets.Add(W.Label("수식어는 판 내내 걸립니다. 위험도가 높을수록 지도의 보상과 판이 끝날 때 받는 명성이 큽니다.     Esc  파티로 돌아가기", 15, Theme.TextDim));
+        var row = new HorizontalStackPanel { Spacing = Gap };
+        var classIds = _picked.Select(p => p.ClassId).ToList();
+        foreach (var chart in charts)
         {
-            text.Widgets.Add(W.Label($"첫 판 난이도 · 승천 {open}까지 열림", 15, Theme.TextDim));
-        }
-        else
-        {
-            text.Widgets.Add(W.Label($"{Data.Run!.Ascensions[_ascension - 1].Name} (앞 단계 모두 포함) · 승천 {open}까지 열림", 15, Theme.Text));
-            text.Widgets.Add(W.Label(string.Join(" · ", RunAscension.Total(Data.Run, _ascension).Parts()), 14, Theme.Cover));
+            row.Widgets.Add(ChartCard(chart, width, () => _start(classIds, _picked.Select(p => p.Row).ToList(), chart)));
         }
 
-        row.Widgets.Add(text);
-        return row;
+        window.Widgets.Add(row);
+        return Overlay(window);
+    }
+
+    private Widget ChartCard(RunChart chart, int width, Action choose)
+    {
+        const int Height = 470;
+        var inner = width - 24;
+        var risk = chart.Risk(Data);
+        var card = Box(width, Height, spacing: 6, border: chart.IsBase ? null : Theme.PanelBorder);
+        var head = new HorizontalStackPanel { Spacing = 8 };
+        head.Widgets.Add(W.Label(chart.Name(Data), 20, chart.IsBase ? Theme.Text : Theme.Gold, bold: true));
+        if (!chart.IsBase)
+        {
+            head.Widgets.Add(W.Chip($"위험도 {risk}", Theme.Enemy * 0.6f, 13));
+        }
+
+        card.Widgets.Add(head);
+        if (chart.IsBase)
+        {
+            card.Widgets.Add(W.Label("수식어도 보상도 없는 처음 그대로의 원정.", 14, Theme.TextDim, width: inner, wrap: true));
+        }
+
+        var rules = Data.Run!.Charts;
+        foreach (var id in chart.Modifiers)
+        {
+            var modifier = rules.Modifiers.First(m => m.Id == id);
+            card.Widgets.Add(W.Label(modifier.Name, 15, Theme.Enemy, bold: true, width: inner, wrap: true));
+            card.Widgets.Add(W.Label(string.Join(" · ", modifier.Terms.Parts(Data)), 13, Theme.TextDim, width: inner, wrap: true));
+        }
+
+        if (!chart.IsBase)
+        {
+            card.Widgets.Add(new Panel { Height = 4 });
+            card.Widgets.Add(W.Label("보상", 15, Theme.Heal, bold: true));
+            foreach (var part in chart.Bounty(Data).Parts(Data))
+            {
+                card.Widgets.Add(W.Label(part, 14, Theme.Heal, width: inner, wrap: true));
+            }
+        }
+
+        var go = Button("이 지도로 출발", choose, accent: true, width: inner);
+        return new Panel { Width = width, Height = Height, Widgets = { card, Place(go, 12, Height - 52) } };
     }
 
     private Widget ClassCard(Triangle.Core.Runs.ClassDefinition c)

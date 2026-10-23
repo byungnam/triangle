@@ -45,7 +45,12 @@ internal sealed class RunRestScene : RunScene
 
         root.Widgets.Add(Place(new Panel
         {
-            Widgets = { unseal, Place(Button("봉인 풀기", () => Act(() => Run.RestUnseal(Data)), accent: true, width: ChoiceWidth - 24), 12, ChoiceHeight - 52) },
+            Widgets =
+            {
+                unseal,
+                Place(Button("봉인 풀기", () => Act(() => Run.RestUnseal(Data)), Run.WhyCannotRestUnseal(Data), accent: Run.WhyCannotRestUnseal(Data) is null, width: ChoiceWidth - 24),
+                    12, ChoiceHeight - 52),
+            },
         }, x, top, ChoiceWidth, ChoiceHeight));
 
         var train = Box(ChoiceWidth, ChoiceHeight, spacing: 10);

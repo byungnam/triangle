@@ -21,13 +21,28 @@ internal static class RunReport
         }
 
         if (Bench.Number(options, "runs", 200, 1) is not { } runs || Bench.Number(options, "lookahead", 3, 1) is not { } lookahead
-            || Bench.Number(options, "seed", 0, 0) is not { } seed || Bench.Number(options, "ascension", 0, 0) is not { } ascension)
+            || Bench.Number(options, "seed", 0, 0) is not { } seed)
         {
             return 2;
         }
 
+        int? tier = null;
+        if (options.Has("tier"))
+        {
+            if (Bench.Number(options, "tier", 0, 1) is not { } t)
+            {
+                return 2;
+            }
+
+            tier = t;
+        }
+
+        var mods = options.Get("mods")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList() ?? [];
+        var chart = new RunChart(mods, options.Get("reward"));
+
         RunBot[]? bots = options.Get("bot") switch
         {
+            null when options.Has("each-mod") => [RunBot.Novice],
             null or "all" => [RunBot.Random, RunBot.Novice, RunBot.Smart],
             "random" => [RunBot.Random],
             "novice" => [RunBot.Novice],
@@ -48,9 +63,9 @@ internal static class RunReport
             return 2;
         }
 
-        if (Triangle.Core.Runs.Run.WhyCannotStart(data, party, unlocks, ascension) is { } reason)
+        if (Triangle.Core.Runs.Run.WhyCannotStart(data, party, unlocks, chart) is { } reason)
         {
-            Console.Error.WriteLine($"--party/--ascension: {reason}");
+            Console.Error.WriteLine($"--party/--mods/--reward: {reason}");
             return 2;
         }
 
@@ -58,9 +73,19 @@ internal static class RunReport
         Console.WriteLine($"파티: {string.Join(", ", party.Select(id => data.Classes[id].Name))} · 해금: {(options.Get("unlocks") == "all" ? "모두 열림" : "없음 (처음 판)")} · 판 {runs}개");
         Console.WriteLine($"막: {string.Join(" → ", acts)} · 줄 상한 시작 {rules.StartLines}, 최대 {rules.MaxLines} · 시작 골드 {rules.StartGold + unlocks.StartGold}"
             + (unlocks.Boons.IsEmpty ? "" : $" · 해금의 편의: {string.Join(", ", unlocks.Boons.Parts())}"));
-        if (ascension > 0)
+        if (tier is { } rolled)
         {
-            Console.WriteLine($"승천 {ascension}: {string.Join(", ", RunAscension.Total(rules, ascension).Parts())}");
+            Console.WriteLine($"지도: 판마다 지도 등급 {rolled}의 지도를 굴린다 (수식어 {Math.Max(1, rolled - 1)}~{rolled}개와 보상 하나)");
+        }
+        else if (!chart.IsBase)
+        {
+            Console.WriteLine($"지도: {chart.Name(data)} (위험도 {chart.Risk(data)}) · 수식어: {string.Join(", ", chart.Hardship(data).Parts(data))}"
+                + $" · 보상: {string.Join(", ", chart.Bounty(data).Parts(data))}");
+        }
+
+        if (options.Has("each-mod"))
+        {
+            return EachModifier(data, rules, bots, new RunSimOptions { Party = party, Unlocks = unlocks, LookaheadSeeds = lookahead }, runs, seed);
         }
 
         Console.WriteLine();
@@ -72,7 +97,7 @@ internal static class RunReport
         var details = new List<(RunBot Bot, IReadOnlyList<RunSimResult> Results)>();
         foreach (var bot in bots)
         {
-            var results = new RunSimulation(data, new RunSimOptions { Bot = bot, Party = party, Unlocks = unlocks, LookaheadSeeds = lookahead, Ascension = ascension }).RunMany(runs, seed);
+            var results = new RunSimulation(data, new RunSimOptions { Bot = bot, Party = party, Unlocks = unlocks, LookaheadSeeds = lookahead, Chart = chart, Tier = tier }).RunMany(runs, seed);
             details.Add((bot, results));
             var failed = Enumerable.Range(0, rules.Acts.Count).Select(a => 100.0 * results.Count(r => !r.Cleared && r.Act == a) / runs);
             Console.WriteLine(
@@ -86,7 +111,7 @@ internal static class RunReport
                 + Bench.Pad($"{results.Average(r => r.GoldEarned):F0}", 9, true)
                 + Bench.Pad($"{results.Average(r => r.Spent.Values.Sum()):F0}", 9, true)
                 + Bench.Pad($"{results.Average(r => r.Joined):F2}", 9, true)
-                + Bench.Pad($"{results.Average(r => Renown(rules, r)):F0}", 9, true));
+                + Bench.Pad($"{results.Average(r => r.Renown):F0}", 9, true));
         }
 
         Console.WriteLine($"({watch.Elapsed.TotalSeconds:F0}초) 쓰러짐 = 이긴 전투에서 쓰러진 횟수(봉인이 된다). 카드 = 고른 보상 카드(전투, 단련, 이벤트).");
@@ -302,13 +327,37 @@ internal static class RunReport
     };
 
     /// <summary>판이 끝날 때 받는 명성 (<see cref="Profile.RenownFor"/>와 같은 규칙): 이긴 전투마다, 판을 이기면 더.</summary>
-    private static int Renown(RunDefinition rules, RunSimResult r) =>
-        r.Fights.Where(f => f.Outcome == CombatOutcome.Victory).Sum(f => f.Kind switch
+    /// <summary>
+    /// 수식어마다 그것 하나만 붙은 지도(보상 없음)로 판을 두어 기본 지도와 견준다: 클리어율, 평균 통과 막, 데이터의 위험도, 클리어율이 위험도
+    /// 1마다 0.8배가 된다고 보고 셈한 위험도(클리어가 없으면 6). 수식어의 위험도를 매기는 데 쓴다.
+    /// </summary>
+    private static int EachModifier(GameData data, RunDefinition rules, IReadOnlyList<RunBot> bots, RunSimOptions options, int runs, int seed)
+    {
+        Console.WriteLine();
+        foreach (var bot in bots)
         {
-            RunNodeKind.Boss => rules.Renown.Boss,
-            RunNodeKind.Elite => rules.Renown.Elite,
-            _ => rules.Renown.Fight,
-        }) + (r.Cleared ? rules.Renown.Victory : 0);
+            Console.WriteLine($"[{Name(bot)}] 수식어 하나씩 (판 {runs}개, 보상 없음):");
+            Console.WriteLine("  " + Bench.Pad("수식어", 28) + Bench.Pad("클리어", 8, true) + Bench.Pad("통과 막", 9, true) + Bench.Pad("데이터 위험도", 14, true)
+                + Bench.Pad("잰 위험도", 10, true));
+            var (baseClear, baseActs) = Measure(RunChart.Base);
+            Console.WriteLine("  " + Bench.Pad("(기본 지도)", 28) + Bench.Pad($"{100 * baseClear:F1}%", 8, true) + Bench.Pad($"{baseActs:F2}", 9, true));
+            foreach (var m in rules.Charts.Modifiers)
+            {
+                var (clear, acts) = Measure(new RunChart([m.Id], null));
+                var measured = clear <= 0 ? 6 : Math.Clamp((int)Math.Round(Math.Log(baseClear / clear) / Math.Log(1.25)), 0, 6);
+                Console.WriteLine("  " + Bench.Pad($"{m.Name} ({m.Id})", 28) + Bench.Pad($"{100 * clear:F1}%", 8, true) + Bench.Pad($"{acts:F2}", 9, true)
+                    + Bench.Pad($"{m.Risk}", 14, true) + Bench.Pad($"{measured}", 10, true));
+            }
+
+            (double Clear, double Acts) Measure(RunChart chart)
+            {
+                var results = new RunSimulation(data, options with { Bot = bot, Chart = chart }).RunMany(runs, seed);
+                return (results.Average(r => r.Cleared ? 1.0 : 0.0), results.Average(r => (double)r.Act));
+            }
+        }
+
+        return 0;
+    }
 
     private static string Spend(RunSpend spend) => spend switch
     {

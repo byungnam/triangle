@@ -275,16 +275,46 @@
     "boss": 8,
     "victory": 10
   },
-  "ascensions": [
-    { "name": "정예가 강하다", "elite": 10 },
-    { "name": "보통 적이 강하다", "fight": 8 },
-    { "name": "보스가 강하다", "boss": 10 },
-    { "name": "전투 골드가 적다", "gold": -20 },
-    { "name": "상점이 비싸다", "shop": 20 },
-    { "name": "정예가 더 강하다", "elite": 10 },
-    { "name": "상점 강화가 한 번뿐이다", "upgrades": -1 },
-    { "name": "보통 적이 더 강하다", "fight": 8 },
-    { "name": "보상 카드가 적다", "cards": -1 },
-    { "name": "보스가 더 강하다", "boss": 15 }
-  ]
+  "charts": {
+    "offers": 3,
+    "maxTier": 6,
+    "renownPerRisk": 10,
+    "modifiers": [
+      { "id": "tough", "name": "적이 튼튼하다", "group": "Enemy", "risk": 2, "terms": { "enemyHp": 20 } },
+      { "id": "fierce", "name": "적이 사납다", "group": "Enemy", "risk": 2, "terms": { "enemyPower": 12 } },
+      { "id": "hasty", "name": "적이 빠르다", "group": "Enemy", "risk": 2, "terms": { "enemySpeed": 10 } },
+      { "id": "armored", "name": "적이 단단하다", "group": "Enemy", "risk": 2, "terms": { "enemyDefense": 50 } },
+      { "id": "elite_might", "name": "정예가 강하다", "group": "Enemy", "risk": 1, "terms": { "elite": 30 } },
+      { "id": "boss_might", "name": "보스가 강하다", "group": "Enemy", "risk": 2, "terms": { "boss": 20 } },
+      { "id": "crowded", "name": "무리가 크다", "group": "Enemy", "risk": 2, "terms": { "extraEnemies": 1 } },
+      { "id": "elite_rich", "name": "정예가 많다", "group": "Enemy", "risk": 1, "terms": { "elites": 200 } },
+      { "id": "warded", "name": "적이 디버프에 걸리지 않는다", "group": "Trait", "risk": 2, "terms": { "enemyEffects": ["steadfast"] } },
+      { "id": "regenerating", "name": "적이 재생한다", "group": "Trait", "risk": 2, "terms": { "enemyEffects": ["regenerating"] } },
+      { "id": "thorny", "name": "적이 가시를 두른다", "group": "Trait", "risk": 2, "terms": { "enemyThorns": 20 } },
+      { "id": "vampiric", "name": "적이 피를 빤다", "group": "Trait", "risk": 2, "terms": { "enemyLifesteal": 25 } },
+      { "id": "shielded", "name": "적 전열이 방패 벽을 세운다", "group": "Trait", "risk": 2, "terms": { "frontEffects": ["shield_wall"] } },
+      { "id": "frail", "name": "아군이 여리다", "group": "Ally", "risk": 2, "terms": { "allyHp": -12 } },
+      { "id": "feeble", "name": "아군이 무디다", "group": "Ally", "risk": 2, "terms": { "allyPower": -10 } },
+      { "id": "sluggish", "name": "아군이 느리다", "group": "Ally", "risk": 2, "terms": { "allySpeed": -10 } },
+      { "id": "drained", "name": "마력이 마른다", "group": "Ally", "risk": 1, "terms": { "allyMp": -50 } },
+      { "id": "bleak", "name": "회복이 약하다", "group": "Ally", "risk": 1, "terms": { "healing": -40 } },
+      { "id": "exposed", "name": "아군이 다치기 쉽다", "group": "Ally", "risk": 2, "terms": { "allyDamageTaken": 10 } },
+      { "id": "deep_wounds", "name": "상처가 깊다", "group": "Ally", "risk": 2, "terms": { "sealOnFall": 1 } },
+      { "id": "restless", "name": "쉴 곳이 없다", "group": "Ally", "risk": 1, "terms": { "restUnseal": -1 } },
+      { "id": "untrained", "name": "줄이 모자라다", "group": "Ally", "risk": 3, "terms": { "startLines": -1 } },
+      { "id": "poverty", "name": "골드가 적다", "group": "Economy", "risk": 1, "terms": { "gold": -30 } },
+      { "id": "pricey", "name": "상점이 비싸다", "group": "Economy", "risk": 1, "terms": { "shop": 25 } },
+      { "id": "stingy", "name": "보상 카드가 적다", "group": "Economy", "risk": 1, "terms": { "cards": -1 } },
+      { "id": "busy_smith", "name": "대장장이가 바쁘다", "group": "Economy", "risk": 1, "terms": { "upgrades": -1 } }
+    ],
+    "rewards": [
+      { "id": "gold", "name": "골드 지도", "step": 1, "terms": { "gold": 10 } },
+      { "id": "funds", "name": "군자금 지도", "step": 1, "terms": { "startGold": 30 } },
+      { "id": "cards", "name": "카드 지도", "step": 3, "max": 2, "terms": { "cards": 1 } },
+      { "id": "smith", "name": "대장간 지도", "step": 3, "max": 2, "terms": { "upgrades": 1 } },
+      { "id": "treasure", "name": "보물 지도", "step": 4, "max": 2, "terms": { "shopTier": 1 } },
+      { "id": "respite", "name": "쉼터 지도", "step": 4, "max": 1, "terms": { "restUnseal": 1 } },
+      { "id": "veteran", "name": "숙련 지도", "step": 6, "max": 1, "terms": { "startLines": 1 } }
+    ]
+  }
 }

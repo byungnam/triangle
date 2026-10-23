@@ -115,7 +115,7 @@ public sealed partial class Run
     private readonly List<RunBattleRecord> _history = [];
     private bool _bossCleared;
 
-    private Run(int seed, IReadOnlyList<RunMap> maps, IReadOnlyList<string> bosses, int gold, IReadOnlySet<string> locked, RunBoons boons, int ascension, RunAscension hardship)
+    private Run(int seed, IReadOnlyList<RunMap> maps, IReadOnlyList<string> bosses, int gold, IReadOnlySet<string> locked, RunBoons boons, RunChart chart, RunTerms terms)
     {
         Seed = seed;
         Maps = maps;
@@ -123,8 +123,8 @@ public sealed partial class Run
         Gold = gold;
         Locked = locked;
         Boons = boons;
-        Ascension = ascension;
-        Hardship = hardship;
+        Chart = chart;
+        Terms = terms;
     }
 
     /// <summary>이 판에 나오지 않는 클래스·카드·아이템 (아직 열지 않은 해금, 판을 시작할 때 정한다).</summary>
@@ -133,11 +133,11 @@ public sealed partial class Run
     /// <summary>연 해금이 이 판에 주는 편의 (판을 시작할 때 정한다).</summary>
     public RunBoons Boons { get; }
 
-    /// <summary>이 판의 승천 단계 (0이면 첫 판 난이도).</summary>
-    public int Ascension { get; }
+    /// <summary>이 판의 원정 지도 (판을 시작할 때 고른다, 기본 지도면 수식어와 보상이 없다).</summary>
+    public RunChart Chart { get; }
 
-    /// <summary>승천이 이 판에 거는 어려움 (1~<see cref="Ascension"/> 단계의 합).</summary>
-    public RunAscension Hardship { get; }
+    /// <summary>원정 지도가 이 판에 거는 것 (수식어와 보상의 합).</summary>
+    public RunTerms Terms { get; }
 
     /// <summary>치른 전투 (치른 순서).</summary>
     public IReadOnlyList<RunBattleRecord> History => _history;
@@ -210,11 +210,11 @@ public sealed partial class Run
         }
     }
 
-    public static string? WhyCannotStart(GameData data, IReadOnlyList<string> classIds, RunUnlocks? unlocks = null, int ascension = 0)
+    public static string? WhyCannotStart(GameData data, IReadOnlyList<string> classIds, RunUnlocks? unlocks = null, RunChart? chart = null)
     {
-        if (ascension < 0 || ascension > Rules(data).Ascensions.Count)
+        if (chart?.WhyInvalid(data) is { } invalid)
         {
-            return $"승천은 0에서 {Rules(data).Ascensions.Count}까지다";
+            return invalid;
         }
 
         if (unlocks is not null && classIds.FirstOrDefault(unlocks.Locked.Contains) is { } locked && data.Classes.TryGetValue(locked, out var lockedClass))
@@ -234,20 +234,23 @@ public sealed partial class Run
     /// <summary>판을 시작한다. 막마다 지도를 만들고 보스를 정해 공개한다. 멤버는 클래스의 기본 장비와 시작 스킬 한 줄로 시작한다.</summary>
     /// <param name="unlocks">해금이 정하는 잠긴 것과 시작 골드. null이면 모두 열린 판이다.</param>
     /// <param name="rows">멤버마다 서는 줄 (<paramref name="classIds"/>와 같은 순서). null이거나 모자라면 클래스의 처음 값이다.</param>
-    /// <param name="ascension">승천 단계 (열렸는지는 기록이 본다, <see cref="Profile.Ascension"/>).</param>
-    public static Run Start(GameData data, IReadOnlyList<string> classIds, int seed, RunUnlocks? unlocks = null, IReadOnlyList<Row>? rows = null, int ascension = 0)
+    /// <param name="chart">원정 지도 (null이면 기본 지도). 그 등급이 열렸는지는 기록이 본다(<see cref="Profile.MapTier"/>).</param>
+    public static Run Start(GameData data, IReadOnlyList<string> classIds, int seed, RunUnlocks? unlocks = null, IReadOnlyList<Row>? rows = null, RunChart? chart = null)
     {
         unlocks ??= RunUnlocks.All;
-        if (WhyCannotStart(data, classIds, unlocks, ascension) is { } reason)
+        chart ??= RunChart.Base;
+        if (WhyCannotStart(data, classIds, unlocks, chart) is { } reason)
         {
             throw new InvalidOperationException(reason);
         }
 
         var rules = Rules(data);
-        var maps = rules.Acts.Select((a, i) => RunMap.Generate(rules.Map, a.Floors, a.Elites.Count > 0, Seeds.Derive(seed, 100 + i))).ToList();
+        var terms = chart.Terms(data);
+        var mapRules = rules.Map with { Elite = rules.Map.Elite * (100 + terms.Elites) / 100 };
+        var maps = rules.Acts.Select((a, i) => RunMap.Generate(mapRules, a.Floors, a.Elites.Count > 0, Seeds.Derive(seed, 100 + i))).ToList();
         var random = new Random(Seeds.Derive(seed, 200));
         var bosses = rules.Acts.Select(a => a.Bosses.Count > 0 ? a.Bosses[random.Next(a.Bosses.Count)] : data.Zones[a.ZoneId].Boss!.EncounterId).ToList();
-        var run = new Run(seed, maps, bosses, rules.StartGold + unlocks.StartGold, unlocks.Locked, unlocks.Boons, ascension, RunAscension.Total(rules, ascension));
+        var run = new Run(seed, maps, bosses, Math.Max(0, rules.StartGold + unlocks.StartGold + terms.StartGold), unlocks.Locked, unlocks.Boons, chart, terms);
         for (var i = 0; i < classIds.Count; i++)
         {
             run.Join(data, classIds[i], rows is not null && i < rows.Count ? rows[i] : null);
@@ -314,7 +317,7 @@ public sealed partial class Run
         Fights++;
         var at = Act;
         var allies = Living.Select(m => Setup(data, m)).ToList();
-        var result = CombatSimulator.Run(allies, EnemyTeam(data, Act, kind, encounter, Hardship), Catalog(data), Seeds.Derive(Seed, Fights));
+        var result = CombatSimulator.Run(allies, EnemyTeam(data, Act, kind, encounter, Terms), Catalog(data), Seeds.Derive(Seed, Fights));
         _history.Add(new RunBattleRecord(at, encounter, kind, result.Outcome));
         if (result.Outcome != CombatOutcome.Victory)
         {
@@ -333,7 +336,8 @@ public sealed partial class Run
             }
             else
             {
-                member.Sealed++;
+                // 지도의 "상처가 깊다"는 봉인을 더 건다(줄 상한 아래로는 걸지 않는다).
+                member.Sealed = Math.Min(member.Earned, member.Sealed + 1 + Terms.SealOnFall);
                 sealedIds.Add(member.Id);
             }
         }
@@ -350,7 +354,7 @@ public sealed partial class Run
             RunNodeKind.Boss => reward.BossGold,
             RunNodeKind.Elite => random.Next(reward.EliteGoldMin, reward.EliteGoldMax + 1),
             _ => random.Next(reward.GoldMin, reward.GoldMax + 1),
-        } * (100 + Hardship.Gold) / 100;
+        } * Math.Max(0, 100 + Terms.Gold) / 100;
         Gold += gold;
         if (kind == RunNodeKind.Boss && Act == rules.Acts.Count - 1)
         {
@@ -456,13 +460,20 @@ public sealed partial class Run
         }
     }
 
-    /// <summary>휴식에서 봉인 풀기를 고르면 멤버마다 푸는 봉인 수 (해금이 늘린다).</summary>
-    public int RestUnseals(GameData data) => Rules(data).Rest.Unseal + Boons.RestUnseal;
+    /// <summary>휴식에서 봉인 풀기를 고르면 멤버마다 푸는 봉인 수 (해금이 늘리고, 지도가 늘리거나 줄인다).</summary>
+    public int RestUnseals(GameData data) => Math.Max(0, Rules(data).Rest.Unseal + Boons.RestUnseal + Terms.RestUnseal);
+
+    public string? WhyCannotRestUnseal(GameData data) =>
+        Phase != RunPhase.Rest ? "휴식에서만 한다" : RestUnseals(data) == 0 ? "이 지도에서는 휴식으로 봉인을 풀 수 없다" : null;
 
     /// <summary>휴식: 모든 멤버의 봉인을 정한 수만큼 푼다.</summary>
     public void RestUnseal(GameData data)
     {
-        RequirePhase(RunPhase.Rest);
+        if (WhyCannotRestUnseal(data) is { } reason)
+        {
+            throw new InvalidOperationException(reason);
+        }
+
         foreach (var member in Living)
         {
             member.Sealed = Math.Max(0, member.Sealed - RestUnseals(data));
@@ -920,10 +931,24 @@ public sealed partial class Run
         ];
         var setup = new CombatantSetup(member.Id, Name(data, member), c.Stats, member.Row, null, null, member.Passives.ToDictionary(), tactics);
         var catalog = Catalog(data);
-        return new Loadout(worn).Apply(setup, data.Actions.Values, _ => 0) with
+        var loaded = new Loadout(worn).Apply(setup, data.Actions.Values, _ => 0);
+        return loaded with
         {
             GrantedActions = tactics.Select(t => t.ActionId).Where(id => !catalog.Actions[id].Universal).ToHashSet(),
+            ItemBonuses = [.. loaded.ItemBonuses, .. AllyBonuses(Terms)],
         };
+    }
+
+    /// <summary>지도가 아군에게 거는 보정 (최대 HP·MP, 위력, 대기, 회복량, 받는 피해).</summary>
+    private static IEnumerable<ItemBonus> AllyBonuses(RunTerms terms)
+    {
+        (BonusKind Kind, int Percent)[] bonuses =
+        [
+            (BonusKind.MaxHpPercent, terms.AllyHp), (BonusKind.MaxMpPercent, terms.AllyMp), (BonusKind.PowerPercent, terms.AllyPower),
+            (BonusKind.DelayReductionPercent, terms.AllySpeed), (BonusKind.HealPercent, terms.Healing),
+            (BonusKind.DamageTakenReductionPercent, -terms.AllyDamageTaken),
+        ];
+        return bonuses.Where(b => b.Percent != 0).Select(b => new ItemBonus(b.Kind, b.Percent));
     }
 
     /// <summary>멤버의 기본 공격: 든 무기가 바꾸면 그 행동(<see cref="ItemDefinition.BasicAttack"/>), 아니면 공용 기본 공격.</summary>
@@ -931,27 +956,42 @@ public sealed partial class Run
         member.Weapon is { } weapon && data.Items[weapon].BasicAttack is { } basic ? basic : DraftTactics.Fallback;
 
     /// <summary>
-    /// 그 막의 그 지점에서 만나는 적 조합: 막이 지점 종류마다 정한 세기(<see cref="RunAct.Strength"/>)에 승천의 어려움(<paramref name="hardship"/>)을
-    /// 더해 HP·위력 보너스로 얹는다.
+    /// 그 막의 그 지점에서 만나는 적 조합: 막이 지점 종류마다 정한 세기(<see cref="RunAct.Strength"/>)에 지도의 수식어(<paramref name="terms"/>)를
+    /// 더해 HP·위력·방어·대기·가시·흡혈 보너스로 얹고, 타고난 효과를 건다. 보통 전투는 지도가 정한 만큼 조합의 첫 유닛을 복제해 더한다.
     /// </summary>
-    public static IReadOnlyList<CombatantSetup> EnemyTeam(GameData data, int act, RunNodeKind kind, string encounterId, RunAscension? hardship = null)
+    public static IReadOnlyList<CombatantSetup> EnemyTeam(GameData data, int act, RunNodeKind kind, string encounterId, RunTerms? terms = null)
     {
+        terms ??= new RunTerms();
         var strength = Rules(data).Acts[act].Strength(kind);
-        var extra = hardship is null ? 0 : kind switch
+        var extra = kind switch
         {
-            RunNodeKind.Boss => hardship.Boss,
-            RunNodeKind.Elite => hardship.Elite,
-            _ => hardship.Fight,
+            RunNodeKind.Boss => terms.Boss,
+            RunNodeKind.Elite => terms.Elite,
+            _ => 0,
         };
-        strength = strength with { Hp = strength.Hp + extra, Power = strength.Power + extra };
-        var team = data.CreateEncounterTeam(encounterId);
-        if (strength is { Hp: 100, Power: 100 })
+        var team = data.CreateEncounterTeam(encounterId).ToList();
+        if (kind == RunNodeKind.Fight && team.Count > 0)
+        {
+            team.AddRange(Enumerable.Range(2, Math.Max(0, terms.ExtraEnemies)).Select(n => team[0] with { Id = $"{team[0].Id}_{n}" }));
+        }
+
+        (BonusKind Kind, int Percent)[] bonuses =
+        [
+            (BonusKind.MaxHpPercent, strength.Hp - 100 + extra + terms.EnemyHp), (BonusKind.PowerPercent, strength.Power - 100 + extra + terms.EnemyPower),
+            (BonusKind.DefensePercent, terms.EnemyDefense), (BonusKind.DelayReductionPercent, terms.EnemySpeed),
+            (BonusKind.ThornsPercent, terms.EnemyThorns), (BonusKind.LifestealPercent, terms.EnemyLifesteal),
+        ];
+        var added = bonuses.Where(b => b.Percent != 0).Select(b => new ItemBonus(b.Kind, b.Percent)).ToList();
+        if (added.Count == 0 && terms.EnemyEffects.Count == 0 && terms.FrontEffects.Count == 0)
         {
             return team;
         }
 
-        ItemBonus[] bonuses = [new(BonusKind.MaxHpPercent, strength.Hp - 100), new(BonusKind.PowerPercent, strength.Power - 100)];
-        return team.Select(e => e with { ItemBonuses = [.. e.ItemBonuses, .. bonuses] }).ToList();
+        return team.Select(e => e with
+        {
+            ItemBonuses = [.. e.ItemBonuses, .. added],
+            StartingEffects = [.. e.StartingEffects, .. terms.EnemyEffects.Concat(e.Row == Row.Front ? terms.FrontEffects : []).Except(e.StartingEffects)],
+        }).ToList();
     }
 
     /// <summary>표시 이름: 클래스 이름. 같은 클래스가 여럿이면 합류 순서 번호를 붙인다.</summary>
@@ -973,9 +1013,10 @@ public sealed partial class Run
     {
         var c = data.Classes[classId];
         var rules = Rules(data);
-        var member = new RunMember($"m{Members.Count + 1}", classId, rules.StartLines) { Row = row ?? c.Row, Weapon = c.Weapon, Armor = c.Armor };
+        var lines = rules.StartLines > 0 ? Math.Max(1, rules.StartLines + Terms.StartLines) : 0;
+        var member = new RunMember($"m{Members.Count + 1}", classId, lines) { Row = row ?? c.Row, Weapon = c.Weapon, Armor = c.Armor };
         Copies[c.StartingSkill] = Copies.GetValueOrDefault(c.StartingSkill) + 1;
-        if (rules.StartLines > 0)
+        if (lines > 0)
         {
             member.Tactics.Add(DraftTactics.Build([c.StartingSkill], 1, data)[0]);
         }
@@ -1012,7 +1053,7 @@ public sealed partial class Run
     private void OpenShop(GameData data, Random random)
     {
         var rules = Rules(data);
-        var tier = rules.Acts[Act].ShopTier;
+        var tier = rules.Acts[Act].ShopTier + Terms.ShopTier;
         var classes = Living.Select(m => data.Classes[m.ClassId]).Distinct().ToList();
         var items = data.Items.Values
             .Where(i => i.Shop && i.Tier <= tier && Open(i.Id))
@@ -1029,7 +1070,7 @@ public sealed partial class Run
             .Select(id => new RunStock(RunStockKind.Skill, id, Priced(rules.Shop.SkillPrice))));
         _stock.AddRange(Pick(data.Classes.Keys.Where(Open).ToList(), rules.Shop.Recruits, random)
             .Select(id => new RunStock(RunStockKind.Recruit, id, Priced(rules.Shop.RecruitPrice))));
-        UpgradesLeft = Math.Max(0, rules.Shop.Upgrades + Hardship.Upgrades);
+        UpgradesLeft = Math.Max(0, rules.Shop.Upgrades + Terms.Upgrades);
         if (rules.Shop.Lines > 0 && Living.Any(m => m.Earned < rules.MaxLines))
         {
             _stock.Add(new RunStock(RunStockKind.Line, "", Priced(rules.Shop.LinePrice + rules.Shop.LineStep * LinesBought)));
@@ -1084,11 +1125,11 @@ public sealed partial class Run
         return cards;
     }
 
-    /// <summary>상점의 값: 승천이 올린 만큼 더하고 해금의 할인을 뺀다.</summary>
-    private int Priced(int price) => price * (100 + Hardship.Shop) / 100 * (100 - Boons.ShopDiscountPercent) / 100;
+    /// <summary>상점의 값: 지도가 올린 만큼 더하고 해금의 할인을 뺀다.</summary>
+    private int Priced(int price) => price * Math.Max(0, 100 + Terms.Shop) / 100 * (100 - Boons.ShopDiscountPercent) / 100;
 
-    /// <summary>전투·이벤트 보상의 카드 수: 승천이 줄이지만 1장 아래로는 줄지 않는다.</summary>
-    private int Cards(int count) => Math.Max(1, count + Hardship.Cards);
+    /// <summary>전투·이벤트 보상의 카드 수: 지도가 늘리거나 줄인다(1장 아래로는 줄지 않는다).</summary>
+    private int Cards(int count) => Math.Max(1, count + Terms.Cards);
 
     /// <summary>후보에서 겹치지 않게 <paramref name="count"/>개를 뽑는다 (후보가 모자라면 있는 만큼).</summary>
     private static List<T> Pick<T>(IReadOnlyList<T> candidates, int count, Random random)

@@ -73,4 +73,19 @@ public class RunSimulationTests
             }
         }
     }
+
+    [Fact]
+    public void Runs_can_roll_a_chart_each_and_the_books_still_balance()
+    {
+        // 판마다 지도 등급 2의 지도를 굴린다: 수식어 1~2개와 보상 하나. 같은 시드면 같은 지도다.
+        var simulation = new RunSimulation(Data, new RunSimOptions { Bot = RunBot.Novice, Tier = 2, Unlocks = RunUnlocks.For(Data, new HashSet<string>()) });
+        var results = simulation.RunMany(8);
+        Assert.All(results, r => Assert.InRange(r.Chart.Modifiers.Count, 1, 2));
+        Assert.All(results, r => Assert.NotNull(r.Chart.Reward));
+        Assert.Equal(results[3].Chart, simulation.Play(3).Chart);
+        Assert.True(results.Select(r => r.Chart).Distinct().Count() > 1);
+
+        // 지도의 시작 골드도 셈에 든다.
+        Assert.All(results, r => Assert.Equal(Math.Max(0, Data.Run!.StartGold + r.Chart.Terms(Data).StartGold) + r.GoldEarned - r.Spent.Values.Sum(), r.GoldLeft));
+    }
 }

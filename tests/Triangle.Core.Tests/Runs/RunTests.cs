@@ -59,11 +59,11 @@ public class RunTests
     });
 
     /// <summary>첫 전투를 이긴 판 (보상 단계). 이기는 시드를 찾는다.</summary>
-    private static Run WonFirstFight(GameData data, IReadOnlyList<string> party, int from = 0, RunUnlocks? unlocks = null, int ascension = 0)
+    private static Run WonFirstFight(GameData data, IReadOnlyList<string> party, int from = 0, RunUnlocks? unlocks = null, RunChart? chart = null)
     {
         for (var seed = from; seed < from + 50; seed++)
         {
-            var run = Run.Start(data, party, seed, unlocks, ascension: ascension);
+            var run = Run.Start(data, party, seed, unlocks, chart: chart);
             run.Enter(data, run.Choices[0].Id);
             if (run.Phase == RunPhase.Reward)
             {
@@ -1234,9 +1234,9 @@ public class RunTests
     }
 
     /// <summary>판을 끝까지 둔다: 첫 지점, 보상은 건너뛰기, 휴식은 봉인 풀기.</summary>
-    private static Run PlayThrough(GameData data, int seed, int ascension = 0)
+    private static Run PlayThrough(GameData data, int seed, RunChart? chart = null)
     {
-        var run = Run.Start(data, Party, seed, ascension: ascension);
+        var run = Run.Start(data, Party, seed, chart: chart);
         while (!run.Finished)
         {
             switch (run.Phase)
@@ -1257,79 +1257,144 @@ public class RunTests
     }
 
     [Fact]
-    public void Ascension_levels_stack_and_make_the_run_harder()
+    public void A_chart_stacks_its_modifiers_and_pays_by_risk()
     {
-        RunAscension[] levels = [new() { Name = "정예", Elite = 10 }, new() { Name = "살림", Fight = 8, Gold = -50, Shop = 20, Upgrades = -1, Cards = -2 }];
-        var data = SecondFloor("shop", r => r with { Ascensions = levels, Shop = r.Shop with { Upgrades = 2 } });
-        var rules = data.Run!;
+        var data = SecondFloor("shop", r => r with
+        {
+            Shop = r.Shop with { Upgrades = 2 },
+            Charts = new RunChartRules
+            {
+                MaxTier = 4,
+                RenownPerRisk = 10,
+                Modifiers =
+                [
+                    new() { Id = "tough", Name = "튼튼", Risk = 2, Terms = new() { EnemyHp = 20, EnemyEffects = ["steadfast"] } },
+                    new() { Id = "poor", Name = "가난", Terms = new() { Gold = -50, Shop = 20, Upgrades = -1 } },
+                    new() { Id = "frail", Name = "여림", Terms = new() { AllyHp = -10, SealOnFall = 1, RestUnseal = -1 } },
+                    new() { Id = "crowded", Name = "무리", Terms = new() { ExtraEnemies = 1, FrontEffects = ["taunting"] } },
+                ],
+                Rewards =
+                [
+                    new() { Id = "gold", Name = "골드 지도", Terms = new() { Gold = 10 } },
+                    new() { Id = "cards", Name = "카드 지도", Step = 2, Max = 1, Terms = new() { Cards = 1, StartGold = 100 } },
+                ],
+            },
+        });
 
-        // 단계는 쌓인다: 승천 2에는 1단계와 2단계가 모두 걸린다.
-        var total = RunAscension.Total(rules, 2);
-        Assert.Equal((8, 10, -50, 20, -1, -2), (total.Fight, total.Elite, total.Gold, total.Shop, total.Upgrades, total.Cards));
-        Assert.Equal(["보통 적 +8%", "정예 +10%", "전투 골드 -50%", "상점 값 +20%", "상점 강화 -1번", "보상 카드 -2장"], total.Parts());
-        Assert.True(RunAscension.Total(rules, 0).IsEmpty);
-        Assert.Equal("승천은 0에서 2까지다", Run.WhyCannotStart(data, Party, null, 3));
+        // 위험도는 수식어 위험도의 합이고, 보상은 위험도 2마다 한 번(끝 1번), 명성은 위험도 1마다 10%다.
+        var chart = new RunChart(["tough", "poor", "frail", "crowded"], "cards");
+        Assert.Equal(5, chart.Risk(data));
+        var terms = chart.Terms(data);
+        Assert.Equal((20, -50, 20, -1, 1, 100, 50), (terms.EnemyHp, terms.Gold, terms.Shop, terms.Upgrades, terms.Cards, terms.StartGold, terms.Renown));
+        Assert.Contains("적 HP +20%", terms.Parts(data));
+        Assert.Contains("모든 적이 굳건함 효과를 지닌다", terms.Parts(data));
+        Assert.Equal(["보상 카드 +1장", "시작 골드 +100", "명성 +50%"], chart.Bounty(data).Parts(data));
 
-        // 적은 막이 정한 세기에 승천만큼 더 강하다.
-        var encounter = data.Zones[rules.Acts[0].ZoneId].Encounters[0].EncounterId;
-        int Hp(IReadOnlyList<CombatantSetup> team) => team[0].ItemBonuses.Single(b => b.Kind == BonusKind.MaxHpPercent).Percent;
-        Assert.Equal(Hp(Run.EnemyTeam(data, 0, RunNodeKind.Fight, encounter)) + 8, Hp(Run.EnemyTeam(data, 0, RunNodeKind.Fight, encounter, total)));
+        // 보통 전투에는 첫 유닛이 하나 더 나오고, 모든 적이 HP +20%와 굳건함을, 전열의 적은 도발도 지닌다. 정예와 보스는 늘지 않는다.
+        var encounter = data.Zones[data.Run!.Acts[0].ZoneId].Encounters[0].EncounterId;
+        var plain = Run.EnemyTeam(data, 0, RunNodeKind.Fight, encounter);
+        var team = Run.EnemyTeam(data, 0, RunNodeKind.Fight, encounter, terms);
+        int Hp(CombatantSetup unit) => unit.ItemBonuses.Single(b => b.Kind == BonusKind.MaxHpPercent).Percent;
+        Assert.Equal(plain.Count + 1, team.Count);
+        Assert.Equal((plain[0].Id + "_2", plain[0].Name), (team[^1].Id, team[^1].Name));
+        Assert.Equal(Hp(plain[0]) + 20, Hp(team[0]));
+        Assert.All(team, e => Assert.Contains("steadfast", e.StartingEffects));
+        Assert.All(team, e => Assert.Equal(e.Row == Triangle.Core.Units.Row.Front, e.StartingEffects.Contains("taunting")));
+        Assert.Equal(Run.EnemyTeam(data, 0, RunNodeKind.Boss, data.Run.Acts[0].Bosses[0]).Count, Run.EnemyTeam(data, 0, RunNodeKind.Boss, data.Run.Acts[0].Bosses[0], terms).Count);
 
-        // 승천 2로 첫 전투를 이기면 골드는 절반이고, 카드는 1장(3장 - 2)이다.
-        var run = WonFirstFight(data, Party, ascension: 2);
-        Assert.InRange(run.Gold, rules.Reward.GoldMin / 2, rules.Reward.GoldMax / 2);
-        Assert.Single(run.Offer);
+        // 판: 시작 골드 +100, 아군 최대 HP -10%, 휴식 봉인 풀기 없음. 첫 전투의 골드는 절반이고 카드는 한 장 더(4장) 나온다.
+        var run = WonFirstFight(data, Party, chart: chart);
+        Assert.Contains(new ItemBonus(BonusKind.MaxHpPercent, -10), run.Setup(data, run.Members[0]).ItemBonuses);
+        Assert.Equal(0, run.RestUnseals(data));
+        Assert.Equal(4, run.Offer.Count);
+        Assert.InRange(run.Gold, data.Run.StartGold + 100 + data.Run.Reward.GoldMin / 2, data.Run.StartGold + 100 + data.Run.Reward.GoldMax / 2);
 
         // 상점은 20% 비싸고 강화는 한 번뿐이다.
         run.Skip();
         run.Enter(data, run.Choices[0].Id);
-        Assert.Equal(RunPhase.Shop, run.Phase);
-        Assert.Equal((rules.Shop.UnsealPrice * 120 / 100, 1), (run.UnsealPrice(data), run.UpgradesLeft));
+        Assert.Equal((data.Run.Shop.UnsealPrice * 120 / 100, 1), (run.UnsealPrice(data), run.UpgradesLeft));
 
-        // 세이브에 승천이 남는다. 데이터에 없는 단계면 거부한다.
+        // 세이브에 지도가 남고, 모르는 수식어나 겹친 수식어는 거부한다.
         var copy = Run.Deserialize(run.Serialize(), data);
-        Assert.Equal((2, run.UnsealPrice(data)), (copy.Ascension, copy.UnsealPrice(data)));
-        Assert.Contains("run save: ascension 3 is out of range (0..2)", Assert.Throws<SaveGameException>(() => Run.Restore(run.ToSave() with { Ascension = 3 }, data)).Errors);
+        Assert.Equal((chart, -50), (copy.Chart, copy.Terms.Gold));
+        Assert.Contains("run save: chart: 없는 수식어: nope", Assert.Throws<SaveGameException>(() => Run.Restore(run.ToSave() with { Chart = new RunChart(["nope"], null) }, data)).Errors);
+        Assert.Equal("같은 수식어가 겹친다", Run.WhyCannotStart(data, Party, null, new RunChart(["poor", "poor"], "gold")));
 
-        // 단계는 판을 어렵게만 한다.
-        var errors = Assert.Throws<GameDataException>(() => With(r => r with { Ascensions = [new() { Name = "쉬움", Gold = 10 }, new() { Name = "빈 것" }, new() { Fight = 5 }] })).Errors;
-        Assert.Contains(errors, e => e.Contains("ascension 1 must only make the run harder"));
-        Assert.Contains(errors, e => e.Contains("ascension 2 changes nothing"));
-        Assert.Contains(errors, e => e.Contains("ascension 3 needs a name"));
+        // 지도 굴리기: 등급-1 ~ 등급개의 겹치지 않는 수식어와 보상 하나. 등급 0이면 지도가 없다.
+        var rolled = RunChart.Roll(data, 2, 50, new Random(1));
+        Assert.All(rolled, c => Assert.InRange(c.Modifiers.Count, 1, 2));
+        Assert.All(rolled, c => Assert.Equal(c.Modifiers.Count, c.Modifiers.Distinct().Count()));
+        Assert.All(rolled, c => Assert.NotNull(c.Reward));
+        Assert.Contains(rolled, c => c.Modifiers.Count == 2);
+        Assert.Empty(RunChart.Roll(data, 0, 3, new Random(1)));
     }
 
     [Fact]
-    public void Winning_at_the_highest_open_ascension_opens_the_next()
+    public void Chart_modifiers_only_make_the_run_harder_and_rewards_only_easier()
+    {
+        var errors = Assert.Throws<GameDataException>(() => With(r => r with
+        {
+            Charts = new RunChartRules
+            {
+                Modifiers =
+                [
+                    new() { Id = "easy", Name = "쉬움", Terms = new() { Gold = 10 } },
+                    new() { Id = "ghost", Name = "유령", Terms = new() { EnemyEffects = ["nope"] } },
+                    new() { Id = "none", Name = "빈 것" },
+                ],
+                Rewards = [new() { Id = "bad", Name = "나쁨", Step = 2, Terms = new() { EnemyHp = 10 } }],
+            },
+        })).Errors;
+        Assert.Contains(errors, e => e.Contains("modifier 'easy' must only make the run harder"));
+        Assert.Contains(errors, e => e.Contains("modifier 'ghost' uses unknown effect 'nope'"));
+        Assert.Contains(errors, e => e.Contains("modifier 'none' changes nothing"));
+        Assert.Contains(errors, e => e.Contains("chart reward 'bad' must make the run easier"));
+        Assert.Contains(errors, e => e.Contains("charts need a reward with step 1"));
+    }
+
+    [Fact]
+    public void Winning_with_as_many_modifiers_as_the_map_tier_raises_it()
     {
         var data = With(r => r with
         {
             Acts = [new RunAct("outskirts_forest", 2) { Bosses = ["wild_dogs"] }],
-            Ascensions = [new() { Name = "하나", Fight = 1 }, new() { Name = "둘", Fight = 1 }],
+            Charts = new RunChartRules
+            {
+                MaxTier = 2,
+                Modifiers = [new() { Id = "a", Name = "가", Terms = new() { Gold = -10 } }, new() { Id = "b", Name = "나", Risk = 2, Terms = new() { Shop = 10 } }],
+                Rewards = [new() { Id = "gold", Name = "골드 지도", Terms = new() { Gold = 10 } }],
+            },
         });
-        Run Won(int ascension) => Enumerable.Range(0, 30).Select(seed => PlayThrough(data, seed, ascension)).First(r => r.Phase == RunPhase.Victory);
+        Run Won(RunChart? chart = null) => Enumerable.Range(0, 30).Select(seed => PlayThrough(data, seed, chart)).First(r => r.Phase == RunPhase.Victory);
 
-        // 지면 열리지 않고, 처음 이기면 승천 1이 열린다.
+        // 지면 오르지 않고, 처음 이기면 지도 등급 1이 된다.
         var profile = new Profile();
         var lost = WonFirstFight(data, Party);
         lost.Abandon();
         profile.Record(lost, data);
-        Assert.Equal(0, profile.Ascension);
-        Assert.Equal(1, profile.AscensionAfter(Won(0), data));
-        profile.Record(Won(0), data);
-        Assert.Equal(1, profile.Ascension);
+        Assert.Equal(0, profile.MapTier);
+        profile.Record(Won(), data);
+        Assert.Equal(1, profile.MapTier);
 
-        // 열린 가장 높은 단계로 이겨야 다음이 열린다. 끝 단계를 넘지 않는다.
-        profile.Record(Won(0), data);
-        Assert.Equal(1, profile.Ascension);
-        profile.Record(Won(1), data);
-        Assert.Equal(2, profile.Ascension);
-        profile.Record(Won(2), data);
-        Assert.Equal(2, profile.Ascension);
+        // 수식어가 등급만큼 붙은 지도로 이겨야 오른다. 끝 등급을 넘지 않는다. 이긴 판의 가장 높은 위험도가 남는다.
+        profile.Record(Won(), data);
+        Assert.Equal(1, profile.MapTier);
+        profile.Record(Won(new RunChart(["a"], "gold")), data);
+        Assert.Equal(2, profile.MapTier);
+        var both = Won(new RunChart(["a", "b"], "gold"));
+        Assert.Equal(2, profile.MapTierAfter(both, data));
+        profile.Record(both, data);
+        Assert.Equal((2, 3), (profile.MapTier, profile.BestRisk));
 
-        // 기록에 남고, 데이터의 단계가 줄면 그만큼으로 줄인다.
+        // 지도가 위험도만큼 명성을 더 준다 (위험도 3, 1마다 10%).
+        var plain = Profile.RenownFor(both, data) * 100 / 130;
+        Assert.InRange(Profile.RenownFor(both, data), plain * 130 / 100 - 1, plain * 130 / 100 + 1);
+        Assert.True(Profile.RenownFor(both, data) > Profile.RenownFor(Won(), data));
+
+        // 기록에 남고, 데이터의 끝 등급이 낮아지면 그만큼으로 줄인다.
         var json = profile.Serialize();
-        Assert.Equal(2, Profile.Deserialize(json, data).Ascension);
-        Assert.Equal(0, Profile.Deserialize(json, With(r => r with { Ascensions = [] })).Ascension);
+        Assert.Equal((2, 3), (Profile.Deserialize(json, data).MapTier, Profile.Deserialize(json, data).BestRisk));
+        Assert.Equal(1, Profile.Deserialize(json, With(r => r with { Charts = r.Charts with { MaxTier = 1 } })).MapTier);
     }
 
     [Fact]

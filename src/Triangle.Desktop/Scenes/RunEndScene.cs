@@ -44,7 +44,8 @@ internal sealed class RunEndScene : RunScene
             parts.Add($"원정 성공 {rules.Victory}");
         }
 
-        return parts.Count == 0 ? "이긴 전투가 없습니다." : string.Join(" + ", parts);
+        var bonus = Run.Terms.Renown != 0 ? $" (지도 {Run.Terms.Renown:+0;-0}%)" : "";
+        return parts.Count == 0 ? "이긴 전투가 없습니다." : string.Join(" + ", parts) + bonus;
     }
 
     protected override Widget Build()
@@ -54,19 +55,19 @@ internal sealed class RunEndScene : RunScene
         box.Widgets.Add(W.Label(Won ? "마지막 막의 보스를 물리쳤습니다!" : "원정이 끝났습니다.", 26, Won ? Theme.Gold : Theme.Enemy, bold: true));
         var acts = Data.Run!.Acts.Count;
         var where = Won ? $"{acts}막 모두 통과" : $"{RunText.Act(Run, Data)}에서 끝남 ({Run.Act}/{acts}막 통과)";
-        box.Widgets.Add(W.Label(Run.Ascension > 0 ? $"승천 {Run.Ascension} · {where}" : where, 18, Theme.Text));
+        box.Widgets.Add(W.Label(Run.Chart.IsBase ? where : $"{Run.Chart.Name(Data)} (위험도 {Run.Chart.Risk(Data)}) · {where}", 18, Theme.Text));
         box.Widgets.Add(W.Label($"전투 {Run.Fights}번 · 남은 골드 {Run.Gold} (판이 끝나면 사라짐) · 사본 {Run.Copies.Values.Sum()}장", 16, Theme.TextDim));
         box.Widgets.Add(new Panel { Height = 6 });
         var renown = Profile.RenownFor(Run, Data);
         box.Widgets.Add(W.Header("node.boss", $"명성 +{renown}", $"지금 {Session.Profile.Renown} → {Session.Profile.Renown + renown}"));
         box.Widgets.Add(W.Label(RenownBreakdown(), 15, Theme.Text, width: Width - 24, wrap: true));
-        var ascension = Session.Profile.AscensionAfter(Run, Data);
-        if (ascension > Session.Profile.Ascension)
+        var tier = Session.Profile.MapTierAfter(Run, Data);
+        if (tier > Session.Profile.MapTier)
         {
-            // 처음 이기면 승천 1이, 열린 가장 높은 승천으로 이기면 다음 단계가 열린다.
+            // 처음 이기면 지도 등급 1이, 수식어가 등급만큼 붙은 지도로 이기면 다음 등급이 열린다.
             box.Widgets.Add(new Panel { Height = 6 });
-            box.Widgets.Add(W.Header("lock", $"승천 {ascension} 열림", Data.Run!.Ascensions[ascension - 1].Name));
-            box.Widgets.Add(W.Label("다음 원정부터 파티 고르기에서 고를 수 있습니다. 승천은 앞 단계의 어려움을 모두 안고 갑니다.", 15, Theme.Text, width: Width - 24, wrap: true));
+            box.Widgets.Add(W.Header("lock", $"지도 등급 {tier} 열림", $"수식어가 {tier}개까지 붙은 지도"));
+            box.Widgets.Add(W.Label("다음 원정부터 파티를 고른 뒤 원정 지도를 고릅니다. 수식어가 판을 어렵게 하는 만큼 보상과 명성이 늡니다.", 15, Theme.Text, width: Width - 24, wrap: true));
         }
         box.Widgets.Add(new Panel { Height = 6 });
         box.Widgets.Add(W.Header("figure", "파티"));

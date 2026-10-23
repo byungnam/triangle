@@ -182,7 +182,7 @@ public static class GameDataLoader
         ValidateClasses(classes!, masteryMap, skillMap, actionMap, itemMap, errors);
         if (run is not null)
         {
-            ValidateRun(run, zoneMap, encounterMap, classMap, errors);
+            ValidateRun(run, zoneMap, encounterMap, classMap, effectMap, errors);
         }
 
         ValidateUnlocks(unlocks!, classMap, actionMap, itemMap, errors);
@@ -327,12 +327,67 @@ public static class GameDataLoader
         }
     }
 
+    /// <summary>
+    /// 원정 지도: 수식어는 이름과 위험도(1 이상)가 있고 판을 어렵게만 하며, 보상은 쉽게만 한다. 효과는 있어야 하고 ID는 겹치지 않는다.
+    /// 수식어가 붙은 지도는 늘 보상이 있도록 위험도 1에서도 무언가를 주는 보상이 하나는 있어야 한다.
+    /// </summary>
+    private static void ValidateCharts(RunChartRules charts, IReadOnlyDictionary<string, EffectDefinition> effects, List<string> errors)
+    {
+        if (charts.Offers < 0 || charts.MaxTier < 0 || charts.RenownPerRisk < 0)
+        {
+            errors.Add($"{RunFile}: charts offers, maxTier and renownPerRisk must not be negative");
+        }
+
+        foreach (var duplicate in charts.Modifiers.Select(m => m.Id).Concat(charts.Rewards.Select(r => r.Id)).GroupBy(id => id).Where(g => g.Count() > 1))
+        {
+            errors.Add($"{RunFile}: duplicate chart modifier or reward id '{duplicate.Key}'");
+        }
+
+        foreach (var m in charts.Modifiers)
+        {
+            if (string.IsNullOrWhiteSpace(m.Name) || m.Risk < 1)
+            {
+                errors.Add($"{RunFile}: modifier '{m.Id}' needs a name and a risk of at least 1");
+            }
+
+            if (m.Terms.IsEmpty)
+            {
+                errors.Add($"{RunFile}: modifier '{m.Id}' changes nothing");
+            }
+            else if (!m.Terms.OnlyHarder)
+            {
+                errors.Add($"{RunFile}: modifier '{m.Id}' must only make the run harder");
+            }
+
+            errors.AddRange(m.Terms.Effects.Where(id => !effects.ContainsKey(id)).Select(id => $"{RunFile}: modifier '{m.Id}' uses unknown effect '{id}'"));
+        }
+
+        foreach (var r in charts.Rewards)
+        {
+            if (string.IsNullOrWhiteSpace(r.Name) || r.Step < 1 || r.Max < 0)
+            {
+                errors.Add($"{RunFile}: chart reward '{r.Id}' needs a name, a step of at least 1 and a max not below 0");
+            }
+
+            if (r.Terms.IsEmpty || !r.Terms.OnlyEasier)
+            {
+                errors.Add($"{RunFile}: chart reward '{r.Id}' must make the run easier (and add no effects)");
+            }
+        }
+
+        if (charts.Modifiers.Count > 0 && charts.Rewards.All(r => r.Step > 1))
+        {
+            errors.Add($"{RunFile}: charts need a reward with step 1 so that every chart has a reward");
+        }
+    }
+
     /// <summary>판의 규칙: 막의 지역·보스·정예, 인원과 줄, 가중치와 값, 이벤트 선택지의 합류 클래스.</summary>
     private static void ValidateRun(
         RunDefinition run,
         IReadOnlyDictionary<string, ZoneDefinition> zones,
         IReadOnlyDictionary<string, EncounterDefinition> encounters,
         IReadOnlyDictionary<string, ClassDefinition> classes,
+        IReadOnlyDictionary<string, EffectDefinition> effects,
         List<string> errors)
     {
         if (run.PartySize is < 1 or > Run.MaxMembers)
@@ -431,24 +486,7 @@ public static class GameDataLoader
             errors.Add($"{RunFile}: rest unseal must not be negative and trainCards must be at least 1");
         }
 
-        // 승천 단계는 판을 어렵게만 한다 (적은 강해지고, 골드·강화·카드는 줄고, 값은 오른다).
-        for (var i = 0; i < run.Ascensions.Count; i++)
-        {
-            var a = run.Ascensions[i];
-            if (string.IsNullOrWhiteSpace(a.Name))
-            {
-                errors.Add($"{RunFile}: ascension {i + 1} needs a name");
-            }
-
-            if (a.IsEmpty)
-            {
-                errors.Add($"{RunFile}: ascension {i + 1} changes nothing");
-            }
-            else if (a.Fight < 0 || a.Elite < 0 || a.Boss < 0 || a.Shop < 0 || a.Gold is > 0 or < -100 || a.Upgrades > 0 || a.Cards > 0)
-            {
-                errors.Add($"{RunFile}: ascension {i + 1} must only make the run harder");
-            }
-        }
+        ValidateCharts(run.Charts, effects, errors);
 
         foreach (var duplicate in run.Events.GroupBy(e => e.Id).Where(g => g.Count() > 1))
         {

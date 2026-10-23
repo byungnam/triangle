@@ -40,8 +40,11 @@ public sealed record RunSimOptions
     /// <summary>똑똑한 봇이 카드 후보마다 적 조합 하나를 미리 싸워 보는 시드 수.</summary>
     public int LookaheadSeeds { get; init; } = 3;
 
-    /// <summary>승천 단계 (0이면 첫 판 난이도).</summary>
-    public int Ascension { get; init; }
+    /// <summary>모든 판의 원정 지도 (기본: 기본 지도). <see cref="Tier"/>를 주면 쓰지 않는다.</summary>
+    public RunChart Chart { get; init; } = RunChart.Base;
+
+    /// <summary>주면 판마다 이 지도 등급의 지도를 하나 굴려 그 지도로 둔다 (판의 시드로 굴린다).</summary>
+    public int? Tier { get; init; }
 }
 
 /// <summary>골드를 쓴 곳.</summary>
@@ -163,6 +166,12 @@ public sealed record RunSimResult(
 {
     /// <summary>마지막 전투 (판을 끝낸 상대). 싸우지 않고 끝났으면 null.</summary>
     public RunSimFight? Last => Fights.Count > 0 ? Fights[^1] : null;
+
+    /// <summary>이 판의 원정 지도.</summary>
+    public RunChart Chart { get; init; } = RunChart.Base;
+
+    /// <summary>판이 끝나 받는 명성 (<see cref="Profile.RenownFor"/>, 지도의 명성 보너스 포함).</summary>
+    public int Renown { get; init; }
 }
 
 /// <summary>
@@ -190,7 +199,7 @@ public sealed class RunSimulation
     private readonly GameData _data;
     private readonly RunDefinition _rules;
     private readonly RunSimOptions _options;
-    private readonly Dictionary<(int Act, RunNodeKind Kind, string EncounterId), IReadOnlyList<CombatantSetup>> _teams = [];
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<(RunChart Chart, int Act, RunNodeKind Kind, string EncounterId), IReadOnlyList<CombatantSetup>> _teams = new();
     private readonly Dictionary<string, string> _owners;
 
     public RunSimulation(GameData data, RunSimOptions? options = null)
@@ -198,22 +207,12 @@ public sealed class RunSimulation
         _data = data;
         _rules = data.Run ?? throw new InvalidOperationException("run.json이 없다");
         _options = options ?? new RunSimOptions();
-        for (var i = 0; i < _rules.Acts.Count; i++)
-        {
-            var act = _rules.Acts[i];
-            var zone = data.Zones[act.ZoneId];
-            var bosses = act.Bosses.Count > 0 ? act.Bosses : [zone.Boss!.EncounterId];
-            var fights = zone.Encounters.Select(e => (Kind: RunNodeKind.Fight, Id: e.EncounterId))
-                .Concat(act.Elites.Select(id => (Kind: RunNodeKind.Elite, Id: id)))
-                .Concat(bosses.Select(id => (Kind: RunNodeKind.Boss, Id: id)));
-            foreach (var (kind, id) in fights.Distinct())
-            {
-                _teams[(i, kind, id)] = Run.EnemyTeam(data, i, kind, id, RunAscension.Total(_rules, _options.Ascension));
-            }
-        }
-
         _owners = data.Classes.Values.SelectMany(c => c.Skills.Select(s => (Skill: s, Class: c.Id))).ToDictionary(x => x.Skill, x => x.Class);
     }
+
+    /// <summary>그 판의 지도로 센 적 조합 (지도와 막, 지점 종류, 조합마다 한 번 만들어 둔다).</summary>
+    private IReadOnlyList<CombatantSetup> Team(Run run, RunNodeKind kind, string encounterId) =>
+        _teams.GetOrAdd((run.Chart, run.Act, kind, encounterId), k => Run.EnemyTeam(_data, k.Act, k.Kind, k.EncounterId, run.Terms));
 
     /// <summary>판 여러 개를 시드 <paramref name="firstSeed"/>부터 돌린다. 판마다 따로 계산하므로 여러 스레드로 돌려도 결과가 같다.</summary>
     public IReadOnlyList<RunSimResult> RunMany(int runs, int firstSeed = 0)
@@ -225,7 +224,8 @@ public sealed class RunSimulation
 
     public RunSimResult Play(int seed)
     {
-        var run = Run.Start(_data, _options.Party, seed, _options.Unlocks, ascension: _options.Ascension);
+        var chart = _options.Tier is { } tier ? RunChart.Roll(_data, tier, 1, new Random(Seeds.Derive(seed, 0xC4A)))[0] : _options.Chart;
+        var run = Run.Start(_data, _options.Party, seed, _options.Unlocks, chart: chart);
         var random = new Random(Seeds.Derive(seed, 0xB07));
         var tally = new Tally(run.Members.Count);
         while (!run.Finished)
@@ -253,7 +253,7 @@ public sealed class RunSimulation
                     break;
                 case RunPhase.Rest:
                     var sealedLines = run.Living.Sum(m => m.Sealed);
-                    if (_options.Bot == RunBot.Random ? random.Next(2) == 0 : sealedLines > 0)
+                    if (run.WhyCannotRestUnseal(_data) is null && (_options.Bot == RunBot.Random ? random.Next(2) == 0 : sealedLines > 0))
                     {
                         run.RestUnseal(_data);
                     }
@@ -289,7 +289,11 @@ public sealed class RunSimulation
             living.Sum(m => m.ActiveTactics.Count(t => !RunUpgrades.Action(_data, t.ActionId).Universal)),
             living.Sum(m => m.Earned),
             living.Count(m => m.Earned >= _rules.MaxLines),
-            tally.Shops);
+            tally.Shops)
+        {
+            Chart = run.Chart,
+            Renown = Profile.RenownFor(run, _data),
+        };
     }
 
     /// <summary>
@@ -370,7 +374,7 @@ public sealed class RunSimulation
     /// </summary>
     private (string Name, double DefaultWin, double PlanWin) PrepareForBoss(Run run)
     {
-        var boss = _teams[(run.Act, RunNodeKind.Boss, run.Bosses[run.Act])];
+        var boss = Team(run, RunNodeKind.Boss, run.Bosses[run.Act]);
         var best = (Score: double.MinValue, Plan: RunTacticPlan.Default, Rows: RunRowPlan.Default, Win: 0.0);
         var defaultWin = 0.0;
         foreach (var plan in Enum.GetValues<RunTacticPlan>())
@@ -610,7 +614,7 @@ public sealed class RunSimulation
         {
             for (var s = 0; s < _options.LookaheadSeeds; s++)
             {
-                var result = CombatSimulator.Run(allies, _teams[(run.Act, kind, encounter)], Run.Catalog(_data), Seeds.Derive(LookaheadSalt, s));
+                var result = CombatSimulator.Run(allies, Team(run, kind, encounter), Run.Catalog(_data), Seeds.Derive(LookaheadSalt, s));
                 score += result.Outcome == CombatOutcome.Victory
                     ? 1 + 0.5 * HpFraction(result, CombatSide.Ally)
                     : 0.5 * (1 - HpFraction(result, CombatSide.Enemy));

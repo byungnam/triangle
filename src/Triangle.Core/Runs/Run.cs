@@ -957,7 +957,7 @@ public sealed partial class Run
 
     /// <summary>
     /// 그 막의 그 지점에서 만나는 적 조합: 막이 지점 종류마다 정한 세기(<see cref="RunAct.Strength"/>)에 지도의 수식어(<paramref name="terms"/>)를
-    /// 더해 HP·위력·방어·대기·가시·흡혈 보너스로 얹고, 타고난 효과를 건다. 보통 전투는 지도가 정한 만큼 조합의 첫 유닛을 복제해 더한다.
+    /// 더해 HP·위력·방어·대기·가시·흡혈 보너스로 얹고, 타고난 효과를 건다. 보통 전투는 지도가 정한 만큼 조합의 첫 유닛을 절반 세기로 복제해 더한다.
     /// </summary>
     public static IReadOnlyList<CombatantSetup> EnemyTeam(GameData data, int act, RunNodeKind kind, string encounterId, RunTerms? terms = null)
     {
@@ -972,7 +972,10 @@ public sealed partial class Run
         var team = data.CreateEncounterTeam(encounterId).ToList();
         if (kind == RunNodeKind.Fight && team.Count > 0)
         {
-            team.AddRange(Enumerable.Range(2, Math.Max(0, terms.ExtraEnemies)).Select(n => team[0] with { Id = $"{team[0].Id}_{n}" }));
+            // 더하는 적은 첫 유닛의 절반 세기다 (HP·위력 -50%).
+            ItemBonus[] half = [new(BonusKind.MaxHpPercent, -50), new(BonusKind.PowerPercent, -50)];
+            team.AddRange(Enumerable.Range(2, Math.Max(0, terms.ExtraEnemies))
+                .Select(n => team[0] with { Id = $"{team[0].Id}_{n}", ItemBonuses = [.. team[0].ItemBonuses, .. half] }));
         }
 
         (BonusKind Kind, int Percent)[] bonuses =

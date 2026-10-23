@@ -32,7 +32,7 @@ public sealed record RunTerms
     /// <summary>모든 적의 흡혈 %: 준 피해의 이만큼 회복한다.</summary>
     public int EnemyLifesteal { get; init; }
 
-    /// <summary>보통 전투의 적 조합에 더하는 유닛 수 (조합의 첫 유닛을 복제한다).</summary>
+    /// <summary>보통 전투의 적 조합에 더하는 유닛 수 (조합의 첫 유닛을 절반 세기로 복제한다).</summary>
     public int ExtraEnemies { get; init; }
 
     /// <summary>막 지도에 정예 지점이 나오는 가중치 %.</summary>
@@ -105,7 +105,7 @@ public sealed record RunTerms
         yield return (EnemySpeed, 1, "적 행동 뒤 대기 {1}%");
         yield return (EnemyThorns, 1, "적 가시 {0}%");
         yield return (EnemyLifesteal, 1, "적 흡혈 {0}%");
-        yield return (ExtraEnemies, 1, "보통 전투의 적 {0}명");
+        yield return (ExtraEnemies, 1, "보통 전투에 절반 세기의 적 {0}명");
         yield return (Elites, 1, "정예 지점 {0}%");
         yield return (AllyHp, -1, "아군 최대 HP {0}%");
         yield return (AllyPower, -1, "아군 위력 {0}%");

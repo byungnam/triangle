@@ -1574,7 +1574,7 @@
   {
     "id": "boss_triad_guardians",
     "name": "삼인 수호자",
-    "description": "지역 보스 (깊이 3, 재의 왕도). 반드시 셋이 함께 다니는 삼각 가면의 수호자: 쇠(앞), 불(앞), 마력(뒤). 임시 수치.",
+    "description": "지역 보스 (깊이 3, 재의 왕도). 반드시 셋이 함께 다니는 삼각 가면의 수호자: 쇠(앞), 불(앞), 마력(뒤). 뒤에 셋 이상 모여 있으면 마력의 수호자가 두 턴마다 후열 전체에 낙뢰를 내린다(2026-10-23). 둘 이상을 앞으로 내야 한다. 임시 수치.",
     "units": [
       {
         "id": "boss_guardian_iron",
@@ -1680,7 +1680,8 @@
         },
         "actions": [
           "blizzard",
-          "ice_lance"
+          "ice_lance",
+          "triad_judgment"
         ],
         "tactics": [
           {
@@ -1691,12 +1692,24 @@
           },
           {
             "priority": 2,
+            "condition": "EnemyBackAtLeast",
+            "value": 3,
+            "actionId": "triad_judgment",
+            "and": [
+              {
+                "condition": "EveryNthTurn",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "priority": 3,
             "condition": "EveryNthTurn",
             "value": 3,
             "actionId": "blizzard"
           },
           {
-            "priority": 3,
+            "priority": 4,
             "condition": "Always",
             "value": 0,
             "actionId": "ice_lance"
@@ -2117,7 +2130,7 @@
   {
     "id": "sanctum_bulwark",
     "name": "맹세의 방벽",
-    "description": "4막 보스, 5막 정예 (시제품 '맹세의 방벽'을 옮김). 기사가 도발과 방패 벽으로 막고 뒤의 화염술사가 광역으로 태운다. 광역으로 뒤를 쳐야 한다. 임시 수치.",
+    "description": "4막 보스, 5막 정예 (시제품 '맹세의 방벽'을 옮김). 기사가 도발과 방패 벽으로 막고 뒤의 화염술사가 광역으로 태운다. 광역으로 뒤를 쳐야 한다. 적에게 버프가 하나라도 있으면 화염술사가 두 턴마다 오만의 화형으로 모두를 태운다(2026-10-23). 버프를 거는 줄을 빼고 싸워야 한다. 임시 수치.",
     "units": [
       {
         "id": "sanctum_bulwark_knight",
@@ -2200,7 +2213,8 @@
         },
         "actions": [
           "ash_storm",
-          "fireball"
+          "fireball",
+          "pyre_of_pride"
         ],
         "tactics": [
           {
@@ -2211,18 +2225,30 @@
           },
           {
             "priority": 2,
+            "condition": "AnyEnemyHasBuff",
+            "value": 0,
+            "actionId": "pyre_of_pride",
+            "and": [
+              {
+                "condition": "EveryNthTurn",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "priority": 3,
             "condition": "OnTurn",
             "value": 1,
             "actionId": "ash_storm"
           },
           {
-            "priority": 3,
+            "priority": 4,
             "condition": "EveryNthTurn",
             "value": 3,
             "actionId": "ash_storm"
           },
           {
-            "priority": 4,
+            "priority": 5,
             "condition": "Always",
             "value": 0,
             "actionId": "fireball"

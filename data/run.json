@@ -18,16 +18,16 @@
       ],
       "shopTier": 1,
       "fightStrength": {
-        "hp": 90,
-        "power": 90
+        "hp": 88,
+        "power": 88
       },
       "eliteStrength": {
-        "hp": 90,
-        "power": 90
+        "hp": 88,
+        "power": 88
       },
       "bossStrength": {
-        "hp": 90,
-        "power": 90
+        "hp": 85,
+        "power": 85
       }
     },
     {
@@ -44,16 +44,16 @@
       ],
       "shopTier": 2,
       "fightStrength": {
-        "hp": 97,
-        "power": 97
+        "hp": 85,
+        "power": 85
       },
       "eliteStrength": {
-        "hp": 97,
-        "power": 97
+        "hp": 85,
+        "power": 85
       },
       "bossStrength": {
-        "hp": 97,
-        "power": 97
+        "hp": 80,
+        "power": 80
       }
     },
     {
@@ -69,16 +69,16 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 100,
-        "power": 100
+        "hp": 83,
+        "power": 83
       },
       "eliteStrength": {
-        "hp": 100,
-        "power": 100
+        "hp": 83,
+        "power": 83
       },
       "bossStrength": {
-        "hp": 100,
-        "power": 100
+        "hp": 76,
+        "power": 76
       }
     },
     {
@@ -95,16 +95,16 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 135,
-        "power": 135
+        "hp": 92,
+        "power": 92
       },
       "eliteStrength": {
-        "hp": 138,
-        "power": 138
+        "hp": 92,
+        "power": 92
       },
       "bossStrength": {
-        "hp": 135,
-        "power": 135
+        "hp": 84,
+        "power": 84
       }
     },
     {
@@ -117,16 +117,16 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 148,
-        "power": 148
+        "hp": 96,
+        "power": 96
       },
       "eliteStrength": {
-        "hp": 150,
-        "power": 150
+        "hp": 96,
+        "power": 96
       },
       "bossStrength": {
-        "hp": 118,
-        "power": 118
+        "hp": 82,
+        "power": 82
       }
     }
   ],

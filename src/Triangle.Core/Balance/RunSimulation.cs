@@ -62,8 +62,11 @@ public enum RunSpend
 /// <param name="Downs">쓰러진 아군 수 (소환수 빼고).</param>
 /// <param name="Time">전투가 끝난 시각 (마지막 행동의 전투 시계).</param>
 /// <param name="Plan">보스와 싸우기 전에 똑똑한 봇이 고른 전술 방식과 줄 배치 (<see cref="RunSimulation.PlanName"/>). 보스가 아니면 null.</param>
+/// <param name="DefaultWin">보스 대비에서 기본 전술·기본 줄로 미리 싸워 이긴 비율 (보스 대비를 하지 않았으면 null).</param>
+/// <param name="PlanWin">보스 대비에서 고른 조합으로 미리 싸워 이긴 비율. 기본과의 차이가 "보스에 맞춰야 이긴다"의 크기다.</param>
 public sealed record RunSimFight(
-    int Act, int Floor, RunNodeKind Kind, string EncounterId, CombatOutcome Outcome, double AllyHp, int Downs, long Time, string? Plan = null);
+    int Act, int Floor, RunNodeKind Kind, string EncounterId, CombatOutcome Outcome, double AllyHp, int Downs, long Time, string? Plan = null,
+    double? DefaultWin = null, double? PlanWin = null);
 
 /// <summary>보스 대비 전술 방식: 기본 배치(<see cref="DraftTactics"/>)에서 줄을 빼거나 순서를 바꾼다.</summary>
 public enum RunTacticPlan
@@ -90,6 +93,9 @@ public enum RunTacticPlan
 
     /// <summary>피해를 주지 않는 줄을 뺀다 (빨리 잡기).</summary>
     Damage,
+
+    /// <summary>아군에게 버프를 거는 줄을 뺀다 (버프를 보면 태우는 적, 2026-10-23). 기존 값 뒤에 덧붙였다.</summary>
+    NoBuffs,
 }
 
 /// <summary>보스 대비 줄 배치.</summary>
@@ -231,7 +237,7 @@ public sealed class RunSimulation
                     SetRows(run, RunRowPlan.Default);
                     Arrange(run);
                     var node = _options.Bot == RunBot.Random ? run.Choices[random.Next(run.Choices.Count)] : Route(run);
-                    var plan = node.Kind == RunNodeKind.Boss && _options.Bot == RunBot.Smart ? PrepareForBoss(run) : null;
+                    var plan = node.Kind == RunNodeKind.Boss && _options.Bot == RunBot.Smart ? PrepareForBoss(run) : ((string, double, double)?)null;
                     if (run.Enter(_data, node.Id) is { } battle)
                     {
                         tally.Record(run, node, battle, plan);
@@ -319,10 +325,12 @@ public sealed class RunSimulation
         ActionDefinition A(Tactic t) => RunUpgrades.Action(_data, t.ActionId);
         bool Applies(Tactic t, Func<Effects.EffectDefinition, bool> match) => A(t).Applies.Any(x => match(_data.Effects[x.EffectId]));
         bool Debuffs(Tactic t) => Applies(t, e => e.Kind == Effects.EffectKind.Debuff);
+        bool Buffs(Tactic t) => A(t).Side != TargetSide.Enemy && Applies(t, e => e.Kind == Effects.EffectKind.Buff);
         IEnumerable<Tactic> First(Func<Tactic, bool> first) => lines.OrderBy(t => first(t) ? 0 : 1);
         return plan switch
         {
             RunTacticPlan.NoDebuffs => lines.Where(t => !Debuffs(t)),
+            RunTacticPlan.NoBuffs => lines.Where(t => !Buffs(t)),
             RunTacticPlan.Magic => First(t => A(t) is { Effect: ActionEffect.Damage, DamageType: DamageType.Magical }),
             RunTacticPlan.Area => First(t => A(t) is { Effect: ActionEffect.Damage, Scope: TargetScope.All })
                 .Select(t => A(t).Scope == TargetScope.All && t.Condition == Condition.EnemyAliveAtLeast ? t with { Condition = Condition.Always, Value = 0 } : t),
@@ -357,12 +365,14 @@ public sealed class RunSimulation
 
     /// <summary>
     /// 보스 대비: 공개된 막 보스와 싸우기 전에 전술 방식과 줄 배치의 조합마다 판을 복사해 보스를 미리 싸워 보고, 가장 나은 조합으로 들어간다
-    /// (사람이 보스를 보고 전술을 고치는 것을 흉내 낸다). 같으면 기본에 가까운 쪽. 고른 조합의 이름을 돌려준다.
+    /// (사람이 보스를 보고 전술을 고치는 것을 흉내 낸다). 같으면 기본에 가까운 쪽. 고른 조합의 이름과, 기본 조합과 고른 조합이 미리 싸워 이긴
+    /// 비율을 돌려준다.
     /// </summary>
-    private string PrepareForBoss(Run run)
+    private (string Name, double DefaultWin, double PlanWin) PrepareForBoss(Run run)
     {
         var boss = _teams[(run.Act, RunNodeKind.Boss, run.Bosses[run.Act])];
-        var best = (Score: double.MinValue, Plan: RunTacticPlan.Default, Rows: RunRowPlan.Default);
+        var best = (Score: double.MinValue, Plan: RunTacticPlan.Default, Rows: RunRowPlan.Default, Win: 0.0);
+        var defaultWin = 0.0;
         foreach (var plan in Enum.GetValues<RunTacticPlan>())
         {
             foreach (var rows in Enum.GetValues<RunRowPlan>())
@@ -371,21 +381,25 @@ public sealed class RunSimulation
                 SetRows(copy, rows);
                 Arrange(copy, plan);
                 var allies = copy.Living.Select(m => copy.Setup(_data, m)).ToList();
-                var score = Enumerable.Range(0, BossSeeds).Average(s =>
+                var results = Enumerable.Range(0, BossSeeds).Select(s => CombatSimulator.Run(allies, boss, Run.Catalog(_data), Seeds.Derive(BossSalt, s))).ToList();
+                var score = results.Average(result =>
+                    result.Outcome == CombatOutcome.Victory ? 1 + 0.5 * HpFraction(result, CombatSide.Ally) : 0.5 * (1 - HpFraction(result, CombatSide.Enemy)));
+                var win = results.Average(result => result.Outcome == CombatOutcome.Victory ? 1.0 : 0.0);
+                if (plan == RunTacticPlan.Default && rows == RunRowPlan.Default)
                 {
-                    var result = CombatSimulator.Run(allies, boss, Run.Catalog(_data), Seeds.Derive(BossSalt, s));
-                    return result.Outcome == CombatOutcome.Victory ? 1 + 0.5 * HpFraction(result, CombatSide.Ally) : 0.5 * (1 - HpFraction(result, CombatSide.Enemy));
-                });
+                    defaultWin = win;
+                }
+
                 if (score > best.Score + 1e-9)
                 {
-                    best = (score, plan, rows);
+                    best = (score, plan, rows, win);
                 }
             }
         }
 
         SetRows(run, best.Rows);
         Arrange(run, best.Plan);
-        return PlanName(best.Plan, best.Rows);
+        return (PlanName(best.Plan, best.Rows), defaultWin, best.Win);
     }
 
     /// <summary>보스 대비 조합의 이름 (기록과 보고용): "디버프 빼기 · 한 명만 전열".</summary>
@@ -394,6 +408,7 @@ public sealed class RunSimulation
         var tactics = plan switch
         {
             RunTacticPlan.NoDebuffs => "디버프 빼기",
+            RunTacticPlan.NoBuffs => "버프 빼기",
             RunTacticPlan.Magic => "마법 먼저",
             RunTacticPlan.Area => "광역 먼저",
             RunTacticPlan.OverTime => "지속 피해 먼저",
@@ -875,11 +890,12 @@ public sealed class RunSimulation
 
         public void Spend(RunSpend where, int gold) => Spent[where] = Spent.GetValueOrDefault(where) + gold;
 
-        public void Record(Run run, RunNode node, RunBattle battle, string? plan)
+        public void Record(Run run, RunNode node, RunBattle battle, (string Name, double DefaultWin, double PlanWin)? plan)
         {
             var allies = battle.Result.Combatants.Where(c => c.Side == CombatSide.Ally && !c.IsSummon).ToList();
             Fights.Add(new RunSimFight(run.Act, node.Floor, battle.Kind, battle.EncounterId, battle.Result.Outcome,
-                HpFraction(battle.Result, CombatSide.Ally), allies.Count(c => !c.IsAlive), battle.Result.Events.OfType<TurnStarted>().LastOrDefault()?.Time ?? 0, plan));
+                HpFraction(battle.Result, CombatSide.Ally), allies.Count(c => !c.IsAlive), battle.Result.Events.OfType<TurnStarted>().LastOrDefault()?.Time ?? 0,
+                plan?.Name, plan?.DefaultWin, plan?.PlanWin));
             Deaths += battle.Died.Count;
             Earned += battle.Gold;
         }

@@ -139,15 +139,19 @@ internal static class RunReport
                 + Bench.Pad(won.Count == 0 ? "-" : $"{won.Average(f => f.Time):F0} / {won.Max(f => f.Time)}", 14, true));
         }
 
-        // 보스 대비: 똑똑한 봇이 보스마다 고른 전술 방식과 줄 배치 (많이 고른 셋).
+        // 보스 대비: 똑똑한 봇이 보스마다 미리 싸워 본 기본 조합과 고른 조합의 승률, 고른 전술 방식과 줄 배치 (많이 고른 셋).
+        // 기본 승률이 낮고 맞춘 승률이 높으면 "보스를 보고 전술을 고쳐야 이기는" 보스다.
         var plans = fights.Where(f => f.Plan is not null).GroupBy(f => (f.Act, f.EncounterId)).OrderBy(g => g.Key.Act).ToList();
         if (plans.Count > 0)
         {
-            Console.WriteLine("  보스 대비 (보스마다 고른 전술 방식 · 줄 배치, 많이 고른 셋):");
+            Console.WriteLine("  보스 대비 (미리 싸운 승률: 기본 → 맞춘 조합 · 실제 진 비율 · 많이 고른 전술 방식과 줄 배치 셋):");
             foreach (var g in plans)
             {
                 var top = g.GroupBy(f => f.Plan!).OrderByDescending(p => p.Count()).Take(3).Select(p => $"{p.Key} {100.0 * p.Count() / g.Count():F0}%");
-                Console.WriteLine($"    {g.Key.Act + 1}막 {data.Encounters[g.Key.EncounterId].Name}: {string.Join(", ", top)}");
+                var (before, after) = (g.Average(f => f.DefaultWin ?? 0), g.Average(f => f.PlanWin ?? 0));
+                var lost = (double)g.Count(f => f.Outcome != CombatOutcome.Victory) / g.Count();
+                Console.WriteLine("    " + Bench.Pad($"{g.Key.Act + 1}막 {data.Encounters[g.Key.EncounterId].Name}", 26)
+                    + Bench.Pad($"{100 * before:F0}% → {100 * after:F0}%", 13, true) + Bench.Pad($"{100 * lost:F0}%", 7, true) + $"   {string.Join(", ", top)}");
             }
         }
 

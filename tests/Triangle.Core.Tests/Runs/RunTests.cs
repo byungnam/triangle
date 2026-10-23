@@ -254,7 +254,7 @@ public class RunTests
         Assert.InRange(run.Gold, reward.GoldMin, reward.GoldMax);
         Assert.Equal(reward.Cards, run.Offer.Count);
         Assert.Equal(run.Offer.Count, run.Offer.Distinct().Count());
-        Assert.All(run.Offer.Where(c => c.Kind != RunCardKind.Line), c => Assert.Contains(c.ClassId, Party));
+        Assert.All(run.Offer.Where(c => c.Kind is RunCardKind.Active or RunCardKind.Passive), c => Assert.Contains(c.ClassId, Party));
         Assert.Empty(run.Choices);
         Assert.Throws<InvalidOperationException>(() => run.Enter(Drafting, run.Map.Starts.First().Id));
 
@@ -271,7 +271,7 @@ public class RunTests
     public void Cards_go_to_the_party_or_to_a_member_of_the_right_class()
     {
         static GameData Only(int active, int passive, int line) =>
-            With(r => Easy(r) with { Reward = r.Reward with { Active = active, Passive = passive, Line = line } });
+            With(r => Easy(r) with { Reward = r.Reward with { Active = active, Passive = passive, Line = line, Upgrade = 0 } });
 
         // 액티브는 파티의 사본이 된다 (멤버를 묻지 않는다).
         var actives = Only(1, 0, 0);
@@ -587,12 +587,10 @@ public class RunTests
     [Fact]
     public void Upgrades_raise_numbers_or_change_how_a_skill_works()
     {
-        var bolt = new ActionDefinition { Id = "bolt", Name = "볼트", Power = 100, MpCost = 20, Rule = TargetRule.BackFirst, Applies = [new("slowed", 2)] };
+        var bolt = new ActionDefinition { Id = "bolt", Name = "볼트", Power = 100, MpCost = 20, Applies = [new("slowed", 2)] };
         ActionDefinition Apply(params RunUpgradeKind[] kinds) => RunUpgrades.Apply(bolt, kinds);
         Assert.Equal(130, Apply(RunUpgradeKind.Power).Power);
-        Assert.Equal(10, Apply(RunUpgradeKind.Thrift).MpCost);
         Assert.Equal(800, Apply(RunUpgradeKind.Swift).Delay);
-        Assert.True(Apply(RunUpgradeKind.Pierce).IgnoresCover);
         Assert.Equal((1, 70), (Apply(RunUpgradeKind.Chain).ExtraTargets, Apply(RunUpgradeKind.Chain).Power));
         Assert.Equal(3, Apply(RunUpgradeKind.Lasting).Applies[0].Duration);
 
@@ -610,41 +608,47 @@ public class RunTests
         Assert.Equal([RunUpgradeKind.Power, RunUpgradeKind.Swift], RunUpgrades.Kinds("fireball+power+swift"));
         Assert.Equal("fireball+power+swift", RunUpgrades.With("fireball+swift", RunUpgradeKind.Power));
 
-        // 뜻이 없는 강화는 붙지 않는다: 위력이 없는 행동에 위력, MP를 쓰지 않는 행동에 절약, 앞부터 치는 공격에 관통, 효과가 없는 행동에 지속.
+        // 뜻이 없는 강화는 붙지 않는다: 위력이 없는 행동에 위력, 적 하나를 치지 않는 행동에 연쇄, 효과가 없는 행동에 지속.
         var wall = Shipped.Actions["shield_wall"];
         var arrow = Shipped.Actions["fire_arrow"];
         Assert.False(RunUpgrades.Fits(wall, RunUpgradeKind.Power));
         Assert.False(RunUpgrades.Fits(wall, RunUpgradeKind.Chain));
         Assert.True(RunUpgrades.Fits(wall, RunUpgradeKind.Lasting));
-        Assert.False(RunUpgrades.Fits(arrow, RunUpgradeKind.Pierce));
         Assert.False(RunUpgrades.Fits(arrow, RunUpgradeKind.Lasting));
         Assert.False(RunUpgrades.Fits(Shipped.Actions["heal"], RunUpgradeKind.Chain));
-        Assert.False(RunUpgrades.Fits(Shipped.Actions["charge"], RunUpgradeKind.Thrift));
     }
 
     [Fact]
-    public void The_shop_sells_upgrades_for_one_copy_and_pricey_line_caps()
+    public void The_shop_upgrades_a_chosen_copy_and_sells_pricey_line_caps()
     {
         var data = SecondFloor("shop", r => r with { StartGold = 1000, Shop = r.Shop with { Upgrades = 2, UpgradePrice = 80, UpgradeStep = 40, Lines = 1, LinePrice = 150, LineStep = 50 } });
         var run = AtSecondFloor(data, ["knight", "elementalist"]);
 
-        // 강화는 파티가 가진 그 클래스 사본에서 겹치지 않게, 그 스킬에 맞는 강화로 나온다.
-        var upgrades = run.Stock.Where(s => s.Kind == RunStockKind.Upgrade).ToList();
-        Assert.Equal(["fireball", "shield_wall"], upgrades.Select(s => s.Id).Order());
-        Assert.All(upgrades, s => Assert.True(RunUpgrades.Fits(data.Actions[s.Id], s.Upgrade!.Value)));
-        Assert.All(upgrades, s => Assert.Equal(80, s.Price));
+        // 강화는 파티의 사본과 종류를 골라 산다: 상점 한 번에 정해진 수만큼, 그 스킬에 맞는 강화만.
+        Assert.Equal(["fireball", "shield_wall"], run.UpgradableCopies(data));
+        Assert.Equal((2, 80), (run.UpgradesLeft, run.UpgradePrice(data, "fireball")));
+        Assert.Equal("이 스킬에는 맞지 않는 강화다", run.WhyCannotUpgrade(data, "shield_wall", RunUpgradeKind.Power));
+        Assert.Equal("강화할 사본이 없다", run.WhyCannotUpgrade(data, "heal", RunUpgradeKind.Power));
 
         // 화염구 사본이 둘이면 강화는 줄에 놓인 한 장에만 걸리고, 그 줄이 강화된 사본을 쓴다. 놀고 있는 한 장은 그대로다.
         run.Copies["fireball"] = 2;
-        var fireball = upgrades.Single(s => s.Id == "fireball");
-        var kind = fireball.Upgrade!.Value;
-        var upgraded = RunUpgrades.Id("fireball", [kind]);
+        var upgraded = RunUpgrades.Id("fireball", [RunUpgradeKind.Power]);
         var mage = run.Members.Single(m => m.ClassId == "elementalist");
         Assert.Equal(mage, run.UpgradeHolder("fireball"));
-        run.Buy(data, run.Stock.ToList().IndexOf(fireball));
+        var gold = run.Gold;
+        run.Upgrade(data, "fireball", RunUpgradeKind.Power);
         Assert.Equal((1, 1), (run.Copies["fireball"], run.Copies[upgraded]));
+        Assert.Equal((gold - 80, 1), (run.Gold, run.UpgradesLeft));
         Assert.Equal(upgraded, mage.Tactics[0].ActionId);
         Assert.Equal("화염구+", RunUpgrades.Action(data, upgraded).Name);
+
+        // 강화가 걸린 사본에 하나 더 걸면 더 비싸고, 같은 강화는 두 번 걸 수 없다. 상점의 강화 수를 다 쓰면 더 걸 수 없다.
+        Assert.Equal(120, run.UpgradePrice(data, upgraded));
+        Assert.Equal("이미 건 강화다", run.WhyCannotUpgrade(data, upgraded, RunUpgradeKind.Power));
+        run.Upgrade(data, "fireball", RunUpgradeKind.Swift);
+        Assert.Equal("이 상점에서는 더 강화할 수 없다", run.WhyCannotUpgrade(data, upgraded, RunUpgradeKind.Swift));
+        Assert.Equal(1, run.Copies[RunUpgrades.Id("fireball", [RunUpgradeKind.Swift])]);
+        Assert.False(run.Copies.ContainsKey("fireball"));
 
         // 전투에서 그 줄은 강화된 행동으로 싸우고, 같은 행동을 쓰는 적은 그대로다.
         Assert.Equal(upgraded, run.Setup(data, mage).Tactics[0].ActionId);
@@ -652,8 +656,9 @@ public class RunTests
         Assert.Equal(RunUpgrades.Action(data, upgraded).Power, Run.Catalog(data).Actions[upgraded].Power);
         Assert.Equal(data.Actions["fireball"].Power, Run.Catalog(data).Actions["fireball"].Power);
 
-        // 강화된 사본과 원래 사본은 따로 센다: 남은 원래 사본 한 장은 다른 줄에 놓을 수 있지만, 강화된 사본을 두 줄에 놓을 수는 없다.
-        Assert.Null(run.WhyCannotSetTactics(data, mage, [Line(upgraded), Line("fireball", Condition.SelfHpAtMost, 50)]));
+        // 강화된 사본은 강화가 다른 사본과 따로 센다: 한 장뿐인 사본을 두 줄에 놓을 수는 없다.
+        var swift = RunUpgrades.Id("fireball", [RunUpgradeKind.Swift]);
+        Assert.Null(run.WhyCannotSetTactics(data, mage, [Line(upgraded), Line(swift, Condition.SelfHpAtMost, 50)]));
         Assert.StartsWith("사본이 모자란다", run.WhyCannotSetTactics(data, mage, [Line(upgraded), Line(upgraded, Condition.SelfHpAtMost, 50)]));
         Assert.StartsWith("기사의 카드가 아니다", run.WhyCannotSetTactics(data, run.Members[0], [Line(upgraded)]));
 
@@ -664,29 +669,55 @@ public class RunTests
         run.Buy(data, line, mage);
         Assert.Equal((3, 1), (mage.Earned, run.LinesBought));
 
-        // 세이브에 강화된 사본과 산 줄 상한 수가 남는다.
+        // 세이브에 강화된 사본, 남은 강화 수, 산 줄 상한 수가 남는다.
         var copy = Run.Deserialize(run.Serialize(), data);
         Assert.Equal(run.Serialize(), copy.Serialize());
-        Assert.Equal(1, copy.Copies[upgraded]);
-        Assert.Equal(1, copy.LinesBought);
+        Assert.Equal((1, 0, 1), (copy.Copies[upgraded], copy.UpgradesLeft, copy.LinesBought));
 
-        // 다음 상점: 줄 상한은 산 수만큼, 강화는 그 사본에 건 강화 수만큼 비싸다. 강화가 다 찬 사본은 나오지 않는다.
+        // 다음 상점: 강화 수가 다시 차고, 줄 상한은 산 수만큼 비싸다. 강화가 다 찬 사본은 더 강화할 수 없다.
         var before = WonFirstFight(data, ["knight", "elementalist"]);
         before.Skip();
-        var swift = RunUpgrades.Id("fireball", [RunUpgradeKind.Swift]);
         var wall = RunUpgrades.Id("shield_wall", [RunUpgradeKind.Swift, RunUpgradeKind.Lasting]);
         var file = before.ToSave() with { LinesBought = 2, Copies = new Dictionary<string, int> { [swift] = 1, [wall] = 1 } };
         var later = Run.Restore(file, data);
         later.Enter(data, later.Choices[0].Id);
         Assert.Equal(250, later.Stock.Single(s => s.Kind == RunStockKind.Line).Price);
-        var again = Assert.Single(later.Stock, s => s.Kind == RunStockKind.Upgrade);
-        Assert.Equal((swift, 120), (again.Id, again.Price));
-        Assert.NotEqual(RunUpgradeKind.Swift, again.Upgrade);
+        Assert.Equal((2, 120), (later.UpgradesLeft, later.UpgradePrice(data, swift)));
+        Assert.Equal([swift], later.UpgradableCopies(data));
+        Assert.Equal("사본 하나에 강화는 2개까지다", later.WhyCannotUpgrade(data, wall, RunUpgradeKind.Power));
 
         // 모르는 강화나 순서가 다른 강화 ID의 사본은 세이브에서 거부한다.
         var errors = Assert.Throws<SaveGameException>(() => Run.Restore(file with { Copies = new Dictionary<string, int> { ["fireball+swift+power"] = 1, ["fireball+fly"] = 1 } }, data)).Errors;
         Assert.Contains(errors, e => e.Contains("unknown action 'fireball+swift+power' in copies"));
         Assert.Contains(errors, e => e.Contains("unknown action 'fireball+fly' in copies"));
+    }
+
+    [Fact]
+    public void An_upgrade_card_upgrades_a_copy_the_player_picks()
+    {
+        var data = With(r => Easy(r) with { Reward = r.Reward with { Active = 0, Passive = 0, Line = 0, Upgrade = 1 } });
+        var run = WonFirstFight(data, ["knight", "elementalist"]);
+
+        // 강화 카드는 강화의 종류만 정해져 있고, 파티의 사본 중 그 강화가 맞는 사본이 하나라도 있는 종류만 나온다.
+        Assert.All(run.Offer, c => Assert.Equal(RunCardKind.Upgrade, c.Kind));
+        Assert.All(run.Offer, c => Assert.Contains(run.UpgradableCopies(data), id => run.WhyCannotUpgradeCopy(data, id, Enum.Parse<RunUpgradeKind>(c.Id!)) is null));
+        var kind = Enum.Parse<RunUpgradeKind>(run.Offer[0].Id!);
+        Assert.Equal("강화할 사본을 골라야 한다", run.WhyCannotTake(data, 0, null));
+        Assert.Equal("강화할 사본이 없다", run.WhyCannotTake(data, 0, null, "heal"));
+
+        // 고른 사본 한 장에 걸리고 골드는 들지 않는다. 그 사본을 쓰던 줄은 강화된 사본을 쓴다.
+        var copy = run.UpgradableCopies(data).First(id => run.WhyCannotTake(data, 0, null, id) is null);
+        var holder = run.UpgradeHolder(copy)!;
+        var gold = run.Gold;
+        run.Take(data, 0, copy: copy);
+        var upgraded = RunUpgrades.Id(copy, [kind]);
+        Assert.Equal((1, gold), (run.Copies[upgraded], run.Gold));
+        Assert.Contains(holder.Tactics, t => t.ActionId == upgraded);
+        Assert.Equal(RunPhase.Map, run.Phase);
+
+        // 세이브의 강화 카드도 아는 강화인지 본다.
+        var file = run.ToSave() with { Phase = RunPhase.Reward, Offer = [new RunCard(RunCardKind.Upgrade, null, "Fly")] };
+        Assert.Contains("run save: unknown card Upgrade 'Fly'", Assert.Throws<SaveGameException>(() => Run.Restore(file, data)).Errors);
     }
 
     [Fact]

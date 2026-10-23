@@ -34,6 +34,9 @@ public sealed record RunSaveFile
     /// <summary>상점에서 산 줄 상한 수.</summary>
     public int LinesBought { get; init; }
 
+    /// <summary>지금 상점에서 더 할 수 있는 강화 수.</summary>
+    public int UpgradesLeft { get; init; }
+
     public IReadOnlyList<string> Bag { get; init; } = [];
 
     public int Gold { get; init; }
@@ -131,6 +134,7 @@ public sealed partial class Run
         }).ToList(),
         Copies = new SortedDictionary<string, int>(Copies, StringComparer.Ordinal),
         LinesBought = LinesBought,
+        UpgradesLeft = UpgradesLeft,
         Bag = Bag.ToList(),
         Gold = Gold,
         Fights = Fights,
@@ -220,6 +224,7 @@ public sealed partial class Run
             {
                 RunCardKind.Active => card.Id is not null && data.Actions.ContainsKey(card.Id),
                 RunCardKind.Passive => card.Id is not null && data.Skills.ContainsKey(card.Id),
+                RunCardKind.Upgrade => card.Id is not null && Enum.GetNames<RunUpgradeKind>().Contains(card.Id),
                 _ => true,
             };
             if (!known || (card.ClassId is not null && !data.Classes.ContainsKey(card.ClassId)))
@@ -234,7 +239,6 @@ public sealed partial class Run
             {
                 RunStockKind.Item => data.Items.ContainsKey(stock.Id),
                 RunStockKind.Skill => data.Actions.ContainsKey(stock.Id),
-                RunStockKind.Upgrade => actions.ContainsKey(stock.Id) && stock.Upgrade is not null,
                 RunStockKind.Line => true,
                 _ => data.Classes.ContainsKey(stock.Id),
             };
@@ -271,6 +275,7 @@ public sealed partial class Run
             Event = runEvent,
             _bossCleared = file.BossCleared,
             LinesBought = file.LinesBought,
+            UpgradesLeft = file.UpgradesLeft,
         };
         run._stock.AddRange(file.Stock);
         run._path.AddRange(file.Path);

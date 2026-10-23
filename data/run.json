@@ -144,8 +144,9 @@
   "reward": {
     "cards": 3,
     "eliteExtraCards": 2,
-    "active": 12,
-    "passive": 7,
+    "active": 8,
+    "passive": 6,
+    "upgrade": 6,
     "line": 1,
     "goldMin": 15,
     "goldMax": 25,

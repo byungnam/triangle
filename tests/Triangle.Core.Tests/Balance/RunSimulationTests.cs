@@ -28,6 +28,7 @@ public class RunSimulationTests
 
     [Theory]
     [InlineData(RunBot.Random)]
+    [InlineData(RunBot.Novice)]
     [InlineData(RunBot.Smart)]
     public void Runs_play_to_the_end_and_the_books_balance(RunBot bot)
     {
@@ -53,14 +54,15 @@ public class RunSimulationTests
                 Assert.Equal(r.Last.Act, r.Act);
             }
 
-            // 똑똑한 봇은 보스마다 전술 방식과 줄 배치를 고르고 들어간다 (보스 대비). 다른 전투와 아무렇게나 봇은 고르지 않는다.
+            // 똑똑한 봇은 보스마다 전술 방식과 줄 배치를 고르고 들어간다 (보스 대비). 다른 전투와 다른 봇은 고르지 않는다.
             Assert.All(r.Fights, f => Assert.Equal(bot == RunBot.Smart && f.Kind == RunNodeKind.Boss, f.Plan is not null));
 
-            // 상점에서는 나온 물건만 사고, 쓴 골드만큼 골드가 준다.
+            // 상점에서는 나온 물건만 사고, 강화는 상점의 강화 수까지 걸고, 쓴 골드만큼 골드가 준다.
             foreach (var shop in r.Shops)
             {
                 Assert.All(shop.Bought, b => Assert.Contains(shop.Offered, o => o.Id == b.Id && o.Kind == b.Kind));
-                Assert.Equal(shop.GoldIn - shop.Bought.Sum(b => b.Price) - shop.Unseals * Data.Run.Shop.UnsealPrice, shop.GoldOut);
+                Assert.InRange(shop.Upgraded.Count, 0, Data.Run.Shop.Upgrades);
+                Assert.Equal(shop.GoldIn - shop.Bought.Sum(b => b.Price) - shop.Upgraded.Sum(u => u.Price) - shop.Unseals * Data.Run.Shop.UnsealPrice, shop.GoldOut);
             }
 
             // 막마다 첫 층에서 시작해 층을 하나씩 올라 보스로 간다.

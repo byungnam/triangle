@@ -14,10 +14,17 @@ public enum RunBot
     Random,
 
     /// <summary>
-    /// 보통 사람처럼: 카드는 고를 수 있는 것(카드와 받을 멤버)마다 그 막의 적을 미리 싸워 보고 가장 잘 싸우는 쪽을 고른다.
-    /// 지점, 상점, 휴식, 이벤트는 정해 둔 규칙으로 고른다.
+    /// 다 아는 플레이어: 카드·상점은 고를 수 있는 것마다 그 막의 적을 미리 싸워 보고 가장 잘 싸우는 쪽을 고르고, 보스 앞에서 전술과 줄을
+    /// 미리 싸워 보고 바꾼다. 사람이 할 수 없는 플레이라 난이도의 천장으로 쓴다. 지점, 휴식, 이벤트는 정해 둔 규칙으로 고른다.
     /// </summary>
     Smart,
+
+    /// <summary>
+    /// 보통 사람 (2026-10-23): 미리 싸워 보지 않고 눈에 보이는 것만으로 고른다. 카드는 정해 둔 우선순위(줄 상한, 놓인 사본의 강화, 없는 액티브,
+    /// 패시브), 상점은 봉인 풀기 → 강화 → 방어구·무기 → 장신구 → 줄 상한 순으로 살 수 있는 만큼, 보스 대비는 하지 않는다. 첫 판 난이도의 기준이다.
+    /// 지점, 휴식, 이벤트는 똑똑한 봇과 같은 규칙이다.
+    /// </summary>
+    Novice,
 }
 
 public sealed record RunSimOptions
@@ -105,11 +112,13 @@ public enum RunRowPlan
 /// <param name="Unseals">골드로 푼 봉인 수.</param>
 /// <param name="Sealed">들어갈 때 살아 있는 멤버의 봉인 합.</param>
 /// <param name="Values">똑똑한 봇이 들어가자마자 잰 값어치: 살 수 있던 것마다 사 봤을 때 미리 싸운 점수가 나아진 정도.</param>
+/// <param name="Upgraded">골드로 건 강화와 낸 값 (건 차례대로).</param>
 public sealed record RunSimShop(
-    int Act, int GoldIn, int GoldOut, IReadOnlyList<RunStock> Offered, IReadOnlyList<RunStock> Bought, int Unseals, int Sealed, IReadOnlyList<RunSimValue> Values);
+    int Act, int GoldIn, int GoldOut, IReadOnlyList<RunStock> Offered, IReadOnlyList<RunStock> Bought, int Unseals, int Sealed, IReadOnlyList<RunSimValue> Values,
+    IReadOnlyList<(RunUpgradeKind Kind, int Price)> Upgraded);
 
-/// <summary>상점에서 살 수 있던 것 하나의 값어치. <paramref name="Stock"/>이 null이면 봉인 풀기다.</summary>
-public sealed record RunSimValue(RunStock? Stock, int Price, double Gain);
+/// <summary>상점에서 살 수 있던 것 하나의 값어치. <paramref name="Stock"/>이 null이면 강화(<paramref name="Upgrade"/>)나 봉인 풀기다.</summary>
+public sealed record RunSimValue(RunStock? Stock, int Price, double Gain, RunUpgradeKind? Upgrade = null);
 
 /// <summary>한 판의 결과.</summary>
 /// <param name="Act">끝난 막 (0부터). 클리어면 막 수.</param>
@@ -480,18 +489,27 @@ public sealed class RunSimulation
         return run.Choices.MaxBy(Value)!;
     }
 
+    /// <summary>
+    /// 보상 카드 하나를 고른다. 아무렇게나 봇은 카드를 먼저 고르고 받을 멤버(강화 카드는 사본)를 고른다. 똑똑한 봇은 고를 수 있는 것마다 미리
+    /// 싸워 본다. 보통 사람 봇은 정해 둔 우선순위(<see cref="NoviceWorth"/>)로 고른다.
+    /// </summary>
     private void TakeReward(Run run, Random random, Tally tally)
     {
-        var choices = new List<(int Card, RunMember? Member)>();
+        var choices = new List<(int Card, RunMember? Member, string? Copy)>();
         for (var i = 0; i < run.Offer.Count; i++)
         {
-            if (run.Offer[i].Kind == RunCardKind.Active)
+            switch (run.Offer[i].Kind)
             {
-                choices.Add((i, null));
-                continue;
+                case RunCardKind.Active:
+                    choices.Add((i, null, null));
+                    break;
+                case RunCardKind.Upgrade:
+                    choices.AddRange(run.UpgradableCopies(_data).Where(c => run.WhyCannotTake(_data, i, null, c) is null).Select(c => (i, (RunMember?)null, (string?)c)));
+                    break;
+                default:
+                    choices.AddRange(run.Living.Where(m => run.WhyCannotTake(_data, i, m) is null).Select(m => (i, (RunMember?)m, (string?)null)));
+                    break;
             }
-
-            choices.AddRange(run.Living.Where(m => run.WhyCannotTake(_data, i, m) is null).Select(m => (i, (RunMember?)m)));
         }
 
         if (choices.Count == 0)
@@ -501,28 +519,46 @@ public sealed class RunSimulation
             return;
         }
 
-        (int Card, RunMember? Member) choice;
+        (int Card, RunMember? Member, string? Copy) choice;
         if (_options.Bot == RunBot.Random)
         {
-            // 카드를 먼저 고르고 받을 멤버를 고른다 (받을 수 있는 멤버가 많은 카드가 더 자주 뽑히지 않게).
+            // 카드를 먼저 고르고 받을 멤버나 사본을 고른다 (받을 수 있는 것이 많은 카드가 더 자주 뽑히지 않게).
             var cards = choices.Select(c => c.Card).Distinct().ToList();
             var card = cards[random.Next(cards.Count)];
-            var members = choices.Where(c => c.Card == card).ToList();
-            choice = members[random.Next(members.Count)];
+            var options = choices.Where(c => c.Card == card).ToList();
+            choice = options[random.Next(options.Count)];
+        }
+        else if (_options.Bot == RunBot.Novice)
+        {
+            choice = choices.MaxBy(c => NoviceWorth(run, run.Offer[c.Card], c.Member, c.Copy));
         }
         else
         {
             choice = choices.MaxBy(c =>
             {
                 var copy = Run.Restore(run.ToSave(), _data);
-                copy.Take(_data, c.Card, c.Member is null ? null : copy.Members.Single(m => m.Id == c.Member.Id));
+                copy.Take(_data, c.Card, c.Member is null ? null : copy.Members.Single(m => m.Id == c.Member.Id), c.Copy);
                 return Lookahead(copy);
             });
         }
 
         tally.Picks.Add(run.Offer[choice.Card]);
-        run.Take(_data, choice.Card, choice.Member);
+        run.Take(_data, choice.Card, choice.Member, choice.Copy);
     }
+
+    /// <summary>
+    /// 보통 사람 봇의 보상 값: 줄 상한(줄이 가장 적은 멤버에게) 4, 켜진 줄에 놓인 사본의 강화 3(위력이 클수록 조금 더), 파티에 없는 액티브 2.5,
+    /// 패시브 2(레벨이 낮은 멤버에게), 이미 있는 액티브 1, 놀고 있는 사본의 강화 0.5.
+    /// </summary>
+    private double NoviceWorth(Run run, RunCard card, RunMember? member, string? copy) => card.Kind switch
+    {
+        RunCardKind.Line => 4 - 0.1 * member!.Earned,
+        RunCardKind.Upgrade when run.Living.Any(m => m.ActiveTactics.Any(t => t.ActionId == copy)) => 3 + RunUpgrades.Action(_data, copy!).Power / 1000.0,
+        RunCardKind.Upgrade => 0.5,
+        RunCardKind.Active => run.Copies.Keys.Any(id => RunUpgrades.BaseId(id) == card.Id) ? 1 : 2.5,
+        RunCardKind.Passive => 2 - 0.1 * member!.Level(card.Id!),
+        _ => 0,
+    };
 
     /// <summary>그 막의 보통 적 조합, 정예, 보스를 미리 싸운 평균 점수. 이기면 1 + 0.5 × 남은 HP 비율, 지면 0.5 × 깎은 적 HP 비율.</summary>
     private double Lookahead(Run run)
@@ -551,126 +587,211 @@ public sealed class RunSimulation
         return score / (encounters.Count * _options.LookaheadSeeds);
     }
 
+    /// <summary>상점에서 할 수 있는 것 하나: 물건(받을 멤버), 사본 강화, 봉인 풀기.</summary>
+    private sealed record ShopOption(int? Stock, string? Member, string? Copy, RunUpgradeKind? Upgrade, int Price);
+
     /// <summary>
-    /// 상점. 아무렇게나 봇은 물건마다 반반의 확률로 사고 봉인도 반반으로 푼다. 똑똑한 봇은 살 수 있는 것(물건, 강화, 받을 멤버마다의 줄 상한,
-    /// 가장 많이 봉인된 멤버의 봉인 풀기)마다 사 본 판으로 그 막의 적을 미리 싸워 보고, 골드 1당 나아지는 정도가 가장 큰 것부터 산다. 나아지는 것이
-    /// <see cref="MinShopGain"/>보다 작으면 그만 산다(골드를 다음 상점에 남기는 셈이다).
+    /// 상점. 아무렇게나 봇은 물건마다 반반의 확률로 사고, 남은 강화마다 반반으로 아무 사본에 아무 강화를 걸고, 봉인도 반반으로 푼다.
+    /// 똑똑한 봇은 할 수 있는 것(물건, 받을 멤버마다의 줄 상한, 켜진 줄에 놓인 사본의 강화, 가장 많이 봉인된 멤버의 봉인 풀기)마다 해 본 판으로
+    /// 그 막의 적을 미리 싸워 보고, 골드 1당 나아지는 정도가 가장 큰 것부터 한다. 나아지는 것이 <see cref="MinShopGain"/>보다 작으면 그만한다.
+    /// 보통 사람 봇은 봉인 풀기 → 켜진 줄 사본의 강화 → 방어구·무기 → 장신구 → 줄 상한 순으로 살 수 있는 만큼 산다.
     /// </summary>
     private void Shop(Run run, Random random, Tally tally)
     {
         var (goldIn, offered, sealedLines) = (run.Gold, run.Stock.ToList(), run.Living.Sum(m => m.Sealed));
-        var (bought, unseals, values) = (new List<RunStock>(), 0, new List<RunSimValue>());
-        void Purchase(int i, string? member = null)
+        var (bought, unseals, values, upgraded) = (new List<RunStock>(), 0, new List<RunSimValue>(), new List<(RunUpgradeKind Kind, int Price)>());
+        void Do(ShopOption o)
         {
-            var stock = run.Stock[i];
-            Buy(run, i, member);
-            bought.Add(stock);
-            tally.Spend(stock.Kind switch
+            if (o.Stock is { } i)
             {
-                RunStockKind.Item => RunSpend.Item,
-                RunStockKind.Skill => RunSpend.Skill,
-                RunStockKind.Upgrade => RunSpend.Upgrade,
-                RunStockKind.Line => RunSpend.Line,
-                _ => RunSpend.Recruit,
-            }, stock.Price);
-        }
-
-        void Unseal(RunMember member)
-        {
-            tally.Spend(RunSpend.Unseal, run.UnsealPrice(_data));
-            run.Unseal(_data, member);
-            unseals++;
-        }
-
-        if (_options.Bot == RunBot.Random)
-        {
-            foreach (var i in Enumerable.Range(0, run.Stock.Count).OrderBy(_ => random.Next()).ToList())
-            {
-                // 무기·방어구와 줄 상한은 받을 수 있는 멤버 아무에게나 준다.
-                var recipients = Recipients(run, run.Stock[i]).ToList();
-                var member = recipients.Count > 0 ? recipients[random.Next(recipients.Count)] : null;
-                if (random.Next(2) == 0 && run.WhyCannotBuy(_data, i, member) is null)
+                var stock = run.Stock[i];
+                Buy(run, i, o.Member);
+                bought.Add(stock);
+                tally.Spend(stock.Kind switch
                 {
-                    Purchase(i, member?.Id);
-                }
+                    RunStockKind.Item => RunSpend.Item,
+                    RunStockKind.Skill => RunSpend.Skill,
+                    RunStockKind.Line => RunSpend.Line,
+                    _ => RunSpend.Recruit,
+                }, stock.Price);
             }
-
-            var sealedMembers = run.Living.Where(m => m.Sealed > 0).ToList();
-            if (sealedMembers.Count > 0 && random.Next(2) == 0)
+            else if (o.Upgrade is { } kind)
             {
-                var member = sealedMembers[random.Next(sealedMembers.Count)];
-                if (run.WhyCannotUnseal(_data, member) is null)
-                {
-                    Unseal(member);
-                }
+                var price = run.UpgradePrice(_data, o.Copy!);
+                tally.Spend(RunSpend.Upgrade, price);
+                run.Upgrade(_data, o.Copy!, kind);
+                upgraded.Add((kind, price));
+            }
+            else
+            {
+                tally.Spend(RunSpend.Unseal, run.UnsealPrice(_data));
+                run.Unseal(_data, run.Members.Single(m => m.Id == o.Member));
+                unseals++;
             }
         }
-        else
+
+        switch (_options.Bot)
         {
-            while (true)
-            {
-                var baseline = Lookahead(Run.Restore(run.ToSave(), _data));
-                // 무기·방어구와 줄 상한은 받을 멤버마다 따로 재 본다.
-                var options = Enumerable.Range(0, run.Stock.Count)
-                    .SelectMany(i =>
+            case RunBot.Random:
+                foreach (var i in Enumerable.Range(0, run.Stock.Count).OrderBy(_ => random.Next()).ToList())
+                {
+                    // 무기·방어구와 줄 상한은 받을 수 있는 멤버 아무에게나 준다.
+                    var recipients = Recipients(run, run.Stock[i]).ToList();
+                    var member = recipients.Count > 0 ? recipients[random.Next(recipients.Count)] : null;
+                    if (random.Next(2) == 0 && run.WhyCannotBuy(_data, i, member) is null)
                     {
-                        var recipients = Recipients(run, run.Stock[i]).Select(m => (RunMember?)m).ToList();
-                        return (recipients.Count > 0 ? recipients : [null])
-                            .Where(m => run.WhyCannotBuy(_data, i, m) is null)
-                            .Select(m => (Stock: (int?)i, Member: m?.Id, Price: run.Stock[i].Price));
-                    })
-                    .ToList();
-                if (run.Living.Where(m => m.Sealed > 0).MaxBy(m => m.Sealed) is { } most && run.WhyCannotUnseal(_data, most) is null)
-                {
-                    options.Add((null, most.Id, run.UnsealPrice(_data)));
+                        Do(new ShopOption(i, member?.Id, null, null, run.Stock[i].Price));
+                    }
                 }
 
-                var gains = options
-                    .Select(o =>
+                while (run.UpgradesLeft > 0 && random.Next(2) == 0)
+                {
+                    var possible = UpgradeOptions(run, run.UpgradableCopies(_data)).ToList();
+                    if (possible.Count == 0)
                     {
-                        var copy = Run.Restore(run.ToSave(), _data);
-                        if (o.Stock is { } i)
+                        break;
+                    }
+
+                    Do(possible[random.Next(possible.Count)]);
+                }
+
+                var sealedMembers = run.Living.Where(m => m.Sealed > 0).ToList();
+                if (sealedMembers.Count > 0 && random.Next(2) == 0)
+                {
+                    var member = sealedMembers[random.Next(sealedMembers.Count)];
+                    if (run.WhyCannotUnseal(_data, member) is null)
+                    {
+                        Do(new ShopOption(null, member.Id, null, null, run.UnsealPrice(_data)));
+                    }
+                }
+
+                break;
+            case RunBot.Novice:
+                NoviceShop(run, Do);
+                break;
+            default:
+                while (true)
+                {
+                    var baseline = Lookahead(Run.Restore(run.ToSave(), _data));
+                    // 무기·방어구와 줄 상한은 받을 멤버마다, 강화는 켜진 줄에 놓인 사본과 종류마다 따로 재 본다.
+                    var options = Enumerable.Range(0, run.Stock.Count)
+                        .SelectMany(i =>
                         {
-                            Buy(copy, i, o.Member);
-                        }
-                        else
+                            var recipients = Recipients(run, run.Stock[i]).Select(m => (RunMember?)m).ToList();
+                            return (recipients.Count > 0 ? recipients : [null])
+                                .Where(m => run.WhyCannotBuy(_data, i, m) is null)
+                                .Select(m => new ShopOption(i, m?.Id, null, null, run.Stock[i].Price));
+                        })
+                        .Concat(UpgradeOptions(run, PlacedCopies(run)))
+                        .ToList();
+                    if (run.Living.Where(m => m.Sealed > 0).MaxBy(m => m.Sealed) is { } most && run.WhyCannotUnseal(_data, most) is null)
+                    {
+                        options.Add(new ShopOption(null, most.Id, null, null, run.UnsealPrice(_data)));
+                    }
+
+                    var gains = options
+                        .Select(o =>
                         {
-                            copy.Unseal(_data, copy.Members.Single(m => m.Id == o.Member));
-                        }
+                            var copy = Run.Restore(run.ToSave(), _data);
+                            if (o.Stock is { } i)
+                            {
+                                Buy(copy, i, o.Member);
+                            }
+                            else if (o.Upgrade is { } kind)
+                            {
+                                copy.Upgrade(_data, o.Copy!, kind);
+                            }
+                            else
+                            {
+                                copy.Unseal(_data, copy.Members.Single(m => m.Id == o.Member));
+                            }
 
-                        return (Option: o, Gain: Lookahead(copy) - baseline);
-                    })
-                    .ToList();
-                if (bought.Count == 0 && unseals == 0)
-                {
-                    // 물건마다 가장 잘 맞는 멤버에게 낀 값어치.
-                    values.AddRange(gains.GroupBy(g => g.Option.Stock ?? -1).Select(g => g.MaxBy(x => x.Gain))
-                        .Select(g => new RunSimValue(g.Option.Stock is { } i ? run.Stock[i] : null, g.Option.Price, g.Gain)));
+                            return (Option: o, Gain: Lookahead(copy) - baseline);
+                        })
+                        .ToList();
+                    if (bought.Count == 0 && unseals == 0 && upgraded.Count == 0)
+                    {
+                        // 물건마다 가장 잘 맞는 멤버에게 낀 값어치, 강화 종류마다 가장 잘 맞는 사본에 건 값어치.
+                        values.AddRange(gains.GroupBy(g => (g.Option.Stock ?? -1, g.Option.Upgrade)).Select(g => g.MaxBy(x => x.Gain))
+                            .Select(g => new RunSimValue(g.Option.Stock is { } i ? run.Stock[i] : null, g.Option.Price, g.Gain, g.Option.Upgrade)));
+                    }
+
+                    var best = gains
+                        .Where(x => x.Gain >= MinShopGain)
+                        .OrderByDescending(x => x.Gain / Math.Max(1, x.Option.Price))
+                        .FirstOrDefault();
+                    if (best.Option is null)
+                    {
+                        break;
+                    }
+
+                    Do(best.Option);
+                    Equip(run);
                 }
 
-                var best = gains
-                    .Where(x => x.Gain >= MinShopGain)
-                    .OrderByDescending(x => x.Gain / Math.Max(1, x.Option.Price))
-                    .FirstOrDefault();
-                if (best.Option.Price == 0)
-                {
-                    break;
-                }
+                break;
+        }
 
-                if (best.Option.Stock is { } stock)
-                {
-                    Purchase(stock, best.Option.Member);
-                }
-                else
-                {
-                    Unseal(run.Members.Single(m => m.Id == best.Option.Member));
-                }
+        tally.Shops.Add(new RunSimShop(run.Act, goldIn, run.Gold, offered, bought, unseals, sealedLines, values, upgraded));
+    }
 
-                Equip(run);
+    /// <summary>켜진 줄에 놓인 사본 중 강화할 수 있는 것 (똑똑한 봇이 강화를 재 보는 후보).</summary>
+    private IReadOnlyList<string> PlacedCopies(Run run)
+    {
+        var placed = run.Living.SelectMany(m => m.ActiveTactics).Select(t => t.ActionId).ToHashSet();
+        return run.UpgradableCopies(_data).Where(placed.Contains).ToList();
+    }
+
+    /// <summary>사본마다 걸 수 있는 강화 (이 상점에서 살 수 있는 것).</summary>
+    private IEnumerable<ShopOption> UpgradeOptions(Run run, IEnumerable<string> copies) =>
+        copies.SelectMany(c => Enum.GetValues<RunUpgradeKind>().Where(k => run.WhyCannotUpgrade(_data, c, k) is null)
+            .Select(k => new ShopOption(null, null, c, k, run.UpgradePrice(_data, c))));
+
+    /// <summary>
+    /// 보통 사람 봇의 상점: 가장 많이 봉인된 멤버의 봉인을 풀 수 있는 만큼 풀고, 켜진 줄에 놓인 사본 중 위력이 가장 큰 것에 강화(위력, 연쇄,
+    /// 지속, 신속 순으로 처음 맞는 것)를 걸고, 방어구는 전열 멤버, 무기는 쓰는 멤버, 장신구는 칸이 빈 멤버에게 비싼 것부터 사고, 남으면 줄 상한을
+    /// 줄이 가장 적은 멤버에게 산다.
+    /// </summary>
+    private void NoviceShop(Run run, Action<ShopOption> act)
+    {
+        while (run.Living.Where(m => m.Sealed > 0).MaxBy(m => m.Sealed) is { } most && run.WhyCannotUnseal(_data, most) is null)
+        {
+            act(new ShopOption(null, most.Id, null, null, run.UnsealPrice(_data)));
+        }
+
+        RunUpgradeKind[] order = [RunUpgradeKind.Power, RunUpgradeKind.Chain, RunUpgradeKind.Lasting, RunUpgradeKind.Swift];
+        while (run.UpgradesLeft > 0
+            && PlacedCopies(run).OrderByDescending(c => RunUpgrades.Action(_data, c).Power).ThenBy(c => c, StringComparer.Ordinal)
+                .SelectMany(c => order.Where(k => run.WhyCannotUpgrade(_data, c, k) is null).Select(k => (Copy: c, Kind: k)))
+                .FirstOrDefault() is { Copy: not null } pick)
+        {
+            act(new ShopOption(null, null, pick.Copy, pick.Kind, run.UpgradePrice(_data, pick.Copy)));
+        }
+
+        var items = Enumerable.Range(0, run.Stock.Count).Where(i => run.Stock[i].Kind == RunStockKind.Item)
+            .OrderBy(i => _data.Items[run.Stock[i].Id].Slot == EquipmentSlot.Trinket ? 1 : 0)
+            .ThenByDescending(i => run.Stock[i].Price)
+            .ToList();
+        foreach (var i in items)
+        {
+            var item = _data.Items[run.Stock[i].Id];
+            var wearer = item.Slot switch
+            {
+                EquipmentSlot.Body => run.Living.FirstOrDefault(m => m.Row == Row.Front) ?? run.Living.FirstOrDefault(),
+                EquipmentSlot.MainHand => Wearers(run, item).FirstOrDefault(),
+                _ => null,
+            };
+            if ((item.Slot == EquipmentSlot.Trinket || wearer is not null) && run.WhyCannotBuy(_data, i) is null)
+            {
+                act(new ShopOption(i, wearer?.Id, null, null, run.Stock[i].Price));
             }
         }
 
-        tally.Shops.Add(new RunSimShop(run.Act, goldIn, run.Gold, offered, bought, unseals, sealedLines, values));
+        var line = Enumerable.Range(0, run.Stock.Count).FirstOrDefault(i => run.Stock[i].Kind == RunStockKind.Line, -1);
+        if (line >= 0 && run.Living.Where(m => m.Earned < _rules.MaxLines).MinBy(m => m.Earned) is { } fewest && run.WhyCannotBuy(_data, line, fewest) is null)
+        {
+            act(new ShopOption(line, fewest.Id, null, null, run.Stock[line].Price));
+        }
     }
 
     /// <summary>

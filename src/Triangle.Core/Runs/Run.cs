@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Text.Json.Serialization;
 using Triangle.Core.Actions;
 using Triangle.Core.Balance;
 using Triangle.Core.Combat;
@@ -42,10 +41,13 @@ public enum RunCardKind
 
     /// <summary>줄 상한 +1 (멤버 한 명에게).</summary>
     Line,
+
+    /// <summary>강화 한 가지(<see cref="RunUpgradeKind"/>)를 고른 사본 한 장에 건다 (2026-10-23).</summary>
+    Upgrade,
 }
 
-/// <summary>보상 카드. 액티브와 패시브는 그 클래스의 것이고, 줄 카드는 누구에게나 준다.</summary>
-/// <param name="Id">행동 ID(액티브)나 패시브 ID. 줄 카드는 null.</param>
+/// <summary>보상 카드. 액티브와 패시브는 그 클래스의 것이고, 줄 카드와 강화 카드는 누구에게나 준다.</summary>
+/// <param name="Id">행동 ID(액티브), 패시브 ID, 강화 이름(<see cref="RunUpgradeKind"/>, 강화 카드). 줄 카드는 null.</param>
 public sealed record RunCard(RunCardKind Kind, string? ClassId, string? Id);
 
 public enum RunStockKind
@@ -54,21 +56,14 @@ public enum RunStockKind
     Skill,
     Recruit,
 
-    /// <summary>스킬 사본 한 장의 강화 (<see cref="RunStock.Upgrade"/>). 그 사본이 강화된 사본(다른 ID)이 된다.</summary>
-    Upgrade,
-
     /// <summary>줄 상한 +1 (살 때 받을 멤버를 고른다). 살 때마다 값이 오른다.</summary>
     Line,
 }
 
-/// <summary>상점의 물건 하나. <paramref name="Id"/>는 아이템 ID, 행동 ID(스킬 사본), 강화할 사본의 ID, 클래스 ID 중 하나이고 줄 상한은 비어 있다.</summary>
+/// <summary>상점의 물건 하나. <paramref name="Id"/>는 아이템 ID, 행동 ID(스킬 사본), 클래스 ID 중 하나이고 줄 상한은 비어 있다.</summary>
 public sealed record RunStock(RunStockKind Kind, string Id, int Price)
 {
     public bool Sold { get; init; }
-
-    /// <summary>강화의 종류 (<see cref="RunStockKind.Upgrade"/>일 때).</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public RunUpgradeKind? Upgrade { get; init; }
 }
 
 /// <summary>판의 전투 기록 한 줄 (판이 끝나면 명성과 탐사 기록에 쓴다).</summary>
@@ -172,6 +167,9 @@ public sealed partial class Run
 
     /// <summary>상점에서 산 줄 상한 수. 줄 상한 값이 이만큼 오른다.</summary>
     public int LinesBought { get; private set; }
+
+    /// <summary>이 상점에서 더 할 수 있는 강화 수 (상점에 들어갈 때 정한다).</summary>
+    public int UpgradesLeft { get; private set; }
 
     /// <summary>끼지 않은 아이템 ID.</summary>
     public List<string> Bag { get; } = [];
@@ -370,8 +368,10 @@ public sealed partial class Run
 
     /// <summary>
     /// 보상 카드 하나를 고른다. 액티브는 파티의 사본이 되고(멤버를 묻지 않는다), 패시브와 줄 상한은 <paramref name="member"/>가 받는다.
+    /// 강화는 <paramref name="copy"/> 한 장에 걸린다 (골드는 들지 않고, 상점의 강화 수도 쓰지 않는다).
     /// </summary>
-    public string? WhyCannotTake(GameData data, int card, RunMember? member)
+    /// <param name="copy">강화 카드를 걸 사본 ID (<see cref="RunCardKind.Upgrade"/>일 때).</param>
+    public string? WhyCannotTake(GameData data, int card, RunMember? member, string? copy = null)
     {
         if (Phase != RunPhase.Reward || card < 0 || card >= Offer.Count)
         {
@@ -382,6 +382,7 @@ public sealed partial class Run
         return c.Kind switch
         {
             RunCardKind.Active => null,
+            RunCardKind.Upgrade => copy is null ? "강화할 사본을 골라야 한다" : WhyCannotUpgradeCopy(data, copy, Enum.Parse<RunUpgradeKind>(c.Id!)),
             _ when member is null || member.Dead || !Members.Contains(member) => "받을 멤버를 골라야 한다",
             RunCardKind.Passive when member.ClassId != c.ClassId => $"{data.Classes[c.ClassId!].Name}만 받는다",
             RunCardKind.Passive when member.Level(c.Id!) >= SkillDefinition.MaxLevel => "이미 최고 레벨이다",
@@ -390,9 +391,9 @@ public sealed partial class Run
         };
     }
 
-    public void Take(GameData data, int card, RunMember? member = null)
+    public void Take(GameData data, int card, RunMember? member = null, string? copy = null)
     {
-        if (WhyCannotTake(data, card, member) is { } reason)
+        if (WhyCannotTake(data, card, member, copy) is { } reason)
         {
             throw new InvalidOperationException(reason);
         }
@@ -402,6 +403,9 @@ public sealed partial class Run
         {
             case RunCardKind.Active:
                 Copies[c.Id!] = Copies.GetValueOrDefault(c.Id!) + 1;
+                break;
+            case RunCardKind.Upgrade:
+                UpgradeCopy(copy!, Enum.Parse<RunUpgradeKind>(c.Id!));
                 break;
             case RunCardKind.Passive:
                 member!.Passives[c.Id!] = member.Level(c.Id!) + 1;
@@ -488,9 +492,6 @@ public sealed partial class Run
         return s.Kind switch
         {
             RunStockKind.Recruit when Living.Count() >= MaxMembers => $"파티는 {MaxMembers}명까지다",
-            RunStockKind.Upgrade when Copies.GetValueOrDefault(s.Id) == 0 => "강화할 사본이 없다",
-            RunStockKind.Upgrade when RunUpgrades.Kinds(s.Id) is { } had && (had.Count >= RunUpgrades.MaxPerSkill || had.Contains(s.Upgrade!.Value))
-                => "더 강화할 수 없다",
             RunStockKind.Line when member is null || member.Dead || !Members.Contains(member) => "받을 멤버를 골라야 한다",
             RunStockKind.Line when member.Earned >= Rules(data).MaxLines => "줄 상한이 이미 최대다",
             _ => null,
@@ -504,10 +505,7 @@ public sealed partial class Run
     public RunMember? UpgradeHolder(string copyId) =>
         Living.FirstOrDefault(m => m.ActiveTactics.Any(t => t.ActionId == copyId)) ?? Living.FirstOrDefault(m => m.Tactics.Any(t => t.ActionId == copyId));
 
-    /// <summary>
-    /// 상점에서 산다: 아이템은 가방으로, 스킬은 파티 사본으로, 합류는 새 멤버로, 줄 상한은 <paramref name="member"/>에게.
-    /// 강화는 그 사본 한 장을 강화된 사본으로 바꾼다. 그 사본이 줄에 놓여 있으면 그 줄이 강화된 사본을 쓴다(<see cref="UpgradeHolder"/>).
-    /// </summary>
+    /// <summary>상점에서 산다: 아이템은 가방으로, 스킬은 파티 사본으로, 합류는 새 멤버로, 줄 상한은 <paramref name="member"/>에게.</summary>
     public void Buy(GameData data, int stock, RunMember? member = null)
     {
         if (WhyCannotBuy(data, stock, member) is { } reason)
@@ -525,22 +523,6 @@ public sealed partial class Run
                 break;
             case RunStockKind.Skill:
                 Copies[s.Id] = Copies.GetValueOrDefault(s.Id) + 1;
-                break;
-            case RunStockKind.Upgrade:
-                var upgraded = RunUpgrades.With(s.Id, s.Upgrade!.Value);
-                if (UpgradeHolder(s.Id) is { } holder)
-                {
-                    var line = holder.Tactics.FindIndex(t => t.ActionId == s.Id);
-                    holder.Tactics[line] = holder.Tactics[line] with { ActionId = upgraded };
-                }
-
-                Copies[s.Id]--;
-                if (Copies[s.Id] == 0)
-                {
-                    Copies.Remove(s.Id);
-                }
-
-                Copies[upgraded] = Copies.GetValueOrDefault(upgraded) + 1;
                 break;
             case RunStockKind.Line:
                 member!.Earned++;
@@ -580,6 +562,95 @@ public sealed partial class Run
 
         Gold -= UnsealPrice(data);
         member.Sealed--;
+    }
+
+    /// <summary>상점에서 사본 <paramref name="copy"/>에 강화 하나를 거는 값 (그 사본에 이미 건 강화 수만큼 오르고, 해금의 할인을 뺀다).</summary>
+    public int UpgradePrice(GameData data, string copy) =>
+        Discounted(Rules(data).Shop.UpgradePrice + Rules(data).Shop.UpgradeStep * RunUpgrades.Kinds(copy).Count);
+
+    /// <summary>상점에서 사본과 강화 종류를 골라 강화할 수 있는가: 이 상점에서 남은 강화 수, 골드, 그 사본에 걸 수 있는 강화인지.</summary>
+    public string? WhyCannotUpgrade(GameData data, string copy, RunUpgradeKind kind)
+    {
+        if (Phase != RunPhase.Shop)
+        {
+            return "상점에서만 강화한다";
+        }
+
+        if (UpgradesLeft <= 0)
+        {
+            return "이 상점에서는 더 강화할 수 없다";
+        }
+
+        if (WhyCannotUpgradeCopy(data, copy, kind) is { } reason)
+        {
+            return reason;
+        }
+
+        return Gold < UpgradePrice(data, copy) ? $"골드가 모자란다 ({UpgradePrice(data, copy)}G)" : null;
+    }
+
+    /// <summary>상점에서 골드를 내고 사본 <paramref name="copy"/> 한 장에 강화를 건다.</summary>
+    public void Upgrade(GameData data, string copy, RunUpgradeKind kind)
+    {
+        if (WhyCannotUpgrade(data, copy, kind) is { } reason)
+        {
+            throw new InvalidOperationException(reason);
+        }
+
+        Gold -= UpgradePrice(data, copy);
+        UpgradesLeft--;
+        UpgradeCopy(copy, kind);
+    }
+
+    /// <summary>사본 <paramref name="copy"/> 한 장에 이 강화를 걸 수 있는가: 가진 사본, 강화가 다 차지 않음, 아직 걸지 않은 강화, 그 스킬에 맞는 강화.</summary>
+    public string? WhyCannotUpgradeCopy(GameData data, string copy, RunUpgradeKind kind)
+    {
+        if (Copies.GetValueOrDefault(copy) <= 0)
+        {
+            return "강화할 사본이 없다";
+        }
+
+        var had = RunUpgrades.Kinds(copy);
+        if (had.Count >= RunUpgrades.MaxPerSkill)
+        {
+            return $"사본 하나에 강화는 {RunUpgrades.MaxPerSkill}개까지다";
+        }
+
+        if (had.Contains(kind))
+        {
+            return "이미 건 강화다";
+        }
+
+        return RunUpgrades.Fits(data.Actions[RunUpgrades.BaseId(copy)], kind) ? null : "이 스킬에는 맞지 않는 강화다";
+    }
+
+    /// <summary>강화할 수 있는 사본: 파티가 가진 살아 있는 멤버 클래스의 사본(강화된 사본 포함) 중 강화가 다 차지 않은 것. ID 순서.</summary>
+    public IReadOnlyList<string> UpgradableCopies(GameData data)
+    {
+        var skills = Living.SelectMany(m => data.Classes[m.ClassId].Skills).ToHashSet();
+        return Copies.Where(p => p.Value > 0 && skills.Contains(RunUpgrades.BaseId(p.Key)) && RunUpgrades.Kinds(p.Key).Count < RunUpgrades.MaxPerSkill)
+            .Select(p => p.Key)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary>사본 한 장을 강화된 사본으로 바꾼다. 그 사본이 줄에 놓여 있으면 그 줄이 강화된 사본을 쓴다(<see cref="UpgradeHolder"/>).</summary>
+    private void UpgradeCopy(string copy, RunUpgradeKind kind)
+    {
+        var upgraded = RunUpgrades.With(copy, kind);
+        if (UpgradeHolder(copy) is { } holder)
+        {
+            var line = holder.Tactics.FindIndex(t => t.ActionId == copy);
+            holder.Tactics[line] = holder.Tactics[line] with { ActionId = upgraded };
+        }
+
+        Copies[copy]--;
+        if (Copies[copy] == 0)
+        {
+            Copies.Remove(copy);
+        }
+
+        Copies[upgraded] = Copies.GetValueOrDefault(upgraded) + 1;
     }
 
     public void LeaveShop()
@@ -910,9 +981,9 @@ public sealed partial class Run
 
     /// <summary>
     /// 상점의 물건: 판에서 파는 아이템(<see cref="ItemDefinition.Shop"/>) 중 이 막 티어 이하의 무기(살아 있는 멤버 클래스가 쓰는 것)·방어구·
-    /// 장신구에서 아이템을, 살아 있는 멤버 클래스의 카드에서 스킬을, 모든 클래스에서 합류를 뽑는다. 값은 모두 해금의 할인을 뺀다. 강화는 파티가 가진 그 클래스 사본(강화된
-    /// 사본 포함, 강화가 다 차지 않은 것) 중 겹치지 않게 뽑고 아직 걸지 않은 맞는 강화 하나를 붙인다(값은 그 사본에 건 강화 수만큼 오른다).
-    /// 줄 상한은 늘릴 멤버가 있으면 하나를 판다(값은 상점에서 산 줄 상한 수만큼 오른다).
+    /// 장신구에서 아이템을, 살아 있는 멤버 클래스의 카드에서 스킬을, 모든 클래스에서 합류를 뽑는다. 값은 모두 해금의 할인을 뺀다.
+    /// 줄 상한은 늘릴 멤버가 있으면 하나를 판다(값은 상점에서 산 줄 상한 수만큼 오른다). 강화는 물건이 아니라 사본과 종류를 골라 하는 것이고,
+    /// 상점마다 정한 횟수(<see cref="RunShopRules.Upgrades"/>)까지 한다.
     /// </summary>
     private void OpenShop(GameData data, Random random)
     {
@@ -934,22 +1005,7 @@ public sealed partial class Run
             .Select(id => new RunStock(RunStockKind.Skill, id, Discounted(rules.Shop.SkillPrice))));
         _stock.AddRange(Pick(data.Classes.Keys.Where(Open).ToList(), rules.Shop.Recruits, random)
             .Select(id => new RunStock(RunStockKind.Recruit, id, Discounted(rules.Shop.RecruitPrice))));
-        var skills = classes.SelectMany(c => c.Skills).ToHashSet();
-        var upgradable = Copies.Where(p => p.Value > 0 && skills.Contains(RunUpgrades.BaseId(p.Key)) && RunUpgrades.Kinds(p.Key).Count < RunUpgrades.MaxPerSkill)
-            .Select(p => p.Key)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-        foreach (var id in Pick(upgradable, rules.Shop.Upgrades, random))
-        {
-            var had = RunUpgrades.Kinds(id);
-            var kinds = Enum.GetValues<RunUpgradeKind>().Where(k => !had.Contains(k) && RunUpgrades.Fits(data.Actions[RunUpgrades.BaseId(id)], k)).ToList();
-            if (kinds.Count > 0)
-            {
-                var price = Discounted(rules.Shop.UpgradePrice + rules.Shop.UpgradeStep * had.Count);
-                _stock.Add(new RunStock(RunStockKind.Upgrade, id, price) { Upgrade = kinds[random.Next(kinds.Count)] });
-            }
-        }
-
+        UpgradesLeft = rules.Shop.Upgrades;
         if (rules.Shop.Lines > 0 && Living.Any(m => m.Earned < rules.MaxLines))
         {
             _stock.Add(new RunStock(RunStockKind.Line, "", Discounted(rules.Shop.LinePrice + rules.Shop.LineStep * LinesBought)));
@@ -960,7 +1016,7 @@ public sealed partial class Run
 
     /// <summary>
     /// 보상 후보: 종류를 가중치로 뽑고, 액티브·패시브는 살아 있는 멤버 하나를 뽑아 그 클래스에서 고른다. 같은 카드는 한 번만 나온다.
-    /// 패시브는 올릴 수 있는 멤버가 있을 때만, 줄 상한은 늘릴 수 있는 멤버가 있을 때만 나온다.
+    /// 패시브는 올릴 수 있는 멤버가 있을 때만, 줄 상한은 늘릴 수 있는 멤버가 있을 때만, 강화는 그 강화를 받을 사본이 있을 때만 나온다.
     /// </summary>
     private List<RunCard> MakeOffer(GameData data, Random random, int count)
     {
@@ -970,7 +1026,7 @@ public sealed partial class Run
         var cards = new List<RunCard>();
         for (var tries = 0; cards.Count < count && tries < count * 20; tries++)
         {
-            var roll = random.Next(reward.Active + reward.Passive + reward.Line);
+            var roll = random.Next(reward.Active + reward.Passive + reward.Line + reward.Upgrade);
             var c = data.Classes[living[random.Next(living.Count)].ClassId];
             RunCard? card = null;
             if (roll < reward.Active)
@@ -983,9 +1039,16 @@ public sealed partial class Run
                 var pool = c.Passives.Where(p => living.Any(m => m.ClassId == c.Id && m.Level(p) < SkillDefinition.MaxLevel)).ToList();
                 card = pool.Count == 0 ? null : new RunCard(RunCardKind.Passive, c.Id, pool[random.Next(pool.Count)]);
             }
-            else if (living.Any(m => m.Earned < rules.MaxLines))
+            else if (roll < reward.Active + reward.Passive + reward.Line)
             {
-                card = new RunCard(RunCardKind.Line, null, null);
+                card = living.Any(m => m.Earned < rules.MaxLines) ? new RunCard(RunCardKind.Line, null, null) : null;
+            }
+            else
+            {
+                // 강화 카드: 강화할 수 있는 사본 하나라도 받을 수 있는 종류.
+                var copies = UpgradableCopies(data);
+                var kinds = Enum.GetValues<RunUpgradeKind>().Where(k => copies.Any(id => WhyCannotUpgradeCopy(data, id, k) is null)).ToList();
+                card = kinds.Count == 0 ? null : new RunCard(RunCardKind.Upgrade, null, kinds[random.Next(kinds.Count)].ToString());
             }
 
             if (card is not null && !cards.Contains(card))

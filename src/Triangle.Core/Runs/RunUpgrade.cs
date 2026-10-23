@@ -8,8 +8,9 @@ using Triangle.Core.Data;
 namespace Triangle.Core.Runs;
 
 /// <summary>
-/// 액티브 스킬 강화 한 가지 (2026-10-20). 상점에서 골드로 사고, 그 스킬의 사본 한 장에 걸린다. 사본마다 다른 강화를
-/// <see cref="RunUpgrades.MaxPerSkill"/>개까지 쌓는다. 수치만 올리는 것(위력·절약·신속)과 행동 방식을 바꾸는 것(관통·연쇄·지속)이 있다.
+/// 액티브 스킬 강화 한 가지 (2026-10-20). 상점에서 사본과 종류를 골라 골드로 사거나 보상의 강화 카드로 받고, 그 스킬의 사본 한 장에 걸린다.
+/// 사본마다 다른 강화를 <see cref="RunUpgrades.MaxPerSkill"/>개까지 쌓는다. 수치를 올리는 것(위력·신속)과 행동 방식을 바꾸는 것(연쇄·지속)이 있다.
+/// 값어치가 거의 없던 절약(MP 절반)과 붙는 스킬이 드물던 관통(엄호 무시)은 2026-10-23에 뺐다.
 /// 연쇄는 추가 대상에게도 위력이 그대로 들어가 적이 둘 이상이면 피해가 두 배가 되므로 위력을 깎는다.
 /// JSON에는 이름으로 저장되므로 새 강화는 끝에 덧붙인다.
 /// </summary>
@@ -18,14 +19,8 @@ public enum RunUpgradeKind
     /// <summary>위력 +30% (피해·회복·보호막).</summary>
     Power,
 
-    /// <summary>MP 비용 절반.</summary>
-    Thrift,
-
     /// <summary>행동 뒤 대기 -20%.</summary>
     Swift,
-
-    /// <summary>엄호를 무시한다 (후열이나 약한 적을 골라 치는 공격).</summary>
-    Pierce,
 
     /// <summary>다른 적 하나에게 더 튀는 대신 위력 -30% (적 하나를 치는 공격).</summary>
     Chain,
@@ -44,8 +39,6 @@ public static class RunUpgrades
 
     public const int PowerPercent = 130;
 
-    public const int ThriftPercent = 50;
-
     public const int SwiftPercent = 80;
 
     public const int ChainPowerPercent = 70;
@@ -56,9 +49,7 @@ public static class RunUpgrades
     public static bool Fits(ActionDefinition action, RunUpgradeKind kind) => kind switch
     {
         RunUpgradeKind.Power => action.Power > 0,
-        RunUpgradeKind.Thrift => action.MpCost > 1,
         RunUpgradeKind.Swift => true,
-        RunUpgradeKind.Pierce => SingleEnemyStrike(action) && !action.IgnoresCover && action.Rule is not (TargetRule.FrontFirst or TargetRule.Random),
         RunUpgradeKind.Chain => SingleEnemyStrike(action),
         RunUpgradeKind.Lasting => action.Applies.Count > 0,
         _ => false,
@@ -84,9 +75,7 @@ public static class RunUpgrades
             upgraded = kind switch
             {
                 RunUpgradeKind.Power => upgraded with { Power = upgraded.Power * PowerPercent / 100 },
-                RunUpgradeKind.Thrift => upgraded with { MpCost = upgraded.MpCost * ThriftPercent / 100 },
                 RunUpgradeKind.Swift => upgraded with { Delay = (upgraded.Delay ?? CombatRules.Default.TimeConstant) * SwiftPercent / 100 },
-                RunUpgradeKind.Pierce => upgraded with { IgnoresCover = true },
                 RunUpgradeKind.Chain => upgraded with { ExtraTargets = upgraded.ExtraTargets + 1, Power = upgraded.Power * ChainPowerPercent / 100 },
                 RunUpgradeKind.Lasting => upgraded with { Applies = upgraded.Applies.Select(e => e with { Duration = e.Duration + 1 }).ToList() },
                 _ => upgraded,
@@ -147,24 +136,30 @@ public static class RunUpgrades
     public static string Name(RunUpgradeKind kind) => kind switch
     {
         RunUpgradeKind.Power => "위력",
-        RunUpgradeKind.Thrift => "절약",
         RunUpgradeKind.Swift => "신속",
-        RunUpgradeKind.Pierce => "관통",
         RunUpgradeKind.Chain => "연쇄",
         RunUpgradeKind.Lasting => "지속",
         _ => kind.ToString(),
     };
 
-    /// <summary>이 행동에 걸었을 때 바뀌는 것 한 줄: "위력 85 → 110", "엄호를 무시한다".</summary>
+    /// <summary>강화의 규칙 한 줄 (어느 행동에 걸지 정하기 전에 보여 준다).</summary>
+    public static string Rule(RunUpgradeKind kind) => kind switch
+    {
+        RunUpgradeKind.Power => $"위력 +{PowerPercent - 100}% (피해·회복·보호막)",
+        RunUpgradeKind.Swift => $"행동 뒤 대기 -{100 - SwiftPercent}%",
+        RunUpgradeKind.Chain => $"적 하나를 치는 공격이 다른 적 하나에게 더 튄다, 대신 위력 -{100 - ChainPowerPercent}%",
+        RunUpgradeKind.Lasting => "거는 효과가 한 턴 더 간다",
+        _ => Name(kind),
+    };
+
+    /// <summary>이 행동에 걸었을 때 바뀌는 것 한 줄: "위력 85 → 110", "거는 효과가 한 턴 더 간다".</summary>
     public static string Describe(ActionDefinition action, RunUpgradeKind kind)
     {
         var after = Apply(action, [kind]);
         return kind switch
         {
             RunUpgradeKind.Power => $"위력 {action.Power} → {after.Power}",
-            RunUpgradeKind.Thrift => $"MP {action.MpCost} → {after.MpCost}",
             RunUpgradeKind.Swift => $"행동 뒤 대기 {action.Delay ?? CombatRules.Default.TimeConstant} → {after.Delay}",
-            RunUpgradeKind.Pierce => "엄호를 무시하고 후열도 친다",
             RunUpgradeKind.Chain => $"다른 적 {after.ExtraTargets}명에게 더 튄다, 위력 {action.Power} → {after.Power}",
             RunUpgradeKind.Lasting => "거는 효과가 한 턴 더 간다",
             _ => Name(kind),

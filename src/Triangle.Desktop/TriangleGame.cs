@@ -340,9 +340,10 @@ public class TriangleGame : Game
                     break;
                 case RunPhase.Reward:
                     var member = run.Living.FirstOrDefault(m => run.WhyCannotTake(data, 0, m) is null);
-                    if (run.Offer[0].Kind == RunCardKind.Active || member is not null)
+                    var copy = run.UpgradableCopies(data).FirstOrDefault(c => run.WhyCannotTake(data, 0, null, c) is null);
+                    if (run.Offer[0].Kind == RunCardKind.Active || member is not null || copy is not null)
                     {
-                        run.Take(data, 0, member);
+                        run.Take(data, 0, member, copy);
                     }
                     else
                     {

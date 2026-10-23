@@ -136,6 +136,9 @@ public sealed record RunRewardRules
 
     public int Line { get; init; } = 1;
 
+    /// <summary>강화 카드(고른 사본 하나에 강화 한 가지)의 가중치 (2026-10-23, 보상을 줄 바꾸기 중심으로).</summary>
+    public int Upgrade { get; init; }
+
     public int GoldMin { get; init; } = 15;
 
     public int GoldMax { get; init; } = 25;
@@ -166,10 +169,10 @@ public sealed record RunShopRules
     /// <summary>봉인 하나를 푸는 값.</summary>
     public int UnsealPrice { get; init; } = 60;
 
-    /// <summary>파는 스킬 강화 수 (파티가 사본을 가진 클래스 카드에서, 스킬이 겹치지 않게).</summary>
+    /// <summary>상점 한 번에 할 수 있는 강화 수 (플레이어가 사본과 종류를 고른다, 2026-10-23).</summary>
     public int Upgrades { get; init; }
 
-    /// <summary>강화 값: 기본 값에 그 스킬에 이미 건 강화 하나마다 <see cref="UpgradeStep"/>을 더한다.</summary>
+    /// <summary>강화 값: 기본 값에 그 사본에 이미 건 강화 하나마다 <see cref="UpgradeStep"/>을 더한다.</summary>
     public int UpgradePrice { get; init; } = 80;
 
     public int UpgradeStep { get; init; } = 40;

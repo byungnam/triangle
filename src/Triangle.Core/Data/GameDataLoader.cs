@@ -398,8 +398,8 @@ public static class GameDataLoader
         }
 
         var reward = run.Reward;
-        if (reward.Cards < 1 || reward.FightCards < 0 || reward.EliteExtraCards < 0 || new[] { reward.Active, reward.Passive, reward.Line }.Any(w => w < 0)
-            || reward.Active + reward.Passive + reward.Line == 0)
+        if (reward.Cards < 1 || reward.FightCards < 0 || reward.EliteExtraCards < 0 || new[] { reward.Active, reward.Passive, reward.Line, reward.Upgrade }.Any(w => w < 0)
+            || reward.Active + reward.Passive + reward.Line + reward.Upgrade == 0)
         {
             errors.Add($"{RunFile}: reward needs at least one card and one positive weight");
         }

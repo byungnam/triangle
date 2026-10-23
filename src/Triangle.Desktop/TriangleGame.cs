@@ -272,9 +272,9 @@ public class TriangleGame : Game
         };
     }
 
-    private void StartRun(IReadOnlyList<string> classIds, IReadOnlyList<Triangle.Core.Units.Row> rows)
+    private void StartRun(IReadOnlyList<string> classIds, IReadOnlyList<Triangle.Core.Units.Row> rows, int ascension)
     {
-        Runs.Start(classIds, rows);
+        Runs.Start(classIds, rows, ascension);
         ShowRun();
     }
 

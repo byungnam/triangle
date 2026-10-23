@@ -62,6 +62,9 @@ public sealed record RunSaveFile
     /// <summary>연 해금이 이 판에 주는 편의 (판을 시작할 때의 해금). 없으면(예전 세이브) 편의가 없다.</summary>
     public RunBoons Boons { get; init; } = new();
 
+    /// <summary>승천 단계. 없으면(예전 세이브) 0이다. 어려움은 지금 데이터의 승천 단계로 다시 정한다.</summary>
+    public int Ascension { get; init; }
+
     /// <summary>치른 전투.</summary>
     public IReadOnlyList<RunBattleRecord> History { get; init; } = [];
 }
@@ -145,6 +148,7 @@ public sealed partial class Run
         BossCleared = _bossCleared,
         Locked = Locked.Order(StringComparer.Ordinal).ToList(),
         Boons = Boons,
+        Ascension = Ascension,
         History = History.ToList(),
     };
 
@@ -194,6 +198,11 @@ public sealed partial class Run
         else if (file.Path.Any(id => id < 0 || id >= file.Maps[file.Act].Nodes.Count))
         {
             errors.Add("run save: the path leaves the map");
+        }
+
+        if (file.Ascension < 0 || file.Ascension > rules.Ascensions.Count)
+        {
+            errors.Add($"run save: ascension {file.Ascension} is out of range (0..{rules.Ascensions.Count})");
         }
 
         errors.AddRange(file.Bosses.Concat(file.History.Select(h => h.EncounterId)).Distinct().Where(id => !data.Encounters.ContainsKey(id))
@@ -264,7 +273,8 @@ public sealed partial class Run
             throw new SaveGameException(errors);
         }
 
-        var run = new Run(file.Seed, file.Maps, file.Bosses, file.Gold, file.Locked.ToHashSet(), file.Boons ?? new RunBoons())
+        var run = new Run(file.Seed, file.Maps, file.Bosses, file.Gold, file.Locked.ToHashSet(), file.Boons ?? new RunBoons(), file.Ascension,
+            RunAscension.Total(rules, file.Ascension))
         {
             Phase = file.Phase,
             Act = file.Act,

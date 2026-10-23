@@ -274,5 +274,17 @@
     "elite": 3,
     "boss": 8,
     "victory": 10
-  }
+  },
+  "ascensions": [
+    { "name": "정예가 강하다", "elite": 10 },
+    { "name": "보통 적이 강하다", "fight": 8 },
+    { "name": "보스가 강하다", "boss": 10 },
+    { "name": "전투 골드가 적다", "gold": -20 },
+    { "name": "상점이 비싸다", "shop": 20 },
+    { "name": "정예가 더 강하다", "elite": 10 },
+    { "name": "상점 강화가 한 번뿐이다", "upgrades": -1 },
+    { "name": "보통 적이 더 강하다", "fight": 8 },
+    { "name": "보상 카드가 적다", "cards": -1 },
+    { "name": "보스가 더 강하다", "boss": 15 }
+  ]
 }

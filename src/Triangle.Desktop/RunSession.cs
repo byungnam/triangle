@@ -24,10 +24,10 @@ internal sealed class RunSession(GameData data, RunStore store, ProfileStore pro
     /// <summary>불러온 판으로 시작한다 (세이브가 없으면 null).</summary>
     public void Resume(Run? run) => Run = run;
 
-    /// <summary>새 판을 시작하고 저장한다. <paramref name="rows"/>는 멤버마다 서는 줄이다.</summary>
-    public void Start(IReadOnlyList<string> classIds, IReadOnlyList<Triangle.Core.Units.Row> rows)
+    /// <summary>새 판을 시작하고 저장한다. <paramref name="rows"/>는 멤버마다 서는 줄, <paramref name="ascension"/>은 승천 단계다.</summary>
+    public void Start(IReadOnlyList<string> classIds, IReadOnlyList<Triangle.Core.Units.Row> rows, int ascension)
     {
-        Run = Run.Start(Data, classIds, Random.Shared.Next(), Profile.UnlocksForRun(Data), rows);
+        Run = Run.Start(Data, classIds, Random.Shared.Next(), Profile.UnlocksForRun(Data), rows, Math.Min(ascension, Profile.Ascension));
         Save();
     }
 

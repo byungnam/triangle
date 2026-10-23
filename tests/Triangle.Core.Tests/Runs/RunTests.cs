@@ -59,11 +59,11 @@ public class RunTests
     });
 
     /// <summary>첫 전투를 이긴 판 (보상 단계). 이기는 시드를 찾는다.</summary>
-    private static Run WonFirstFight(GameData data, IReadOnlyList<string> party, int from = 0, RunUnlocks? unlocks = null)
+    private static Run WonFirstFight(GameData data, IReadOnlyList<string> party, int from = 0, RunUnlocks? unlocks = null, int ascension = 0)
     {
         for (var seed = from; seed < from + 50; seed++)
         {
-            var run = Run.Start(data, party, seed, unlocks);
+            var run = Run.Start(data, party, seed, unlocks, ascension: ascension);
             run.Enter(data, run.Choices[0].Id);
             if (run.Phase == RunPhase.Reward)
             {
@@ -1234,9 +1234,9 @@ public class RunTests
     }
 
     /// <summary>판을 끝까지 둔다: 첫 지점, 보상은 건너뛰기, 휴식은 봉인 풀기.</summary>
-    private static Run PlayThrough(GameData data, int seed)
+    private static Run PlayThrough(GameData data, int seed, int ascension = 0)
     {
-        var run = Run.Start(data, Party, seed);
+        var run = Run.Start(data, Party, seed, ascension: ascension);
         while (!run.Finished)
         {
             switch (run.Phase)
@@ -1254,6 +1254,82 @@ public class RunTests
         }
 
         return run;
+    }
+
+    [Fact]
+    public void Ascension_levels_stack_and_make_the_run_harder()
+    {
+        RunAscension[] levels = [new() { Name = "정예", Elite = 10 }, new() { Name = "살림", Fight = 8, Gold = -50, Shop = 20, Upgrades = -1, Cards = -2 }];
+        var data = SecondFloor("shop", r => r with { Ascensions = levels, Shop = r.Shop with { Upgrades = 2 } });
+        var rules = data.Run!;
+
+        // 단계는 쌓인다: 승천 2에는 1단계와 2단계가 모두 걸린다.
+        var total = RunAscension.Total(rules, 2);
+        Assert.Equal((8, 10, -50, 20, -1, -2), (total.Fight, total.Elite, total.Gold, total.Shop, total.Upgrades, total.Cards));
+        Assert.Equal(["보통 적 +8%", "정예 +10%", "전투 골드 -50%", "상점 값 +20%", "상점 강화 -1번", "보상 카드 -2장"], total.Parts());
+        Assert.True(RunAscension.Total(rules, 0).IsEmpty);
+        Assert.Equal("승천은 0에서 2까지다", Run.WhyCannotStart(data, Party, null, 3));
+
+        // 적은 막이 정한 세기에 승천만큼 더 강하다.
+        var encounter = data.Zones[rules.Acts[0].ZoneId].Encounters[0].EncounterId;
+        int Hp(IReadOnlyList<CombatantSetup> team) => team[0].ItemBonuses.Single(b => b.Kind == BonusKind.MaxHpPercent).Percent;
+        Assert.Equal(Hp(Run.EnemyTeam(data, 0, RunNodeKind.Fight, encounter)) + 8, Hp(Run.EnemyTeam(data, 0, RunNodeKind.Fight, encounter, total)));
+
+        // 승천 2로 첫 전투를 이기면 골드는 절반이고, 카드는 1장(3장 - 2)이다.
+        var run = WonFirstFight(data, Party, ascension: 2);
+        Assert.InRange(run.Gold, rules.Reward.GoldMin / 2, rules.Reward.GoldMax / 2);
+        Assert.Single(run.Offer);
+
+        // 상점은 20% 비싸고 강화는 한 번뿐이다.
+        run.Skip();
+        run.Enter(data, run.Choices[0].Id);
+        Assert.Equal(RunPhase.Shop, run.Phase);
+        Assert.Equal((rules.Shop.UnsealPrice * 120 / 100, 1), (run.UnsealPrice(data), run.UpgradesLeft));
+
+        // 세이브에 승천이 남는다. 데이터에 없는 단계면 거부한다.
+        var copy = Run.Deserialize(run.Serialize(), data);
+        Assert.Equal((2, run.UnsealPrice(data)), (copy.Ascension, copy.UnsealPrice(data)));
+        Assert.Contains("run save: ascension 3 is out of range (0..2)", Assert.Throws<SaveGameException>(() => Run.Restore(run.ToSave() with { Ascension = 3 }, data)).Errors);
+
+        // 단계는 판을 어렵게만 한다.
+        var errors = Assert.Throws<GameDataException>(() => With(r => r with { Ascensions = [new() { Name = "쉬움", Gold = 10 }, new() { Name = "빈 것" }, new() { Fight = 5 }] })).Errors;
+        Assert.Contains(errors, e => e.Contains("ascension 1 must only make the run harder"));
+        Assert.Contains(errors, e => e.Contains("ascension 2 changes nothing"));
+        Assert.Contains(errors, e => e.Contains("ascension 3 needs a name"));
+    }
+
+    [Fact]
+    public void Winning_at_the_highest_open_ascension_opens_the_next()
+    {
+        var data = With(r => r with
+        {
+            Acts = [new RunAct("outskirts_forest", 2) { Bosses = ["wild_dogs"] }],
+            Ascensions = [new() { Name = "하나", Fight = 1 }, new() { Name = "둘", Fight = 1 }],
+        });
+        Run Won(int ascension) => Enumerable.Range(0, 30).Select(seed => PlayThrough(data, seed, ascension)).First(r => r.Phase == RunPhase.Victory);
+
+        // 지면 열리지 않고, 처음 이기면 승천 1이 열린다.
+        var profile = new Profile();
+        var lost = WonFirstFight(data, Party);
+        lost.Abandon();
+        profile.Record(lost, data);
+        Assert.Equal(0, profile.Ascension);
+        Assert.Equal(1, profile.AscensionAfter(Won(0), data));
+        profile.Record(Won(0), data);
+        Assert.Equal(1, profile.Ascension);
+
+        // 열린 가장 높은 단계로 이겨야 다음이 열린다. 끝 단계를 넘지 않는다.
+        profile.Record(Won(0), data);
+        Assert.Equal(1, profile.Ascension);
+        profile.Record(Won(1), data);
+        Assert.Equal(2, profile.Ascension);
+        profile.Record(Won(2), data);
+        Assert.Equal(2, profile.Ascension);
+
+        // 기록에 남고, 데이터의 단계가 줄면 그만큼으로 줄인다.
+        var json = profile.Serialize();
+        Assert.Equal(2, Profile.Deserialize(json, data).Ascension);
+        Assert.Equal(0, Profile.Deserialize(json, With(r => r with { Ascensions = [] })).Ascension);
     }
 
     [Fact]

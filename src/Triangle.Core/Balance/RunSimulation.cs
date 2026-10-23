@@ -22,8 +22,7 @@ public enum RunBot
     /// <summary>
     /// 보통 사람 (2026-10-23): 미리 싸워 보지 않고 눈에 보이는 것만으로 고른다. 카드는 정해 둔 우선순위(줄 상한, 놓인 사본의 강화, 없는 액티브,
     /// 패시브), 상점은 봉인 풀기 → 강화 → 방어구·무기 → 장신구 → 없는 스킬 → 줄 상한 순으로 살 수 있는 만큼, 보스 대비는 하지 않는다.
-    /// 첫 판 난이도의 기준이다.
-    /// 지점, 휴식, 이벤트는 똑똑한 봇과 같은 규칙이다.
+    /// 첫 판 난이도의 기준이다. 지점, 휴식, 이벤트는 똑똑한 봇과 같은 규칙이다.
     /// </summary>
     Novice,
 }
@@ -40,6 +39,9 @@ public sealed record RunSimOptions
 
     /// <summary>똑똑한 봇이 카드 후보마다 적 조합 하나를 미리 싸워 보는 시드 수.</summary>
     public int LookaheadSeeds { get; init; } = 3;
+
+    /// <summary>승천 단계 (0이면 첫 판 난이도).</summary>
+    public int Ascension { get; init; }
 }
 
 /// <summary>골드를 쓴 곳.</summary>
@@ -200,7 +202,7 @@ public sealed class RunSimulation
                 .Concat(bosses.Select(id => (Kind: RunNodeKind.Boss, Id: id)));
             foreach (var (kind, id) in fights.Distinct())
             {
-                _teams[(i, kind, id)] = Run.EnemyTeam(data, i, kind, id);
+                _teams[(i, kind, id)] = Run.EnemyTeam(data, i, kind, id, RunAscension.Total(_rules, _options.Ascension));
             }
         }
 
@@ -217,7 +219,7 @@ public sealed class RunSimulation
 
     public RunSimResult Play(int seed)
     {
-        var run = Run.Start(_data, _options.Party, seed, _options.Unlocks);
+        var run = Run.Start(_data, _options.Party, seed, _options.Unlocks, ascension: _options.Ascension);
         var random = new Random(Seeds.Derive(seed, 0xB07));
         var tally = new Tally(run.Members.Count);
         while (!run.Finished)

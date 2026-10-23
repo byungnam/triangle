@@ -431,6 +431,25 @@ public static class GameDataLoader
             errors.Add($"{RunFile}: rest unseal must not be negative and trainCards must be at least 1");
         }
 
+        // 승천 단계는 판을 어렵게만 한다 (적은 강해지고, 골드·강화·카드는 줄고, 값은 오른다).
+        for (var i = 0; i < run.Ascensions.Count; i++)
+        {
+            var a = run.Ascensions[i];
+            if (string.IsNullOrWhiteSpace(a.Name))
+            {
+                errors.Add($"{RunFile}: ascension {i + 1} needs a name");
+            }
+
+            if (a.IsEmpty)
+            {
+                errors.Add($"{RunFile}: ascension {i + 1} changes nothing");
+            }
+            else if (a.Fight < 0 || a.Elite < 0 || a.Boss < 0 || a.Shop < 0 || a.Gold is > 0 or < -100 || a.Upgrades > 0 || a.Cards > 0)
+            {
+                errors.Add($"{RunFile}: ascension {i + 1} must only make the run harder");
+            }
+        }
+
         foreach (var duplicate in run.Events.GroupBy(e => e.Id).Where(g => g.Count() > 1))
         {
             errors.Add($"{RunFile}: duplicate event id '{duplicate.Key}'");

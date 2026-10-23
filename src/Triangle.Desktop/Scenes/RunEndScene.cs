@@ -53,12 +53,21 @@ internal sealed class RunEndScene : RunScene
         var box = Box(Width, spacing: 10, border: Won ? Theme.Gold : Theme.Enemy);
         box.Widgets.Add(W.Label(Won ? "마지막 막의 보스를 물리쳤습니다!" : "원정이 끝났습니다.", 26, Won ? Theme.Gold : Theme.Enemy, bold: true));
         var acts = Data.Run!.Acts.Count;
-        box.Widgets.Add(W.Label(Won ? $"{acts}막 모두 통과" : $"{RunText.Act(Run, Data)}에서 끝남 ({Run.Act}/{acts}막 통과)", 18, Theme.Text));
+        var where = Won ? $"{acts}막 모두 통과" : $"{RunText.Act(Run, Data)}에서 끝남 ({Run.Act}/{acts}막 통과)";
+        box.Widgets.Add(W.Label(Run.Ascension > 0 ? $"승천 {Run.Ascension} · {where}" : where, 18, Theme.Text));
         box.Widgets.Add(W.Label($"전투 {Run.Fights}번 · 남은 골드 {Run.Gold} (판이 끝나면 사라짐) · 사본 {Run.Copies.Values.Sum()}장", 16, Theme.TextDim));
         box.Widgets.Add(new Panel { Height = 6 });
         var renown = Profile.RenownFor(Run, Data);
         box.Widgets.Add(W.Header("node.boss", $"명성 +{renown}", $"지금 {Session.Profile.Renown} → {Session.Profile.Renown + renown}"));
         box.Widgets.Add(W.Label(RenownBreakdown(), 15, Theme.Text, width: Width - 24, wrap: true));
+        var ascension = Session.Profile.AscensionAfter(Run, Data);
+        if (ascension > Session.Profile.Ascension)
+        {
+            // 처음 이기면 승천 1이, 열린 가장 높은 승천으로 이기면 다음 단계가 열린다.
+            box.Widgets.Add(new Panel { Height = 6 });
+            box.Widgets.Add(W.Header("lock", $"승천 {ascension} 열림", Data.Run!.Ascensions[ascension - 1].Name));
+            box.Widgets.Add(W.Label("다음 원정부터 파티 고르기에서 고를 수 있습니다. 승천은 앞 단계의 어려움을 모두 안고 갑니다.", 15, Theme.Text, width: Width - 24, wrap: true));
+        }
         box.Widgets.Add(new Panel { Height = 6 });
         box.Widgets.Add(W.Header("figure", "파티"));
         foreach (var member in Run.Members)

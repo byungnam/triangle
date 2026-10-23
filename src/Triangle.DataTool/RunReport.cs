@@ -21,7 +21,7 @@ internal static class RunReport
         }
 
         if (Bench.Number(options, "runs", 200, 1) is not { } runs || Bench.Number(options, "lookahead", 3, 1) is not { } lookahead
-            || Bench.Number(options, "seed", 0, 0) is not { } seed)
+            || Bench.Number(options, "seed", 0, 0) is not { } seed || Bench.Number(options, "ascension", 0, 0) is not { } ascension)
         {
             return 2;
         }
@@ -48,9 +48,9 @@ internal static class RunReport
             return 2;
         }
 
-        if (Triangle.Core.Runs.Run.WhyCannotStart(data, party, unlocks) is { } reason)
+        if (Triangle.Core.Runs.Run.WhyCannotStart(data, party, unlocks, ascension) is { } reason)
         {
-            Console.Error.WriteLine($"--party: {reason}");
+            Console.Error.WriteLine($"--party/--ascension: {reason}");
             return 2;
         }
 
@@ -58,6 +58,11 @@ internal static class RunReport
         Console.WriteLine($"파티: {string.Join(", ", party.Select(id => data.Classes[id].Name))} · 해금: {(options.Get("unlocks") == "all" ? "모두 열림" : "없음 (처음 판)")} · 판 {runs}개");
         Console.WriteLine($"막: {string.Join(" → ", acts)} · 줄 상한 시작 {rules.StartLines}, 최대 {rules.MaxLines} · 시작 골드 {rules.StartGold + unlocks.StartGold}"
             + (unlocks.Boons.IsEmpty ? "" : $" · 해금의 편의: {string.Join(", ", unlocks.Boons.Parts())}"));
+        if (ascension > 0)
+        {
+            Console.WriteLine($"승천 {ascension}: {string.Join(", ", RunAscension.Total(rules, ascension).Parts())}");
+        }
+
         Console.WriteLine();
         Console.WriteLine(Bench.Pad("봇", 8) + Bench.Pad("클리어", 8, true) + "  " + Bench.Pad("탈락 (막별)", 26) + Bench.Pad("전투/판", 9, true)
             + Bench.Pad("쓰러짐/판", 11, true) + Bench.Pad("사망/판", 9, true) + Bench.Pad("카드/판", 9, true) + Bench.Pad("번 골드", 9, true)
@@ -67,7 +72,7 @@ internal static class RunReport
         var details = new List<(RunBot Bot, IReadOnlyList<RunSimResult> Results)>();
         foreach (var bot in bots)
         {
-            var results = new RunSimulation(data, new RunSimOptions { Bot = bot, Party = party, Unlocks = unlocks, LookaheadSeeds = lookahead }).RunMany(runs, seed);
+            var results = new RunSimulation(data, new RunSimOptions { Bot = bot, Party = party, Unlocks = unlocks, LookaheadSeeds = lookahead, Ascension = ascension }).RunMany(runs, seed);
             details.Add((bot, results));
             var failed = Enumerable.Range(0, rules.Acts.Count).Select(a => 100.0 * results.Count(r => !r.Cleared && r.Act == a) / runs);
             Console.WriteLine(

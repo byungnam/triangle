@@ -11,6 +11,7 @@ namespace Triangle.Desktop.Scenes;
 /// <summary>
 /// 새 원정: 클래스로 파티를 고른다 (같은 클래스 여럿 가능). 위는 클래스 카드, 아래는 고른 자리와 출발·해금 버튼.
 /// 자리마다 전위·후위를 고른다(클래스와 상관없이, 처음 값은 클래스가 정한다). 아직 열지 않은 클래스는 흐리게 보이고 넣을 수 없다.
+/// 판을 이긴 적이 있으면 자리 아래에서 승천 단계를 고른다(처음 값은 열린 가장 높은 단계).
 /// </summary>
 internal sealed class RunPartyScene : RunScene
 {
@@ -18,19 +19,21 @@ internal sealed class RunPartyScene : RunScene
     private const int Gap = 16;
 
     private readonly List<(string ClassId, Row Row)> _picked;
-    private readonly Action<IReadOnlyList<string>, IReadOnlyList<Row>> _start;
+    private readonly Action<IReadOnlyList<string>, IReadOnlyList<Row>, int> _start;
     private readonly Action _openUnlocks;
     private readonly RunUnlocks _unlocks;
+    private int _ascension;
 
     /// <summary>클래스마다 시작 상태의 전투 입력 (HP·MP 표시용).</summary>
     private readonly Dictionary<string, UnitPreview> _previews;
 
-    /// <param name="start">고른 클래스로 판을 시작한다.</param>
+    /// <param name="start">고른 클래스, 자리마다의 줄, 승천 단계로 판을 시작한다.</param>
     /// <param name="openUnlocks">해금·기록 화면을 연다.</param>
-    public RunPartyScene(Ui ui, RunSession session, Rectangle bounds, Action<IReadOnlyList<string>, IReadOnlyList<Row>> start, Action openUnlocks)
+    public RunPartyScene(Ui ui, RunSession session, Rectangle bounds, Action<IReadOnlyList<string>, IReadOnlyList<Row>, int> start, Action openUnlocks)
         : base(ui, session, bounds, () => { })
     {
         _start = start;
+        _ascension = session.Profile.Ascension;
         _openUnlocks = openUnlocks;
         _unlocks = session.Profile.UnlocksForRun(session.Data);
         _picked = session.Data.Classes.Values.Where(c => !_unlocks.Locked.Contains(c.Id)).Take(session.Data.Run!.PartySize).Select(c => (c.Id, c.Row)).ToList();
@@ -77,7 +80,9 @@ internal sealed class RunPartyScene : RunScene
         root.Widgets.Add(Place(party, Body.Left + 16, top + 16));
 
         var classIds = _picked.Select(p => p.ClassId).ToList();
-        var start = Button("출발  ▶", () => _start(classIds, _picked.Select(p => p.Row).ToList()), Run.WhyCannotStart(Data, classIds, _unlocks), accent: true, width: 220, size: 22);
+        root.Widgets.Add(Place(AscensionPicker(), Body.Left + 16, Body.Bottom - 12 - 44));
+        var start = Button("출발  ▶", () => _start(classIds, _picked.Select(p => p.Row).ToList(), _ascension), Run.WhyCannotStart(Data, classIds, _unlocks, _ascension),
+            accent: true, width: 220, size: 22);
         start.Height = 64;
         root.Widgets.Add(Place(start, Body.Right - 16 - 220, Body.Bottom - 16 - 64));
         var unlocks = Button($"해금 · 기록 (명성 {Session.Profile.Renown})", _openUnlocks, width: 220);
@@ -89,6 +94,36 @@ internal sealed class RunPartyScene : RunScene
             root.Widgets.Add(Place(W.Label(string.Join("\n", boons), 15, Theme.Cover, width: 220, wrap: true), Body.Right - 16 - 220, top + 62));
         }
         return root;
+    }
+
+    /// <summary>승천 고르기: ◀ 단계 ▶와 그 단계의 이름, 쌓인 어려움. 판을 이긴 적이 없으면 안내만 보인다.</summary>
+    private Widget AscensionPicker()
+    {
+        var open = Session.Profile.Ascension;
+        if (open == 0)
+        {
+            return W.Label("원정을 처음 성공하면 승천이 열립니다. 단계마다 적이 강해지거나 살림이 빠듯해집니다.", 15, Theme.TextDim);
+        }
+
+        var row = new HorizontalStackPanel { Spacing = 10 };
+        var down = Button("◀", () => { _ascension--; Refresh(); }, _ascension > 0 ? null : "가장 낮은 단계다", width: 48);
+        var up = Button("▶", () => { _ascension++; Refresh(); }, _ascension < open ? null : "아직 열지 않은 단계다", width: 48);
+        row.Widgets.Add(down);
+        row.Widgets.Add(W.Label(_ascension == 0 ? "승천 없음" : $"승천 {_ascension}", 20, _ascension == 0 ? Theme.Text : Theme.Gold, bold: true, width: 100));
+        row.Widgets.Add(up);
+        var text = new VerticalStackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+        if (_ascension == 0)
+        {
+            text.Widgets.Add(W.Label($"첫 판 난이도 · 승천 {open}까지 열림", 15, Theme.TextDim));
+        }
+        else
+        {
+            text.Widgets.Add(W.Label($"{Data.Run!.Ascensions[_ascension - 1].Name} (앞 단계 모두 포함) · 승천 {open}까지 열림", 15, Theme.Text));
+            text.Widgets.Add(W.Label(string.Join(" · ", RunAscension.Total(Data.Run, _ascension).Parts()), 14, Theme.Cover));
+        }
+
+        row.Widgets.Add(text);
+        return row;
     }
 
     private Widget ClassCard(Triangle.Core.Runs.ClassDefinition c)

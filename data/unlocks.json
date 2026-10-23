@@ -88,81 +88,6 @@
     "startGold": 50
   },
   {
-    "id": "war_chest_3",
-    "name": "군자금 III",
-    "description": "판을 시작할 때 골드 50을 더 받는다.",
-    "cost": 50,
-    "requires": "war_chest_2",
-    "startGold": 50
-  },
-  {
-    "id": "drill",
-    "name": "단련 I",
-    "description": "파티 모두의 최대 HP가 늘어난다.",
-    "cost": 20,
-    "boons": {
-      "hpPercent": 5
-    }
-  },
-  {
-    "id": "drill_2",
-    "name": "단련 II",
-    "description": "파티 모두의 최대 HP가 늘어난다.",
-    "cost": 40,
-    "requires": "drill",
-    "boons": {
-      "hpPercent": 5
-    }
-  },
-  {
-    "id": "drill_3",
-    "name": "단련 III",
-    "description": "파티 모두의 최대 HP가 늘어난다.",
-    "cost": 70,
-    "requires": "drill_2",
-    "boons": {
-      "hpPercent": 5
-    }
-  },
-  {
-    "id": "hone",
-    "name": "연마 I",
-    "description": "파티 모두의 위력(피해·회복·보호막)이 늘어난다.",
-    "cost": 20,
-    "boons": {
-      "powerPercent": 5
-    }
-  },
-  {
-    "id": "hone_2",
-    "name": "연마 II",
-    "description": "파티 모두의 위력(피해·회복·보호막)이 늘어난다.",
-    "cost": 40,
-    "requires": "hone",
-    "boons": {
-      "powerPercent": 5
-    }
-  },
-  {
-    "id": "hone_3",
-    "name": "연마 III",
-    "description": "파티 모두의 위력(피해·회복·보호막)이 늘어난다.",
-    "cost": 70,
-    "requires": "hone_2",
-    "boons": {
-      "powerPercent": 5
-    }
-  },
-  {
-    "id": "veterans",
-    "name": "숙련된 동료",
-    "description": "모든 멤버(합류한 멤버도)가 줄 상한 하나를 더 가지고 시작한다.",
-    "cost": 80,
-    "boons": {
-      "startLines": 1
-    }
-  },
-  {
     "id": "field_medic",
     "name": "야전 의무병",
     "description": "휴식에서 봉인 풀기를 고르면 멤버마다 봉인 하나를 더 푼다.",
@@ -177,7 +102,7 @@
     "description": "상점의 모든 값(물건, 강화, 줄 상한, 봉인 풀기)이 싸진다.",
     "cost": 40,
     "boons": {
-      "shopDiscountPercent": 15
+      "shopDiscountPercent": 10
     }
   }
 ]

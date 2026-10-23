@@ -98,10 +98,10 @@ public class RunTests
     [Fact]
     public void Maps_are_deterministic_connected_and_keep_the_floor_rules()
     {
-        // 게임의 지도: 한 막 20층, 폭 6칸, 경로 6개, 첫 층 3갈래.
+        // 게임의 지도: 한 막 15층, 폭 6칸, 경로 6개, 첫 층 3갈래.
         var rules = Drafting.Run!.Map;
         var floors = Drafting.Run.Acts[0].Floors;
-        Assert.Equal((20, 6, 6, 3, 5), (floors, rules.Width, rules.Paths, rules.Starts, rules.SpecialFrom));
+        Assert.Equal((15, 6, 6, 3, 5), (floors, rules.Width, rules.Paths, rules.Starts, rules.SpecialFrom));
         var kinds = new HashSet<RunNodeKind>();
         for (var seed = 0; seed < 200; seed++)
         {
@@ -545,10 +545,10 @@ public class RunTests
     [Fact]
     public void A_run_is_five_long_acts_and_recruits_come_only_from_a_rare_event()
     {
-        // 2026-10-20 사용자 결정: 막 5개 × 20층, 동료 합류는 이벤트에서만 드물게.
+        // 2026-10-20 사용자 결정: 막 5개, 동료 합류는 이벤트에서만 드물게. 막마다 20층이었다가 2026-10-23 A안으로 15층.
         var rules = Shipped.Run!;
         Assert.Equal(5, rules.Acts.Count);
-        Assert.All(rules.Acts, a => Assert.Equal(20, a.Floors));
+        Assert.All(rules.Acts, a => Assert.Equal(15, a.Floors));
         Assert.Equal(0, rules.Shop.Recruits);
         var joins = rules.Events.Where(e => e.Options.Any(o => o.Join is not null)).ToList();
         Assert.NotEmpty(joins);
@@ -1068,20 +1068,16 @@ public class RunTests
     }
 
     [Fact]
-    public void Opened_unlocks_add_their_boons_to_the_run()
+    public void Opened_unlocks_add_their_small_conveniences_to_the_run()
     {
-        // 2026-10-22: 첫 판은 아주 어렵고, 해금이 판 안의 힘을 준다(시작 골드, 시작 줄 상한, 휴식, 상점 할인, 최대 HP와 위력).
-        var opened = new HashSet<string> { "war_chest", "war_chest_2", "drill", "hone", "veterans", "field_medic", "regular" };
+        // A안(2026-10-23): 해금은 고를 거리와 작은 편의(시작 골드, 휴식, 상점 할인)만 준다. 숫자가 쌓이는 힘은 없다.
+        var opened = new HashSet<string> { "war_chest", "war_chest_2", "field_medic", "regular" };
         var unlocks = RunUnlocks.For(Drafting, opened);
         Assert.Equal(100, unlocks.StartGold);
-        var u = Drafting.Unlocks;
         var expected = new RunBoons
         {
-            StartLines = u["veterans"].Boons.StartLines,
-            RestUnseal = u["field_medic"].Boons.RestUnseal,
-            ShopDiscountPercent = u["regular"].Boons.ShopDiscountPercent,
-            HpPercent = u["drill"].Boons.HpPercent,
-            PowerPercent = u["hone"].Boons.PowerPercent,
+            RestUnseal = Drafting.Unlocks["field_medic"].Boons.RestUnseal,
+            ShopDiscountPercent = Drafting.Unlocks["regular"].Boons.ShopDiscountPercent,
         };
         Assert.Equal(expected, unlocks.Boons);
         Assert.True(Fresh.Boons.IsEmpty);
@@ -1091,16 +1087,11 @@ public class RunTests
         var boosted = AtSecondFloor(data, Party, unlocks: unlocks);
         Assert.Equal(expected, boosted.Boons);
 
-        // 시작 줄 상한, 상점 값, 봉인 풀기 값.
-        Assert.All(boosted.Members, m => Assert.Equal(data.Run!.StartLines + expected.StartLines, m.Earned));
+        // 상점 값과 봉인 풀기 값이 싸지고, 전투 입력은 그대로다.
         Assert.Equal(plain.Stock.Select(s => s.Price * (100 - expected.ShopDiscountPercent) / 100), boosted.Stock.Select(s => s.Price));
         Assert.Equal(data.Run!.Shop.UnsealPrice * (100 - expected.ShopDiscountPercent) / 100, boosted.UnsealPrice(data));
-
-        // 전투 입력: 최대 HP와 위력 보너스.
-        var setup = boosted.Setup(data, boosted.Members[0]);
-        Assert.Contains(new ItemBonus(BonusKind.MaxHpPercent, expected.HpPercent), setup.ItemBonuses);
-        Assert.Contains(new ItemBonus(BonusKind.PowerPercent, expected.PowerPercent), setup.ItemBonuses);
-        Assert.Equal(plain.Setup(data, plain.Members[0]).ItemBonuses.Count + 2, setup.ItemBonuses.Count);
+        Assert.Equal(plain.Setup(data, plain.Members[0]).ItemBonuses, boosted.Setup(data, boosted.Members[0]).ItemBonuses);
+        Assert.All(boosted.Members, m => Assert.Equal(data.Run.StartLines, m.Earned));
 
         // 휴식은 봉인을 더 푼다. 세이브에도 남는다.
         Assert.Equal(data.Run.Rest.Unseal + expected.RestUnseal, boosted.RestUnseals(data));
@@ -1116,7 +1107,7 @@ public class RunTests
         profile.Unlock(Drafting, "war_chest_2");
         Assert.Equal(100, profile.UnlocksForRun(Drafting).StartGold);
 
-        UnlockDefinition Unlock(string id, string? requires = null, RunBoons? boons = null) => new() { Id = id, Name = id, Cost = 1, Requires = requires, Boons = boons ?? new() { HpPercent = 1 } };
+        UnlockDefinition Unlock(string id, string? requires = null, RunBoons? boons = null) => new() { Id = id, Name = id, Cost = 1, Requires = requires, Boons = boons ?? new() { RestUnseal = 1 } };
         var errors = Assert.Throws<GameDataException>(() => WithUnlocks([Unlock("a", "b"), Unlock("b", "a"), Unlock("c", "nope"), Unlock("d", boons: new()), Unlock("e", boons: new() { ShopDiscountPercent = 80 })])).Errors;
         Assert.Contains(errors, e => e.Contains("'a': requires go round in a circle"));
         Assert.Contains(errors, e => e.Contains("'c': requires unknown unlock 'nope'"));

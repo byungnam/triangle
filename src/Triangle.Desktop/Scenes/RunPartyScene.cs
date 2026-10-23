@@ -82,7 +82,7 @@ internal sealed class RunPartyScene : RunScene
         root.Widgets.Add(Place(start, Body.Right - 16 - 220, Body.Bottom - 16 - 64));
         var unlocks = Button($"해금 · 기록 (명성 {Session.Profile.Renown})", _openUnlocks, width: 220);
         root.Widgets.Add(Place(unlocks, Body.Right - 16 - 220, top + 16));
-        // 연 해금이 이 판에 주는 것: 시작 골드와 힘.
+        // 연 해금이 이 판에 주는 것: 시작 골드와 편의.
         var boons = (_unlocks.StartGold > 0 ? [$"시작 골드 +{_unlocks.StartGold}"] : Array.Empty<string>()).Concat(_unlocks.Boons.Parts()).ToList();
         if (boons.Count > 0)
         {

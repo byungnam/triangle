@@ -7,7 +7,7 @@
   "acts": [
     {
       "zoneId": "outskirts_forest",
-      "floors": 20,
+      "floors": 15,
       "bosses": [
         "boss_scavenger_chief",
         "wolf_pack"
@@ -32,7 +32,7 @@
     },
     {
       "zoneId": "abandoned_fort",
-      "floors": 20,
+      "floors": 15,
       "bosses": [
         "boss_halted_regiment",
         "fort_penitents"
@@ -58,7 +58,7 @@
     },
     {
       "zoneId": "ashen_capital",
-      "floors": 20,
+      "floors": 15,
       "bosses": [
         "boss_triad_guardians",
         "archmage_circle"
@@ -83,7 +83,7 @@
     },
     {
       "zoneId": "sunken_sanctum",
-      "floors": 20,
+      "floors": 15,
       "bosses": [
         "sanctum_bulwark",
         "necro_king"
@@ -109,7 +109,7 @@
     },
     {
       "zoneId": "triangle_heart",
-      "floors": 20,
+      "floors": 15,
       "bosses": [],
       "elites": [
         "sanctum_choir",

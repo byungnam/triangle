@@ -74,15 +74,15 @@ public sealed record RunStock(RunStockKind Kind, string Id, int Price)
 /// <summary>판의 전투 기록 한 줄 (판이 끝나면 명성과 탐사 기록에 쓴다).</summary>
 public sealed record RunBattleRecord(int Act, string EncounterId, RunNodeKind Kind, CombatOutcome Outcome);
 
-/// <summary>판을 시작할 때 해금이 정하는 것: 이 판에 나오지 않는 클래스·카드·아이템, 더 받는 시작 골드, 판 안의 힘(<see cref="RunBoons"/>).</summary>
+/// <summary>판을 시작할 때 해금이 정하는 것: 이 판에 나오지 않는 클래스·카드·아이템, 더 받는 시작 골드, 판 안의 작은 편의(<see cref="RunBoons"/>).</summary>
 public sealed record RunUnlocks(IReadOnlySet<string> Locked, int StartGold)
 {
-    /// <summary>아무것도 잠기지 않고 해금의 힘도 없는 판 (시험·설계 도구용).</summary>
+    /// <summary>아무것도 잠기지 않고 해금의 편의도 없는 판 (시험·설계 도구용).</summary>
     public static RunUnlocks All { get; } = new(new HashSet<string>(), 0);
 
     public RunBoons Boons { get; init; } = new();
 
-    /// <summary>연 해금 ID로 정한다: 열지 않은 해금이 적은 것은 잠기고, 연 해금의 시작 골드와 힘을 더한다.</summary>
+    /// <summary>연 해금 ID로 정한다: 열지 않은 해금이 적은 것은 잠기고, 연 해금의 시작 골드와 편의를 더한다.</summary>
     public static RunUnlocks For(GameData data, IReadOnlySet<string> unlocked)
     {
         var opened = data.Unlocks.Values.Where(u => unlocked.Contains(u.Id)).ToList();
@@ -133,7 +133,7 @@ public sealed partial class Run
     /// <summary>이 판에 나오지 않는 클래스·카드·아이템 (아직 열지 않은 해금, 판을 시작할 때 정한다).</summary>
     public IReadOnlySet<string> Locked { get; }
 
-    /// <summary>연 해금이 이 판에 주는 힘 (판을 시작할 때 정한다).</summary>
+    /// <summary>연 해금이 이 판에 주는 편의 (판을 시작할 때 정한다).</summary>
     public RunBoons Boons { get; }
 
     /// <summary>치른 전투 (치른 순서).</summary>
@@ -835,14 +835,10 @@ public sealed partial class Run
         ];
         var setup = new CombatantSetup(member.Id, Name(data, member), c.Stats, member.Row, null, null, member.Passives.ToDictionary(), tactics);
         var catalog = Catalog(data);
-        var loaded = new Loadout(worn).Apply(setup, data.Actions.Values, _ => 0) with
+        return new Loadout(worn).Apply(setup, data.Actions.Values, _ => 0) with
         {
             GrantedActions = tactics.Select(t => t.ActionId).Where(id => !catalog.Actions[id].Universal).ToHashSet(),
         };
-
-        // 해금의 힘: 파티 모두의 최대 HP와 위력.
-        ItemBonus[] boons = [new(BonusKind.MaxHpPercent, Boons.HpPercent), new(BonusKind.PowerPercent, Boons.PowerPercent)];
-        return boons.Any(b => b.Percent != 0) ? loaded with { ItemBonuses = [.. loaded.ItemBonuses, .. boons.Where(b => b.Percent != 0)] } : loaded;
     }
 
     /// <summary>멤버의 기본 공격: 든 무기가 바꾸면 그 행동(<see cref="ItemDefinition.BasicAttack"/>), 아니면 공용 기본 공격.</summary>
@@ -877,17 +873,12 @@ public sealed partial class Run
 
     private static RunDefinition Rules(GameData data) => data.Run ?? throw new InvalidOperationException("run.json이 없다");
 
-    /// <summary>새 멤버: 클래스의 기본 장비, 시작 스킬 사본 1장(파티 사본에 더한다), 그 사본으로 짠 한 줄. 시작 줄 상한은 해금이 늘린다.</summary>
+    /// <summary>새 멤버: 클래스의 기본 장비, 시작 스킬 사본 1장(파티 사본에 더한다), 그 사본으로 짠 한 줄.</summary>
     private void Join(GameData data, string classId, Row? row = null)
     {
         var c = data.Classes[classId];
         var rules = Rules(data);
-        var member = new RunMember($"m{Members.Count + 1}", classId, Math.Min(rules.MaxLines, rules.StartLines + Boons.StartLines))
-        {
-            Row = row ?? c.Row,
-            Weapon = c.Weapon,
-            Armor = c.Armor,
-        };
+        var member = new RunMember($"m{Members.Count + 1}", classId, rules.StartLines) { Row = row ?? c.Row, Weapon = c.Weapon, Armor = c.Armor };
         Copies[c.StartingSkill] = Copies.GetValueOrDefault(c.StartingSkill) + 1;
         if (rules.StartLines > 0)
         {

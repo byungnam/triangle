@@ -56,7 +56,7 @@ public sealed record RunSaveFile
     /// <summary>이 판에 나오지 않는 클래스·카드·아이템 (판을 시작할 때의 해금).</summary>
     public IReadOnlyList<string> Locked { get; init; } = [];
 
-    /// <summary>연 해금이 이 판에 주는 힘 (판을 시작할 때의 해금). 없으면(예전 세이브) 힘이 없다.</summary>
+    /// <summary>연 해금이 이 판에 주는 편의 (판을 시작할 때의 해금). 없으면(예전 세이브) 편의가 없다.</summary>
     public RunBoons Boons { get; init; } = new();
 
     /// <summary>치른 전투.</summary>

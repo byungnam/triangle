@@ -255,7 +255,7 @@ public static class GameDataLoader
             DataValidation.RequireNonNegative(u.Cost, $"{at}: cost", errors);
             DataValidation.RequireNonNegative(u.StartGold, $"{at}: startGold", errors);
             var b = u.Boons;
-            if (new[] { b.StartLines, b.RestUnseal, b.ShopDiscountPercent, b.HpPercent, b.PowerPercent }.Any(v => v < 0) || b.ShopDiscountPercent > 50)
+            if (b.RestUnseal < 0 || b.ShopDiscountPercent is < 0 or > 50)
             {
                 errors.Add($"{at}: boons must not be negative and the shop discount is at most 50%");
             }

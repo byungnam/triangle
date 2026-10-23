@@ -77,6 +77,7 @@ public static class RunUpgrades
         {
             Id = Id(action.Id, sorted),
             Name = action.Name + new string(Separator, sorted.Count),
+            Family = action.Family ?? action.Id,
         };
         foreach (var kind in sorted)
         {

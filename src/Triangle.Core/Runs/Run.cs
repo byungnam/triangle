@@ -498,16 +498,16 @@ public sealed partial class Run
     }
 
     /// <summary>
-    /// 상점에서 산다: 아이템은 가방으로, 스킬은 파티 사본으로, 합류는 새 멤버로, 줄 상한은 <paramref name="member"/>에게.
-    /// 강화는 그 사본 한 장을 강화된 사본으로 바꾼다. 그 사본이 줄에 놓여 있으면 그 줄이 강화된 사본을 쓴다(<see cref="UpgradeHolder"/>).
-    /// </summary>
-    /// <summary>
     /// 사본 <paramref name="copyId"/> 한 장을 강화하면 그 줄이 강화된 사본을 쓰게 되는 멤버: 그 사본을 켜진 줄에 놓은 첫 멤버, 없으면 꺼진 줄에
     /// 놓은 첫 멤버(합류 순서). 아무도 놓지 않았으면 null이고 놀고 있는 사본이 강화된다.
     /// </summary>
     public RunMember? UpgradeHolder(string copyId) =>
         Living.FirstOrDefault(m => m.ActiveTactics.Any(t => t.ActionId == copyId)) ?? Living.FirstOrDefault(m => m.Tactics.Any(t => t.ActionId == copyId));
 
+    /// <summary>
+    /// 상점에서 산다: 아이템은 가방으로, 스킬은 파티 사본으로, 합류는 새 멤버로, 줄 상한은 <paramref name="member"/>에게.
+    /// 강화는 그 사본 한 장을 강화된 사본으로 바꾼다. 그 사본이 줄에 놓여 있으면 그 줄이 강화된 사본을 쓴다(<see cref="UpgradeHolder"/>).
+    /// </summary>
     public void Buy(GameData data, int stock, RunMember? member = null)
     {
         if (WhyCannotBuy(data, stock, member) is { } reason)
@@ -844,8 +844,6 @@ public sealed partial class Run
         ItemBonus[] boons = [new(BonusKind.MaxHpPercent, Boons.HpPercent), new(BonusKind.PowerPercent, Boons.PowerPercent)];
         return boons.Any(b => b.Percent != 0) ? loaded with { ItemBonuses = [.. loaded.ItemBonuses, .. boons.Where(b => b.Percent != 0)] } : loaded;
     }
-
-
 
     /// <summary>멤버의 기본 공격: 든 무기가 바꾸면 그 행동(<see cref="ItemDefinition.BasicAttack"/>), 아니면 공용 기본 공격.</summary>
     public static string BasicAttack(GameData data, RunMember member) =>

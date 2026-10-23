@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Triangle.Core.Effects;
 using Triangle.Core.Skills;
 using Triangle.Core.Units;
@@ -153,8 +154,15 @@ public sealed record ActionDefinition
     /// <summary>영창 횟수. 2 이상이면 이 행동을 연속으로 이만큼 써야 효과가 난다. 다른 행동, 기절, 넘어뜨림은 처음부터 다시 하게 한다.</summary>
     public int Chant { get; init; } = 1;
 
-    /// <summary>참이면 전투당 한 번만 효과를 낸다.</summary>
+    /// <summary>참이면 전투당 한 번만 효과를 낸다 (같은 <see cref="Family"/>의 행동끼리 한 번).</summary>
     public bool OncePerBattle { get; init; }
+
+    /// <summary>
+    /// 같은 행동으로 치는 묶음: 판에서 강화한 사본(<c>fireball+power</c>)은 원래 행동 ID다. 데이터의 행동은 비어 있고 자기 ID로 친다.
+    /// 전투당 한 번인 행동을 원래 사본과 강화된 사본으로 두 번 쓰지 못하게 한다.
+    /// </summary>
+    [JsonIgnore]
+    public string? Family { get; init; }
 
     /// <summary>소환하는 유닛 (<see cref="ActionEffect.Summon"/>).</summary>
     public SummonDefinition? Summon { get; init; }

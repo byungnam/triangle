@@ -39,6 +39,7 @@ public class ActionMechanicsTests
         A("break_line") with { Scope = TargetScope.All, Rows = RowRestriction.FrontOnly, Applies = [new EffectApplication("broken", 5)] },
         A("big_spell") with { Power = 200, Chant = 3 },
         A("once") with { OncePerBattle = true },
+        A("once+power") with { OncePerBattle = true, Family = "once" },
         A("fire_bolt") with { Tags = ["fire"], Applies = [new EffectApplication("bleed", 2)] },
         A("mana_gift") with { Effect = ActionEffect.RestoreMp, Power = 10, Side = TargetSide.Ally, Rule = TargetRule.LowestMpRatio },
         A("spirit_bite") with { SummonOnly = true },
@@ -229,6 +230,16 @@ public class ActionMechanicsTests
         var alone = Run([Unit("a", actions: "once")], [Unit("e", vital: 1000)], maxActions: 6);
         Assert.Single(Of<ActionUsed>(alone), u => u.ActorId == "a");
         Assert.All(Of<Waited>(alone).Where(w => w.ActorId == "a"), w => Assert.Equal(WaitReason.NoMatchingTactic, w.Reason));
+    }
+
+    [Fact]
+    public void An_upgraded_copy_of_a_once_per_battle_action_shares_the_one_use()
+    {
+        // 판에서 강화한 사본(once+power)은 ID가 달라도 같은 행동으로 친다: 원래 사본과 합쳐 전투당 한 번이다.
+        var result = Run([Unit("a", actions: ["once+power", "once", "hit"])], [Unit("e", vital: 1000)], maxActions: 6);
+        var used = Of<ActionUsed>(result).Where(u => u.ActorId == "a").Select(u => u.ActionId).ToList();
+        Assert.Equal("once+power", used[0]);
+        Assert.All(used.Skip(1), a => Assert.Equal("hit", a));
     }
 
     [Fact]

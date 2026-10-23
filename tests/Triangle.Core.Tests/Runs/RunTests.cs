@@ -599,6 +599,7 @@ public class RunTests
         // 강화가 둘이면 둘 다 걸리고, ID는 산 순서와 상관없이 같다. 이름에는 강화 수만큼 +가 붙는다.
         var both = Apply(RunUpgradeKind.Swift, RunUpgradeKind.Power);
         Assert.Equal(("bolt+power+swift", "볼트++", 130, 800), (both.Id, both.Name, both.Power, both.Delay));
+        Assert.Equal("bolt", both.Family);
         Assert.Equal(2, bolt.Applies[0].Duration);
         var resolved = RunUpgrades.Resolve(Shipped, "fireball+power");
         Assert.Equal(("화염구+", Shipped.Actions["fireball"].Power * 13 / 10), (resolved?.Name, resolved?.Power));

@@ -21,7 +21,8 @@ public enum RunBot
 
     /// <summary>
     /// 보통 사람 (2026-10-23): 미리 싸워 보지 않고 눈에 보이는 것만으로 고른다. 카드는 정해 둔 우선순위(줄 상한, 놓인 사본의 강화, 없는 액티브,
-    /// 패시브), 상점은 봉인 풀기 → 강화 → 방어구·무기 → 장신구 → 줄 상한 순으로 살 수 있는 만큼, 보스 대비는 하지 않는다. 첫 판 난이도의 기준이다.
+    /// 패시브), 상점은 봉인 풀기 → 강화 → 방어구·무기 → 장신구 → 없는 스킬 → 줄 상한 순으로 살 수 있는 만큼, 보스 대비는 하지 않는다.
+    /// 첫 판 난이도의 기준이다.
     /// 지점, 휴식, 이벤트는 똑똑한 봇과 같은 규칙이다.
     /// </summary>
     Novice,
@@ -547,18 +548,33 @@ public sealed class RunSimulation
     }
 
     /// <summary>
-    /// 보통 사람 봇의 보상 값: 줄 상한(줄이 가장 적은 멤버에게) 4, 켜진 줄에 놓인 사본의 강화 3(위력이 클수록 조금 더), 파티에 없는 액티브 2.5,
-    /// 패시브 2(레벨이 낮은 멤버에게), 이미 있는 액티브 1, 놀고 있는 사본의 강화 0.5.
+    /// 보통 사람 봇의 보상 값: 줄 상한 3(놀고 있는 사본이 있는 클래스 멤버에게는 3.5, 줄이 적을수록 조금 더), 켜진 줄에 놓인 사본의 강화 2.6(위력이
+    /// 클수록 조금 더), 없는 액티브 2.4(그 클래스에 빈 줄이 없으면 2.2), 패시브 2(레벨이 낮을수록 조금 더), 있는 액티브 1(빈 줄이 없으면 0.5),
+    /// 놀고 있는 사본의 강화 0.3. 빈 줄을 새 액티브로 먼저 채우게 하면 오히려 더 졌다(2026-10-23, 2막 탈락 52% → 76%).
     /// </summary>
     private double NoviceWorth(Run run, RunCard card, RunMember? member, string? copy) => card.Kind switch
     {
-        RunCardKind.Line => 4 - 0.1 * member!.Earned,
-        RunCardKind.Upgrade when run.Living.Any(m => m.ActiveTactics.Any(t => t.ActionId == copy)) => 3 + RunUpgrades.Action(_data, copy!).Power / 1000.0,
-        RunCardKind.Upgrade => 0.5,
-        RunCardKind.Active => run.Copies.Keys.Any(id => RunUpgrades.BaseId(id) == card.Id) ? 1 : 2.5,
+        RunCardKind.Line => (Room(run, member!.ClassId) < 0 ? 3.5 : 3) - 0.1 * member.Earned,
+        RunCardKind.Upgrade when run.Living.Any(m => m.ActiveTactics.Any(t => t.ActionId == copy)) => 2.6 + RunUpgrades.Action(_data, copy!).Power / 1000.0,
+        RunCardKind.Upgrade => 0.3,
+        RunCardKind.Active => (Owned(run, card.Id!), Room(run, card.ClassId!) > 0) switch
+        {
+            (false, true) => 2.4,
+            (false, false) => 2.2,
+            (true, true) => 1,
+            _ => 0.5,
+        },
         RunCardKind.Passive => 2 - 0.1 * member!.Level(card.Id!),
         _ => 0,
     };
+
+    /// <summary>클래스의 빈 줄: 살아 있는 그 클래스 멤버의 줄 상한 합에서 그 클래스 사본 수를 뺀 것. 음수면 놀고 있는 사본이 있다.</summary>
+    private int Room(Run run, string classId) =>
+        run.Living.Where(m => m.ClassId == classId).Sum(m => m.Lines)
+        - run.Copies.Where(p => _owners.GetValueOrDefault(RunUpgrades.BaseId(p.Key)) == classId).Sum(p => p.Value);
+
+    /// <summary>파티가 이 행동의 사본(강화된 것 포함)을 가졌는가.</summary>
+    private static bool Owned(Run run, string actionId) => run.Copies.Keys.Any(id => RunUpgrades.BaseId(id) == actionId);
 
     /// <summary>그 막의 보통 적 조합, 정예, 보스를 미리 싸운 평균 점수. 이기면 1 + 0.5 × 남은 HP 비율, 지면 0.5 × 깎은 적 HP 비율.</summary>
     private double Lookahead(Run run)
@@ -749,8 +765,8 @@ public sealed class RunSimulation
 
     /// <summary>
     /// 보통 사람 봇의 상점: 가장 많이 봉인된 멤버의 봉인을 풀 수 있는 만큼 풀고, 켜진 줄에 놓인 사본 중 위력이 가장 큰 것에 강화(위력, 연쇄,
-    /// 지속, 신속 순으로 처음 맞는 것)를 걸고, 방어구는 전열 멤버, 무기는 쓰는 멤버, 장신구는 칸이 빈 멤버에게 비싼 것부터 사고, 남으면 줄 상한을
-    /// 줄이 가장 적은 멤버에게 산다.
+    /// 지속, 신속 순으로 처음 맞는 것)를 걸고, 방어구는 전열 멤버, 무기는 쓰는 멤버, 장신구는 칸이 빈 멤버에게 비싼 것부터 사고, 빈 줄이 있는
+    /// 클래스의 없는 스킬 사본을 사고, 남으면 줄 상한을 놀고 있는 사본이 있는 클래스(없으면 줄이 가장 적은) 멤버에게 산다.
     /// </summary>
     private void NoviceShop(Run run, Action<ShopOption> act)
     {
@@ -787,10 +803,22 @@ public sealed class RunSimulation
             }
         }
 
-        var line = Enumerable.Range(0, run.Stock.Count).FirstOrDefault(i => run.Stock[i].Kind == RunStockKind.Line, -1);
-        if (line >= 0 && run.Living.Where(m => m.Earned < _rules.MaxLines).MinBy(m => m.Earned) is { } fewest && run.WhyCannotBuy(_data, line, fewest) is null)
+        var skills = Enumerable.Range(0, run.Stock.Count).Where(i => run.Stock[i].Kind == RunStockKind.Skill)
+            .OrderBy(i => Owned(run, run.Stock[i].Id) ? 1 : 0)
+            .ToList();
+        foreach (var i in skills)
         {
-            act(new ShopOption(line, fewest.Id, null, null, run.Stock[line].Price));
+            if (Room(run, _owners[run.Stock[i].Id]) > 0 && !Owned(run, run.Stock[i].Id) && run.WhyCannotBuy(_data, i) is null)
+            {
+                act(new ShopOption(i, null, null, null, run.Stock[i].Price));
+            }
+        }
+
+        var line = Enumerable.Range(0, run.Stock.Count).FirstOrDefault(i => run.Stock[i].Kind == RunStockKind.Line, -1);
+        if (line >= 0 && run.Living.Where(m => m.Earned < _rules.MaxLines).OrderBy(m => Room(run, m.ClassId) < 0 ? 0 : 1).ThenBy(m => m.Earned).FirstOrDefault() is { } to
+            && run.WhyCannotBuy(_data, line, to) is null)
+        {
+            act(new ShopOption(line, to.Id, null, null, run.Stock[line].Price));
         }
     }
 

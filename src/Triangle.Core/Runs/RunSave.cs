@@ -28,7 +28,14 @@ public sealed record RunSaveFile
 
     public required IReadOnlyList<SavedRunMember> Members { get; init; }
 
+    /// <summary>스킬 사본 (행동 ID → 장 수). 강화된 사본은 강화 ID(<c>fireball+power</c>)로 따로 담는다.</summary>
     public IReadOnlyDictionary<string, int> Copies { get; init; } = new Dictionary<string, int>();
+
+    /// <summary>상점에서 산 줄 상한 수.</summary>
+    public int LinesBought { get; init; }
+
+    /// <summary>지금 상점에서 더 할 수 있는 강화 수.</summary>
+    public int UpgradesLeft { get; init; }
 
     public IReadOnlyList<string> Bag { get; init; } = [];
 
@@ -51,6 +58,12 @@ public sealed record RunSaveFile
 
     /// <summary>이 판에 나오지 않는 클래스·카드·아이템 (판을 시작할 때의 해금).</summary>
     public IReadOnlyList<string> Locked { get; init; } = [];
+
+    /// <summary>연 해금이 이 판에 주는 편의 (판을 시작할 때의 해금). 없으면(예전 세이브) 편의가 없다.</summary>
+    public RunBoons Boons { get; init; } = new();
+
+    /// <summary>원정 지도. 없으면(예전 세이브) 기본 지도다. 거는 것은 지금 데이터의 수식어와 보상으로 다시 정한다.</summary>
+    public RunChart? Chart { get; init; }
 
     /// <summary>치른 전투.</summary>
     public IReadOnlyList<RunBattleRecord> History { get; init; } = [];
@@ -123,6 +136,8 @@ public sealed partial class Run
             Trinkets = m.Trinkets.ToList(),
         }).ToList(),
         Copies = new SortedDictionary<string, int>(Copies, StringComparer.Ordinal),
+        LinesBought = LinesBought,
+        UpgradesLeft = UpgradesLeft,
         Bag = Bag.ToList(),
         Gold = Gold,
         Fights = Fights,
@@ -132,6 +147,8 @@ public sealed partial class Run
         Event = Event?.Id,
         BossCleared = _bossCleared,
         Locked = Locked.Order(StringComparer.Ordinal).ToList(),
+        Boons = Boons,
+        Chart = Chart.IsBase ? null : Chart,
         History = History.ToList(),
     };
 
@@ -183,9 +200,15 @@ public sealed partial class Run
             errors.Add("run save: the path leaves the map");
         }
 
+        if (file.Chart?.WhyInvalid(data) is { } invalid)
+        {
+            errors.Add($"run save: chart: {invalid}");
+        }
+
         errors.AddRange(file.Bosses.Concat(file.History.Select(h => h.EncounterId)).Distinct().Where(id => !data.Encounters.ContainsKey(id))
             .Select(id => $"run save: unknown encounter '{id}'"));
-        errors.AddRange(file.Copies.Keys.Where(id => !data.Actions.ContainsKey(id)).Select(id => $"run save: unknown action '{id}' in copies"));
+        var actions = Catalog(data).Actions;
+        errors.AddRange(file.Copies.Keys.Where(id => !actions.ContainsKey(id)).Select(id => $"run save: unknown action '{id}' in copies"));
         errors.AddRange(file.Bag.Where(id => !data.Items.ContainsKey(id)).Select(id => $"run save: unknown item '{id}' in bag"));
         foreach (var m in file.Members)
         {
@@ -200,7 +223,7 @@ public sealed partial class Run
             errors.AddRange(m.Passives.Keys.Where(id => !data.Skills.ContainsKey(id)).Select(id => $"{at}: unknown passive '{id}'"));
             foreach (var tactic in m.Tactics)
             {
-                DataValidation.ValidateTactic(tactic, at, data.Actions, errors);
+                DataValidation.ValidateTactic(tactic, at, actions, errors);
             }
         }
 
@@ -210,6 +233,7 @@ public sealed partial class Run
             {
                 RunCardKind.Active => card.Id is not null && data.Actions.ContainsKey(card.Id),
                 RunCardKind.Passive => card.Id is not null && data.Skills.ContainsKey(card.Id),
+                RunCardKind.Upgrade => card.Id is not null && Enum.GetNames<RunUpgradeKind>().Contains(card.Id),
                 _ => true,
             };
             if (!known || (card.ClassId is not null && !data.Classes.ContainsKey(card.ClassId)))
@@ -224,6 +248,7 @@ public sealed partial class Run
             {
                 RunStockKind.Item => data.Items.ContainsKey(stock.Id),
                 RunStockKind.Skill => data.Actions.ContainsKey(stock.Id),
+                RunStockKind.Line => true,
                 _ => data.Classes.ContainsKey(stock.Id),
             };
             if (!known)
@@ -248,7 +273,8 @@ public sealed partial class Run
             throw new SaveGameException(errors);
         }
 
-        var run = new Run(file.Seed, file.Maps, file.Bosses, file.Gold, file.Locked.ToHashSet())
+        var chart = file.Chart ?? RunChart.Base;
+        var run = new Run(file.Seed, file.Maps, file.Bosses, file.Gold, file.Locked.ToHashSet(), file.Boons ?? new RunBoons(), chart, chart.Terms(data))
         {
             Phase = file.Phase,
             Act = file.Act,
@@ -258,6 +284,8 @@ public sealed partial class Run
             Offer = file.Offer,
             Event = runEvent,
             _bossCleared = file.BossCleared,
+            LinesBought = file.LinesBought,
+            UpgradesLeft = file.UpgradesLeft,
         };
         run._stock.AddRange(file.Stock);
         run._path.AddRange(file.Path);

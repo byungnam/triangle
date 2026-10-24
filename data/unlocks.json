@@ -74,9 +74,35 @@
   },
   {
     "id": "war_chest",
-    "name": "군자금",
+    "name": "군자금 I",
     "description": "판을 시작할 때 골드 50을 더 받는다.",
     "cost": 15,
     "startGold": 50
+  },
+  {
+    "id": "war_chest_2",
+    "name": "군자금 II",
+    "description": "판을 시작할 때 골드 50을 더 받는다.",
+    "cost": 30,
+    "requires": "war_chest",
+    "startGold": 50
+  },
+  {
+    "id": "field_medic",
+    "name": "야전 의무병",
+    "description": "휴식에서 봉인 풀기를 고르면 멤버마다 봉인 하나를 더 푼다.",
+    "cost": 30,
+    "boons": {
+      "restUnseal": 1
+    }
+  },
+  {
+    "id": "regular",
+    "name": "단골",
+    "description": "상점의 모든 값(물건, 강화, 줄 상한, 봉인 풀기)이 싸진다.",
+    "cost": 40,
+    "boons": {
+      "shopDiscountPercent": 10
+    }
   }
 ]

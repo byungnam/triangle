@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Triangle.Core.Actions;
 using Triangle.Core.Balance;
 using Triangle.Core.Combat;
 using Triangle.Core.Data;
@@ -58,11 +59,11 @@ public class RunTests
     });
 
     /// <summary>첫 전투를 이긴 판 (보상 단계). 이기는 시드를 찾는다.</summary>
-    private static Run WonFirstFight(GameData data, IReadOnlyList<string> party, int from = 0, RunUnlocks? unlocks = null)
+    private static Run WonFirstFight(GameData data, IReadOnlyList<string> party, int from = 0, RunUnlocks? unlocks = null, RunChart? chart = null)
     {
         for (var seed = from; seed < from + 50; seed++)
         {
-            var run = Run.Start(data, party, seed, unlocks);
+            var run = Run.Start(data, party, seed, unlocks, chart: chart);
             run.Enter(data, run.Choices[0].Id);
             if (run.Phase == RunPhase.Reward)
             {
@@ -97,10 +98,10 @@ public class RunTests
     [Fact]
     public void Maps_are_deterministic_connected_and_keep_the_floor_rules()
     {
-        // 게임의 지도: 한 막 20층, 폭 6칸, 경로 6개, 첫 층 3갈래.
+        // 게임의 지도: 한 막 15층, 폭 6칸, 경로 6개, 첫 층 3갈래.
         var rules = Drafting.Run!.Map;
         var floors = Drafting.Run.Acts[0].Floors;
-        Assert.Equal((20, 6, 6, 3, 5), (floors, rules.Width, rules.Paths, rules.Starts, rules.SpecialFrom));
+        Assert.Equal((15, 6, 6, 3, 5), (floors, rules.Width, rules.Paths, rules.Starts, rules.SpecialFrom));
         var kinds = new HashSet<RunNodeKind>();
         for (var seed = 0; seed < 200; seed++)
         {
@@ -253,7 +254,7 @@ public class RunTests
         Assert.InRange(run.Gold, reward.GoldMin, reward.GoldMax);
         Assert.Equal(reward.Cards, run.Offer.Count);
         Assert.Equal(run.Offer.Count, run.Offer.Distinct().Count());
-        Assert.All(run.Offer.Where(c => c.Kind != RunCardKind.Line), c => Assert.Contains(c.ClassId, Party));
+        Assert.All(run.Offer.Where(c => c.Kind is RunCardKind.Active or RunCardKind.Passive), c => Assert.Contains(c.ClassId, Party));
         Assert.Empty(run.Choices);
         Assert.Throws<InvalidOperationException>(() => run.Enter(Drafting, run.Map.Starts.First().Id));
 
@@ -270,7 +271,7 @@ public class RunTests
     public void Cards_go_to_the_party_or_to_a_member_of_the_right_class()
     {
         static GameData Only(int active, int passive, int line) =>
-            With(r => Easy(r) with { Reward = r.Reward with { Active = active, Passive = passive, Line = line } });
+            With(r => Easy(r) with { Reward = r.Reward with { Active = active, Passive = passive, Line = line, Upgrade = 0 } });
 
         // 액티브는 파티의 사본이 된다 (멤버를 묻지 않는다).
         var actives = Only(1, 0, 0);
@@ -496,8 +497,8 @@ public class RunTests
     [Fact]
     public void The_shop_sells_items_of_the_act_tier_class_cards_and_a_recruit()
     {
-        // 게임의 상점은 합류를 팔지 않지만(이벤트에서만, 2026-10-20) 규칙은 남아 있다.
-        var data = SecondFloor("shop", r => r with { StartGold = 1000, Shop = r.Shop with { Recruits = 1 } });
+        // 게임의 상점은 합류를 팔지 않지만(이벤트에서만, 2026-10-20) 규칙은 남아 있다. 강화와 줄 상한은 아래에서 따로 본다.
+        var data = SecondFloor("shop", r => r with { StartGold = 1000, Shop = r.Shop with { Recruits = 1, Upgrades = 0, Lines = 0 } });
         var run = AtSecondFloor(data, ["knight", "priest"]);
         Assert.Equal(RunPhase.Shop, run.Phase);
         var shop = data.Run!.Shop;
@@ -544,10 +545,10 @@ public class RunTests
     [Fact]
     public void A_run_is_five_long_acts_and_recruits_come_only_from_a_rare_event()
     {
-        // 2026-10-20 사용자 결정: 막 5개 × 20층, 동료 합류는 이벤트에서만 드물게.
+        // 2026-10-20 사용자 결정: 막 5개, 동료 합류는 이벤트에서만 드물게. 막마다 20층이었다가 2026-10-23 A안으로 15층.
         var rules = Shipped.Run!;
         Assert.Equal(5, rules.Acts.Count);
-        Assert.All(rules.Acts, a => Assert.Equal(20, a.Floors));
+        Assert.All(rules.Acts, a => Assert.Equal(15, a.Floors));
         Assert.Equal(0, rules.Shop.Recruits);
         var joins = rules.Events.Where(e => e.Options.Any(o => o.Join is not null)).ToList();
         Assert.NotEmpty(joins);
@@ -581,6 +582,158 @@ public class RunTests
         run = AtSecondFloor(data, ["knight", "knight", "knight", "knight"]);
         run.Members.Add(new RunMember("m5", "knight", 2));
         Assert.Equal("파티는 5명까지다", run.WhyCannotBuy(data, recruit));
+    }
+
+    [Fact]
+    public void Upgrades_raise_numbers_or_change_how_a_skill_works()
+    {
+        var bolt = new ActionDefinition { Id = "bolt", Name = "볼트", Power = 100, MpCost = 20, Applies = [new("slowed", 2)] };
+        ActionDefinition Apply(params RunUpgradeKind[] kinds) => RunUpgrades.Apply(bolt, kinds);
+        Assert.Equal(130, Apply(RunUpgradeKind.Power).Power);
+        Assert.Equal(800, Apply(RunUpgradeKind.Swift).Delay);
+        Assert.Equal((1, 70), (Apply(RunUpgradeKind.Chain).ExtraTargets, Apply(RunUpgradeKind.Chain).Power));
+        Assert.Equal(3, Apply(RunUpgradeKind.Lasting).Applies[0].Duration);
+
+        // 강화가 둘이면 둘 다 걸리고, ID는 산 순서와 상관없이 같다. 이름에는 강화 수만큼 +가 붙는다.
+        var both = Apply(RunUpgradeKind.Swift, RunUpgradeKind.Power);
+        Assert.Equal(("bolt+power+swift", "볼트++", 130, 800), (both.Id, both.Name, both.Power, both.Delay));
+        Assert.Equal("bolt", both.Family);
+        Assert.Equal(2, bolt.Applies[0].Duration);
+        var resolved = RunUpgrades.Resolve(Shipped, "fireball+power");
+        Assert.Equal(("화염구+", Shipped.Actions["fireball"].Power * 13 / 10), (resolved?.Name, resolved?.Power));
+        Assert.Null(RunUpgrades.Resolve(Shipped, "fireball"));
+        Assert.Null(RunUpgrades.Resolve(Shipped, "fireball+nothing"));
+        Assert.Null(RunUpgrades.Resolve(Shipped, "fireball+swift+power"));
+        Assert.Equal("fireball", RunUpgrades.BaseId("fireball+power+swift"));
+        Assert.Equal([RunUpgradeKind.Power, RunUpgradeKind.Swift], RunUpgrades.Kinds("fireball+power+swift"));
+        Assert.Equal("fireball+power+swift", RunUpgrades.With("fireball+swift", RunUpgradeKind.Power));
+
+        // 뜻이 없는 강화는 붙지 않는다: 위력이 없는 행동에 위력, 적 하나를 치지 않는 행동에 연쇄, 효과가 없는 행동에 지속.
+        var wall = Shipped.Actions["shield_wall"];
+        var arrow = Shipped.Actions["fire_arrow"];
+        Assert.False(RunUpgrades.Fits(wall, RunUpgradeKind.Power));
+        Assert.False(RunUpgrades.Fits(wall, RunUpgradeKind.Chain));
+        Assert.True(RunUpgrades.Fits(wall, RunUpgradeKind.Lasting));
+        Assert.False(RunUpgrades.Fits(arrow, RunUpgradeKind.Lasting));
+        Assert.False(RunUpgrades.Fits(Shipped.Actions["heal"], RunUpgradeKind.Chain));
+    }
+
+    [Fact]
+    public void The_shop_upgrades_a_chosen_copy_and_sells_pricey_line_caps()
+    {
+        var data = SecondFloor("shop", r => r with { StartGold = 1000, Shop = r.Shop with { Upgrades = 2, UpgradePrice = 80, UpgradeStep = 40, Lines = 1, LinePrice = 150, LineStep = 50 } });
+        var run = AtSecondFloor(data, ["knight", "elementalist"]);
+
+        // 강화는 파티의 사본과 종류를 골라 산다: 상점 한 번에 정해진 수만큼, 그 스킬에 맞는 강화만.
+        Assert.Equal(["fireball", "shield_wall"], run.UpgradableCopies(data));
+        Assert.Equal((2, 80), (run.UpgradesLeft, run.UpgradePrice(data, "fireball")));
+        Assert.Equal("이 스킬에는 맞지 않는 강화다", run.WhyCannotUpgrade(data, "shield_wall", RunUpgradeKind.Power));
+        Assert.Equal("강화할 사본이 없다", run.WhyCannotUpgrade(data, "heal", RunUpgradeKind.Power));
+
+        // 화염구 사본이 둘이면 강화는 줄에 놓인 한 장에만 걸리고, 그 줄이 강화된 사본을 쓴다. 놀고 있는 한 장은 그대로다.
+        run.Copies["fireball"] = 2;
+        var upgraded = RunUpgrades.Id("fireball", [RunUpgradeKind.Power]);
+        var mage = run.Members.Single(m => m.ClassId == "elementalist");
+        Assert.Equal(mage, run.UpgradeHolder("fireball"));
+        var gold = run.Gold;
+        run.Upgrade(data, "fireball", RunUpgradeKind.Power);
+        Assert.Equal((1, 1), (run.Copies["fireball"], run.Copies[upgraded]));
+        Assert.Equal((gold - 80, 1), (run.Gold, run.UpgradesLeft));
+        Assert.Equal(upgraded, mage.Tactics[0].ActionId);
+        Assert.Equal("화염구+", RunUpgrades.Action(data, upgraded).Name);
+
+        // 강화가 걸린 사본에 하나 더 걸면 더 비싸고, 같은 강화는 두 번 걸 수 없다. 상점의 강화 수를 다 쓰면 더 걸 수 없다.
+        Assert.Equal(120, run.UpgradePrice(data, upgraded));
+        Assert.Equal("이미 건 강화다", run.WhyCannotUpgrade(data, upgraded, RunUpgradeKind.Power));
+        run.Upgrade(data, "fireball", RunUpgradeKind.Swift);
+        Assert.Equal("이 상점에서는 더 강화할 수 없다", run.WhyCannotUpgrade(data, upgraded, RunUpgradeKind.Swift));
+        Assert.Equal(1, run.Copies[RunUpgrades.Id("fireball", [RunUpgradeKind.Swift])]);
+        Assert.False(run.Copies.ContainsKey("fireball"));
+
+        // 전투에서 그 줄은 강화된 행동으로 싸우고, 같은 행동을 쓰는 적은 그대로다.
+        Assert.Equal(upgraded, run.Setup(data, mage).Tactics[0].ActionId);
+        Assert.Contains(upgraded, run.Setup(data, mage).GrantedActions!);
+        Assert.Equal(RunUpgrades.Action(data, upgraded).Power, Run.Catalog(data).Actions[upgraded].Power);
+        Assert.Equal(data.Actions["fireball"].Power, Run.Catalog(data).Actions["fireball"].Power);
+
+        // 강화된 사본은 강화가 다른 사본과 따로 센다: 한 장뿐인 사본을 두 줄에 놓을 수는 없다.
+        var swift = RunUpgrades.Id("fireball", [RunUpgradeKind.Swift]);
+        Assert.Null(run.WhyCannotSetTactics(data, mage, [Line(upgraded), Line(swift, Condition.SelfHpAtMost, 50)]));
+        Assert.StartsWith("사본이 모자란다", run.WhyCannotSetTactics(data, mage, [Line(upgraded), Line(upgraded, Condition.SelfHpAtMost, 50)]));
+        Assert.StartsWith("기사의 카드가 아니다", run.WhyCannotSetTactics(data, run.Members[0], [Line(upgraded)]));
+
+        // 줄 상한은 받을 멤버를 골라 산다.
+        var line = run.Stock.ToList().FindIndex(s => s.Kind == RunStockKind.Line);
+        Assert.Equal(150, run.Stock[line].Price);
+        Assert.Equal("받을 멤버를 골라야 한다", run.WhyCannotBuy(data, line));
+        run.Buy(data, line, mage);
+        Assert.Equal((3, 1), (mage.Earned, run.LinesBought));
+
+        // 세이브에 강화된 사본, 남은 강화 수, 산 줄 상한 수가 남는다.
+        var copy = Run.Deserialize(run.Serialize(), data);
+        Assert.Equal(run.Serialize(), copy.Serialize());
+        Assert.Equal((1, 0, 1), (copy.Copies[upgraded], copy.UpgradesLeft, copy.LinesBought));
+
+        // 다음 상점: 강화 수가 다시 차고, 줄 상한은 산 수만큼 비싸다. 강화가 다 찬 사본은 더 강화할 수 없다.
+        var before = WonFirstFight(data, ["knight", "elementalist"]);
+        before.Skip();
+        var wall = RunUpgrades.Id("shield_wall", [RunUpgradeKind.Swift, RunUpgradeKind.Lasting]);
+        var file = before.ToSave() with { LinesBought = 2, Copies = new Dictionary<string, int> { [swift] = 1, [wall] = 1 } };
+        var later = Run.Restore(file, data);
+        later.Enter(data, later.Choices[0].Id);
+        Assert.Equal(250, later.Stock.Single(s => s.Kind == RunStockKind.Line).Price);
+        Assert.Equal((2, 120), (later.UpgradesLeft, later.UpgradePrice(data, swift)));
+        Assert.Equal([swift], later.UpgradableCopies(data));
+        Assert.Equal("사본 하나에 강화는 2개까지다", later.WhyCannotUpgrade(data, wall, RunUpgradeKind.Power));
+
+        // 모르는 강화나 순서가 다른 강화 ID의 사본은 세이브에서 거부한다.
+        var errors = Assert.Throws<SaveGameException>(() => Run.Restore(file with { Copies = new Dictionary<string, int> { ["fireball+swift+power"] = 1, ["fireball+fly"] = 1 } }, data)).Errors;
+        Assert.Contains(errors, e => e.Contains("unknown action 'fireball+swift+power' in copies"));
+        Assert.Contains(errors, e => e.Contains("unknown action 'fireball+fly' in copies"));
+    }
+
+    [Fact]
+    public void An_upgrade_card_upgrades_a_copy_the_player_picks()
+    {
+        var data = With(r => Easy(r) with { Reward = r.Reward with { Active = 0, Passive = 0, Line = 0, Upgrade = 1 } });
+        var run = WonFirstFight(data, ["knight", "elementalist"]);
+
+        // 강화 카드는 강화의 종류만 정해져 있고, 파티의 사본 중 그 강화가 맞는 사본이 하나라도 있는 종류만 나온다.
+        Assert.All(run.Offer, c => Assert.Equal(RunCardKind.Upgrade, c.Kind));
+        Assert.All(run.Offer, c => Assert.Contains(run.UpgradableCopies(data), id => run.WhyCannotUpgradeCopy(data, id, Enum.Parse<RunUpgradeKind>(c.Id!)) is null));
+        var kind = Enum.Parse<RunUpgradeKind>(run.Offer[0].Id!);
+        Assert.Equal("강화할 사본을 골라야 한다", run.WhyCannotTake(data, 0, null));
+        Assert.Equal("강화할 사본이 없다", run.WhyCannotTake(data, 0, null, "heal"));
+
+        // 고른 사본 한 장에 걸리고 골드는 들지 않는다. 그 사본을 쓰던 줄은 강화된 사본을 쓴다.
+        var copy = run.UpgradableCopies(data).First(id => run.WhyCannotTake(data, 0, null, id) is null);
+        var holder = run.UpgradeHolder(copy)!;
+        var gold = run.Gold;
+        run.Take(data, 0, copy: copy);
+        var upgraded = RunUpgrades.Id(copy, [kind]);
+        Assert.Equal((1, gold), (run.Copies[upgraded], run.Gold));
+        Assert.Contains(holder.Tactics, t => t.ActionId == upgraded);
+        Assert.Equal(RunPhase.Map, run.Phase);
+
+        // 세이브의 강화 카드도 아는 강화인지 본다.
+        var file = run.ToSave() with { Phase = RunPhase.Reward, Offer = [new RunCard(RunCardKind.Upgrade, null, "Fly")] };
+        Assert.Contains("run save: unknown card Upgrade 'Fly'", Assert.Throws<SaveGameException>(() => Run.Restore(file, data)).Errors);
+    }
+
+    [Fact]
+    public void A_line_cap_needs_a_member_with_room_and_shop_numbers_are_checked()
+    {
+        var data = SecondFloor("shop", r => r with { StartGold = 1000, Shop = r.Shop with { Lines = 1 } });
+        var run = AtSecondFloor(data, ["knight", "priest"]);
+        var line = run.Stock.ToList().FindIndex(s => s.Kind == RunStockKind.Line);
+        var full = run.Members[0];
+        full.Earned = data.Run!.MaxLines;
+        Assert.Equal("줄 상한이 이미 최대다", run.WhyCannotBuy(data, line, full));
+        Assert.Null(run.WhyCannotBuy(data, line, run.Members[1]));
+
+        var errors = Assert.Throws<GameDataException>(() => With(r => r with { Shop = r.Shop with { Lines = 2, UpgradePrice = -1 } })).Errors;
+        Assert.Contains(errors, e => e.Contains("shop lines must be 0 or 1"));
+        Assert.Contains(errors, e => e.Contains("shop counts and prices must not be negative"));
     }
 
     [Fact]
@@ -946,6 +1099,64 @@ public class RunTests
     }
 
     [Fact]
+    public void Opened_unlocks_add_their_small_conveniences_to_the_run()
+    {
+        // A안(2026-10-23): 해금은 고를 거리와 작은 편의(시작 골드, 휴식, 상점 할인)만 준다. 숫자가 쌓이는 힘은 없다.
+        var opened = new HashSet<string> { "war_chest", "war_chest_2", "field_medic", "regular" };
+        var unlocks = RunUnlocks.For(Drafting, opened);
+        Assert.Equal(100, unlocks.StartGold);
+        var expected = new RunBoons
+        {
+            RestUnseal = Drafting.Unlocks["field_medic"].Boons.RestUnseal,
+            ShopDiscountPercent = Drafting.Unlocks["regular"].Boons.ShopDiscountPercent,
+        };
+        Assert.Equal(expected, unlocks.Boons);
+        Assert.True(Fresh.Boons.IsEmpty);
+
+        var data = SecondFloor("shop", r => r with { StartGold = 1000, Shop = r.Shop with { Lines = 1 } });
+        var plain = AtSecondFloor(data, Party);
+        var boosted = AtSecondFloor(data, Party, unlocks: unlocks);
+        Assert.Equal(expected, boosted.Boons);
+
+        // 상점 값과 봉인 풀기 값이 싸지고, 전투 입력은 그대로다.
+        Assert.Equal(plain.Stock.Select(s => s.Price * (100 - expected.ShopDiscountPercent) / 100), boosted.Stock.Select(s => s.Price));
+        Assert.Equal(data.Run!.Shop.UnsealPrice * (100 - expected.ShopDiscountPercent) / 100, boosted.UnsealPrice(data));
+        Assert.Equal(plain.Setup(data, plain.Members[0]).ItemBonuses, boosted.Setup(data, boosted.Members[0]).ItemBonuses);
+        Assert.All(boosted.Members, m => Assert.Equal(data.Run.StartLines, m.Earned));
+
+        // 휴식은 봉인을 더 푼다. 세이브에도 남는다.
+        Assert.Equal(data.Run.Rest.Unseal + expected.RestUnseal, boosted.RestUnseals(data));
+        Assert.Equal(expected, Run.Deserialize(boosted.Serialize(), data).Boons);
+    }
+
+    [Fact]
+    public void Tiered_unlocks_open_in_order_and_are_checked()
+    {
+        var profile = Profile.Deserialize(JsonSerializer.Serialize(new ProfileFile { Version = Profile.SaveVersion, Renown = 1000 }, GameDataJson.Options), Drafting);
+        Assert.Equal($"먼저 열어야 한다: {Drafting.Unlocks["war_chest"].Name}", profile.WhyCannotUnlock(Drafting, "war_chest_2"));
+        profile.Unlock(Drafting, "war_chest");
+        profile.Unlock(Drafting, "war_chest_2");
+        Assert.Equal(100, profile.UnlocksForRun(Drafting).StartGold);
+
+        UnlockDefinition Unlock(string id, string? requires = null, RunBoons? boons = null) => new() { Id = id, Name = id, Cost = 1, Requires = requires, Boons = boons ?? new() { RestUnseal = 1 } };
+        var errors = Assert.Throws<GameDataException>(() => WithUnlocks([Unlock("a", "b"), Unlock("b", "a"), Unlock("c", "nope"), Unlock("d", boons: new()), Unlock("e", boons: new() { ShopDiscountPercent = 80 })])).Errors;
+        Assert.Contains(errors, e => e.Contains("'a': requires go round in a circle"));
+        Assert.Contains(errors, e => e.Contains("'c': requires unknown unlock 'nope'"));
+        Assert.Contains(errors, e => e.Contains("'d': opens nothing"));
+        Assert.Contains(errors, e => e.Contains("'e': boons must not be negative and the shop discount is at most 50%"));
+    }
+
+    /// <summary>해금만 바꾼 게임 데이터 (로더 검증을 거친다).</summary>
+    private static GameData WithUnlocks(IReadOnlyList<UnlockDefinition> unlocks)
+    {
+        string Read(string file) => File.ReadAllText(Path.Combine(DataDirectory, file));
+        return GameDataLoader.Parse(
+            Read(GameDataLoader.MasteriesFile), Read(GameDataLoader.SkillsFile), Read(GameDataLoader.ActionsFile), Read(GameDataLoader.EncountersFile),
+            Read(GameDataLoader.EffectsFile), Read(GameDataLoader.ItemsFile), Read(GameDataLoader.ZonesFile), Read(GameDataLoader.ClassesFile), Read(GameDataLoader.RunFile),
+            JsonSerializer.Serialize(unlocks, GameDataJson.Options));
+    }
+
+    [Fact]
     public void Locked_cards_items_and_classes_never_show_up_in_a_run()
     {
         bool Locked(string? id) => id is not null && Fresh.Locked.Contains(id);
@@ -1023,9 +1234,9 @@ public class RunTests
     }
 
     /// <summary>판을 끝까지 둔다: 첫 지점, 보상은 건너뛰기, 휴식은 봉인 풀기.</summary>
-    private static Run PlayThrough(GameData data, int seed)
+    private static Run PlayThrough(GameData data, int seed, RunChart? chart = null)
     {
-        var run = Run.Start(data, Party, seed);
+        var run = Run.Start(data, Party, seed, chart: chart);
         while (!run.Finished)
         {
             switch (run.Phase)
@@ -1043,6 +1254,147 @@ public class RunTests
         }
 
         return run;
+    }
+
+    [Fact]
+    public void A_chart_stacks_its_modifiers_and_pays_by_risk()
+    {
+        var data = SecondFloor("shop", r => r with
+        {
+            Shop = r.Shop with { Upgrades = 2 },
+            Charts = new RunChartRules
+            {
+                MaxTier = 4,
+                RenownPerRisk = 10,
+                Modifiers =
+                [
+                    new() { Id = "tough", Name = "튼튼", Risk = 2, Terms = new() { EnemyHp = 20, EnemyEffects = ["steadfast"] } },
+                    new() { Id = "poor", Name = "가난", Terms = new() { Gold = -50, Shop = 20, Upgrades = -1 } },
+                    new() { Id = "frail", Name = "여림", Terms = new() { AllyHp = -10, SealOnFall = 1, RestUnseal = -1 } },
+                    new() { Id = "crowded", Name = "무리", Terms = new() { ExtraEnemies = 1, FrontEffects = ["taunting"] } },
+                ],
+                Rewards =
+                [
+                    new() { Id = "gold", Name = "골드 지도", Terms = new() { Gold = 10 } },
+                    new() { Id = "cards", Name = "카드 지도", Step = 2, Max = 1, Terms = new() { Cards = 1, StartGold = 100 } },
+                ],
+            },
+        });
+
+        // 위험도는 수식어 위험도의 합이고, 보상은 위험도 2마다 한 번(끝 1번), 명성은 위험도 1마다 10%다.
+        var chart = new RunChart(["tough", "poor", "frail", "crowded"], "cards");
+        Assert.Equal(5, chart.Risk(data));
+        var terms = chart.Terms(data);
+        Assert.Equal((20, -50, 20, -1, 1, 100, 50), (terms.EnemyHp, terms.Gold, terms.Shop, terms.Upgrades, terms.Cards, terms.StartGold, terms.Renown));
+        Assert.Contains("적 HP +20%", terms.Parts(data));
+        Assert.Contains("모든 적이 굳건함 효과를 지닌다", terms.Parts(data));
+        Assert.Equal(["보상 카드 +1장", "시작 골드 +100", "명성 +50%"], chart.Bounty(data).Parts(data));
+
+        // 보통 전투에는 첫 유닛이 하나 더 나오고, 모든 적이 HP +20%와 굳건함을, 전열의 적은 도발도 지닌다. 정예와 보스는 늘지 않는다.
+        var encounter = data.Zones[data.Run!.Acts[0].ZoneId].Encounters[0].EncounterId;
+        var plain = Run.EnemyTeam(data, 0, RunNodeKind.Fight, encounter);
+        var team = Run.EnemyTeam(data, 0, RunNodeKind.Fight, encounter, terms);
+        int Hp(CombatantSetup unit) => unit.ItemBonuses.Single(b => b.Kind == BonusKind.MaxHpPercent).Percent;
+        Assert.Equal(plain.Count + 1, team.Count);
+        Assert.Equal((plain[0].Id + "_2", plain[0].Name), (team[^1].Id, team[^1].Name));
+        Assert.Equal(Hp(plain[0]) + 20, Hp(team[0]));
+        Assert.All(team, e => Assert.Contains("steadfast", e.StartingEffects));
+        Assert.All(team, e => Assert.Equal(e.Row == Triangle.Core.Units.Row.Front, e.StartingEffects.Contains("taunting")));
+        Assert.Equal(Run.EnemyTeam(data, 0, RunNodeKind.Boss, data.Run.Acts[0].Bosses[0]).Count, Run.EnemyTeam(data, 0, RunNodeKind.Boss, data.Run.Acts[0].Bosses[0], terms).Count);
+
+        // 판: 시작 골드 +100, 아군 최대 HP -10%, 휴식 봉인 풀기 없음. 첫 전투의 골드는 절반이고 카드는 한 장 더(4장) 나온다.
+        var run = WonFirstFight(data, Party, chart: chart);
+        Assert.Contains(new ItemBonus(BonusKind.MaxHpPercent, -10), run.Setup(data, run.Members[0]).ItemBonuses);
+        Assert.Equal(0, run.RestUnseals(data));
+        Assert.Equal(4, run.Offer.Count);
+        Assert.InRange(run.Gold, data.Run.StartGold + 100 + data.Run.Reward.GoldMin / 2, data.Run.StartGold + 100 + data.Run.Reward.GoldMax / 2);
+
+        // 상점은 20% 비싸고 강화는 한 번뿐이다.
+        run.Skip();
+        run.Enter(data, run.Choices[0].Id);
+        Assert.Equal((data.Run.Shop.UnsealPrice * 120 / 100, 1), (run.UnsealPrice(data), run.UpgradesLeft));
+
+        // 세이브에 지도가 남고, 모르는 수식어나 겹친 수식어는 거부한다.
+        var copy = Run.Deserialize(run.Serialize(), data);
+        Assert.Equal((chart, -50), (copy.Chart, copy.Terms.Gold));
+        Assert.Contains("run save: chart: 없는 수식어: nope", Assert.Throws<SaveGameException>(() => Run.Restore(run.ToSave() with { Chart = new RunChart(["nope"], null) }, data)).Errors);
+        Assert.Equal("같은 수식어가 겹친다", Run.WhyCannotStart(data, Party, null, new RunChart(["poor", "poor"], "gold")));
+
+        // 지도 굴리기: 등급-1 ~ 등급개의 겹치지 않는 수식어와 보상 하나. 등급 0이면 지도가 없다.
+        var rolled = RunChart.Roll(data, 2, 50, new Random(1));
+        Assert.All(rolled, c => Assert.InRange(c.Modifiers.Count, 1, 2));
+        Assert.All(rolled, c => Assert.Equal(c.Modifiers.Count, c.Modifiers.Distinct().Count()));
+        Assert.All(rolled, c => Assert.NotNull(c.Reward));
+        Assert.Contains(rolled, c => c.Modifiers.Count == 2);
+        Assert.Empty(RunChart.Roll(data, 0, 3, new Random(1)));
+    }
+
+    [Fact]
+    public void Chart_modifiers_only_make_the_run_harder_and_rewards_only_easier()
+    {
+        var errors = Assert.Throws<GameDataException>(() => With(r => r with
+        {
+            Charts = new RunChartRules
+            {
+                Modifiers =
+                [
+                    new() { Id = "easy", Name = "쉬움", Terms = new() { Gold = 10 } },
+                    new() { Id = "ghost", Name = "유령", Terms = new() { EnemyEffects = ["nope"] } },
+                    new() { Id = "none", Name = "빈 것" },
+                ],
+                Rewards = [new() { Id = "bad", Name = "나쁨", Step = 2, Terms = new() { EnemyHp = 10 } }],
+            },
+        })).Errors;
+        Assert.Contains(errors, e => e.Contains("modifier 'easy' must only make the run harder"));
+        Assert.Contains(errors, e => e.Contains("modifier 'ghost' uses unknown effect 'nope'"));
+        Assert.Contains(errors, e => e.Contains("modifier 'none' changes nothing"));
+        Assert.Contains(errors, e => e.Contains("chart reward 'bad' must make the run easier"));
+        Assert.Contains(errors, e => e.Contains("charts need a reward with step 1"));
+    }
+
+    [Fact]
+    public void Winning_with_as_many_modifiers_as_the_map_tier_raises_it()
+    {
+        var data = With(r => r with
+        {
+            Acts = [new RunAct("outskirts_forest", 2) { Bosses = ["wild_dogs"] }],
+            Charts = new RunChartRules
+            {
+                MaxTier = 2,
+                Modifiers = [new() { Id = "a", Name = "가", Terms = new() { Gold = -10 } }, new() { Id = "b", Name = "나", Risk = 2, Terms = new() { Shop = 10 } }],
+                Rewards = [new() { Id = "gold", Name = "골드 지도", Terms = new() { Gold = 10 } }],
+            },
+        });
+        Run Won(RunChart? chart = null) => Enumerable.Range(0, 30).Select(seed => PlayThrough(data, seed, chart)).First(r => r.Phase == RunPhase.Victory);
+
+        // 지면 오르지 않고, 처음 이기면 지도 등급 1이 된다.
+        var profile = new Profile();
+        var lost = WonFirstFight(data, Party);
+        lost.Abandon();
+        profile.Record(lost, data);
+        Assert.Equal(0, profile.MapTier);
+        profile.Record(Won(), data);
+        Assert.Equal(1, profile.MapTier);
+
+        // 수식어가 등급만큼 붙은 지도로 이겨야 오른다. 끝 등급을 넘지 않는다. 이긴 판의 가장 높은 위험도가 남는다.
+        profile.Record(Won(), data);
+        Assert.Equal(1, profile.MapTier);
+        profile.Record(Won(new RunChart(["a"], "gold")), data);
+        Assert.Equal(2, profile.MapTier);
+        var both = Won(new RunChart(["a", "b"], "gold"));
+        Assert.Equal(2, profile.MapTierAfter(both, data));
+        profile.Record(both, data);
+        Assert.Equal((2, 3), (profile.MapTier, profile.BestRisk));
+
+        // 지도가 위험도만큼 명성을 더 준다 (위험도 3, 1마다 10%).
+        var plain = Profile.RenownFor(both, data) * 100 / 130;
+        Assert.InRange(Profile.RenownFor(both, data), plain * 130 / 100 - 1, plain * 130 / 100 + 1);
+        Assert.True(Profile.RenownFor(both, data) > Profile.RenownFor(Won(), data));
+
+        // 기록에 남고, 데이터의 끝 등급이 낮아지면 그만큼으로 줄인다.
+        var json = profile.Serialize();
+        Assert.Equal((2, 3), (Profile.Deserialize(json, data).MapTier, Profile.Deserialize(json, data).BestRisk));
+        Assert.Equal(1, Profile.Deserialize(json, With(r => r with { Charts = r.Charts with { MaxTier = 1 } })).MapTier);
     }
 
     [Fact]

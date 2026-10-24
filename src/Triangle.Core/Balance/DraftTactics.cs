@@ -22,7 +22,7 @@ public static class DraftTactics
     public static IReadOnlyList<Tactic> Build(IReadOnlyList<string> skills, int lines, GameData data)
     {
         var kept = skills
-            .Select((id, i) => (Line: Line(data.Actions[id], skills.Take(i).Count(s => s == id), data), Order: i))
+            .Select((id, i) => (Line: Line(Runs.RunUpgrades.Action(data, id), skills.Take(i).Count(s => s == id), data), Order: i))
             .OrderBy(x => x.Line.Rank)
             .ThenByDescending(x => x.Line.Power)
             .ThenBy(x => x.Order)

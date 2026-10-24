@@ -26,46 +26,78 @@ internal static class RunReport
             return 2;
         }
 
+        int? tier = null;
+        if (options.Has("tier"))
+        {
+            if (Bench.Number(options, "tier", 0, 1) is not { } t)
+            {
+                return 2;
+            }
+
+            tier = t;
+        }
+
+        var mods = options.Get("mods")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList() ?? [];
+        var chart = new RunChart(mods, options.Get("reward"));
+
         RunBot[]? bots = options.Get("bot") switch
         {
-            null or "both" => [RunBot.Random, RunBot.Smart],
+            null when options.Has("each-mod") => [RunBot.Novice],
+            null or "all" => [RunBot.Random, RunBot.Novice, RunBot.Smart],
             "random" => [RunBot.Random],
+            "novice" => [RunBot.Novice],
             "smart" => [RunBot.Smart],
             _ => null,
         };
         RunUnlocks? unlocks = options.Get("unlocks") switch
         {
             null or "none" => RunUnlocks.For(data, new HashSet<string>()),
-            "all" => RunUnlocks.All,
+            "all" => RunUnlocks.For(data, data.Unlocks.Keys.ToHashSet()),
             _ => null,
         };
         var party = options.Get("party")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
             ?? ["knight", "archer", "elementalist", "priest"];
         if (bots is null || unlocks is null)
         {
-            Console.Error.WriteLine(bots is null ? "--bot은 random, smart, both 중 하나다." : "--unlocks는 none, all 중 하나다.");
+            Console.Error.WriteLine(bots is null ? "--bot은 random, novice, smart, all 중 하나다." : "--unlocks는 none, all 중 하나다.");
             return 2;
         }
 
-        if (Triangle.Core.Runs.Run.WhyCannotStart(data, party, unlocks) is { } reason)
+        if (Triangle.Core.Runs.Run.WhyCannotStart(data, party, unlocks, chart) is { } reason)
         {
-            Console.Error.WriteLine($"--party: {reason}");
+            Console.Error.WriteLine($"--party/--mods/--reward: {reason}");
             return 2;
         }
 
         var acts = rules.Acts.Select(a => $"{data.Zones[a.ZoneId].Name} {a.Floors}층");
-        Console.WriteLine($"파티: {string.Join(", ", party.Select(id => data.Classes[id].Name))} · 해금: {(unlocks == RunUnlocks.All ? "모두 열림" : "없음 (처음 판)")} · 판 {runs}개");
-        Console.WriteLine($"막: {string.Join(" → ", acts)} · 줄 상한 시작 {rules.StartLines}, 최대 {rules.MaxLines} · 시작 골드 {rules.StartGold + unlocks.StartGold}");
+        Console.WriteLine($"파티: {string.Join(", ", party.Select(id => data.Classes[id].Name))} · 해금: {(options.Get("unlocks") == "all" ? "모두 열림" : "없음 (처음 판)")} · 판 {runs}개");
+        Console.WriteLine($"막: {string.Join(" → ", acts)} · 줄 상한 시작 {rules.StartLines}, 최대 {rules.MaxLines} · 시작 골드 {rules.StartGold + unlocks.StartGold}"
+            + (unlocks.Boons.IsEmpty ? "" : $" · 해금의 편의: {string.Join(", ", unlocks.Boons.Parts())}"));
+        if (tier is { } rolled)
+        {
+            Console.WriteLine($"지도: 판마다 지도 등급 {rolled}의 지도를 굴린다 (수식어 {Math.Max(1, rolled - 1)}~{rolled}개와 보상 하나)");
+        }
+        else if (!chart.IsBase)
+        {
+            Console.WriteLine($"지도: {chart.Name(data)} (위험도 {chart.Risk(data)}) · 수식어: {string.Join(", ", chart.Hardship(data).Parts(data))}"
+                + $" · 보상: {string.Join(", ", chart.Bounty(data).Parts(data))}");
+        }
+
+        if (options.Has("each-mod"))
+        {
+            return EachModifier(data, rules, bots, new RunSimOptions { Party = party, Unlocks = unlocks, LookaheadSeeds = lookahead }, runs, seed);
+        }
+
         Console.WriteLine();
         Console.WriteLine(Bench.Pad("봇", 8) + Bench.Pad("클리어", 8, true) + "  " + Bench.Pad("탈락 (막별)", 26) + Bench.Pad("전투/판", 9, true)
             + Bench.Pad("쓰러짐/판", 11, true) + Bench.Pad("사망/판", 9, true) + Bench.Pad("카드/판", 9, true) + Bench.Pad("번 골드", 9, true)
-            + Bench.Pad("쓴 골드", 9, true) + Bench.Pad("합류/판", 9, true));
+            + Bench.Pad("쓴 골드", 9, true) + Bench.Pad("합류/판", 9, true) + Bench.Pad("명성/판", 9, true));
 
         var watch = Stopwatch.StartNew();
         var details = new List<(RunBot Bot, IReadOnlyList<RunSimResult> Results)>();
         foreach (var bot in bots)
         {
-            var results = new RunSimulation(data, new RunSimOptions { Bot = bot, Party = party, Unlocks = unlocks, LookaheadSeeds = lookahead }).RunMany(runs, seed);
+            var results = new RunSimulation(data, new RunSimOptions { Bot = bot, Party = party, Unlocks = unlocks, LookaheadSeeds = lookahead, Chart = chart, Tier = tier }).RunMany(runs, seed);
             details.Add((bot, results));
             var failed = Enumerable.Range(0, rules.Acts.Count).Select(a => 100.0 * results.Count(r => !r.Cleared && r.Act == a) / runs);
             Console.WriteLine(
@@ -78,7 +110,8 @@ internal static class RunReport
                 + Bench.Pad($"{results.Average(r => r.Picks.Count):F1}", 9, true)
                 + Bench.Pad($"{results.Average(r => r.GoldEarned):F0}", 9, true)
                 + Bench.Pad($"{results.Average(r => r.Spent.Values.Sum()):F0}", 9, true)
-                + Bench.Pad($"{results.Average(r => r.Joined):F2}", 9, true));
+                + Bench.Pad($"{results.Average(r => r.Joined):F2}", 9, true)
+                + Bench.Pad($"{results.Average(r => r.Renown):F0}", 9, true));
         }
 
         Console.WriteLine($"({watch.Elapsed.TotalSeconds:F0}초) 쓰러짐 = 이긴 전투에서 쓰러진 횟수(봉인이 된다). 카드 = 고른 보상 카드(전투, 단련, 이벤트).");
@@ -131,15 +164,19 @@ internal static class RunReport
                 + Bench.Pad(won.Count == 0 ? "-" : $"{won.Average(f => f.Time):F0} / {won.Max(f => f.Time)}", 14, true));
         }
 
-        // 보스 대비: 똑똑한 봇이 보스마다 고른 전술 방식과 줄 배치 (많이 고른 셋).
+        // 보스 대비: 똑똑한 봇이 보스마다 미리 싸워 본 기본 조합과 고른 조합의 승률, 고른 전술 방식과 줄 배치 (많이 고른 셋).
+        // 기본 승률이 낮고 맞춘 승률이 높으면 "보스를 보고 전술을 고쳐야 이기는" 보스다.
         var plans = fights.Where(f => f.Plan is not null).GroupBy(f => (f.Act, f.EncounterId)).OrderBy(g => g.Key.Act).ToList();
         if (plans.Count > 0)
         {
-            Console.WriteLine("  보스 대비 (보스마다 고른 전술 방식 · 줄 배치, 많이 고른 셋):");
+            Console.WriteLine("  보스 대비 (미리 싸운 승률: 기본 → 맞춘 조합 · 실제 진 비율 · 많이 고른 전술 방식과 줄 배치 셋):");
             foreach (var g in plans)
             {
                 var top = g.GroupBy(f => f.Plan!).OrderByDescending(p => p.Count()).Take(3).Select(p => $"{p.Key} {100.0 * p.Count() / g.Count():F0}%");
-                Console.WriteLine($"    {g.Key.Act + 1}막 {data.Encounters[g.Key.EncounterId].Name}: {string.Join(", ", top)}");
+                var (before, after) = (g.Average(f => f.DefaultWin ?? 0), g.Average(f => f.PlanWin ?? 0));
+                var lost = (double)g.Count(f => f.Outcome != CombatOutcome.Victory) / g.Count();
+                Console.WriteLine("    " + Bench.Pad($"{g.Key.Act + 1}막 {data.Encounters[g.Key.EncounterId].Name}", 26)
+                    + Bench.Pad($"{100 * before:F0}% → {100 * after:F0}%", 13, true) + Bench.Pad($"{100 * lost:F0}%", 7, true) + $"   {string.Join(", ", top)}");
             }
         }
 
@@ -160,7 +197,8 @@ internal static class RunReport
         Console.WriteLine();
         double Avg(Func<RunSimResult, double> f) => results.Average(f);
         Console.WriteLine($"  카드/판: 액티브 {Avg(r => r.Picks.Count(p => p.Kind == RunCardKind.Active)):F1} · 패시브 {Avg(r => r.Picks.Count(p => p.Kind == RunCardKind.Passive)):F1}"
-            + $" · 줄 상한 {Avg(r => r.Picks.Count(p => p.Kind == RunCardKind.Line)):F1} · 고를 것이 없어 건너뜀 {Avg(r => r.Skipped):F1}");
+            + $" · 줄 상한 {Avg(r => r.Picks.Count(p => p.Kind == RunCardKind.Line)):F1} · 강화 {Avg(r => r.Picks.Count(p => p.Kind == RunCardKind.Upgrade)):F1}"
+            + $" · 고를 것이 없어 건너뜀 {Avg(r => r.Skipped):F1}");
         var spends = Enum.GetValues<RunSpend>().Select(s => $"{Spend(s)} {Avg(r => r.Spent.GetValueOrDefault(s)):F0}");
         Console.WriteLine($"  골드/판: 번 것 {Avg(r => r.GoldEarned):F0} · 쓴 곳 {string.Join(" · ", spends)} · 남긴 것 {Avg(r => r.GoldLeft):F0}");
         Shops(data, rules, results);
@@ -201,13 +239,15 @@ internal static class RunReport
                 _ => "장신구",
             },
             RunStockKind.Skill => "스킬",
+            RunStockKind.Line => "줄 상한",
             _ => "합류",
         };
-        string[] kinds = ["무기", "방어구", "장신구", "스킬", "합류"];
+        string Category(RunSimValue v) => v.Stock is { } st ? KindOf(st) : v.Upgrade is not null ? "강화" : "봉인 풀기";
+        string[] kinds = ["무기", "방어구", "장신구", "스킬", "줄 상한", "합류"];
         Console.WriteLine();
         Console.WriteLine($"  상점 (판당 {(double)visits.Count / results.Count:F2}번). 종류 칸은 나온 것 중 산 비율과 값의 평균:");
         Console.WriteLine("    " + Bench.Pad("막", 5) + Bench.Pad("방문/판", 9, true) + Bench.Pad("들를 때", 9, true) + Bench.Pad("쓴 골드", 9, true)
-            + Bench.Pad("산 수", 7, true) + Bench.Pad("빈손", 7, true) + string.Concat(kinds.Select(k => Bench.Pad(k, 13, true))) + Bench.Pad("봉인 풀기", 11, true));
+            + Bench.Pad("산 수", 7, true) + Bench.Pad("빈손", 7, true) + string.Concat(kinds.Select(k => Bench.Pad(k, 13, true))) + Bench.Pad("강화", 7, true) + Bench.Pad("봉인 풀기", 11, true));
         for (var act = 0; act < rules.Acts.Count; act++)
         {
             var inAct = visits.Where(v => v.Act == act).ToList();
@@ -227,13 +267,14 @@ internal static class RunReport
                 + Bench.Pad($"{(double)inAct.Count / results.Count:F2}", 9, true)
                 + Bench.Pad($"{inAct.Average(v => v.GoldIn):F0}", 9, true)
                 + Bench.Pad($"{inAct.Average(v => v.GoldIn - v.GoldOut):F0}", 9, true)
-                + Bench.Pad($"{inAct.Average(v => v.Bought.Count + v.Unseals):F2}", 7, true)
+                + Bench.Pad($"{inAct.Average(v => v.Bought.Count + v.Upgraded.Count + v.Unseals):F2}", 7, true)
                 + Bench.Pad($"{100.0 * broke / inAct.Count:F0}%", 7, true)
                 + string.Concat(cells.Select(c => Bench.Pad(c, 13, true)))
+                + Bench.Pad($"{inAct.Average(v => v.Upgraded.Count):F2}", 7, true)
                 + Bench.Pad($"{inAct.Average(v => v.Unseals):F2}", 11, true));
         }
 
-        Console.WriteLine("    빈손 = 들를 때 골드로 아무것도(봉인이 있으면 봉인 풀기도) 살 수 없던 방문.");
+        Console.WriteLine("    빈손 = 들를 때 골드로 아무것도(봉인이 있으면 봉인 풀기도) 살 수 없던 방문. 강화와 봉인 풀기는 방문당 한 수.");
 
         // 똑똑한 봇만: 들어가자마자 살 수 있던 것마다 사 본 값어치 (미리 싸운 점수가 나아진 정도, 이기면 1점대).
         var values = visits.SelectMany(v => v.Values.Select(x => (v.Act, Value: x))).ToList();
@@ -242,9 +283,9 @@ internal static class RunReport
             Console.WriteLine("  값어치 (막별, 살 수 있던 것마다 사 봤을 때 점수가 나아진 평균 · 100골드당):");
             foreach (var act in values.Select(x => x.Act).Distinct().Order())
             {
-                var cells = kinds.Append("봉인 풀기").Select(k =>
+                var cells = kinds.Append("강화").Append("봉인 풀기").Select(k =>
                 {
-                    var xs = values.Where(x => x.Act == act && (x.Value.Stock is { } st ? KindOf(st) : "봉인 풀기") == k).Select(x => x.Value).ToList();
+                    var xs = values.Where(x => x.Act == act && Category(x.Value) == k).Select(x => x.Value).ToList();
                     return xs.Count == 0 ? $"{k} -" : $"{k} {xs.Average(x => x.Gain):F3} · {100 * xs.Average(x => x.Gain / Math.Max(1, x.Price)):F3}";
                 });
                 Console.WriteLine($"    {act + 1}막  " + string.Join("   ", cells));
@@ -262,10 +303,61 @@ internal static class RunReport
                 Console.WriteLine("    " + Bench.Pad($"{data.Items[id].Name} ({KindOf(new RunStock(RunStockKind.Item, id, 0))} T{data.Items[id].Tier} {data.Items[id].Price}G)", 36)
                     + Bench.Pad($"{count}", 6, true) + Bench.Pad($"{gain:F3}", 9, true) + Bench.Pad($"{100 * rate:F0}%", 7, true));
             }
+
+            // 강화 종류마다: 걸 수 있던 상점 수, 값어치 평균(가장 잘 맞는 사본에 건 것), 건 수, 값의 평균.
+            var upgrades = values.Where(x => x.Value.Upgrade is not null).GroupBy(x => x.Value.Upgrade!.Value).OrderBy(g => g.Key).ToList();
+            if (upgrades.Count > 0)
+            {
+                Console.WriteLine("  강화별 값어치 (걸 수 있던 상점 · 값어치 평균 · 건 수 · 값 평균):");
+                foreach (var g in upgrades)
+                {
+                    var bought = visits.Sum(v => v.Upgraded.Count(u => u.Kind == g.Key));
+                    Console.WriteLine("    " + Bench.Pad(RunUpgrades.Name(g.Key), 10) + Bench.Pad($"{g.Count()}", 6, true) + Bench.Pad($"{g.Average(x => x.Value.Gain):F3}", 9, true)
+                        + Bench.Pad($"{bought}", 7, true) + Bench.Pad($"{g.Average(x => x.Value.Price):F0}G", 7, true));
+                }
+            }
         }
     }
 
-    private static string Name(RunBot bot) => bot == RunBot.Random ? "아무렇게나" : "똑똑함";
+    private static string Name(RunBot bot) => bot switch
+    {
+        RunBot.Random => "아무렇게나",
+        RunBot.Novice => "보통 사람",
+        _ => "똑똑함",
+    };
+
+    /// <summary>판이 끝날 때 받는 명성 (<see cref="Profile.RenownFor"/>와 같은 규칙): 이긴 전투마다, 판을 이기면 더.</summary>
+    /// <summary>
+    /// 수식어마다 그것 하나만 붙은 지도(보상 없음)로 판을 두어 기본 지도와 견준다: 클리어율, 평균 통과 막, 데이터의 위험도, 클리어율이 위험도
+    /// 1마다 0.8배가 된다고 보고 셈한 위험도(클리어가 없으면 6). 수식어의 위험도를 매기는 데 쓴다.
+    /// </summary>
+    private static int EachModifier(GameData data, RunDefinition rules, IReadOnlyList<RunBot> bots, RunSimOptions options, int runs, int seed)
+    {
+        Console.WriteLine();
+        foreach (var bot in bots)
+        {
+            Console.WriteLine($"[{Name(bot)}] 수식어 하나씩 (판 {runs}개, 보상 없음):");
+            Console.WriteLine("  " + Bench.Pad("수식어", 28) + Bench.Pad("클리어", 8, true) + Bench.Pad("통과 막", 9, true) + Bench.Pad("데이터 위험도", 14, true)
+                + Bench.Pad("잰 위험도", 10, true));
+            var (baseClear, baseActs) = Measure(RunChart.Base);
+            Console.WriteLine("  " + Bench.Pad("(기본 지도)", 28) + Bench.Pad($"{100 * baseClear:F1}%", 8, true) + Bench.Pad($"{baseActs:F2}", 9, true));
+            foreach (var m in rules.Charts.Modifiers)
+            {
+                var (clear, acts) = Measure(new RunChart([m.Id], null));
+                var measured = clear <= 0 ? 6 : Math.Clamp((int)Math.Round(Math.Log(baseClear / clear) / Math.Log(1.25)), 0, 6);
+                Console.WriteLine("  " + Bench.Pad($"{m.Name} ({m.Id})", 28) + Bench.Pad($"{100 * clear:F1}%", 8, true) + Bench.Pad($"{acts:F2}", 9, true)
+                    + Bench.Pad($"{m.Risk}", 14, true) + Bench.Pad($"{measured}", 10, true));
+            }
+
+            (double Clear, double Acts) Measure(RunChart chart)
+            {
+                var results = new RunSimulation(data, options with { Bot = bot, Chart = chart }).RunMany(runs, seed);
+                return (results.Average(r => r.Cleared ? 1.0 : 0.0), results.Average(r => (double)r.Act));
+            }
+        }
+
+        return 0;
+    }
 
     private static string Spend(RunSpend spend) => spend switch
     {
@@ -273,6 +365,8 @@ internal static class RunReport
         RunSpend.Skill => "스킬",
         RunSpend.Recruit => "합류",
         RunSpend.Unseal => "봉인 풀기",
+        RunSpend.Upgrade => "강화",
+        RunSpend.Line => "줄 상한",
         _ => "이벤트",
     };
 
@@ -280,6 +374,7 @@ internal static class RunReport
     {
         RunCardKind.Active => $"{data.Classes[card.ClassId!].Name} · {data.Actions[card.Id!].Name}",
         RunCardKind.Passive => $"{data.Classes[card.ClassId!].Name} · 패시브 {data.Skills[card.Id!].Name}",
+        RunCardKind.Upgrade => $"강화 · {RunUpgrades.Name(Enum.Parse<RunUpgradeKind>(card.Id!))}",
         _ => "줄 상한 +1",
     };
 }

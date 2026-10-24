@@ -8,7 +8,7 @@ namespace Triangle.Desktop.Scenes;
 
 /// <summary>
 /// 보상: 후보 카드 중 한 장을 고르거나 건너뛴다 (전투, 휴식의 단련, 이벤트).
-/// 액티브는 고르면 바로 파티의 사본이 되고, 패시브와 줄 상한은 받을 멤버를 한 번 더 고른다.
+/// 액티브는 고르면 바로 파티의 사본이 되고, 패시브와 줄 상한은 받을 멤버를, 강화는 걸 사본을 한 번 더 고른다.
 /// 전투 뒤라면 위에 결과(골드, 봉인, 죽음)를 보여준다.
 /// </summary>
 internal sealed class RunRewardScene : RunScene
@@ -28,7 +28,7 @@ internal sealed class RunRewardScene : RunScene
 
     protected override string Title => _battle is null ? "보상 — 카드 한 장 고르기" : "전투 보상 — 카드 한 장 고르기";
 
-    protected override string Help => "액티브 사본은 같은 클래스 누구나 전술 한 줄에 놓습니다. 패시브와 줄 상한은 받을 멤버를 고릅니다.     Esc  고르기 취소";
+    protected override string Help => "액티브 사본은 같은 클래스 누구나 전술 한 줄에 놓습니다. 패시브와 줄 상한은 받을 멤버를, 강화는 걸 사본을 고릅니다.     Esc  고르기 취소";
 
     private int Top => Body.Top + (_battle is null ? 0 : 96);
 
@@ -75,7 +75,10 @@ internal sealed class RunRewardScene : RunScene
 
         if (_chosen is { } chosen)
         {
-            root.Widgets.Add(Place(MemberPicker(chosen), Body.Left, Top + CardHeight + 16, Body.Width));
+            var top = Top + CardHeight + 16;
+            root.Widgets.Add(Run.Offer[chosen].Kind == RunCardKind.Upgrade
+                ? Place(new ScrollPane { Content = CopyPicker(chosen), ShowHorizontalScrollBar = false }, Body.Left, top, Body.Width - 176, Body.Bottom - top)
+                : Place(MemberPicker(chosen), Body.Left, top, Body.Width));
         }
 
         root.Widgets.Add(Place(Button("건너뛰기", () => Act(Run.Skip), width: 160), Body.Right - 160, Body.Bottom - 44));
@@ -105,7 +108,7 @@ internal sealed class RunRewardScene : RunScene
         box.Widgets.Add(title);
         AddLines(box, RunText.Card(card, Run, Data).Select(l => l with { Size = Math.Min(l.Size, 14) }), inner);
 
-        var pick = Button(chosen ? "받을 멤버를 고르세요 ▼" : "고르기", () => Choose(index), width: inner, accent: !chosen);
+        var pick = Button(chosen ? (card.Kind == RunCardKind.Upgrade ? "걸 사본을 고르세요 ▼" : "받을 멤버를 고르세요 ▼") : "고르기", () => Choose(index), width: inner, accent: !chosen);
         return new Panel { Widgets = { box, Place(pick, 12, CardHeight - 50) } };
     }
 
@@ -136,5 +139,38 @@ internal sealed class RunRewardScene : RunScene
         }
 
         return row;
+    }
+
+    /// <summary>강화 카드를 걸 사본: 그 강화가 맞는 사본마다(줄에 놓인 것 먼저) 단추. 마우스를 올리면 바뀌는 수치가 보인다.</summary>
+    private Widget CopyPicker(int index)
+    {
+        const int PerRow = 4;
+        var card = Run.Offer[index];
+        var kind = Enum.Parse<RunUpgradeKind>(card.Id!);
+        var panel = new VerticalStackPanel { Spacing = 8 };
+        panel.Widgets.Add(W.Label($"{Korean.EulReul(RunText.CardName(card, Data))} 걸 사본:", 17, Theme.Gold, bold: true));
+        var copies = Run.UpgradableCopies(Data).Where(c => RunUpgrades.Fits(RunUpgrades.Action(Data, c), kind))
+            .OrderBy(c => Run.UpgradeHolder(c) is null ? 1 : 0).ToList();
+        if (copies.Count == 0)
+        {
+            panel.Widgets.Add(W.Label("이 강화를 걸 수 있는 사본이 없습니다. 건너뛰거나 다른 카드를 고르세요.", 15, Theme.TextDim));
+        }
+
+        var width = (Body.Width - 176 - 24 - 10 * (PerRow - 1)) / PerRow;
+        foreach (var chunk in copies.Chunk(PerRow))
+        {
+            var row = new HorizontalStackPanel { Spacing = 10 };
+            foreach (var copy in chunk)
+            {
+                var why = Run.WhyCannotTake(Data, index, null, copy);
+                var button = Button(RunText.Copy(Run, Data, copy), () => Act(() => Run.Take(Data, index, copy: copy)), why, accent: why is null, width: width, size: 15);
+                button.Tooltip = why ?? RunUpgrades.Describe(RunUpgrades.Action(Data, copy), kind);
+                row.Widgets.Add(button);
+            }
+
+            panel.Widgets.Add(row);
+        }
+
+        return panel;
     }
 }

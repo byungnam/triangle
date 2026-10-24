@@ -29,9 +29,11 @@ const string Usage = """
                                  --draft <파일>  시뮬레이션 정의 파일
       runs [옵션]                판 시뮬레이션: 게임의 판 규칙(data/run.json) 그대로 봇이 판을 끝까지 둔다.
                                  클리어율, 막별 탈락, 막·적 조합별 진 비율과 남은 HP, 카드·골드가 들어오고 쓰이는 곳, 노는 사본.
-                                 --bot <random|smart|both> (기본 both)   --runs <n> 판 수 (기본 200)   --seed <n> 첫 시드 (기본 0)
+                                 --bot <random|novice|smart|all> (기본 all)   --runs <n> 판 수 (기본 200)   --seed <n> 첫 시드 (기본 0)
                                  --party <클래스,…> (기본 knight,archer,elementalist,priest)
                                  --unlocks <none|all> 해금 (기본 none: 처음 판)   --lookahead <n> 미리 싸워 보는 시드 수 (기본 3)
+                                 --mods <수식어,…> --reward <보상> 원정 지도 (기본: 기본 지도)   --tier <n> 판마다 그 등급의 지도를 굴린다
+                                 --each-mod 수식어 하나씩 붙인 지도를 기본 지도와 견준다 (위험도 매기기, 기본 봇 novice)
 
     수정 명령 (고친 뒤 검증을 통과해야 저장한다. 실패하면 아무 파일도 바꾸지 않는다):
       set <종류> <id> <경로> <값>      값을 바꾼다. 없는 속성은 만든다.

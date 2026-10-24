@@ -144,6 +144,7 @@ internal static class RunText
     {
         RunCardKind.Active => "액티브",
         RunCardKind.Passive => "패시브",
+        RunCardKind.Upgrade => "강화",
         _ => "줄 상한",
     };
 
@@ -151,6 +152,7 @@ internal static class RunText
     {
         RunCardKind.Active => Theme.Damage,
         RunCardKind.Passive => Theme.Heal,
+        RunCardKind.Upgrade => Theme.Lightning,
         _ => Theme.Gold,
     };
 
@@ -158,6 +160,7 @@ internal static class RunText
     {
         RunCardKind.Active => GameIcons.Action(data.Actions[card.Id!], data),
         RunCardKind.Passive => ("mastery", Theme.Heal),
+        RunCardKind.Upgrade => ("power", Theme.Lightning),
         _ => ("tactics", Theme.Gold),
     };
 
@@ -165,6 +168,7 @@ internal static class RunText
     {
         RunCardKind.Active => data.Actions[card.Id!].Name,
         RunCardKind.Passive => data.Skills[card.Id!].Name,
+        RunCardKind.Upgrade => $"{RunUpgrades.Name(Enum.Parse<RunUpgradeKind>(card.Id!))} 강화",
         _ => "줄 상한 +1",
     };
 
@@ -177,6 +181,12 @@ internal static class RunText
             new($"파티가 가진 사본 {run.Copies.GetValueOrDefault(card.Id!)}장 → 고르면 {run.Copies.GetValueOrDefault(card.Id!) + 1}장", Theme.Cover, 14),
         ],
         RunCardKind.Passive => Passive(data.Skills[card.Id!], data).Skip(1).ToList(),
+        RunCardKind.Upgrade =>
+        [
+            new("파티의 사본 한 장", Theme.TextDim, 14),
+            new(RunUpgrades.Rule(Enum.Parse<RunUpgradeKind>(card.Id!)), Theme.Text),
+            new($"사본마다 다른 강화 {RunUpgrades.MaxPerSkill}개까지", Theme.TextDim, 14),
+        ],
         _ =>
         [
             new("멤버 한 명", Theme.TextDim, 14),
@@ -184,6 +194,14 @@ internal static class RunText
             new($"최대 {data.Run!.MaxLines}줄", Theme.TextDim, 14),
         ],
     };
+
+    /// <summary>강화할 사본 하나: "화염구+ ×2 · 마법사의 줄" (어느 줄에도 없으면 "놀고 있음").</summary>
+    public static string Copy(Run run, GameData data, string copy)
+    {
+        var holder = run.UpgradeHolder(copy);
+        var count = run.Copies.GetValueOrDefault(copy);
+        return $"{RunUpgrades.Action(data, copy).Name}{(count > 1 ? $" ×{count}" : "")} · {(holder is null ? "놀고 있음" : $"{run.Name(data, holder)}의 줄")}";
+    }
 
     public static (string Text, Color Color) Outcome(CombatOutcome outcome) => outcome switch
     {

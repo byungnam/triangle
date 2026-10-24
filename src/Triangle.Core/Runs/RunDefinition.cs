@@ -34,6 +34,9 @@ public sealed record RunDefinition
     public IReadOnlyList<RunEvent> Events { get; init; } = [];
 
     public RunRenownRules Renown { get; init; } = new();
+
+    /// <summary>원정 지도: 수식어와 보상 (2026-10-23, 승천을 바꿈).</summary>
+    public RunChartRules Charts { get; init; } = new();
 }
 
 /// <summary>판이 끝나면 받는 명성 (해금에 쓴다): 이긴 전투마다, 그리고 판을 이기면 더.</summary>
@@ -136,6 +139,9 @@ public sealed record RunRewardRules
 
     public int Line { get; init; } = 1;
 
+    /// <summary>강화 카드(고른 사본 하나에 강화 한 가지)의 가중치 (2026-10-23, 보상을 줄 바꾸기 중심으로).</summary>
+    public int Upgrade { get; init; }
+
     public int GoldMin { get; init; } = 15;
 
     public int GoldMax { get; init; } = 25;
@@ -165,6 +171,22 @@ public sealed record RunShopRules
 
     /// <summary>봉인 하나를 푸는 값.</summary>
     public int UnsealPrice { get; init; } = 60;
+
+    /// <summary>상점 한 번에 할 수 있는 강화 수 (플레이어가 사본과 종류를 고른다, 2026-10-23).</summary>
+    public int Upgrades { get; init; }
+
+    /// <summary>강화 값: 기본 값에 그 사본에 이미 건 강화 하나마다 <see cref="UpgradeStep"/>을 더한다.</summary>
+    public int UpgradePrice { get; init; } = 80;
+
+    public int UpgradeStep { get; init; } = 40;
+
+    /// <summary>파는 줄 상한 +1 수 (0이나 1). 늘릴 멤버가 없으면 나오지 않는다.</summary>
+    public int Lines { get; init; }
+
+    /// <summary>줄 상한 값: 기본 값에 이 판에서 상점에서 산 줄 상한 하나마다 <see cref="LineStep"/>을 더한다.</summary>
+    public int LinePrice { get; init; } = 150;
+
+    public int LineStep { get; init; } = 50;
 }
 
 /// <summary>휴식: 봉인 풀기(모든 멤버) 또는 단련(패시브 후보 중 하나).</summary>

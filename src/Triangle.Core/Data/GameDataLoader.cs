@@ -182,7 +182,7 @@ public static class GameDataLoader
         ValidateClasses(classes!, masteryMap, skillMap, actionMap, itemMap, errors);
         if (run is not null)
         {
-            ValidateRun(run, zoneMap, encounterMap, classMap, errors);
+            ValidateRun(run, zoneMap, encounterMap, classMap, effectMap, errors);
         }
 
         ValidateUnlocks(unlocks!, classMap, actionMap, itemMap, errors);
@@ -254,9 +254,20 @@ public static class GameDataLoader
             DataValidation.RequireText(u.Name, $"{at}: name", errors);
             DataValidation.RequireNonNegative(u.Cost, $"{at}: cost", errors);
             DataValidation.RequireNonNegative(u.StartGold, $"{at}: startGold", errors);
-            if (!u.Locks.Any() && u.StartGold == 0)
+            var b = u.Boons;
+            if (b.RestUnseal < 0 || b.ShopDiscountPercent is < 0 or > 50)
+            {
+                errors.Add($"{at}: boons must not be negative and the shop discount is at most 50%");
+            }
+
+            if (!u.Locks.Any() && u.StartGold == 0 && b.IsEmpty)
             {
                 errors.Add($"{at}: opens nothing");
+            }
+
+            if (u.Requires is { } required && (required == u.Id || unlocks.All(o => o.Id != required)))
+            {
+                errors.Add($"{at}: requires unknown unlock '{required}'");
             }
 
             errors.AddRange(u.Classes.Where(id => !classes.ContainsKey(id)).Select(id => $"{at}: unknown class '{id}'"));
@@ -294,10 +305,79 @@ public static class GameDataLoader
             errors.Add($"{UnlocksFile}: '{twice.Key}' is locked by more than one unlock ({string.Join(", ", twice.Select(x => x.Item2))})");
         }
 
+        // 단계가 고리를 이루면 아무것도 열 수 없다.
+        var byId = unlocks.GroupBy(u => u.Id).ToDictionary(g => g.Key, g => g.First());
+        foreach (var u in unlocks)
+        {
+            var seen = new HashSet<string> { u.Id };
+            for (var at = u.Requires; at is not null && byId.TryGetValue(at, out var next); at = next.Requires)
+            {
+                if (!seen.Add(at))
+                {
+                    errors.Add($"{UnlocksFile} '{u.Id}': requires go round in a circle");
+                    break;
+                }
+            }
+        }
+
         var lockedClasses = unlocks.SelectMany(u => u.Classes).ToHashSet();
         if (classes.Count > 0 && classes.Keys.All(lockedClasses.Contains))
         {
             errors.Add($"{UnlocksFile}: every class is locked; at least one must be open from the start");
+        }
+    }
+
+    /// <summary>
+    /// 원정 지도: 수식어는 이름과 위험도(1 이상)가 있고 판을 어렵게만 하며, 보상은 쉽게만 한다. 효과는 있어야 하고 ID는 겹치지 않는다.
+    /// 수식어가 붙은 지도는 늘 보상이 있도록 위험도 1에서도 무언가를 주는 보상이 하나는 있어야 한다.
+    /// </summary>
+    private static void ValidateCharts(RunChartRules charts, IReadOnlyDictionary<string, EffectDefinition> effects, List<string> errors)
+    {
+        if (charts.Offers < 0 || charts.MaxTier < 0 || charts.RenownPerRisk < 0)
+        {
+            errors.Add($"{RunFile}: charts offers, maxTier and renownPerRisk must not be negative");
+        }
+
+        foreach (var duplicate in charts.Modifiers.Select(m => m.Id).Concat(charts.Rewards.Select(r => r.Id)).GroupBy(id => id).Where(g => g.Count() > 1))
+        {
+            errors.Add($"{RunFile}: duplicate chart modifier or reward id '{duplicate.Key}'");
+        }
+
+        foreach (var m in charts.Modifiers)
+        {
+            if (string.IsNullOrWhiteSpace(m.Name) || m.Risk < 1)
+            {
+                errors.Add($"{RunFile}: modifier '{m.Id}' needs a name and a risk of at least 1");
+            }
+
+            if (m.Terms.IsEmpty)
+            {
+                errors.Add($"{RunFile}: modifier '{m.Id}' changes nothing");
+            }
+            else if (!m.Terms.OnlyHarder)
+            {
+                errors.Add($"{RunFile}: modifier '{m.Id}' must only make the run harder");
+            }
+
+            errors.AddRange(m.Terms.Effects.Where(id => !effects.ContainsKey(id)).Select(id => $"{RunFile}: modifier '{m.Id}' uses unknown effect '{id}'"));
+        }
+
+        foreach (var r in charts.Rewards)
+        {
+            if (string.IsNullOrWhiteSpace(r.Name) || r.Step < 1 || r.Max < 0)
+            {
+                errors.Add($"{RunFile}: chart reward '{r.Id}' needs a name, a step of at least 1 and a max not below 0");
+            }
+
+            if (r.Terms.IsEmpty || !r.Terms.OnlyEasier)
+            {
+                errors.Add($"{RunFile}: chart reward '{r.Id}' must make the run easier (and add no effects)");
+            }
+        }
+
+        if (charts.Modifiers.Count > 0 && charts.Rewards.All(r => r.Step > 1))
+        {
+            errors.Add($"{RunFile}: charts need a reward with step 1 so that every chart has a reward");
         }
     }
 
@@ -307,6 +387,7 @@ public static class GameDataLoader
         IReadOnlyDictionary<string, ZoneDefinition> zones,
         IReadOnlyDictionary<string, EncounterDefinition> encounters,
         IReadOnlyDictionary<string, ClassDefinition> classes,
+        IReadOnlyDictionary<string, EffectDefinition> effects,
         List<string> errors)
     {
         if (run.PartySize is < 1 or > Run.MaxMembers)
@@ -372,8 +453,8 @@ public static class GameDataLoader
         }
 
         var reward = run.Reward;
-        if (reward.Cards < 1 || reward.FightCards < 0 || reward.EliteExtraCards < 0 || new[] { reward.Active, reward.Passive, reward.Line }.Any(w => w < 0)
-            || reward.Active + reward.Passive + reward.Line == 0)
+        if (reward.Cards < 1 || reward.FightCards < 0 || reward.EliteExtraCards < 0 || new[] { reward.Active, reward.Passive, reward.Line, reward.Upgrade }.Any(w => w < 0)
+            || reward.Active + reward.Passive + reward.Line + reward.Upgrade == 0)
         {
             errors.Add($"{RunFile}: reward needs at least one card and one positive weight");
         }
@@ -384,9 +465,15 @@ public static class GameDataLoader
         }
 
         var shop = run.Shop;
-        if (new[] { shop.Items, shop.Skills, shop.SkillPrice, shop.Recruits, shop.RecruitPrice, shop.UnsealPrice }.Any(v => v < 0))
+        if (new[] { shop.Items, shop.Skills, shop.SkillPrice, shop.Recruits, shop.RecruitPrice, shop.UnsealPrice, shop.Upgrades, shop.UpgradePrice, shop.UpgradeStep, shop.LinePrice, shop.LineStep }
+            .Any(v => v < 0))
         {
             errors.Add($"{RunFile}: shop counts and prices must not be negative");
+        }
+
+        if (shop.Lines is < 0 or > 1)
+        {
+            errors.Add($"{RunFile}: shop lines must be 0 or 1");
         }
 
         if (new[] { run.Renown.Fight, run.Renown.Elite, run.Renown.Boss, run.Renown.Victory }.Any(v => v < 0))
@@ -398,6 +485,8 @@ public static class GameDataLoader
         {
             errors.Add($"{RunFile}: rest unseal must not be negative and trainCards must be at least 1");
         }
+
+        ValidateCharts(run.Charts, effects, errors);
 
         foreach (var duplicate in run.Events.GroupBy(e => e.Id).Where(g => g.Count() > 1))
         {

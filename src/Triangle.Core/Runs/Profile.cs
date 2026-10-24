@@ -5,8 +5,9 @@ using Triangle.Core.Data;
 namespace Triangle.Core.Runs;
 
 /// <summary>
-/// 판을 넘어 남는 것 (로그라이트 재편, 2026-10-19): 명성, 연 해금, 기록(판 수, 승리, 가장 멀리 간 막, 만난 적).
+/// 판을 넘어 남는 것 (로그라이트 재편, 2026-10-19): 명성, 연 해금, 연 승천, 기록(판 수, 승리, 가장 멀리 간 막, 만난 적).
 /// 판이 끝나면 <see cref="Record"/>로 명성과 기록을 받고, 명성을 내고 해금을 연다(<see cref="Unlock"/>).
+/// 지도 등급만큼 수식어가 붙은 원정 지도로 판을 이기면 지도 등급이 오른다(<see cref="MapTier"/>).
 /// </summary>
 public sealed class Profile
 {
@@ -31,30 +32,43 @@ public sealed class Profile
     /// <summary>가장 많이 통과한 막 수 (판을 이기면 막 수 전부).</summary>
     public int BestActs { get; private set; }
 
+    /// <summary>
+    /// 지도 등급: 원정 지도에 붙을 수 있는 수식어 수의 끝 (0이면 기본 지도뿐). 판을 처음 이기면 1이 되고, 수식어가 등급만큼 붙은 지도로 이기면
+    /// 하나 오른다. 지도 규칙의 끝(<see cref="RunChartRules.MaxTier"/>)을 넘지 않는다.
+    /// </summary>
+    public int MapTier { get; private set; }
+
+    /// <summary>이긴 판의 지도 위험도 중 가장 높은 것.</summary>
+    public int BestRisk { get; private set; }
+
     /// <summary>탐사 기록: 판에서 만난 적 조합 (인카운터 ID별).</summary>
     public IReadOnlyDictionary<string, EncounterRecord> Encounters => _encounters;
 
     /// <summary>다음 판을 시작할 때의 해금.</summary>
     public RunUnlocks UnlocksForRun(GameData data) => RunUnlocks.For(data, _unlocked);
 
-    /// <summary>끝난 판이 주는 명성: 이긴 전투마다(보통·정예·보스), 판을 이기면 더.</summary>
+    /// <summary>끝난 판이 주는 명성: 이긴 전투마다(보통·정예·보스), 판을 이기면 더. 원정 지도가 위험도만큼 더 준다.</summary>
     public static int RenownFor(Run run, GameData data)
     {
         var rules = data.Run!.Renown;
         var won = run.History.Where(b => b.Outcome == CombatOutcome.Victory).ToList();
-        return won.Sum(b => b.Kind switch
+        var renown = won.Sum(b => b.Kind switch
             {
                 RunNodeKind.Boss => rules.Boss,
                 RunNodeKind.Elite => rules.Elite,
                 _ => rules.Fight,
             })
             + (run.Phase == RunPhase.Victory ? rules.Victory : 0);
+        return renown * Math.Max(0, 100 + run.Terms.Renown) / 100;
     }
 
     /// <summary>통과한 막 수: 이긴 판이면 막 수 전부, 아니면 지금 막.</summary>
     public static int ActsCleared(Run run, GameData data) => run.Phase == RunPhase.Victory ? data.Run!.Acts.Count : run.Act;
 
-    /// <summary>끝난 판을 기록하고 명성을 받는다. 받은 명성을 돌려준다. 판은 한 번만 기록한다(부르는 쪽이 판을 치운다).</summary>
+    /// <summary>
+    /// 끝난 판을 기록하고 명성을 받는다. 받은 명성을 돌려준다. 판은 한 번만 기록한다(부르는 쪽이 판을 치운다).
+    /// 지도 등급만큼 수식어가 붙은 지도로 이긴 판이면 지도 등급이 오른다.
+    /// </summary>
     public int Record(Run run, GameData data)
     {
         if (!run.Finished)
@@ -68,6 +82,12 @@ public sealed class Profile
         Runs++;
         Victories += run.Phase == RunPhase.Victory ? 1 : 0;
         BestActs = Math.Max(BestActs, ActsCleared(run, data));
+        MapTier = MapTierAfter(run, data);
+        if (run.Phase == RunPhase.Victory)
+        {
+            BestRisk = Math.Max(BestRisk, run.Chart.Risk(data));
+        }
+
         foreach (var battle in run.History)
         {
             _encounters[battle.EncounterId] = _encounters.GetValueOrDefault(battle.EncounterId, new EncounterRecord(0, 0))
@@ -76,6 +96,10 @@ public sealed class Profile
 
         return renown;
     }
+
+    /// <summary>이 판을 기록한 뒤의 지도 등급: 수식어가 지금 등급만큼 붙은 지도로 이긴 판이면 하나 오른다(끝 등급을 넘지 않는다).</summary>
+    public int MapTierAfter(Run run, GameData data) =>
+        run.Phase == RunPhase.Victory && run.Chart.Modifiers.Count >= MapTier ? Math.Min(MapTier + 1, data.Run!.Charts.MaxTier) : MapTier;
 
     public string? WhyCannotUnlock(GameData data, string unlockId)
     {
@@ -87,6 +111,11 @@ public sealed class Profile
         if (_unlocked.Contains(unlockId))
         {
             return "이미 열었다";
+        }
+
+        if (unlock.Requires is { } required && !_unlocked.Contains(required))
+        {
+            return $"먼저 열어야 한다: {data.Unlocks[required].Name}";
         }
 
         return Renown < unlock.Cost ? $"명성이 모자란다 ({unlock.Cost})" : null;
@@ -118,6 +147,8 @@ public sealed class Profile
         Runs = Runs,
         Victories = Victories,
         BestActs = BestActs,
+        MapTier = MapTier,
+        BestRisk = BestRisk,
         Encounters = new SortedDictionary<string, EncounterRecord>(_encounters, StringComparer.Ordinal),
     }, GameDataJson.Options);
 
@@ -141,7 +172,7 @@ public sealed class Profile
             throw new SaveGameException([$"profile: unsupported version {file?.Version} (expected {SaveVersion})"]);
         }
 
-        if (file.Renown < 0 || file.Runs < 0 || file.Victories < 0 || file.BestActs < 0)
+        if (file.Renown < 0 || file.Runs < 0 || file.Victories < 0 || file.BestActs < 0 || file.MapTier < 0 || file.BestRisk < 0)
         {
             throw new SaveGameException(["profile: counts must not be negative"]);
         }
@@ -153,6 +184,8 @@ public sealed class Profile
             Runs = file.Runs,
             Victories = file.Victories,
             BestActs = file.BestActs,
+            MapTier = Math.Min(file.MapTier, data.Run?.Charts.MaxTier ?? 0),
+            BestRisk = file.BestRisk,
         };
         profile._unlocked.UnionWith(file.Unlocked.Where(data.Unlocks.ContainsKey));
         foreach (var (id, record) in file.Encounters.Where(e => data.Encounters.ContainsKey(e.Key)))
@@ -180,6 +213,11 @@ public sealed record ProfileFile
     public int Victories { get; init; }
 
     public int BestActs { get; init; }
+
+    /// <summary>지도 등급 (없으면 예전 기록이라 0).</summary>
+    public int MapTier { get; init; }
+
+    public int BestRisk { get; init; }
 
     public IReadOnlyDictionary<string, EncounterRecord> Encounters { get; init; } = new Dictionary<string, EncounterRecord>();
 }

@@ -275,6 +275,15 @@ internal sealed class RunMapScene : RunScene
     {
         var width = SideWidth - 28;
         var list = new VerticalStackPanel { Spacing = 8 };
+        if (!Run.Chart.IsBase)
+        {
+            // 원정 지도: 판 내내 걸리는 수식어와 보상.
+            list.Widgets.Add(W.Header("tactics", Run.Chart.Name(Data), $"위험도 {Run.Chart.Risk(Data)}"));
+            list.Widgets.Add(W.Label(string.Join(" · ", Run.Chart.Hardship(Data).Parts(Data)), 13, Theme.Enemy, width: width, wrap: true));
+            list.Widgets.Add(W.Label(string.Join(" · ", Run.Chart.Bounty(Data).Parts(Data)), 13, Theme.Heal, width: width, wrap: true));
+            list.Widgets.Add(new Panel { Height = 4 });
+        }
+
         list.Widgets.Add(W.Header("node.boss", "막 보스", "출발할 때 정해짐"));
         var acts = Data.Run!.Acts;
         for (var i = 0; i < acts.Count; i++)

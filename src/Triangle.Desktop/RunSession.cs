@@ -24,10 +24,20 @@ internal sealed class RunSession(GameData data, RunStore store, ProfileStore pro
     /// <summary>불러온 판으로 시작한다 (세이브가 없으면 null).</summary>
     public void Resume(Run? run) => Run = run;
 
-    /// <summary>새 판을 시작하고 저장한다. <paramref name="rows"/>는 멤버마다 서는 줄이다.</summary>
-    public void Start(IReadOnlyList<string> classIds, IReadOnlyList<Triangle.Core.Units.Row> rows)
+    private IReadOnlyList<RunChart>? _charts;
+
+    /// <summary>
+    /// 다음 판에 고를 수 있는 원정 지도: 기본 지도와, 지도 등급에서 굴린 지도들. 판이 끝날 때까지 그대로이고, 끝난 판을 치우면 다시 굴린다
+    /// (게임을 다시 켜도 다시 굴린다).
+    /// </summary>
+    public IReadOnlyList<RunChart> Charts =>
+        _charts ??= [RunChart.Base, .. RunChart.Roll(Data, Profile.MapTier, Data.Run!.Charts.Offers, Random.Shared)];
+
+    /// <summary>새 판을 시작하고 저장한다. <paramref name="rows"/>는 멤버마다 서는 줄, <paramref name="chart"/>는 고른 원정 지도다.</summary>
+    public void Start(IReadOnlyList<string> classIds, IReadOnlyList<Triangle.Core.Units.Row> rows, RunChart chart)
     {
-        Run = Run.Start(Data, classIds, Random.Shared.Next(), Profile.UnlocksForRun(Data), rows);
+        Run = Run.Start(Data, classIds, Random.Shared.Next(), Profile.UnlocksForRun(Data), rows, Charts.Contains(chart) ? chart : RunChart.Base);
+        _charts = null;
         Save();
     }
 

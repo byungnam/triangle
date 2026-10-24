@@ -393,7 +393,7 @@ public sealed class CombatSimulator
         {
             var tactic = actor.Tactics[i];
             var action = _catalog.Actions[tactic.ActionId];
-            if (action.OncePerBattle && actor.UsedOnce.Contains(action.Id))
+            if (action.OncePerBattle && actor.UsedOnce.Contains(action.Family ?? action.Id))
             {
                 continue;
             }
@@ -624,7 +624,7 @@ public sealed class CombatSimulator
 
         if (action.OncePerBattle)
         {
-            actor.UsedOnce.Add(action.Id);
+            actor.UsedOnce.Add(action.Family ?? action.Id);
         }
 
         if (action.Effect == ActionEffect.Summon)

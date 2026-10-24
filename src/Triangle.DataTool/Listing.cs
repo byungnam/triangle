@@ -59,7 +59,8 @@ internal static class Listing
 
             "unlocks" => data.Unlocks.Values
                 .Where(u => Matches(u.Id, u.Name))
-                .Select(u => Row(u.Id, u.Name, $"명성 {u.Cost}", string.Join(", ", u.Locks), u.StartGold > 0 ? $"시작 골드 +{u.StartGold}" : ""))
+                .Select(u => Row(u.Id, u.Name, $"명성 {u.Cost}", u.Requires is { } r ? $"먼저 {r}" : "", string.Join(", ", u.Locks),
+                    string.Join(", ", (u.StartGold > 0 ? [$"시작 골드 +{u.StartGold}"] : Array.Empty<string>()).Concat(u.Boons.Parts()))))
                 .ToList(),
 
             _ => null,

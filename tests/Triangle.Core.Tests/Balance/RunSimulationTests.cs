@@ -28,6 +28,7 @@ public class RunSimulationTests
 
     [Theory]
     [InlineData(RunBot.Random)]
+    [InlineData(RunBot.Novice)]
     [InlineData(RunBot.Smart)]
     public void Runs_play_to_the_end_and_the_books_balance(RunBot bot)
     {
@@ -53,14 +54,15 @@ public class RunSimulationTests
                 Assert.Equal(r.Last.Act, r.Act);
             }
 
-            // 똑똑한 봇은 보스마다 전술 방식과 줄 배치를 고르고 들어간다 (보스 대비). 다른 전투와 아무렇게나 봇은 고르지 않는다.
+            // 똑똑한 봇은 보스마다 전술 방식과 줄 배치를 고르고 들어간다 (보스 대비). 다른 전투와 다른 봇은 고르지 않는다.
             Assert.All(r.Fights, f => Assert.Equal(bot == RunBot.Smart && f.Kind == RunNodeKind.Boss, f.Plan is not null));
 
-            // 상점에서는 나온 물건만 사고, 쓴 골드만큼 골드가 준다.
+            // 상점에서는 나온 물건만 사고, 강화는 상점의 강화 수까지 걸고, 쓴 골드만큼 골드가 준다.
             foreach (var shop in r.Shops)
             {
                 Assert.All(shop.Bought, b => Assert.Contains(shop.Offered, o => o.Id == b.Id && o.Kind == b.Kind));
-                Assert.Equal(shop.GoldIn - shop.Bought.Sum(b => b.Price) - shop.Unseals * Data.Run.Shop.UnsealPrice, shop.GoldOut);
+                Assert.InRange(shop.Upgraded.Count, 0, Data.Run.Shop.Upgrades);
+                Assert.Equal(shop.GoldIn - shop.Bought.Sum(b => b.Price) - shop.Upgraded.Sum(u => u.Price) - shop.Unseals * Data.Run.Shop.UnsealPrice, shop.GoldOut);
             }
 
             // 막마다 첫 층에서 시작해 층을 하나씩 올라 보스로 간다.
@@ -70,5 +72,20 @@ public class RunSimulationTests
                 Assert.All(act.Where(f => f.Kind == RunNodeKind.Boss), f => Assert.Equal(Data.Run.Acts[act.Key].Floors, f.Floor));
             }
         }
+    }
+
+    [Fact]
+    public void Runs_can_roll_a_chart_each_and_the_books_still_balance()
+    {
+        // 판마다 지도 등급 2의 지도를 굴린다: 수식어 1~2개와 보상 하나. 같은 시드면 같은 지도다.
+        var simulation = new RunSimulation(Data, new RunSimOptions { Bot = RunBot.Novice, Tier = 2, Unlocks = RunUnlocks.For(Data, new HashSet<string>()) });
+        var results = simulation.RunMany(8);
+        Assert.All(results, r => Assert.InRange(r.Chart.Modifiers.Count, 1, 2));
+        Assert.All(results, r => Assert.NotNull(r.Chart.Reward));
+        Assert.Equal(results[3].Chart, simulation.Play(3).Chart);
+        Assert.True(results.Select(r => r.Chart).Distinct().Count() > 1);
+
+        // 지도의 시작 골드도 셈에 든다.
+        Assert.All(results, r => Assert.Equal(Math.Max(0, Data.Run!.StartGold + r.Chart.Terms(Data).StartGold) + r.GoldEarned - r.Spent.Values.Sum(), r.GoldLeft));
     }
 }

@@ -18,7 +18,11 @@
     ],
     "weapon": "old_sword",
     "armor": "plate_armor",
-    "startingSkill": "shield_wall",
+    "startingSkills": [
+      "shield_wall",
+      "heavy_strike",
+      "first_aid"
+    ],
     "skills": [
       "heavy_strike",
       "duel_stance",
@@ -65,7 +69,11 @@
     ],
     "weapon": "hunting_bow",
     "armor": "leather_armor",
-    "startingSkill": "fire_arrow",
+    "startingSkills": [
+      "fire_arrow",
+      "throwing_knife",
+      "rapid_volley"
+    ],
     "skills": [
       "fire_arrow",
       "harass_shot",
@@ -108,7 +116,11 @@
     ],
     "weapon": "apprentice_staff",
     "armor": "cloth_robe",
-    "startingSkill": "fireball",
+    "startingSkills": [
+      "fireball",
+      "frost_bolt",
+      "ash_storm"
+    ],
     "skills": [
       "ember",
       "fireball",
@@ -169,7 +181,11 @@
     ],
     "weapon": "wooden_relic",
     "armor": "cloth_robe",
-    "startingSkill": "heal",
+    "startingSkills": [
+      "heal",
+      "holy_shield",
+      "regen"
+    ],
     "skills": [
       "heal",
       "greater_heal",
@@ -214,7 +230,11 @@
     ],
     "weapon": "old_greataxe",
     "armor": "plate_armor",
-    "startingSkill": "bleeding_cut",
+    "startingSkills": [
+      "bleeding_cut",
+      "reckless_blow",
+      "weaken"
+    ],
     "skills": [
       "bleeding_cut",
       "open_wound",
@@ -258,7 +278,11 @@
     ],
     "weapon": "old_crossbow",
     "armor": "leather_armor",
-    "startingSkill": "bolt_shot",
+    "startingSkills": [
+      "bolt_shot",
+      "reload",
+      "scatter_bolt"
+    ],
     "skills": [
       "bolt_shot",
       "piercing_bolt",

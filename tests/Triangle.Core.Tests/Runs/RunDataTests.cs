@@ -44,7 +44,7 @@ public class RunDataTests
 
     private static string Class(string id = "knight", string weapon = "sword", string armor = "plate", string start = "slash", string skills = """[ "slash" ]""", string passives = """[ "swordsmanship" ]""") => $$"""
         { "id": "{{id}}", "name": "{{id}}", "row": "Front", "stats": { "str": 10, "dex": 10, "vital": 20, "intel": 10, "speed": 10 },
-          "families": [ "sword", "plate" ], "weapon": "{{weapon}}", "armor": "{{armor}}", "startingSkill": "{{start}}",
+          "families": [ "sword", "plate" ], "weapon": "{{weapon}}", "armor": "{{armor}}", "startingSkills": [ "{{start}}" ],
           "skills": {{skills}}, "passives": {{passives}} }
         """;
 
@@ -59,7 +59,8 @@ public class RunDataTests
         Assert.Equal(["warrior", "gunner"], Shipped.Unlocks.Values.SelectMany(u => u.Classes));
         Assert.All(Shipped.Classes.Values, c =>
         {
-            Assert.Contains(c.StartingSkill, c.Skills);
+            Assert.All(c.StartingSkills, id => Assert.Contains(id, c.Skills));
+            Assert.InRange(c.StartingSkills.Count, 2, 3);
             Assert.True(c.CanWield(Shipped.Items[c.Weapon]));
             Assert.Equal(EquipmentSlot.Body, Shipped.Items[c.Armor].Slot);
         });
@@ -99,6 +100,7 @@ public class RunDataTests
         Assert.Contains(ClassErrors(Class(weapon: "bow")), e => e.Contains("weapon 'bow' is not a main-hand item of the class families"));
         Assert.Contains(ClassErrors(Class(armor: "sword")), e => e.Contains("armor 'sword' is not a body item"));
         Assert.Contains(ClassErrors(Class(start: "shot")), e => e.Contains("starting skill 'shot' is not in skills"));
+        Assert.Contains(ClassErrors(Class(start: "slash\", \"slash")), e => e.Contains("startingSkills must not be empty or repeat a skill"));
         Assert.Contains(ClassErrors(Class(skills: """[ "slash", "strike" ]""")), e => e.Contains("'strike' cannot be a card"));
         Assert.Contains(ClassErrors(Class(passives: """[ "nope" ]""")), e => e.Contains("unknown passive 'nope'"));
         Assert.Contains(ClassErrors(Class("a"), Class("b")), e => e.Contains("'slash' belongs to more than one class"));

@@ -281,7 +281,7 @@ public static class GameDataLoader
                 {
                     errors.Add($"{at}: card '{card}' is in no class's skills");
                 }
-                else if (owner.StartingSkill == card)
+                else if (owner.StartingSkills.Contains(card))
                 {
                     errors.Add($"{at}: card '{card}' is the starting skill of '{owner.Id}'");
                 }
@@ -393,6 +393,11 @@ public static class GameDataLoader
         if (run.PartySize is < 1 or > Run.MaxMembers)
         {
             errors.Add($"{RunFile}: partySize must be 1-{Run.MaxMembers}, got {run.PartySize}");
+        }
+
+        if (run.AllyMpPercent is < -90 or > 200)
+        {
+            errors.Add($"{RunFile}: allyMpPercent must be -90 to 200, got {run.AllyMpPercent}");
         }
 
         if (run.StartLines < 0 || run.StartLines > run.MaxLines)
@@ -902,9 +907,14 @@ public static class GameDataLoader
                 errors.Add($"{at}: armor '{c.Armor}' is not a body item");
             }
 
-            if (!c.Skills.Contains(c.StartingSkill))
+            if (c.StartingSkills.Count == 0 || c.StartingSkills.Distinct().Count() != c.StartingSkills.Count)
             {
-                errors.Add($"{at}: starting skill '{c.StartingSkill}' is not in skills");
+                errors.Add($"{at}: startingSkills must not be empty or repeat a skill");
+            }
+
+            foreach (var id in c.StartingSkills.Where(id => !c.Skills.Contains(id)))
+            {
+                errors.Add($"{at}: starting skill '{id}' is not in skills");
             }
 
             foreach (var id in c.Skills)

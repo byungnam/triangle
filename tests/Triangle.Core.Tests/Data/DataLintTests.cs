@@ -60,7 +60,7 @@ public class DataLintTests
     /// <summary>검 클래스 하나.</summary>
     private const string Classes = """
         [ { "id": "knight", "name": "기사", "row": "Front", "stats": { "str": 10, "dex": 10, "vital": 20, "intel": 10, "speed": 10 },
-            "families": [ "sword" ], "weapon": "old_sword", "armor": "worn_mail", "startingSkill": "slash", "skills": [ "slash" ], "passives": [] } ]
+            "families": [ "sword" ], "weapon": "old_sword", "armor": "worn_mail", "startingSkills": [ "slash" ], "skills": [ "slash" ], "passives": [] } ]
         """;
 
     /// <summary>막 하나, 상점은 티어 1까지 판다.</summary>

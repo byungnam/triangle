@@ -1,6 +1,7 @@
 {
   "partySize": 4,
   "startLines": 2,
+  "allyMpPercent": -60,
   "maxLines": 6,
   "maxTrinkets": 2,
   "startGold": 0,
@@ -18,16 +19,16 @@
       ],
       "shopTier": 1,
       "fightStrength": {
-        "hp": 88,
-        "power": 88
+        "hp": 87,
+        "power": 87
       },
       "eliteStrength": {
-        "hp": 88,
-        "power": 88
+        "hp": 87,
+        "power": 87
       },
       "bossStrength": {
-        "hp": 85,
-        "power": 85
+        "hp": 84,
+        "power": 84
       }
     },
     {
@@ -44,16 +45,16 @@
       ],
       "shopTier": 2,
       "fightStrength": {
-        "hp": 85,
-        "power": 85
+        "hp": 79,
+        "power": 79
       },
       "eliteStrength": {
-        "hp": 85,
-        "power": 85
+        "hp": 79,
+        "power": 79
       },
       "bossStrength": {
-        "hp": 80,
-        "power": 80
+        "hp": 74,
+        "power": 74
       }
     },
     {
@@ -69,16 +70,16 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 83,
-        "power": 83
+        "hp": 77,
+        "power": 77
       },
       "eliteStrength": {
-        "hp": 83,
-        "power": 83
+        "hp": 77,
+        "power": 77
       },
       "bossStrength": {
-        "hp": 76,
-        "power": 76
+        "hp": 71,
+        "power": 71
       }
     },
     {
@@ -95,16 +96,16 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 92,
-        "power": 92
+        "hp": 89,
+        "power": 89
       },
       "eliteStrength": {
-        "hp": 92,
-        "power": 92
+        "hp": 89,
+        "power": 89
       },
       "bossStrength": {
-        "hp": 84,
-        "power": 84
+        "hp": 81,
+        "power": 81
       }
     },
     {
@@ -117,16 +118,16 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 96,
-        "power": 96
+        "hp": 93,
+        "power": 93
       },
       "eliteStrength": {
-        "hp": 96,
-        "power": 96
+        "hp": 93,
+        "power": 93
       },
       "bossStrength": {
-        "hp": 82,
-        "power": 82
+        "hp": 79,
+        "power": 79
       }
     }
   ],

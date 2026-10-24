@@ -69,7 +69,17 @@ public enum RunSpend
 /// <param name="PlanWin">보스 대비에서 고른 조합으로 미리 싸워 이긴 비율. 기본과의 차이가 "보스에 맞춰야 이긴다"의 크기다.</param>
 public sealed record RunSimFight(
     int Act, int Floor, RunNodeKind Kind, string EncounterId, CombatOutcome Outcome, double AllyHp, int Downs, long Time, string? Plan = null,
-    double? DefaultWin = null, double? PlanWin = null);
+    double? DefaultWin = null, double? PlanWin = null)
+{
+    /// <summary>끝났을 때 아군(소환수 빼고, MP가 있는 유닛)의 남은 MP 비율 평균.</summary>
+    public double AllyMp { get; init; }
+
+    /// <summary>MP가 20% 이하로 끝난 아군(소환수 빼고, MP가 있는 유닛) 수.</summary>
+    public int LowMp { get; init; }
+
+    /// <summary>아군이 MP를 채운 횟수 (정신 집중, 장전).</summary>
+    public int Restores { get; init; }
+}
 
 /// <summary>보스 대비 전술 방식: 기본 배치(<see cref="DraftTactics"/>)에서 줄을 빼거나 순서를 바꾼다.</summary>
 public enum RunTacticPlan
@@ -196,6 +206,9 @@ public sealed class RunSimulation
     /// <summary>보스 대비에서 방식마다 보스를 미리 싸워 보는 시드 수.</summary>
     private const int BossSeeds = 4;
 
+    /// <summary>MP를 채우는 공용 행동 (MP를 쓰는 멤버에게 봇이 둔다).</summary>
+    private const string Focus = "focus";
+
     private readonly GameData _data;
     private readonly RunDefinition _rules;
     private readonly RunSimOptions _options;
@@ -298,6 +311,7 @@ public sealed class RunSimulation
 
     /// <summary>
     /// 전술을 다시 짠다: 사본을 그 클래스의 살아 있는 멤버에게 나눠 주고(켤 줄이 많이 남은 멤버부터) <see cref="DraftTactics"/>로 줄을 적는다.
+    /// MP를 쓰는 사본이 있는 멤버는 정신 집중(MP 30% 이하일 때) 줄도 둔다(켤 줄이 모자라면 다른 줄과 같이 남길 것을 고른다).
     /// </summary>
     private void Arrange(Run run, RunTacticPlan plan = RunTacticPlan.Default)
     {
@@ -319,7 +333,12 @@ public sealed class RunSimulation
 
         foreach (var member in living)
         {
-            run.SetTactics(_data, member, Apply(plan, DraftTactics.Build(skills[member], _rules.MaxLines, _data).SkipLast(1)).ToList());
+            if (skills[member].Any(id => RunUpgrades.Action(_data, id).MpCost > 0))
+            {
+                skills[member].Add(Focus);
+            }
+
+            run.SetTactics(_data, member, Apply(plan, DraftTactics.Build(skills[member], _rules.MaxLines, _data, active: member.Lines).SkipLast(1)).ToList());
         }
     }
 
@@ -897,9 +916,16 @@ public sealed class RunSimulation
         public void Record(Run run, RunNode node, RunBattle battle, (string Name, double DefaultWin, double PlanWin)? plan)
         {
             var allies = battle.Result.Combatants.Where(c => c.Side == CombatSide.Ally && !c.IsSummon).ToList();
+            var casters = allies.Where(c => c.MaxMp > 0).ToList();
+            var ids = allies.Select(c => c.Id).ToHashSet();
             Fights.Add(new RunSimFight(run.Act, node.Floor, battle.Kind, battle.EncounterId, battle.Result.Outcome,
                 HpFraction(battle.Result, CombatSide.Ally), allies.Count(c => !c.IsAlive), battle.Result.Events.OfType<TurnStarted>().LastOrDefault()?.Time ?? 0,
-                plan?.Name, plan?.DefaultWin, plan?.PlanWin));
+                plan?.Name, plan?.DefaultWin, plan?.PlanWin)
+            {
+                AllyMp = casters.Count == 0 ? 1 : casters.Average(c => (double)c.Mp / c.MaxMp),
+                LowMp = casters.Count(c => c.Mp * 5 <= c.MaxMp),
+                Restores = battle.Result.Events.OfType<MpRestored>().Count(e => ids.Contains(e.TargetId)),
+            });
             Deaths += battle.Died.Count;
             Earned += battle.Gold;
         }

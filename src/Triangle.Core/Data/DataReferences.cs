@@ -72,7 +72,7 @@ public static class DataReferences
             Add(c.Families.Contains(id), $"{at}: families");
             Add(c.Weapon == id, $"{at}: weapon");
             Add(c.Armor == id, $"{at}: armor");
-            Add(c.StartingSkill == id, $"{at}: startingSkill");
+            Add(c.StartingSkills.Contains(id), $"{at}: startingSkills");
             Add(c.Skills.Contains(id), $"{at}: skills");
             Add(c.Passives.Contains(id), $"{at}: passives");
         }

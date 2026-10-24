@@ -152,7 +152,8 @@ public sealed class DraftSimulation
     {
         var random = new Random(seed);
         var lines = _options.StartLines ?? _draft.StartLines;
-        var party = _draft.Party.Select(id => new Member(id, lines) { Skills = { _data.Classes[id].StartingSkill } }).ToList();
+        // 드래프트 실험(2026-10-18)의 규칙 그대로 시작 사본은 한 장이다 (판은 2026-10-24부터 2~3장으로 시작한다).
+        var party = _draft.Party.Select(id => new Member(id, lines) { Skills = { _data.Classes[id].StartingSkills[0] } }).ToList();
         var picks = new List<DraftChoice>();
         var offers = new List<IReadOnlyList<DraftCard>>();
         var (fight, won, downs, deaths) = (0, 0, 0, 0);

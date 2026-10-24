@@ -20,6 +20,12 @@ public sealed record RunDefinition
 
     public int StartGold { get; init; }
 
+    /// <summary>
+    /// 아군 최대 MP % (2026-10-24). 클래스의 지능으로 셈한 MP가 스킬 비용에 비해 넉넉해 정신 집중이 할 일이 없어서, 판의 아군만 줄인다.
+    /// 적은 조합마다 MP 조건과 정신 집중으로 짜여 있어 그대로 둔다.
+    /// </summary>
+    public int AllyMpPercent { get; init; }
+
     public required IReadOnlyList<RunAct> Acts { get; init; }
 
     public RunMapRules Map { get; init; } = new();

@@ -54,7 +54,7 @@ internal static class Listing
             "classes" => data.Classes.Values
                 .Where(c => Matches(c.Id, c.Name))
                 .Select(c => Row(c.Id, c.Name, c.Row.ToString(), string.Join("·", c.Families), $"{c.Weapon}+{c.Armor}",
-                    $"시작 {c.StartingSkill}", $"액티브 {c.Skills.Count}", $"패시브 {c.Passives.Count}"))
+                    $"시작 {string.Join(",", c.StartingSkills)}", $"액티브 {c.Skills.Count}", $"패시브 {c.Passives.Count}"))
                 .ToList(),
 
             "unlocks" => data.Unlocks.Values

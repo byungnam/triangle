@@ -217,13 +217,17 @@ internal sealed class RunPartyScene : RunScene
         card.Widgets.Add(W.Label($"근력 {s.Str} · 민첩 {s.Dex} · 체력 {s.Vital} · 지능 {s.Intel} · 신속 {s.Speed}", 12, Theme.TextDim * dim, width: inner, wrap: true));
         card.Widgets.Add(W.Label($"{Data.Items[c.Weapon].Name} · {Data.Items[c.Armor].Name}", 13, Theme.Text * dim, width: inner, wrap: true));
 
-        var start = Data.Actions[c.StartingSkill];
-        var (actionIcon, actionColor) = GameIcons.Action(start, Data);
-        var skill = new HorizontalStackPanel { Spacing = 6 };
-        skill.Widgets.Add(W.Icon(actionIcon, 18, actionColor * dim));
-        skill.Widgets.Add(W.Label($"시작: {start.Name}", 14, Theme.Cover * dim, bold: true));
-        card.Widgets.Add(skill);
-        card.Widgets.Add(W.Label(ActionText.Summary(start, Data), 12, Theme.TextDim * dim, width: inner, wrap: true));
+        card.Widgets.Add(W.Label($"시작 카드 {c.StartingSkills.Count}장", 13, Theme.Cover * dim, bold: true));
+        foreach (var id in c.StartingSkills)
+        {
+            var start = Data.Actions[id];
+            var (actionIcon, actionColor) = GameIcons.Action(start, Data);
+            var skill = new HorizontalStackPanel { Spacing = 6 };
+            skill.Widgets.Add(W.Icon(actionIcon, 16, actionColor * dim));
+            skill.Widgets.Add(W.Label(start.Name, 14, Theme.Text * dim, bold: true));
+            skill.Widgets.Add(W.Label(start.MpCost > 0 ? $"MP {start.MpCost}" : start.HpCost > 0 ? $"HP {start.HpCost}" : "비용 없음", 12, Theme.TextDim * dim));
+            card.Widgets.Add(skill);
+        }
         var pool = c.Skills.Count(id => !_unlocks.Locked.Contains(id));
         var lockedCards = c.Skills.Count - pool;
         card.Widgets.Add(W.Label($"카드 {pool}장 · 패시브 {c.Passives.Count}개", 13, Theme.Text * dim));

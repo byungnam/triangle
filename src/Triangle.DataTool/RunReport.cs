@@ -196,6 +196,13 @@ internal static class RunReport
 
         Console.WriteLine();
         double Avg(Func<RunSimResult, double> f) => results.Average(f);
+        var victories = results.SelectMany(r => r.Fights).Where(f => f.Outcome == CombatOutcome.Victory).ToList();
+        if (victories.Count > 0)
+        {
+            Console.WriteLine($"  MP (이긴 전투): 끝날 때 아군 MP 평균 {100 * victories.Average(f => f.AllyMp):F0}% · 20% 이하로 끝난 아군 {victories.Average(f => f.LowMp):F2}명/전투"
+                + $" · MP 채우기(정신 집중·장전) {victories.Average(f => f.Restores):F2}번/전투");
+        }
+
         Console.WriteLine($"  카드/판: 액티브 {Avg(r => r.Picks.Count(p => p.Kind == RunCardKind.Active)):F1} · 패시브 {Avg(r => r.Picks.Count(p => p.Kind == RunCardKind.Passive)):F1}"
             + $" · 줄 상한 {Avg(r => r.Picks.Count(p => p.Kind == RunCardKind.Line)):F1} · 강화 {Avg(r => r.Picks.Count(p => p.Kind == RunCardKind.Upgrade)):F1}"
             + $" · 고를 것이 없어 건너뜀 {Avg(r => r.Skipped):F1}");

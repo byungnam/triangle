@@ -31,8 +31,22 @@ public class DraftSimulationTests
     {
         var tactics = DraftTactics.Build(["fireball", "heal"], 2, Data);
 
+        // 공격 줄은 켜진 회복 줄을 쓸 MP를 남긴다 (화염구 비용 + 치료 비용이 있을 때만 쓴다).
         Assert.Equal(["heal", "fireball"], tactics.Take(2).Select(t => t.ActionId));
-        Assert.Contains(new TacticCondition(Condition.SelfMpAmountAtLeast, Data.Actions["fireball"].MpCost), tactics[1].Conditions);
+        Assert.Contains(new TacticCondition(Condition.SelfMpAmountAtLeast, Data.Actions["heal"].MpCost), tactics[0].Conditions);
+        Assert.Contains(new TacticCondition(Condition.SelfMpAmountAtLeast, Data.Actions["fireball"].MpCost + Data.Actions["heal"].MpCost), tactics[1].Conditions);
+    }
+
+    [Fact]
+    public void Placement_keeps_the_strongest_attack_on_when_lines_run_short()
+    {
+        // 줄 상한 1: 버프·도발 줄이 등급은 앞서도 가장 센 공격을 켜고, 나머지는 그 아래(꺼진 줄)에 적는다.
+        var tactics = DraftTactics.Build(["shield_wall", "provoke", "heavy_strike"], 6, Data, active: 1);
+        Assert.Equal("heavy_strike", tactics[0].ActionId);
+        Assert.Equal(["provoke", "shield_wall"], tactics.Skip(1).Take(2).Select(t => t.ActionId).Order(StringComparer.Ordinal));
+
+        // 줄 상한 2: 공격 하나와 먼저 얻은 버프 하나가 켜지고(같은 등급이면 먼저 얻은 것), 버프가 위에 온다.
+        Assert.Equal(["shield_wall", "heavy_strike"], DraftTactics.Build(["shield_wall", "provoke", "heavy_strike"], 6, Data, active: 2).Take(2).Select(t => t.ActionId));
     }
 
     [Fact]

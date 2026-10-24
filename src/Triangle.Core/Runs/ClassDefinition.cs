@@ -32,8 +32,10 @@ public sealed record ClassDefinition
     /// <summary>기본 방어구 (몸통 부위).</summary>
     public required string Armor { get; init; }
 
-    /// <summary>시작할 때 가진 스킬 사본 1장. <see cref="Skills"/>에 있어야 한다.</summary>
-    public required string StartingSkill { get; init; }
+    /// <summary>
+    /// 시작할 때 가진 스킬 사본 (한 장씩, 2026-10-24부터 2~3장). <see cref="Skills"/>에 있어야 한다. 시작 줄 상한보다 많으면 무엇을 켤지 고른다.
+    /// </summary>
+    public required IReadOnlyList<string> StartingSkills { get; init; }
 
     /// <summary>드래프트의 액티브 카드 풀 (행동 ID). 사본 한 장은 전술 한 줄에만 놓는다.</summary>
     public required IReadOnlyList<string> Skills { get; init; }

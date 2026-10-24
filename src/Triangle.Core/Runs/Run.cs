@@ -935,16 +935,20 @@ public sealed partial class Run
         return loaded with
         {
             GrantedActions = tactics.Select(t => t.ActionId).Where(id => !catalog.Actions[id].Universal).ToHashSet(),
-            ItemBonuses = [.. loaded.ItemBonuses, .. AllyBonuses(Terms)],
+            ItemBonuses = [.. loaded.ItemBonuses, .. AllyBonuses(Rules(data), Terms)],
         };
     }
 
-    /// <summary>지도가 아군에게 거는 보정 (최대 HP·MP, 위력, 대기, 회복량, 받는 피해).</summary>
-    private static IEnumerable<ItemBonus> AllyBonuses(RunTerms terms)
+    /// <summary>
+    /// 판 규칙과 지도가 아군에게 거는 보정 (최대 HP·MP, 위력, 대기, 회복량, 받는 피해). 최대 MP는 판 규칙의 %와 지도의 %를 곱한다
+    /// (둘 다 -60%면 -84%, 더해서 0 아래로 가지 않게).
+    /// </summary>
+    private static IEnumerable<ItemBonus> AllyBonuses(RunDefinition rules, RunTerms terms)
     {
+        var mp = (100 + rules.AllyMpPercent) * Math.Max(0, 100 + terms.AllyMp) / 100 - 100;
         (BonusKind Kind, int Percent)[] bonuses =
         [
-            (BonusKind.MaxHpPercent, terms.AllyHp), (BonusKind.MaxMpPercent, terms.AllyMp), (BonusKind.PowerPercent, terms.AllyPower),
+            (BonusKind.MaxHpPercent, terms.AllyHp), (BonusKind.MaxMpPercent, mp), (BonusKind.PowerPercent, terms.AllyPower),
             (BonusKind.DelayReductionPercent, terms.AllySpeed), (BonusKind.HealPercent, terms.Healing),
             (BonusKind.DamageTakenReductionPercent, -terms.AllyDamageTaken),
         ];
@@ -1011,17 +1015,24 @@ public sealed partial class Run
 
     private static RunDefinition Rules(GameData data) => data.Run ?? throw new InvalidOperationException("run.json이 없다");
 
-    /// <summary>새 멤버: 클래스의 기본 장비, 시작 스킬 사본 1장(파티 사본에 더한다), 그 사본으로 짠 한 줄.</summary>
+    /// <summary>
+    /// 새 멤버: 클래스의 기본 장비, 시작 스킬 사본(한 장씩 파티 사본에 더한다), 그 사본들로 짠 줄. 줄은 시작 사본을 모두 적고, 시작 줄 상한을 넘는
+    /// 줄은 꺼진 채로 둔다(무엇을 켤지 플레이어가 순서를 바꿔 고른다).
+    /// </summary>
     private void Join(GameData data, string classId, Row? row = null)
     {
         var c = data.Classes[classId];
         var rules = Rules(data);
         var lines = rules.StartLines > 0 ? Math.Max(1, rules.StartLines + Terms.StartLines) : 0;
         var member = new RunMember($"m{Members.Count + 1}", classId, lines) { Row = row ?? c.Row, Weapon = c.Weapon, Armor = c.Armor };
-        Copies[c.StartingSkill] = Copies.GetValueOrDefault(c.StartingSkill) + 1;
+        foreach (var skill in c.StartingSkills)
+        {
+            Copies[skill] = Copies.GetValueOrDefault(skill) + 1;
+        }
+
         if (lines > 0)
         {
-            member.Tactics.Add(DraftTactics.Build([c.StartingSkill], 1, data)[0]);
+            member.Tactics.AddRange(DraftTactics.Build(c.StartingSkills, rules.MaxLines, data, active: lines).SkipLast(1));
         }
 
         Members.Add(member);

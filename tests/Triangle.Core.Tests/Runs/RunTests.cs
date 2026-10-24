@@ -164,20 +164,27 @@ public class RunTests
     }
 
     [Fact]
-    public void Starting_gives_each_member_the_class_kit_and_one_line_and_reveals_the_bosses()
+    public void Starting_gives_each_member_the_class_kit_and_its_starting_cards_and_reveals_the_bosses()
     {
         var run = Run.Start(Drafting, ["knight", "knight", "priest"], 1);
 
         Assert.Equal(["m1", "m2", "m3"], run.Members.Select(m => m.Id));
         Assert.Equal(["기사 1", "기사 2", "사제"], run.Members.Select(m => run.Name(Drafting, m)));
-        Assert.Equal(new Dictionary<string, int> { ["shield_wall"] = 2, ["heal"] = 1 }, run.Copies);
+        // 시작 카드는 멤버마다 한 장씩 파티 사본이 되고, 모두 줄에 적힌다. 시작 줄 상한을 넘는 줄은 꺼진 채다.
+        var knight = Drafting.Classes["knight"].StartingSkills;
+        var priest = Drafting.Classes["priest"].StartingSkills;
+        Assert.Equal(knight.Select(id => (id, 2)).Concat(priest.Select(id => (id, 1))).OrderBy(x => x.id), run.Copies.Select(p => (p.Key, p.Value)).OrderBy(x => x.Item1));
         Assert.All(run.Members, m =>
         {
             var c = Drafting.Classes[m.ClassId];
             Assert.Equal((c.Weapon, c.Armor), (m.Weapon, m.Armor));
             Assert.Equal(Drafting.Run!.StartLines, m.Lines);
-            Assert.Equal([c.StartingSkill], m.Tactics.Select(t => t.ActionId));
+            Assert.Equal(c.StartingSkills.Order(), m.Tactics.Select(t => t.ActionId).Order());
+            Assert.True(m.Tactics.Count > m.Lines);
         });
+
+        // 아군 최대 MP는 판 규칙만큼 줄어든다.
+        Assert.Contains(new ItemBonus(BonusKind.MaxMpPercent, Drafting.Run!.AllyMpPercent), run.Setup(Drafting, run.Members[2]).ItemBonuses);
 
         Assert.Equal(Drafting.Run!.Acts.Select(a => Drafting.Zones[a.ZoneId].Boss!.EncounterId), run.Bosses);
         Assert.Equal(Drafting.Run.Acts.Count, run.Maps.Count);
@@ -340,7 +347,7 @@ public class RunTests
             Assert.Equal(((string?)null, (string?)null), (m.Weapon, m.Armor));
             Assert.Contains(Drafting.Classes[m.ClassId].Weapon, run.Bag);
             Assert.DoesNotContain(m, run.Living);
-            Assert.Equal(1, run.Copies[Drafting.Classes[m.ClassId].StartingSkill]);
+            Assert.All(Drafting.Classes[m.ClassId].StartingSkills, id => Assert.True(run.Copies.GetValueOrDefault(id) >= 1));
             Assert.NotNull(run.WhyCannotSetTactics(fort, m, []));
             Assert.NotNull(run.WhyCannotEquip(fort, m, 0));
         });
@@ -625,7 +632,7 @@ public class RunTests
         var run = AtSecondFloor(data, ["knight", "elementalist"]);
 
         // 강화는 파티의 사본과 종류를 골라 산다: 상점 한 번에 정해진 수만큼, 그 스킬에 맞는 강화만.
-        Assert.Equal(["fireball", "shield_wall"], run.UpgradableCopies(data));
+        Assert.Equal(data.Classes["knight"].StartingSkills.Concat(data.Classes["elementalist"].StartingSkills).Order(StringComparer.Ordinal), run.UpgradableCopies(data));
         Assert.Equal((2, 80), (run.UpgradesLeft, run.UpgradePrice(data, "fireball")));
         Assert.Equal("이 스킬에는 맞지 않는 강화다", run.WhyCannotUpgrade(data, "shield_wall", RunUpgradeKind.Power));
         Assert.Equal("강화할 사본이 없다", run.WhyCannotUpgrade(data, "heal", RunUpgradeKind.Power));

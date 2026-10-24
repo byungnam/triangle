@@ -21,8 +21,18 @@ internal sealed class RunSession(GameData data, RunStore store, ProfileStore pro
     /// <summary>화면 아래에 보여줄 안내 (저장 실패, 할 수 없는 이유 등).</summary>
     public (string Text, Color Color)? Notice { get; set; }
 
+    /// <summary>
+    /// 막 치른 전투와 그때 멤버마다 켜져 있던 전술 줄 (2026-10-24). 정비·편성 화면이 줄마다 쓴 횟수를 붙인다.
+    /// 세이브에 넣지 않으므로 게임을 다시 켜면 없다.
+    /// </summary>
+    public RunFight? LastFight { get; set; }
+
     /// <summary>불러온 판으로 시작한다 (세이브가 없으면 null).</summary>
-    public void Resume(Run? run) => Run = run;
+    public void Resume(Run? run)
+    {
+        Run = run;
+        LastFight = null;
+    }
 
     private IReadOnlyList<RunChart>? _charts;
 
@@ -38,6 +48,7 @@ internal sealed class RunSession(GameData data, RunStore store, ProfileStore pro
     {
         Run = Run.Start(Data, classIds, Random.Shared.Next(), Profile.UnlocksForRun(Data), rows, Charts.Contains(chart) ? chart : RunChart.Base);
         _charts = null;
+        LastFight = null;
         Save();
     }
 
@@ -94,6 +105,7 @@ internal sealed class RunSession(GameData data, RunStore store, ProfileStore pro
     private void Clear()
     {
         Run = null;
+        LastFight = null;
         try
         {
             store.Delete();
@@ -103,4 +115,12 @@ internal sealed class RunSession(GameData data, RunStore store, ProfileStore pro
             Notice = ($"세이브를 지우지 못했습니다: {e.Message}", Theme.Enemy);
         }
     }
+}
+
+/// <summary>막 치른 전투와, 그 전투에 들어갈 때 멤버 ID마다 켜져 있던 전술 줄.</summary>
+internal sealed record RunFight(RunBattle Battle, IReadOnlyDictionary<string, IReadOnlyList<Triangle.Core.Tactics.Tactic>> Fought)
+{
+    /// <summary>전투에 들어가기 직전의 켜진 줄 (살아 있는 멤버마다).</summary>
+    public static IReadOnlyDictionary<string, IReadOnlyList<Triangle.Core.Tactics.Tactic>> Snapshot(Run run) =>
+        run.Living.ToDictionary(m => m.Id, m => (IReadOnlyList<Triangle.Core.Tactics.Tactic>)m.ActiveTactics.ToList());
 }

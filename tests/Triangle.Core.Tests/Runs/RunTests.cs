@@ -27,11 +27,13 @@ public class RunTests
 
     private static readonly string[] Party = ["knight", "archer", "elementalist", "priest"];
 
-    /// <summary>판의 규칙만 바꾼 게임 데이터 (로더 검증을 거친다). 보통 전투도 카드를 준다(<see cref="Drafting"/>).</summary>
+    /// <summary>
+    /// 판의 규칙만 바꾼 게임 데이터 (로더 검증을 거친다). 보통 전투도 정예와 같은 수와 가중치로 카드를 준다(<see cref="Drafting"/>).
+    /// </summary>
     private static GameData With(Func<RunDefinition, RunDefinition> change)
     {
         string Read(string file) => File.ReadAllText(Path.Combine(DataDirectory, file));
-        var drafting = Shipped.Run! with { Reward = Shipped.Run.Reward with { FightCards = Shipped.Run.Reward.Cards } };
+        var drafting = Shipped.Run! with { Reward = Shipped.Run.Reward with { FightCards = Shipped.Run.Reward.Cards, Fight = null } };
         return GameDataLoader.Parse(
             Read(GameDataLoader.MasteriesFile), Read(GameDataLoader.SkillsFile), Read(GameDataLoader.ActionsFile), Read(GameDataLoader.EncountersFile),
             Read(GameDataLoader.EffectsFile), Read(GameDataLoader.ItemsFile), Read(GameDataLoader.ZonesFile), Read(GameDataLoader.ClassesFile), JsonSerializer.Serialize(change(drafting), GameDataJson.Options),
@@ -371,19 +373,75 @@ public class RunTests
     }
 
     [Fact]
-    public void Losing_ends_the_run()
+    public void Losing_costs_a_life_and_the_same_fight_comes_back_until_the_lives_run_out()
     {
         var data = With(r => r with { Acts = [r.Acts[2] with { ShopTier = 1 }] });
         var run = Run.Start(data, ["priest"], 1);
-        run.Enter(data, run.Choices[0].Id);
+        Assert.Equal(3, data.Run!.Lives);
+        Assert.Equal(data.Run.Lives, run.Lives);
+        Assert.Equal("다시 싸울 전투가 없다", run.WhyCannotRetry());
+        var lost = run.Enter(data, run.Choices[0].Id)!;
 
-        Assert.Equal(RunPhase.Defeat, run.Phase);
-        Assert.True(run.Finished);
+        // 진 전투: 목숨 하나를 잃고, 지도로 가지 않고 같은 적과 다시 싸우기를 기다린다. 그동안 전술과 장비는 고칠 수 있다.
+        Assert.NotEqual(CombatOutcome.Victory, lost.Result.Outcome);
+        Assert.Equal((RunPhase.Retry, 2, false), (run.Phase, run.Lives, run.Finished));
+        Assert.Equal(new RunRetry(RunNodeKind.Fight, lost.EncounterId), run.Retrying);
         Assert.Equal(0, run.Gold);
         Assert.Empty(run.Choices);
         Assert.Empty(run.Offer);
+        Assert.Null(run.WhyCannotSetTactics(data, run.Members[0], run.Members[0].Tactics));
+
+        // 고치지 않고 다시 싸우면 같은 적, 같은 시드라 결과가 같다. 다시 싸우기는 전투 수를 세지 않는다.
+        var fights = run.Fights;
+        var again = run.Retry(data);
+        Assert.Equal(lost.EncounterId, again.EncounterId);
+        Assert.Equal(lost.Result.Events, again.Result.Events);
+        Assert.Equal((RunPhase.Retry, 1, fights), (run.Phase, run.Lives, run.Fights));
+
+        // 마지막 목숨까지 잃으면 판이 끝난다.
+        run.Retry(data);
+        Assert.Equal((RunPhase.Defeat, 0, true), (run.Phase, run.Lives, run.Finished));
+        Assert.Null(run.Retrying);
+        Assert.Equal("다시 싸울 전투가 없다", run.WhyCannotRetry());
+        Assert.Equal(3, run.History.Count);
         run.Unequip(run.Members[0], EquipmentSlot.Body);
         Assert.Equal("판이 끝났다", run.WhyCannotEquip(data, run.Members[0], 0));
+    }
+
+    [Fact]
+    public void Fixing_the_tactics_can_win_the_fight_that_was_lost()
+    {
+        // 기사와 사제가 줄을 모두 비우고(기본 공격만) 지는 전투를, 시작 카드 줄을 되돌리고 다시 싸우면 이길 수 있다(같은 시드).
+        var data = With(r => r with { Acts = [r.Acts[0] with { FightStrength = new RunStrength { Hp = 70, Power = 70 } }] });
+        foreach (var seed in Enumerable.Range(0, 40))
+        {
+            var run = Run.Start(data, ["knight", "priest"], seed);
+            var kits = run.Members.Select(m => m.Tactics.ToList()).ToList();
+            foreach (var member in run.Members)
+            {
+                run.SetTactics(data, member, []);
+            }
+
+            if (run.Enter(data, run.Choices[0].Id)!.Result.Outcome == CombatOutcome.Victory)
+            {
+                continue;
+            }
+
+            for (var i = 0; i < kits.Count; i++)
+            {
+                run.SetTactics(data, run.Members[i], kits[i]);
+            }
+
+            if (run.Retry(data).Result.Outcome == CombatOutcome.Victory)
+            {
+                Assert.Equal((RunPhase.Reward, 2), (run.Phase, run.Lives));
+                Assert.NotEmpty(run.Offer);
+                Assert.Equal([CombatOutcome.Defeat, CombatOutcome.Victory], run.History.Select(h => h.Outcome));
+                return;
+            }
+        }
+
+        Assert.Fail("기본 공격만으로 지고 고쳐서 이기는 시드가 없다");
     }
 
     [Fact]
@@ -411,6 +469,9 @@ public class RunTests
                     case RunPhase.Rest:
                         run.RestUnseal(data);
                         break;
+                    case RunPhase.Retry:
+                        run.Retry(data);
+                        break;
                     default:
                         run.Skip();
                         if (run.Position is null)
@@ -423,7 +484,7 @@ public class RunTests
                 }
             }
 
-            if (run.Phase == RunPhase.Defeat)
+            if (run.Phase == RunPhase.Defeat || run.History.Any(h => h.Outcome != CombatOutcome.Victory))
             {
                 continue;
             }
@@ -441,16 +502,24 @@ public class RunTests
     }
 
     [Fact]
-    public void Normal_fights_give_only_gold_and_elites_give_cards()
+    public void Every_won_fight_offers_cards_mostly_growing_what_the_party_has_and_elites_offer_more()
     {
-        // 게임 규칙: 보통 전투는 골드만 주고 바로 지도로 돌아간다.
+        // 게임 규칙(2026-10-24): 보통 전투도 이기면 카드를 고른다. 가진 사본을 키우는 강화가 새 카드보다 많이 나온다.
         var reward = Shipped.Run!.Reward;
-        Assert.Equal(0, reward.FightCards);
+        Assert.Equal(3, reward.FightCards);
+        Assert.True(reward.Fight!.Upgrade > reward.Fight.Active);
         var won = Enumerable.Range(0, 50).Select(seed => Run.Start(Shipped, Party, seed))
             .First(run => run.Enter(Shipped, run.Choices[0].Id)!.Result.Outcome == CombatOutcome.Victory);
-        Assert.Equal((RunPhase.Map, 0), (won.Phase, won.Offer.Count));
+        Assert.Equal((RunPhase.Reward, reward.FightCards), (won.Phase, won.Offer.Count));
         Assert.InRange(won.Gold, reward.GoldMin, reward.GoldMax);
+        won.Skip();
         Assert.NotEmpty(won.Choices);
+
+        // 보통 전투에만 따로 가중치가 걸린다: 강화만 나오게 하면 보통 전투의 후보는 모두 강화다.
+        var upgrades = With(r => Easy(r) with { Reward = r.Reward with { Fight = new RunCardWeights { Upgrade = 1 } } });
+        Assert.All(WonFirstFight(upgrades, Party).Offer, c => Assert.Equal(RunCardKind.Upgrade, c.Kind));
+        Assert.Contains(Assert.Throws<GameDataException>(() => With(r => r with { Reward = r.Reward with { Fight = new RunCardWeights() } })).Errors,
+            e => e.Contains("reward fight weights must not be negative and must not all be 0"));
 
         // 정예는 후보 카드를 더 많이 준다.
         var data = With(r => r with
@@ -990,10 +1059,37 @@ public class RunTests
                 var option = Enumerable.Range(0, run.Event!.Options.Count).First(i => run.WhyCannotChoose(i) is null);
                 run.Choose(data, option);
                 return $"chose {option} {run.Phase}";
+            case RunPhase.Retry:
+                var again = run.Retry(data);
+                return $"retried {run.Phase} {again.Result.Outcome} {run.Lives}";
             default:
                 run.RestUnseal(data);
                 return "rested";
         }
+    }
+
+    [Fact]
+    public void A_run_saved_while_waiting_to_retry_fights_the_same_fight_again()
+    {
+        var data = With(r => r with { Acts = [r.Acts[2] with { ShopTier = 1 }] });
+        var run = Run.Start(data, ["priest"], 1);
+        run.Enter(data, run.Choices[0].Id);
+        Assert.Equal(RunPhase.Retry, run.Phase);
+        var copy = Run.Deserialize(run.Serialize(), data);
+        Assert.Equal(run.Serialize(), copy.Serialize());
+        Assert.Equal((run.Lives, run.Retrying), (copy.Lives, copy.Retrying));
+        Assert.Equal(run.Retry(data).Result.Events, copy.Retry(data).Result.Events);
+
+        // 목숨이 생기기 전 세이브는 처음 목숨으로 이어 간다. 다시 싸우기 단계에는 싸울 전투가 있어야 하고 그때만 있다.
+        var file = Run.Start(data, ["priest"], 1).ToSave();
+        Assert.Equal(data.Run!.Lives, Run.Restore(file with { Lives = null }, data).Lives);
+        Assert.Contains("run save: the retry phase needs a fight to retry, and only it",
+            Assert.Throws<SaveGameException>(() => Run.Restore(file with { Phase = RunPhase.Retry }, data)).Errors);
+        Assert.Contains("run save: the retry phase needs a fight to retry, and only it",
+            Assert.Throws<SaveGameException>(() => Run.Restore(file with { Retry = new RunRetry(RunNodeKind.Fight, "wild_dogs") }, data)).Errors);
+        var errors = Assert.Throws<SaveGameException>(() => Run.Restore(file with { Phase = RunPhase.Retry, Retry = new RunRetry(RunNodeKind.Fight, "no_foe"), Lives = -1 }, data)).Errors;
+        Assert.Contains("run save: unknown encounter 'no_foe' to retry", errors);
+        Assert.Contains("run save: lives must not be negative", errors);
     }
 
     [Fact]
@@ -1253,6 +1349,9 @@ public class RunTests
                     break;
                 case RunPhase.Rest:
                     run.RestUnseal(data);
+                    break;
+                case RunPhase.Retry:
+                    run.Retry(data);
                     break;
                 default:
                     run.Skip();

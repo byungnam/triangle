@@ -74,6 +74,9 @@ public sealed record RunSimFight(
     /// <summary>끝났을 때 아군(소환수 빼고, MP가 있는 유닛)의 남은 MP 비율 평균.</summary>
     public double AllyMp { get; init; }
 
+    /// <summary>진 전투를 다시 싸운 것이다 (2026-10-24, 목숨).</summary>
+    public bool Retry { get; init; }
+
     /// <summary>MP가 20% 이하로 끝난 아군(소환수 빼고, MP가 있는 유닛) 수.</summary>
     public int LowMp { get; init; }
 
@@ -279,6 +282,20 @@ public sealed class RunSimulation
                 case RunPhase.Event:
                     Event(run, random, tally);
                     break;
+                case RunPhase.Retry:
+                    // 진 전투를 다시 싸우기 전에 고친다: 똑똑한 봇은 그 적과 미리 싸워 보고, 나머지는 다른 방식을 하나 골라 본다.
+                    var lost = run.Retrying!;
+                    if (_options.Bot == RunBot.Smart)
+                    {
+                        PrepareFor(run, Team(run, lost.Kind, lost.EncounterId));
+                    }
+                    else
+                    {
+                        Improvise(run, random);
+                    }
+
+                    tally.Record(run, run.Map.Node(run.Position!.Value), run.Retry(_data), null, retry: true);
+                    break;
             }
         }
 
@@ -391,9 +408,13 @@ public sealed class RunSimulation
     /// (사람이 보스를 보고 전술을 고치는 것을 흉내 낸다). 같으면 기본에 가까운 쪽. 고른 조합의 이름과, 기본 조합과 고른 조합이 미리 싸워 이긴
     /// 비율을 돌려준다.
     /// </summary>
-    private (string Name, double DefaultWin, double PlanWin) PrepareForBoss(Run run)
+    private (string Name, double DefaultWin, double PlanWin) PrepareForBoss(Run run) => PrepareFor(run, Team(run, RunNodeKind.Boss, run.Bosses[run.Act]));
+
+    /// <summary>
+    /// 이 적과 싸우기 전에 전술 방식과 줄 배치의 조합마다 판을 복사해 미리 싸워 보고, 가장 나은 조합으로 들어간다(보스 대비, 진 전투 다시 싸우기).
+    /// </summary>
+    private (string Name, double DefaultWin, double PlanWin) PrepareFor(Run run, IReadOnlyList<CombatantSetup> boss)
     {
-        var boss = Team(run, RunNodeKind.Boss, run.Bosses[run.Act]);
         var best = (Score: double.MinValue, Plan: RunTacticPlan.Default, Rows: RunRowPlan.Default, Win: 0.0);
         var defaultWin = 0.0;
         foreach (var plan in Enum.GetValues<RunTacticPlan>())
@@ -423,6 +444,15 @@ public sealed class RunSimulation
         SetRows(run, best.Rows);
         Arrange(run, best.Plan);
         return (PlanName(best.Plan, best.Rows), defaultWin, best.Win);
+    }
+
+    /// <summary>진 전투를 다시 싸우기 전에, 미리 싸워 보지 않고 전술 방식과 줄 배치를 아무거나 하나 골라 본다 (보통 사람·무작위 봇).</summary>
+    private void Improvise(Run run, Random random)
+    {
+        var rows = Enum.GetValues<RunRowPlan>();
+        var plans = Enum.GetValues<RunTacticPlan>();
+        SetRows(run, rows[random.Next(rows.Length)]);
+        Arrange(run, plans[random.Next(plans.Length)]);
     }
 
     /// <summary>보스 대비 조합의 이름 (기록과 보고용): "디버프 빼기 · 한 명만 전열".</summary>
@@ -913,7 +943,7 @@ public sealed class RunSimulation
 
         public void Spend(RunSpend where, int gold) => Spent[where] = Spent.GetValueOrDefault(where) + gold;
 
-        public void Record(Run run, RunNode node, RunBattle battle, (string Name, double DefaultWin, double PlanWin)? plan)
+        public void Record(Run run, RunNode node, RunBattle battle, (string Name, double DefaultWin, double PlanWin)? plan, bool retry = false)
         {
             var allies = battle.Result.Combatants.Where(c => c.Side == CombatSide.Ally && !c.IsSummon).ToList();
             var casters = allies.Where(c => c.MaxMp > 0).ToList();
@@ -925,6 +955,7 @@ public sealed class RunSimulation
                 AllyMp = casters.Count == 0 ? 1 : casters.Average(c => (double)c.Mp / c.MaxMp),
                 LowMp = casters.Count(c => c.Mp * 5 <= c.MaxMp),
                 Restores = battle.Result.Events.OfType<MpRestored>().Count(e => ids.Contains(e.TargetId)),
+                Retry = retry,
             });
             Deaths += battle.Died.Count;
             Earned += battle.Gold;

@@ -203,6 +203,12 @@ internal static class RunReport
                 + $" · MP 채우기(정신 집중·장전) {victories.Average(f => f.Restores):F2}번/전투");
         }
 
+        var all = results.SelectMany(r => r.Fights).ToList();
+        var retries = all.Where(f => f.Retry).ToList();
+        var firstLosses = results.Select(r => r.Fights.ToList().FindIndex(f => f.Outcome != CombatOutcome.Victory)).Where(i => i >= 0).Select(i => i + 1.0).ToList();
+        Console.WriteLine($"  목숨: 잃은 목숨 {Avg(r => r.Fights.Count(f => f.Outcome != CombatOutcome.Victory)):F2}/판 · 다시 싸움 {Avg(r => r.Fights.Count(f => f.Retry)):F2}/판"
+            + (retries.Count > 0 ? $" · 다시 싸워 이김 {100.0 * retries.Count(f => f.Outcome == CombatOutcome.Victory) / retries.Count:F0}%" : "")
+            + (firstLosses.Count > 0 ? $" · 처음 진 전투 평균 {firstLosses.Average():F1}번째 (진 적 있는 판 {100.0 * firstLosses.Count / results.Count:F0}%)" : ""));
         Console.WriteLine($"  카드/판: 액티브 {Avg(r => r.Picks.Count(p => p.Kind == RunCardKind.Active)):F1} · 패시브 {Avg(r => r.Picks.Count(p => p.Kind == RunCardKind.Passive)):F1}"
             + $" · 줄 상한 {Avg(r => r.Picks.Count(p => p.Kind == RunCardKind.Line)):F1} · 강화 {Avg(r => r.Picks.Count(p => p.Kind == RunCardKind.Upgrade)):F1}"
             + $" · 고를 것이 없어 건너뜀 {Avg(r => r.Skipped):F1}");

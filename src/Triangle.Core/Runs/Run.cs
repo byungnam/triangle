@@ -24,6 +24,9 @@ public enum RunPhase
 
     Event,
 
+    /// <summary>전투에서 져서 목숨을 하나 잃었다. 전술·줄·장비를 고쳐 같은 적과 다시 싸운다 (2026-10-24).</summary>
+    Retry,
+
     /// <summary>마지막 막의 보스를 이겼다.</summary>
     Victory,
 
@@ -67,6 +70,9 @@ public sealed record RunStock(RunStockKind Kind, string Id, int Price)
 }
 
 /// <summary>판의 전투 기록 한 줄 (판이 끝나면 명성과 탐사 기록에 쓴다).</summary>
+/// <summary>다시 싸울 전투: 진 지점의 종류와 적 조합 (<see cref="RunPhase.Retry"/>).</summary>
+public sealed record RunRetry(RunNodeKind Kind, string EncounterId);
+
 public sealed record RunBattleRecord(int Act, string EncounterId, RunNodeKind Kind, CombatOutcome Outcome);
 
 /// <summary>판을 시작할 때 해금이 정하는 것: 이 판에 나오지 않는 클래스·카드·아이템, 더 받는 시작 골드, 판 안의 작은 편의(<see cref="RunBoons"/>).</summary>
@@ -100,7 +106,8 @@ public sealed record RunBattle(string EncounterId, RunNodeKind Kind, CombatResul
 /// 행동과 아이템의 패시브 요구는 보지 않는다.</item>
 /// <item>이긴 전투에서 쓰러진 멤버는 봉인된다(줄 상한 -1). 줄 상한이 0인데 또 쓰러지면 죽는다: 놓았던 사본은 파티로 돌아오고
 /// 장비는 가방으로 간다. 패시브와 줄 상한은 사라진다.</item>
-/// <item>지거나 비기면 판이 끝난다. 마지막 막의 보스를 이기면 승리다.</item>
+/// <item>지거나 비기면 목숨을 하나 잃고, 고쳐서 같은 적과 같은 시드로 다시 싸운다(2026-10-24). 목숨을 다 잃으면 판이 끝난다.
+/// 마지막 막의 보스를 이기면 승리다.</item>
 /// </list>
 /// </summary>
 public sealed partial class Run
@@ -184,7 +191,13 @@ public sealed partial class Run
 
     public int Gold { get; private set; }
 
-    /// <summary>싸운 전투 수. 전투 시드를 가른다.</summary>
+    /// <summary>남은 목숨. 전투에서 지면 하나 준다. 0이면 판이 끝난다.</summary>
+    public int Lives { get; private set; }
+
+    /// <summary>다시 싸울 전투 (<see cref="RunPhase.Retry"/>일 때): 진 지점의 종류와 적 조합.</summary>
+    public RunRetry? Retrying { get; private set; }
+
+    /// <summary>싸운 전투 수. 전투 시드를 가른다 (다시 싸우기는 세지 않아 같은 시드다).</summary>
     public int Fights { get; private set; }
 
     /// <summary>무작위를 쓰는 결정을 내린 횟수. 보상·상점·이벤트의 시드를 가른다.</summary>
@@ -250,7 +263,10 @@ public sealed partial class Run
         var maps = rules.Acts.Select((a, i) => RunMap.Generate(mapRules, a.Floors, a.Elites.Count > 0, Seeds.Derive(seed, 100 + i))).ToList();
         var random = new Random(Seeds.Derive(seed, 200));
         var bosses = rules.Acts.Select(a => a.Bosses.Count > 0 ? a.Bosses[random.Next(a.Bosses.Count)] : data.Zones[a.ZoneId].Boss!.EncounterId).ToList();
-        var run = new Run(seed, maps, bosses, Math.Max(0, rules.StartGold + unlocks.StartGold + terms.StartGold), unlocks.Locked, unlocks.Boons, chart, terms);
+        var run = new Run(seed, maps, bosses, Math.Max(0, rules.StartGold + unlocks.StartGold + terms.StartGold), unlocks.Locked, unlocks.Boons, chart, terms)
+        {
+            Lives = rules.Lives,
+        };
         for (var i = 0; i < classIds.Count; i++)
         {
             run.Join(data, classIds[i], rows is not null && i < rows.Count ? rows[i] : null);
@@ -265,7 +281,7 @@ public sealed partial class Run
 
     /// <summary>
     /// 지점에 들어간다. 전투·정예·보스면 바로 싸우고 그 결과를 돌려준다(이기면 고를 카드가 있을 때 보상 단계, 없으면 지도 단계,
-    /// 지거나 비기면 패배).
+    /// 지거나 비기면 목숨을 잃고 다시 싸우기 단계, 목숨이 없으면 패배).
     /// 상점·휴식·이벤트면 그 단계가 되고 null을 돌려준다.
     /// </summary>
     public RunBattle? Enter(GameData data, int nodeId)
@@ -306,8 +322,7 @@ public sealed partial class Run
 
     private RunBattle Fight(GameData data, RunNodeKind kind, Random random)
     {
-        var rules = Rules(data);
-        var act = rules.Acts[Act];
+        var act = Rules(data).Acts[Act];
         var encounter = kind switch
         {
             RunNodeKind.Boss => Bosses[Act],
@@ -315,13 +330,39 @@ public sealed partial class Run
             _ => Draw(data.Zones[act.ZoneId].Encounters, random),
         };
         Fights++;
+        return Battle(data, kind, encounter, random);
+    }
+
+    public string? WhyCannotRetry() => Phase != RunPhase.Retry || Retrying is null ? "다시 싸울 전투가 없다" : null;
+
+    /// <summary>
+    /// 진 전투를 같은 적과 다시 싸운다 (<see cref="RunPhase.Retry"/>). 전투 시드도 같아서, 전술·줄·장비를 고치지 않으면 결과도 같다.
+    /// 고친 것이 통했는지를 그대로 본다.
+    /// </summary>
+    public RunBattle Retry(GameData data)
+    {
+        if (WhyCannotRetry() is { } reason)
+        {
+            throw new InvalidOperationException(reason);
+        }
+
+        var (kind, encounter) = Retrying!;
+        Retrying = null;
+        Step++;
+        return Battle(data, kind, encounter, Stream(0));
+    }
+
+    private RunBattle Battle(GameData data, RunNodeKind kind, string encounter, Random random)
+    {
+        var rules = Rules(data);
         var at = Act;
         var allies = Living.Select(m => Setup(data, m)).ToList();
         var result = CombatSimulator.Run(allies, EnemyTeam(data, Act, kind, encounter, Terms), Catalog(data), Seeds.Derive(Seed, Fights));
         _history.Add(new RunBattleRecord(at, encounter, kind, result.Outcome));
         if (result.Outcome != CombatOutcome.Victory)
         {
-            Phase = RunPhase.Defeat;
+            Lives = Math.Max(0, Lives - 1);
+            (Phase, Retrying) = Lives > 0 ? (RunPhase.Retry, new RunRetry(kind, encounter)) : (RunPhase.Defeat, null);
             return new RunBattle(encounter, kind, result, [], [], 0);
         }
 
@@ -362,7 +403,7 @@ public sealed partial class Run
         }
         else
         {
-            // 보통 전투는 골드만 줄 수 있다(카드 0장). 고를 카드가 없으면 바로 지도로(보스면 다음 막으로) 간다.
+            // 보통 전투는 가진 것을 키우는 카드가 많다(가중치가 따로다). 고를 카드가 없으면 바로 지도로(보스면 다음 막으로) 간다.
             _bossCleared = kind == RunNodeKind.Boss;
             var cards = kind switch
             {
@@ -370,7 +411,8 @@ public sealed partial class Run
                 RunNodeKind.Boss => reward.Cards,
                 _ => reward.FightCards,
             };
-            Offer = cards > 0 ? MakeOffer(data, random, Cards(cards)) : [];
+            var weights = kind == RunNodeKind.Fight && reward.Fight is { } fight ? fight : Weights(reward);
+            Offer = cards > 0 ? MakeOffer(data, random, Cards(cards), weights) : [];
             if (Offer.Count > 0)
             {
                 Phase = RunPhase.Reward;
@@ -747,7 +789,7 @@ public sealed partial class Run
         }
 
         Event = null;
-        Offer = o.Card ? MakeOffer(data, random, Cards(Rules(data).Reward.Cards)) : [];
+        Offer = o.Card ? MakeOffer(data, random, Cards(Rules(data).Reward.Cards), Weights(Rules(data).Reward)) : [];
         Phase = Offer.Count > 0 ? RunPhase.Reward : RunPhase.Map;
     }
 
@@ -1097,15 +1139,14 @@ public sealed partial class Run
     /// 보상 후보: 종류를 가중치로 뽑고, 액티브·패시브는 살아 있는 멤버 하나를 뽑아 그 클래스에서 고른다. 같은 카드는 한 번만 나온다.
     /// 패시브는 올릴 수 있는 멤버가 있을 때만, 줄 상한은 늘릴 수 있는 멤버가 있을 때만, 강화는 그 강화를 받을 사본이 있을 때만 나온다.
     /// </summary>
-    private List<RunCard> MakeOffer(GameData data, Random random, int count)
+    private List<RunCard> MakeOffer(GameData data, Random random, int count, RunCardWeights reward)
     {
         var rules = Rules(data);
-        var reward = rules.Reward;
         var living = Living.ToList();
         var cards = new List<RunCard>();
         for (var tries = 0; cards.Count < count && tries < count * 20; tries++)
         {
-            var roll = random.Next(reward.Active + reward.Passive + reward.Line + reward.Upgrade);
+            var roll = random.Next(reward.Total);
             var c = data.Classes[living[random.Next(living.Count)].ClassId];
             RunCard? card = null;
             if (roll < reward.Active)
@@ -1168,6 +1209,9 @@ public sealed partial class Run
 
     /// <summary>이 판에 나오는 클래스·카드·아이템인가 (해금으로 잠기지 않았다).</summary>
     private bool Open(string id) => !Locked.Contains(id);
+
+    private static RunCardWeights Weights(RunRewardRules reward) =>
+        new() { Active = reward.Active, Passive = reward.Passive, Line = reward.Line, Upgrade = reward.Upgrade };
 
     /// <summary>이 결정의 무작위 줄기. 같은 시드, 같은 결정 순서면 같다.</summary>
     private Random Stream(int purpose) => new(Seeds.Derive(Seeds.Derive(Seed, 1000 + Step), purpose));

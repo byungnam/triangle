@@ -228,7 +228,10 @@ internal static class RunText
         }
         else
         {
-            lines.Add(new(battle.Result.Outcome == CombatOutcome.Draw ? "비기면 판이 끝납니다." : "판이 끝났습니다.", Theme.Enemy, Indented: true));
+            var draw = battle.Result.Outcome == CombatOutcome.Draw ? "비겨도 진 것으로 칩니다. " : "";
+            lines.Add(new(run.Phase == RunPhase.Retry
+                ? $"{draw}목숨 하나를 잃었습니다 (남은 목숨 {run.Lives}). 고쳐서 같은 적과 같은 조건으로 다시 싸웁니다."
+                : $"{draw}목숨을 다 잃어 판이 끝났습니다.", Theme.Enemy, Indented: true));
         }
 
         foreach (var id in battle.Sealed)

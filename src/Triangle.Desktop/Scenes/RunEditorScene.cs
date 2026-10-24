@@ -18,8 +18,10 @@ namespace Triangle.Desktop.Scenes;
 ///   행동은 공용이거나 그 클래스의 카드이고, 카드는 파티가 가진 사본 수만큼의 줄에만 놓을 수 있다.
 /// - 장비: 무기·방어구·장신구 둘. 가방의 아이템을 끼고 벗는다.
 /// 바꿀 때마다 판에 바로 반영하고 저장한다. 판 규칙이 허락하지 않는 변경은 하지 않고 아래 줄에 이유를 보여준다.
+/// 전투 직후에는 정비 화면이 된다(2026-10-24, <c>RunEditorScene.AfterFight.cs</c>): 위에 전투 결과와 보상 카드, 다시 싸우기가 붙는다.
+/// 줄마다 방금 전투에서 쓴 횟수를 붙인다(정비가 아니어도 막 치른 전투가 있으면).
 /// </summary>
-internal sealed class RunEditorScene : RunScene
+internal sealed partial class RunEditorScene : RunScene
 {
     private const int MemberListWidth = 250;
     private const int SubjectWidth = 170;
@@ -32,6 +34,8 @@ internal sealed class RunEditorScene : RunScene
     private const int PickerListWidth = 400;
 
     private readonly Action _back;
+    private readonly Action? _retry;
+    private readonly bool _afterFight;
     private readonly List<ComboView> _combos = [];
     private int _selected;
     private bool _equipmentTab;
@@ -39,10 +43,15 @@ internal sealed class RunEditorScene : RunScene
     private ScrollPane? _tacticScroll;
     private VerticalStackPanel? _pickerDetail;
 
-    public RunEditorScene(Ui ui, RunSession session, Rectangle bounds, Action back)
+    /// <param name="back">지도로 간다.</param>
+    /// <param name="retry">진 전투를 다시 싸운다 (정비 화면에서).</param>
+    /// <param name="afterFight">전투 직후의 정비 화면이다.</param>
+    public RunEditorScene(Ui ui, RunSession session, Rectangle bounds, Action back, Action? retry = null, bool afterFight = false)
         : base(ui, session, bounds, () => { })
     {
         _back = back;
+        _retry = retry;
+        _afterFight = afterFight;
         _selected = Math.Max(0, session.Run!.Members.FindIndex(m => !m.Dead));
     }
 
@@ -58,11 +67,18 @@ internal sealed class RunEditorScene : RunScene
 
     private CombatantSetup Setup => Run.Setup(Data, Member);
 
-    protected override string Title => "편성 — 전술과 장비";
+    protected override string Title => !_afterFight ? "편성 — 전술과 장비"
+        : Run.Phase == RunPhase.Retry ? "정비 — 졌다. 고쳐서 다시 싸운다"
+        : "정비 — 하나 고르고, 고친다";
 
-    protected override string Help => "조건이 모두 맞는 첫 줄을 씁니다. 바꾼 것은 바로 저장됩니다.     Esc  지도로";
+    protected override string Help => _afterFight
+        ? "줄 옆의 수는 방금 전투에서 그 줄을 쓴 횟수입니다. 바꾼 것은 바로 저장됩니다." + (Run.Phase == RunPhase.Map ? "     Esc  지도로" : "")
+        : "조건이 모두 맞는 첫 줄을 씁니다. 바꾼 것은 바로 저장됩니다.     Esc  지도로";
 
-    private Rectangle EditorArea => new(Body.Left + MemberListWidth + Margin, Body.Top, Body.Width - MemberListWidth - Margin, Body.Height);
+    /// <summary>멤버 목록과 편성 칸이 차지하는 곳 (정비 화면이면 위 띠 아래).</summary>
+    private Rectangle Area => _afterFight ? new(Body.Left, Body.Top + StripHeight, Body.Width, Body.Height - StripHeight) : Body;
+
+    private Rectangle EditorArea => new(Area.Left + MemberListWidth + Margin, Area.Top, Area.Width - MemberListWidth - Margin, Area.Height);
 
     protected override void OnEscape()
     {
@@ -71,19 +87,29 @@ internal sealed class RunEditorScene : RunScene
             return;
         }
 
-        if (_picking is not null)
+        if (_picking is not null || _rewardPicking is not null)
         {
             _picking = null;
+            _rewardPicking = null;
             Refresh();
             return;
         }
 
-        _back();
+        // 정비 화면은 고르거나 다시 싸우기 전에는 지도로 가지 않는다.
+        if (!_afterFight || Run.Phase == RunPhase.Map)
+        {
+            _back();
+        }
     }
 
     protected override void DrawBack(SpriteBatch batch)
     {
-        Ui.Panel(batch, new Rectangle(Body.Left, Body.Top, MemberListWidth, Body.Height));
+        if (_afterFight)
+        {
+            Ui.Panel(batch, new Rectangle(Body.Left, Body.Top, Body.Width, StripHeight - Margin / 2));
+        }
+
+        Ui.Panel(batch, new Rectangle(Area.Left, Area.Top, MemberListWidth, Area.Height));
         Ui.Panel(batch, EditorArea);
     }
 
@@ -91,17 +117,24 @@ internal sealed class RunEditorScene : RunScene
     {
         _combos.Clear();
         var root = new Panel();
-        root.Widgets.Add(Place(BuildMembers(), Body.Left + 12, Body.Top + 12, MemberListWidth - 24, Body.Height - 24));
+        if (_afterFight)
+        {
+            root.Widgets.Add(Place(BuildStrip(), Body.Left + 14, Body.Top + 10, Body.Width - 28, StripHeight - Margin / 2 - 20));
+        }
+
+        root.Widgets.Add(Place(BuildMembers(), Area.Left + 12, Area.Top + 12, MemberListWidth - 24, Area.Height - 24));
         var area = EditorArea;
         var editor = new VerticalStackPanel { Spacing = 10 };
         editor.Widgets.Add(BuildHeader());
-        editor.Widgets.Add(_equipmentTab ? BuildEquipment(area.Width - 32) : BuildTactics(area.Height - 24 - 120));
+        editor.Widgets.Add(_equipmentTab ? BuildEquipment(area.Width - 32) : BuildTactics(area.Height - 24 - 104));
         root.Widgets.Add(Place(editor, area.X + 16, area.Y + 12, area.Width - 32, area.Height - 24));
         return root;
     }
 
     protected override Widget? BuildPopup() =>
-        _picking is { } index && index < Member.Tactics.Count ? BuildActionPicker(index) : null;
+        _rewardPicking is { } card && card < Run.Offer.Count ? BuildCopyPicker(card)
+        : _picking is { } index && index < Member.Tactics.Count ? BuildActionPicker(index)
+        : null;
 
     // ── 왼쪽: 멤버와 사본 ──────────────────────────────────
 
@@ -121,6 +154,11 @@ internal sealed class RunEditorScene : RunScene
             text.Widgets.Add(W.Label(Run.Name(Data, member), 16, member.Dead ? Theme.Death : Theme.Ally, bold: true));
             var (lines, linesColor) = RunText.Lines(member);
             text.Widgets.Add(W.Label(lines, 13, linesColor));
+            if (FightLine(member) is { } fought)
+            {
+                text.Widgets.Add(W.Label(fought.Text, 12, fought.Color));
+            }
+
             content.Widgets.Add(text);
             var button = Widgets.StyledButton(content, index == _selected ? Theme.Selected : Theme.Button, Theme.ButtonHover);
             button.Width = MemberListWidth - 24;
@@ -243,6 +281,12 @@ internal sealed class RunEditorScene : RunScene
         last.Widgets.Add(badge);
         var basic = Triangle.Core.Runs.Run.BasicAttack(Data, member);
         var basicName = basic == Triangle.Core.Balance.DraftTactics.Fallback ? "기본 공격" : $"{Data.Actions[basic].Name} (무기의 기본 공격)";
+        var usage = Usage(member);
+        if (usage is not null)
+        {
+            AddUsage(last, usage.Basic);
+        }
+
         last.Widgets.Add(W.Label($"항상 → {basicName} (켜진 줄이 모두 맞지 않으면. 늘 맨 아래에 붙는다)", 15, Theme.TextDim));
         rows.Widgets.Add(last);
 
@@ -337,6 +381,8 @@ internal sealed class RunEditorScene : RunScene
         }
 
         var bottom = new HorizontalStackPanel { Spacing = 8, Margin = new Thickness(38, 0, 0, 0) };
+        var usage = Usage(member);
+        var used = usage is not null && AddUsage(bottom, usage.Lines[index]);
         if (tactic.Conditions.Count < Tactic.MaxConditions)
         {
             var and = W.TextButton("+ 그리고", Theme.Button, Theme.ButtonHover, size: 13);
@@ -355,7 +401,7 @@ internal sealed class RunEditorScene : RunScene
         var summary = on
             ? $"{TacticText.Sentence(tactic, effect)} → {ActionText.Summary(action, Data, preview)}" + (ActionText.Cost(action, preview) is { Length: > 0 } cost ? $" · {cost}" : "")
             : $"줄 상한({member.Lines})을 넘어 꺼진 줄. 줄 상한이 늘거나 봉인이 풀리면 켜진다.";
-        bottom.Widgets.Add(W.Label(summary, 13, on ? Theme.TextDim : Theme.Cover, width: 700, wrap: true));
+        bottom.Widgets.Add(W.Label(summary, 13, on ? Theme.TextDim : Theme.Cover, width: used ? 540 : 700, wrap: true));
         block.Widgets.Add(bottom);
         return block;
     }

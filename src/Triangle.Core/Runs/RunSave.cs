@@ -43,6 +43,14 @@ public sealed record RunSaveFile
 
     public int Fights { get; init; }
 
+    /// <summary>남은 목숨. 없으면(목숨이 생기기 전 세이브, 2026-10-24) 판 규칙의 처음 값이다.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? Lives { get; init; }
+
+    /// <summary>다시 싸울 전투 (<see cref="RunPhase.Retry"/>일 때).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RunRetry? Retry { get; init; }
+
     public int Step { get; init; }
 
     public IReadOnlyList<RunCard> Offer { get; init; } = [];
@@ -141,6 +149,8 @@ public sealed partial class Run
         Bag = Bag.ToList(),
         Gold = Gold,
         Fights = Fights,
+        Lives = Lives,
+        Retry = Retrying,
         Step = Step,
         Offer = Offer,
         Stock = Stock.ToList(),
@@ -268,6 +278,20 @@ public sealed partial class Run
             errors.Add("run save: the event phase needs an event");
         }
 
+        if ((file.Phase == RunPhase.Retry) != (file.Retry is not null))
+        {
+            errors.Add("run save: the retry phase needs a fight to retry, and only it");
+        }
+        else if (file.Retry is { } retry && !data.Encounters.ContainsKey(retry.EncounterId))
+        {
+            errors.Add($"run save: unknown encounter '{retry.EncounterId}' to retry");
+        }
+
+        if (file.Lives is < 0)
+        {
+            errors.Add("run save: lives must not be negative");
+        }
+
         if (errors.Count > 0)
         {
             throw new SaveGameException(errors);
@@ -280,6 +304,8 @@ public sealed partial class Run
             Act = file.Act,
             Position = file.Position,
             Fights = file.Fights,
+            Lives = file.Lives ?? rules.Lives,
+            Retrying = file.Retry,
             Step = file.Step,
             Offer = file.Offer,
             Event = runEvent,

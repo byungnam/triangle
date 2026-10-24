@@ -21,6 +21,12 @@ public sealed record RunDefinition
     public int StartGold { get; init; }
 
     /// <summary>
+    /// 목숨 (2026-10-24). 전투에서 지면(비겨도) 하나를 잃고, 전술을 고쳐 같은 적과 같은 조건으로 다시 싸운다. 다 잃으면 판이 끝난다.
+    /// 지면 바로 판이 끝나서 "결과를 보고 고쳐 다시 싸우기"가 없었다.
+    /// </summary>
+    public int Lives { get; init; } = 3;
+
+    /// <summary>
     /// 아군 최대 MP % (2026-10-24). 클래스의 지능으로 셈한 MP가 스킬 비용에 비해 넉넉해 정신 집중이 할 일이 없어서, 판의 아군만 줄인다.
     /// 적은 조합마다 MP 조건과 정신 집중으로 짜여 있어 그대로 둔다.
     /// </summary>
@@ -124,8 +130,10 @@ public sealed record RunMapRules
 }
 
 /// <summary>
-/// 전투 보상. 이기면 골드를 받는다. 정예와 보스는 후보 카드 중 하나도 고른다(건너뛸 수도 있다). 보통 전투는 골드만 준다
-/// (2026-10-19 사용자 결정: 전투마다 카드를 고르면 너무 빨리 강해진다).
+/// 전투 보상. 이기면 골드를 받고 후보 카드 중 하나를 고른다(건너뛸 수도 있다).
+/// 2026-10-19에는 보통 전투가 골드만 줬다(전투마다 카드를 고르면 너무 빨리 강해진다). 2026-10-24에 전투마다 고르기로 되돌렸다(사용자 결정:
+/// 전투 직후에 바로 고르고 고쳐야 한다, 고른 것이 지금 상태를 조금씩 키워야 한다). 대신 보통 전투의 후보는 가진 것을 키우는 카드(강화, 패시브 레벨)가
+/// 많다(<see cref="Fight"/>).
 /// </summary>
 public sealed record RunRewardRules
 {
@@ -134,6 +142,9 @@ public sealed record RunRewardRules
 
     /// <summary>보통 전투를 이기면 나오는 후보 카드 수. 0이면 골드만 받는다.</summary>
     public int FightCards { get; init; }
+
+    /// <summary>보통 전투 후보 카드 종류의 가중치. 없으면 정예·보스와 같다.</summary>
+    public RunCardWeights? Fight { get; init; }
 
     /// <summary>정예를 이기면 후보가 이만큼 더 나온다.</summary>
     public int EliteExtraCards { get; init; } = 2;
@@ -157,6 +168,20 @@ public sealed record RunRewardRules
     public int EliteGoldMax { get; init; } = 50;
 
     public int BossGold { get; init; } = 80;
+}
+
+/// <summary>보상 후보 카드 종류의 가중치 (보통 전투용, <see cref="RunRewardRules.Fight"/>).</summary>
+public sealed record RunCardWeights
+{
+    public int Active { get; init; }
+
+    public int Passive { get; init; }
+
+    public int Line { get; init; }
+
+    public int Upgrade { get; init; }
+
+    public int Total => Active + Passive + Line + Upgrade;
 }
 
 /// <summary>상점. 아이템은 그 아이템의 가격(<see cref="Items.ItemDefinition.Price"/>)으로 판다.</summary>

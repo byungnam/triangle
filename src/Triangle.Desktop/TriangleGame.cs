@@ -264,6 +264,9 @@ public class TriangleGame : Game
         {
             null => new RunPartyScene(_ui, Runs, Bounds, StartRun, OpenUnlocks),
             { Finished: true } => new RunEndScene(_ui, Runs, Bounds, NewRun),
+            // 전투 직후와 진 전투는 정비 화면: 결과를 보고, 보상을 고르고, 그 자리에서 고친다.
+            { Phase: RunPhase.Retry } => AfterFight(),
+            { Phase: RunPhase.Reward or RunPhase.Map } when battle is not null => AfterFight(),
             { Phase: RunPhase.Reward } => new RunRewardScene(_ui, Runs, Bounds, Changed, battle),
             { Phase: RunPhase.Shop } => new RunShopScene(_ui, Runs, Bounds, Changed),
             { Phase: RunPhase.Rest } => new RunRestScene(_ui, Runs, Bounds, Changed),
@@ -296,11 +299,14 @@ public class TriangleGame : Game
 
     private void OpenRunEditor() => _scene = new RunEditorScene(_ui, Runs, Bounds, back: () => ShowRun());
 
-    /// <summary>지점에 들어간다. 전투면 결과를 저장한 뒤 전투 기록을 보여주고, 다 보면 보상(카드가 없으면 지도, 끝났으면 결과)으로 간다.</summary>
+    private RunEditorScene AfterFight() => new(_ui, Runs, Bounds, back: () => ShowRun(), retry: RetryFight, afterFight: true);
+
+    /// <summary>지점에 들어간다. 전투면 결과를 저장한 뒤 전투 기록을 보여주고, 다 보면 정비 화면(끝났으면 결과)으로 간다.</summary>
     private void EnterNode(int nodeId)
     {
         var run = Runs.Run!;
         var title = RunText.Act(run, Runs.Data);
+        var fought = RunFight.Snapshot(run);
         var battle = run.Enter(Runs.Data, nodeId);
         Runs.Save();
         if (battle is null)
@@ -309,8 +315,26 @@ public class TriangleGame : Game
             return;
         }
 
-        var combat = new CombatLogScene(_ui, Runs.Data, battle.Result, battle.EncounterId, $"{title} · {RunText.Node(battle.Kind).Name}", Bounds,
-            () => ShowRun(battle), run.Finished ? "결과로" : run.Phase == RunPhase.Reward ? "보상으로" : "지도로");
+        ShowBattle(battle, $"{title} · {RunText.Node(battle.Kind).Name}", fought);
+    }
+
+    /// <summary>진 전투를 고친 전술로 다시 싸운다.</summary>
+    private void RetryFight()
+    {
+        var run = Runs.Run!;
+        var title = RunText.Act(run, Runs.Data);
+        var fought = RunFight.Snapshot(run);
+        var battle = run.Retry(Runs.Data);
+        Runs.Save();
+        ShowBattle(battle, $"{title} · {RunText.Node(battle.Kind).Name} · 다시", fought);
+    }
+
+    private void ShowBattle(RunBattle battle, string title, IReadOnlyDictionary<string, IReadOnlyList<Triangle.Core.Tactics.Tactic>> fought)
+    {
+        var run = Runs.Run!;
+        Runs.LastFight = new RunFight(battle, fought);
+        var combat = new CombatLogScene(_ui, Runs.Data, battle.Result, battle.EncounterId, title, Bounds,
+            () => ShowRun(battle), run.Finished ? "결과로" : "정비로");
         combat.SetRewardLines(RunText.Battle(battle, run, Runs.Data).Skip(1).ToList());
         _scene = combat;
     }
@@ -319,23 +343,28 @@ public class TriangleGame : Game
     private IScene DemoRunScene(string view)
     {
         var data = Runs.Data;
-        var run = Triangle.Core.Runs.Run.Start(data, ["knight", "archer", "elementalist", "priest"], 3);
+        // 다시 싸우기 화면은 사제 혼자 떠나 첫 전투에서 진다.
+        var run = Triangle.Core.Runs.Run.Start(data, view == "retry" ? ["priest"] : ["knight", "archer", "elementalist", "priest"], 3);
         Runs.Resume(run);
         var (phase, kind) = view switch
         {
             "reward" => (RunPhase.Reward, RunNodeKind.Elite),
+            "afterfight" => (RunPhase.Reward, RunNodeKind.Fight),
+            "retry" => (RunPhase.Retry, RunNodeKind.Fight),
             "shop" => (RunPhase.Shop, RunNodeKind.Shop),
             "rest" => (RunPhase.Rest, RunNodeKind.Rest),
             "event" => (RunPhase.Event, RunNodeKind.Event),
             _ => (RunPhase.Map, RunNodeKind.Fight),
         };
         RunBattle? battle = null;
+        var fought = RunFight.Snapshot(run);
         for (var step = 0; step < 80 && !run.Finished && !(run.Phase == phase && run.Fights > 0); step++)
         {
             switch (run.Phase)
             {
                 case RunPhase.Map:
                     var choice = run.Choices.FirstOrDefault(n => n.Kind == kind) ?? run.Choices[0];
+                    fought = RunFight.Snapshot(run);
                     battle = run.Enter(data, choice.Id);
                     break;
                 case RunPhase.Reward:
@@ -365,6 +394,9 @@ public class TriangleGame : Game
 
         switch (view)
         {
+            case "afterfight" or "retry" when battle is not null:
+                Runs.LastFight = new RunFight(battle, fought);
+                return AfterFight();
             case "combat":
                 EnterNode(run.Choices[0].Id);
                 if (_scene is CombatLogScene combat)

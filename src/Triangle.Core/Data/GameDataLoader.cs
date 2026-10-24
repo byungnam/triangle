@@ -464,6 +464,16 @@ public static class GameDataLoader
             errors.Add($"{RunFile}: reward needs at least one card and one positive weight");
         }
 
+        if (reward.Fight is { } fight && (new[] { fight.Active, fight.Passive, fight.Line, fight.Upgrade }.Any(w => w < 0) || fight.Total == 0))
+        {
+            errors.Add($"{RunFile}: reward fight weights must not be negative and must not all be 0");
+        }
+
+        if (run.Lives < 1)
+        {
+            errors.Add($"{RunFile}: lives must be at least 1");
+        }
+
         if (reward.GoldMin > reward.GoldMax || reward.EliteGoldMin > reward.EliteGoldMax || reward.GoldMin < 0 || reward.EliteGoldMin < 0 || reward.BossGold < 0)
         {
             errors.Add($"{RunFile}: reward gold ranges must be 0 <= min <= max");

@@ -5,6 +5,7 @@
   "maxLines": 6,
   "maxTrinkets": 2,
   "startGold": 0,
+  "lives": 3,
   "acts": [
     {
       "zoneId": "outskirts_forest",
@@ -19,16 +20,16 @@
       ],
       "shopTier": 1,
       "fightStrength": {
-        "hp": 87,
-        "power": 87
+        "hp": 100,
+        "power": 100
       },
       "eliteStrength": {
-        "hp": 87,
-        "power": 87
+        "hp": 100,
+        "power": 100
       },
       "bossStrength": {
-        "hp": 84,
-        "power": 84
+        "hp": 92,
+        "power": 92
       }
     },
     {
@@ -45,16 +46,16 @@
       ],
       "shopTier": 2,
       "fightStrength": {
-        "hp": 79,
-        "power": 79
+        "hp": 92,
+        "power": 92
       },
       "eliteStrength": {
-        "hp": 79,
-        "power": 79
+        "hp": 92,
+        "power": 92
       },
       "bossStrength": {
-        "hp": 74,
-        "power": 74
+        "hp": 85,
+        "power": 85
       }
     },
     {
@@ -70,16 +71,16 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 77,
-        "power": 77
+        "hp": 87,
+        "power": 87
       },
       "eliteStrength": {
-        "hp": 77,
-        "power": 77
+        "hp": 87,
+        "power": 87
       },
       "bossStrength": {
-        "hp": 71,
-        "power": 71
+        "hp": 80,
+        "power": 80
       }
     },
     {
@@ -96,16 +97,16 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 89,
-        "power": 89
+        "hp": 97,
+        "power": 97
       },
       "eliteStrength": {
-        "hp": 89,
-        "power": 89
+        "hp": 97,
+        "power": 97
       },
       "bossStrength": {
-        "hp": 81,
-        "power": 81
+        "hp": 87,
+        "power": 87
       }
     },
     {
@@ -118,16 +119,16 @@
       ],
       "shopTier": 3,
       "fightStrength": {
-        "hp": 93,
-        "power": 93
+        "hp": 99,
+        "power": 99
       },
       "eliteStrength": {
-        "hp": 93,
-        "power": 93
+        "hp": 99,
+        "power": 99
       },
       "bossStrength": {
-        "hp": 79,
-        "power": 79
+        "hp": 84,
+        "power": 84
       }
     }
   ],
@@ -144,6 +145,12 @@
   },
   "reward": {
     "cards": 3,
+    "fightCards": 3,
+    "fight": {
+      "active": 2,
+      "passive": 3,
+      "upgrade": 6
+    },
     "eliteExtraCards": 2,
     "active": 8,
     "passive": 6,

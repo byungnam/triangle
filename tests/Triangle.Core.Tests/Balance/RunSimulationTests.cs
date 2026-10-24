@@ -41,8 +41,21 @@ public class RunSimulationTests
             Assert.InRange(r.Placed, 0, r.Copies);
             Assert.NotNull(r.Last);
 
-            // 마지막 전투만 이기지 못할 수 있고, 클리어는 마지막 막 보스를 이긴 것이다.
-            Assert.All(r.Fights.SkipLast(1), f => Assert.Equal(CombatOutcome.Victory, f.Outcome));
+            // 진 전투는 목숨 하나다: 마지막이 아니면 바로 다음이 같은 적과 다시 싸운 것이고, 다시 싸운 것은 늘 진 전투 다음이다.
+            // 클리어는 마지막 막 보스를 이긴 것이다.
+            var fights = r.Fights.ToList();
+            Assert.InRange(fights.Count(f => f.Outcome != CombatOutcome.Victory), 0, Data.Run.Lives);
+            for (var i = 0; i < fights.Count; i++)
+            {
+                if (fights[i].Outcome != CombatOutcome.Victory && i + 1 < fights.Count)
+                {
+                    Assert.True(fights[i + 1].Retry);
+                    Assert.Equal((fights[i].Act, fights[i].Floor, fights[i].Kind, fights[i].EncounterId), (fights[i + 1].Act, fights[i + 1].Floor, fights[i + 1].Kind, fights[i + 1].EncounterId));
+                }
+
+                Assert.Equal(fights[i].Retry, i > 0 && fights[i - 1].Outcome != CombatOutcome.Victory);
+            }
+
             Assert.Equal(r.Cleared, r.Last!.Outcome == CombatOutcome.Victory);
             if (r.Cleared)
             {
@@ -55,7 +68,8 @@ public class RunSimulationTests
             }
 
             // 똑똑한 봇은 보스마다 전술 방식과 줄 배치를 고르고 들어간다 (보스 대비). 다른 전투와 다른 봇은 고르지 않는다.
-            Assert.All(r.Fights, f => Assert.Equal(bot == RunBot.Smart && f.Kind == RunNodeKind.Boss, f.Plan is not null));
+            // 다시 싸울 때 고친 것은 보스 대비로 세지 않는다.
+            Assert.All(r.Fights, f => Assert.Equal(bot == RunBot.Smart && f.Kind == RunNodeKind.Boss && !f.Retry, f.Plan is not null));
 
             // 상점에서는 나온 물건만 사고, 강화는 상점의 강화 수까지 걸고, 쓴 골드만큼 골드가 준다.
             foreach (var shop in r.Shops)

@@ -52,7 +52,7 @@ internal abstract class RunScene : IScene
 
     /// <summary>제목 오른쪽: 기본은 막과 골드.</summary>
     protected virtual string? Status => Session.Run is { Finished: false } run
-        ? $"{RunText.Act(run, Data)}{(run.Chart.IsBase ? "" : $" · {run.Chart.Name(Data)} 위험도 {run.Chart.Risk(Data)}")}     골드 {run.Gold}"
+        ? $"{RunText.Act(run, Data)}{(run.Chart.IsBase ? "" : $" · {run.Chart.Name(Data)} 위험도 {run.Chart.Risk(Data)}")}     목숨 {run.Lives}/{Data.Run!.Lives}     골드 {run.Gold}"
         : null;
 
     /// <summary>제목과 아래 줄 사이의 영역.</summary>

@@ -49,13 +49,19 @@ internal static class RunText
         : ($"줄 상한 {member.Lines}", Theme.Text);
 
     /// <summary>
-    /// 행동 설명 카드. 재편에서는 아이템이 행동을 주지 않고 패시브 요구도 없으므로, 출처를 "공용" 또는 "클래스 카드"로 바꾸고 요구를 뺀다.
+    /// 행동 설명 카드. 재편에서는 아이템이 행동을 주지 않고 패시브 요구도 없으므로, 출처를 "공용", "클래스 카드", "무기의 기본 공격"으로 바꾸고
+    /// 요구를 뺀다.
     /// </summary>
     public static IReadOnlyList<TextLine> Action(ActionDefinition action, GameData data, ActionPreview? preview = null)
     {
         var lines = ActionText.Details(action with { Requirements = [] }, data, preview).ToList();
         var owner = data.Classes.Values.FirstOrDefault(c => c.Skills.Contains(action.Id));
-        lines[1] = new TextLine(action.Universal ? "공용 행동 (카드 없이 누구나)" : owner is null ? "카드" : $"{owner.Name} 카드", Theme.TextDim, 14);
+        var weapon = data.Items.Values.FirstOrDefault(i => i.BasicAttack == action.Id);
+        var source = action.Universal ? "공용 행동 (카드 없이 누구나)"
+            : owner is not null ? $"{owner.Name} 카드"
+            : weapon is not null ? $"{weapon.Name}의 기본 공격"
+            : "카드";
+        lines[1] = new TextLine(source, Theme.TextDim, 14);
         return lines;
     }
 

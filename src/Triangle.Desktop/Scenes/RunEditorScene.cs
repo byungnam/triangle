@@ -256,6 +256,15 @@ internal sealed class RunEditorScene : RunScene
         return _tacticScroll;
     }
 
+    /// <summary>
+    /// 화면에 보여 줄 행동: 줄의 기본 공격은 낀 무기가 바꾸면 전투에서 그 행동으로 싸우므로(<see cref="Triangle.Core.Runs.Run.BasicAttack"/>) 그 행동을
+    /// 보여 준다. 줄에는 그대로 기본 공격이 남아 무기를 바꾸면 따라 바뀐다.
+    /// </summary>
+    private ActionDefinition Shown(ActionDefinition action) =>
+        action.Id == Triangle.Core.Balance.DraftTactics.Fallback && Triangle.Core.Runs.Run.BasicAttack(Data, Member) is var basic && basic != action.Id
+            ? Data.Actions[basic]
+            : action;
+
     /// <summary>새 줄에 놓을 행동: 남은 사본이 있는 첫 클래스 카드(강화된 사본 포함). 없으면 null.</summary>
     private string? FirstFreeAction() => OwnedCopies(Data.Classes[Member.ClassId]).FirstOrDefault(id => Run.Copies[id] > Placed(id));
 
@@ -281,7 +290,7 @@ internal sealed class RunEditorScene : RunScene
         var member = Member;
         var tactic = member.Tactics[index];
         var on = index < member.Lines;
-        var action = RunUpgrades.Action(Data, tactic.ActionId);
+        var action = Shown(RunUpgrades.Action(Data, tactic.ActionId));
 
         var first = new HorizontalStackPanel { Spacing = 8 };
         first.Widgets.Add(Badge($"{index + 1}", on ? Theme.Gold : Theme.TextDim));
@@ -291,6 +300,11 @@ internal sealed class RunEditorScene : RunScene
         var content = new HorizontalStackPanel { Spacing = 6 };
         content.Widgets.Add(W.Icon(icon, 22, color));
         content.Widgets.Add(W.Label(action.Name, 16, Theme.Text, bold: true));
+        if (action.Id != tactic.ActionId && tactic.ActionId == Triangle.Core.Balance.DraftTactics.Fallback)
+        {
+            content.Widgets.Add(W.Label("기본 공격", 12, Theme.TextDim));
+        }
+
         content.Widgets.Add(W.Label("▾", 14, Theme.TextDim));
         var actionButton = Widgets.StyledButton(content, Theme.Button, Theme.ButtonHover);
         actionButton.Width = ActionButtonWidth;
@@ -524,11 +538,12 @@ internal sealed class RunEditorScene : RunScene
     {
         var free = FreeCopies(index, action);
         var usable = free > 0;
-        var (icon, color) = GameIcons.Action(action, Data);
+        var shown = Shown(action);
+        var (icon, color) = GameIcons.Action(shown, Data);
         var content = new HorizontalStackPanel { Spacing = 10 };
         content.Widgets.Add(W.IconTile(usable ? icon : "lock", 38, usable ? color : Theme.TextDim, padding: 5));
-        content.Widgets.Add(W.Label(action.Name, 17, usable ? Theme.Text : Theme.TextDim, bold: true, width: 170));
-        var copies = action.Universal ? "공용" : $"사본 {Placed(action.Id)}/{Run.Copies.GetValueOrDefault(action.Id)} 놓음";
+        content.Widgets.Add(W.Label(shown.Name, 17, usable ? Theme.Text : Theme.TextDim, bold: true, width: 170));
+        var copies = shown != action ? "공용 · 무기의 기본 공격" : action.Universal ? "공용" : $"사본 {Placed(action.Id)}/{Run.Copies.GetValueOrDefault(action.Id)} 놓음";
         content.Widgets.Add(W.Label(copies, 13, usable ? Theme.Cover : Theme.TextDim));
 
         var current = Member.Tactics[index].ActionId == action.Id;
@@ -567,7 +582,14 @@ internal sealed class RunEditorScene : RunScene
             detail.Widgets.Add(W.Label("고를 수 없음: 남은 사본이 없다. 다른 줄(다른 멤버 포함)에서 빼거나 보상·상점에서 사본을 더 얻는다.", 15, Theme.Enemy, width: width, wrap: true));
         }
 
-        AddLines(detail, RunText.Action(action, Data, ActionPreview.For(Setup, action, Run.Catalog(Data))), width);
+        var shown = Shown(action);
+        if (shown != action)
+        {
+            detail.Widgets.Add(W.Label($"낀 무기({Data.Items[Member.Weapon!].Name})가 기본 공격을 {Korean.EuroRo(shown.Name)} 바꾼다. 무기를 바꾸면 이 줄도 따라 바뀐다.",
+                15, Theme.Cover, width: width, wrap: true));
+        }
+
+        AddLines(detail, RunText.Action(shown, Data, ActionPreview.For(Setup, shown, Run.Catalog(Data))), width);
         if (RunUpgrades.Kinds(action.Id) is { Count: > 0 } kinds)
         {
             var original = Data.Actions[RunUpgrades.BaseId(action.Id)];

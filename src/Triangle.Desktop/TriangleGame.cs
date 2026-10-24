@@ -397,6 +397,10 @@ public class TriangleGame : Game
                 run.Copies[strike] = 1;
                 run.SetTactics(data, knight, [.. knight.Tactics, Tactic.Create(9, [new(Condition.SelfHpAtLeast, 50)], strike),
                     Tactic.Create(9, [new(Condition.Always, 0)], "focus")]);
+                // 결투가의 레이피어는 기본 공격을 바꾸므로 기본 공격 줄이 레이피어 연격으로 보인다.
+                run.Bag.Add("duelist_rapier");
+                run.Equip(data, knight, run.Bag.Count - 1);
+                run.SetTactics(data, knight, [Tactic.Create(9, [new(Condition.EnemyAliveAtMost, 1)], "basic_attack"), .. knight.Tactics]);
                 var editor = new RunEditorScene(_ui, Runs, Bounds, back: () => ShowRun());
                 editor.Show(view);
                 return editor;
